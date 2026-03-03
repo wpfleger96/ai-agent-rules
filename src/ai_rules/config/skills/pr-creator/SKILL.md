@@ -51,7 +51,7 @@ git diff origin/{base}...HEAD
 gh issue list --limit 20  # Search for related open issues
 ```
 
-**Look for:** GitHub issue refs in commits/branch name | Related open issues via `gh issue list` | Breaking changes | New dependencies | Security changes (auth, validation) | Performance implications
+**Look for:** External reference IDs in commits/branch name (GitHub issues, Jira tickets, Sentry issues, PagerDuty incidents) | Related open issues via `gh issue list` | Breaking changes | New dependencies | Security changes (auth, validation) | Performance implications
 
 ### Step 3: Generate Draft Description
 
@@ -60,9 +60,9 @@ Use structure from `references/templates.md`. Key principles:
 - **6-12 lines maximum**
 - Three sections: Opening (1-2 sentences), Context (1-3 sentences), Implementation (2-4 bullets)
 - Professional but conversational tone
-- Specific technical terms, no marketing language
-- Plain bullets (`-`), no bold/headers in body
-- Issue refs at end with proper keywords (Resolves #123)
+- Specific technical terms, no marketing language; backtick-wrap code identifiers (env vars, functions, paths, endpoints)
+- Plain bullets (`-`), no bold/headers in body; no hard line wraps in prose paragraphs
+- Issue refs at end with proper keywords; all external references as clickable markdown links (see `references/templates.md`)
 
 See `references/templates.md` for detailed structure and examples.
 
@@ -121,7 +121,7 @@ EOF
 
 **Approval Gate:** NEVER skip user approval | ALWAYS present draft and wait | Accept revisions | Only proceed after clear approval
 
-**Accuracy:** Inspect actual commits via git | Review code changes via diff | Don't rely solely on commit messages | Verify issue refs exist
+**Accuracy:** Inspect actual commits via git | Review code changes via diff | Don't rely solely on commit messages | Verify issue refs exist | Derive URLs for external references from context (never hardcode base URLs)
 
 **Structure:** Follow 3-section format (opening, context, implementation) | 6-12 lines maximum | Proper issue ref formatting
 

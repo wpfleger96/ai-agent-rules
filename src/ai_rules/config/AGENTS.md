@@ -339,6 +339,40 @@ Remove ALL trailing whitespace | Blank lines have NO whitespace | Files end with
 ### Emojis
 Plain text only unless explicitly requested.
 
+### Inline Code in Markdown
+**Rule:** Wrap all code identifiers in backticks in user-facing markdown (PR descriptions, docs, issue comments). Scope: env vars, function/class/method names, file paths, CLI flags, API endpoints, config keys, table/column names.
+
+```
+# ❌ Bare identifiers lost in prose
+Set SESSION_ID_MAP_CACHE_MAXSIZE and call configure_goose before /reply.
+
+# ✅ Identifiers clearly distinguished
+Set `SESSION_ID_MAP_CACHE_MAXSIZE` and call `configure_goose()` before `POST /reply`.
+```
+
+**Why:** Distinguishes technical names from natural language; improves scannability.
+
+### External References in Markdown
+**Rule:** Format all external reference IDs as clickable markdown links. Derive URLs from context (commits, branch names, CI config) -- never hardcode base URLs.
+
+| Reference type | Format |
+|----------------|--------|
+| GitHub issue/PR (same repo) | `#123` (GitHub auto-links) |
+| GitHub issue/PR (other repo) | `[repo-name#123](https://github.com/org/repo/pull/123)` |
+| All other refs (Jira, Sentry, PagerDuty, etc.) | `[ID](url)` |
+
+If the URL cannot be confidently determined from context, keep the bare ID rather than guessing.
+
+**Why:** Clickable links save reviewer time and reduce context-switching to external systems.
+
+### Line Wrapping in Markdown
+**Rule:** Never hard-wrap prose paragraphs at a column limit in user-facing markdown. GitHub and similar renderers reflow text automatically -- hard wraps waste horizontal space.
+
+Applies to: opening paragraphs, context paragraphs, any flowing prose.
+Does NOT apply to: bullet list items, code blocks, tables.
+
+**Why:** Hard wrapping at ~80 chars makes PR descriptions fill only half the available browser viewport width.
+
 ---
 
 ## Model-Specific Optimizations

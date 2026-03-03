@@ -66,24 +66,39 @@ Resolves #123
 - "Update code" (obvious, no value)
 - "Improve performance" (by how? what changed?)
 
-## Issue References
+## Formatting Standards
 
-**Auto-close (use when PR fully resolves issue):**
+**Inline code:** Wrap all code identifiers in backticks in every section -- opening, context, and bullets. Scope: env vars, function/class/method names, file paths, CLI flags, API endpoints, config keys.
+
+```
+# ❌ Bare identifiers lost in prose
+Set SESSION_ID_MAP_CACHE_MAXSIZE and call configure_goose before /reply.
+
+# ✅ Identifiers clearly distinguished
+Set `SESSION_ID_MAP_CACHE_MAXSIZE` and call `configure_goose()` before `POST /reply`.
+```
+
+**External references:** Format all external reference IDs as clickable links. Derive URLs from context -- never hardcode base URLs. If URL cannot be determined confidently, keep the bare ID.
+
+| Reference type | Format |
+|----------------|--------|
+| Same-repo GitHub issue/PR | `#123` (GitHub auto-links) |
+| Cross-repo GitHub issue/PR | `[repo-name#123](https://github.com/org/repo/pull/123)` |
+| All other refs (Jira, Sentry, PagerDuty, etc.) | `[ID](url)` |
+
+**Auto-close (PR fully resolves):**
 ```
 Resolves #123
+Resolves [PROJ-456](https://myorg.atlassian.net/browse/PROJ-456)
 ```
 
-**Related (use when PR partially addresses issue):**
+**Related (PR partially addresses):**
 ```
-Relates to #456
+Relates to [PROJ-789](https://myorg.atlassian.net/browse/PROJ-789)
+Relates to [other-repo#45](https://github.com/myorg/other-repo/pull/45)
 ```
 
-**Multiple issues:**
-```
-Resolves #123
-Resolves #124
-Relates to #125
-```
+**Line wrapping:** Never hard-wrap prose paragraphs. GitHub reflows text automatically -- hard wraps produce narrow paragraphs that fill only half the viewport. Applies to opening and context sections. Does NOT apply to bullet items, code blocks, or tables.
 
 ## Optional Review Sections
 
@@ -184,6 +199,20 @@ Synchronous queries were blocking the event loop, causing timeouts under load.
 - All `UserRepository` methods now return Promises - callers must `await`
 
 Resolves #567
+```
+
+### Cross-System References PR
+
+```
+This PR adds `ensure_provider_configured()` to detect and recover from goosed LRU session eviction, preventing "Provider not set" errors.
+
+`AgentManager` uses an LRU cache of 20-45 slots while the slackbot's session cache held 500 entries. When goosed evicted a session, the slackbot skipped `configure_goose()` entirely, sending `POST /reply` to a provider-less agent.
+
+- Add `ensure_provider_configured()`: checks provider via `GET /sessions/{id}` before `/reply`; re-applies `update_provider()` if missing, invalidates local cache on 404
+- Add `_sessions_being_configured` set to block concurrent callers from seeing half-configured sessions
+
+Resolves [PROJ-234](https://myorg.atlassian.net/browse/PROJ-234)
+Pair with [cache-service#89](https://github.com/myorg/cache-service/pull/89)
 ```
 
 ## Anti-Patterns to Avoid
