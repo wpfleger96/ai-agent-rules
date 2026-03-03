@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.25.0 (2026-03-03)
+
+### Features
+
+- **pr-creator**: Add formatting rules for code identifiers, links, and line wrapping
+  ([`8b36304`](https://github.com/wpfleger96/ai-rules/commit/8b36304a68e85701bc6aebc08608614ac37a844c))
+
+
 ## v0.24.0 (2026-02-27)
 
 ### Features
