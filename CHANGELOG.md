@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.26.0 (2026-03-06)
+
+### Features
+
+- Try out new codex model
+  ([`d757b0b`](https://github.com/wpfleger96/ai-rules/commit/d757b0bda05f789e43f5483dacd036a0777779e5))
+
+
 ## v0.25.0 (2026-03-03)
 
 ### Features
