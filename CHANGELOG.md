@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.27.1 (2026-03-16)
+
+### Bug Fixes
+
+- Ai writing style
+  ([`8561198`](https://github.com/wpfleger96/ai-rules/commit/8561198dda703163c92883baf7a0fd0ddef737ba))
+
+
 ## v0.27.0 (2026-03-13)
 
 ### Features
