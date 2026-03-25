@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.28.1 (2026-03-25)
+
+### Bug Fixes
+
+- Stupid LLM responses
+  ([`e2988c5`](https://github.com/wpfleger96/ai-rules/commit/e2988c5c037c334f9c6db369e3acc0637dbd408a))
+
+
 ## v0.28.0 (2026-03-17)
 
 ### Features
