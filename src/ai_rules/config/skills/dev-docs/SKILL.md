@@ -7,9 +7,9 @@ model: sonnet
 
 ## Context
 
-- Project: !`git rev-parse --show-toplevel 2>/dev/null || echo "NOT_IN_GIT_REPO"`
-- PLAN files: !`sh -c 'PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); if [ -z "$PROJECT_ROOT" ]; then echo "NOT_IN_GIT_REPO"; exit 0; fi; cd "$PROJECT_ROOT" && for f in PLAN__*.md; do [ -f "$f" ] && echo "$f" && found=1; done; if [ -z "$found" ]; then [ -f PLAN.md ] && echo "LEGACY_PLAN" || echo "NO_PLAN_FILES"; fi' 2>/dev/null | sed 's/PLAN__//;s/\.md$//' | paste -sd ',' -`
-- Directory: !`pwd`
+- Main repo root: !`sh -c 'COMMON=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && dirname "$COMMON" || echo "NOT_IN_GIT_REPO"'`
+- PLAN files: !`sh -c 'COMMON=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -z "$COMMON" ]; then echo "NOT_IN_GIT_REPO"; exit 0; fi; PROJECT_ROOT=$(dirname "$COMMON"); cd "$PROJECT_ROOT" && for f in PLAN__*.md; do [ -f "$f" ] && echo "$f" && found=1; done; if [ -z "$found" ]; then [ -f PLAN.md ] && echo "LEGACY_PLAN" || echo "NO_PLAN_FILES"; fi' 2>/dev/null | sed 's/PLAN__//;s/\.md$//' | paste -sd ',' -`
+- Worktree/CWD: !`pwd`
 - Last commit: !`git log -1 --format="%h %ai %s" 2>/dev/null || echo "NO_COMMITS"`
 
 # Create or Update Development Documentation
@@ -28,9 +28,11 @@ Automatically creates task-specific PLAN files (`PLAN__<TASK>.md`) or updates ex
 
 ## CRITICAL: File Location
 
-**ALWAYS write PLAN files to the git repository root, NEVER to ~/.claude/plans/**
+**ALWAYS write PLAN files to the MAIN git repository root, NEVER to a worktree root or ~/.claude/plans/**
 
-- Target path: `{git_root}/PLAN__<TASK>.md`
+- Target path: `{main_repo_root}/PLAN__<TASK>.md`
+- `{main_repo_root}` is the "Main repo root" value from the Context section above
+- When working inside a git worktree, `{main_repo_root}` differs from "Worktree/CWD" — always use `{main_repo_root}`
 - Claude Code's `~/.claude/plans/` is separate and unrelated
 - The `/dev-docs` command manages repository-local documentation
 
@@ -87,7 +89,7 @@ Generate PLAN__<TASK>.md with:
 - Purpose: Problem, value, requirements, and relevant constraints or limitations discovered
 - Implementation Details: Hierarchical tasks with [STATUS], each containing enough detail for a new agent to implement without re-exploring the codebase (include HOW, not just WHAT)
 
-Write to `{git_root}/PLAN__<TASK>.md` and **validate**:
+Write to `{main_repo_root}/PLAN__<TASK>.md` and **validate**:
 - Compare structure to FIRST ExitPlanMode
 - Count items: original N items should match generated
 - Future work documented as [TODO], not omitted
@@ -142,7 +144,7 @@ Every PLAN file must be self-contained enough for a new agent to resume work wit
 - **PREVENT RECENCY BIAS**: Prioritize FIRST ExitPlanMode
 - **PRESERVE STRUCTURE**: Match original organization exactly
 - Document entire plan regardless of progress
-- Generate valid task name, create in git root (NEVER ~/.claude/plans/)
+- Generate valid task name, create in main repo root (NEVER in worktree root or ~/.claude/plans/)
 
 **Update Mode:**
 - Use Edit tool with exact matching

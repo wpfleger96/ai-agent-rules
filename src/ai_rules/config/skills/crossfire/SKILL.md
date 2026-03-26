@@ -10,10 +10,10 @@ metadata:
 ## Context
 
 - Arguments: `${ARGS}` (optional: artifact type, file path, or review focus question)
-- Project: !`git rev-parse --show-toplevel 2>/dev/null || echo "NOT_IN_GIT_REPO"`
+- Main repo root: !`sh -c 'COMMON=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && dirname "$COMMON" || echo "NOT_IN_GIT_REPO"'`
 - Current branch: !`git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "NO_BRANCH"`
 - Uncommitted changes: !`git status --porcelain 2>/dev/null | wc -l | xargs`
-- PLAN files: !`sh -c 'PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); if [ -z "$PROJECT_ROOT" ]; then exit 0; fi; cd "$PROJECT_ROOT" && for f in PLAN__*.md; do [ -f "$f" ] && echo "$f"; done' 2>/dev/null | head -5`
+- PLAN files: !`sh -c 'COMMON=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -z "$COMMON" ]; then exit 0; fi; PROJECT_ROOT=$(dirname "$COMMON"); cd "$PROJECT_ROOT" && for f in PLAN__*.md; do [ -f "$f" ] && echo "$f"; done' 2>/dev/null | head -5`
 
 You are a crossfire review coordinator. Your job is to identify the artifact the user wants reviewed, then delegate to the crossfire agent for multi-model analysis.
 
@@ -27,7 +27,7 @@ If args contain a recognized keyword, use that:
 
 | Keyword | Artifact | How to gather |
 |---------|----------|---------------|
-| `plan` | Most recent PLAN file | Read the newest `PLAN__*.md` file from the project root |
+| `plan` | Most recent PLAN file | Read the newest `PLAN__*.md` file from the main repo root |
 | `diff` | Current code changes | `git diff` (unstaged), then `git diff --cached` (staged), then `git diff origin/$(git symbolic-ref --short HEAD)..HEAD` (unpushed) — use first non-empty |
 | `tests` | Test files | Identify recently modified test files via `git diff --name-only` filtered to test patterns |
 
