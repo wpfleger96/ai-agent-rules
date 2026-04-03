@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.30.0 (2026-04-03)
+
+### Features
+
+- Parallelize crossfire CLI launches with Claude's own review
+  ([`b46a162`](https://github.com/wpfleger96/ai-rules/commit/b46a16258432592dbb5d91d2bba8d55e2f8af7fb))
+
+Crossfire CLIs (Codex/Gemini) only need the diff to run their review, not Claude's findings.
+  Launching them in Phase 5 after Phases 1-4 wasted 1-3 minutes of wall-clock time. Now Phase 0
+  fires the CLIs via Bash(run_in_background=true) immediately after diff gathering, and Phase 5 just
+  reads the pre-launched results.
+
+Also drops "Primary reviewer findings" from the crossfire prompt -- external models now review
+  independently without anchoring bias, matching the standalone crossfire skill's behavior.
+
+
 ## v0.29.0 (2026-04-01)
 
 ### Features
