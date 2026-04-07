@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.30.1 (2026-04-07)
+
+### Bug Fixes
+
+- Disable adaptive thinking and hardcode max effort
+  ([`f35e8f2`](https://github.com/wpfleger96/ai-rules/commit/f35e8f2526596472a938fb1ea8303ffdc3433b9e))
+
+Adaptive thinking has an acknowledged bug where it under-allocates reasoning on turns it misjudges
+  as simple, producing zero-reasoning responses that fabricate or take shortcuts — even at
+  effort=high. Combined with the medium effort default (Mar 3), this matches the configuration
+  identified in anthropics/claude-code#42796 as causing a 70% drop in read:edit ratio and 12x
+  increase in user corrections.
+
+Forces fixed thinking budget and max effort via env vars in base settings.json, which all profiles
+  inherit via deep merge. Intended as a temporary measure until Anthropic resolves the adaptive
+  thinking under-allocation bug.
+
+
 ## v0.30.0 (2026-04-03)
 
 ### Features
