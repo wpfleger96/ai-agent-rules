@@ -1,6 +1,18 @@
 # CHANGELOG
 
 
+## v0.31.0 (2026-04-08)
+
+### Features
+
+- Add Sprout system prompts for multi-agent dev workflow
+  ([`b8c78a0`](https://github.com/wpfleger96/ai-rules/commit/b8c78a0d2d0f191a7b62f1a536ab749954d87f3a))
+
+Coordinator prompt teaches claude-lead how to use Sprout MCP tools (threading, @mentioning, polling)
+  and when to engage reviewer agents vs respond directly. Reviewer prompt ports the crossfire review
+  format (CRITICAL/IMPORTANT/MINOR) for codex/goose agents that don't have Claude's crossfire skill.
+
+
 ## v0.30.1 (2026-04-07)
 
 ### Bug Fixes
