@@ -140,6 +140,7 @@ fi
 # Gemini (background) — only if available
 if [ "$GEMINI_AVAILABLE" = "yes" ] && [ -f ~/.env/gemini_cli.key ]; then
   GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) gemini --yolo \
+    --include-directories /tmp \
     -p "Read the file at $PROMPT_FILE and follow the review instructions inside it." \
     > "$GEMINI_OUT" 2>&1 &
   GEMINI_PID=$!

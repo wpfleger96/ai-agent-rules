@@ -144,6 +144,7 @@ fi
 if [ "$GEMINI_AVAILABLE" = "yes" ] && [ -f ~/.env/gemini_cli.key ]; then
   GEMINI_RAN="yes"
   GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) gemini --yolo \
+    --include-directories /tmp \
     -p "Read the file at /tmp/crossfire-review.prompt and follow the review instructions inside it." \
     > /tmp/crossfire-review.gemini 2>&1 &
   GEMINI_PID=$!
