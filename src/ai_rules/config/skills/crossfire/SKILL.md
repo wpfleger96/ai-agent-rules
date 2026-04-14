@@ -121,26 +121,31 @@ Structure your response as:
 Write the full prompt to a temp file. Do NOT pass it as a command-line argument — large artifacts (diffs, plans) exceed the OS `ARG_MAX` limit (~256KB on macOS). By writing to a file and giving the CLI a short instruction to read it, the command line stays small.
 
 ```bash
-PROMPT_FILE=$(mktemp /tmp/crossfire-prompt-XXXXXX)
+PROMPT_DIR=$(mktemp -d /tmp/crossfire-prompt-XXXXXX)
+PROMPT_FILE="$PROMPT_DIR/prompt.txt"
 # Write the constructed prompt from Step 2 to $PROMPT_FILE
 
 CODEX_OUT=$(mktemp)
+CODEX_ERR=$(mktemp)
 GEMINI_OUT=$(mktemp)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 
+# Clean up all temp files when shell exits (normal or interrupt)
+trap 'rm -rf "$PROMPT_DIR" "$CODEX_OUT" "$CODEX_ERR" "$GEMINI_OUT"' EXIT INT TERM
+
 # Codex (background) — only if available
 if [ "$CODEX_AVAILABLE" = "yes" ]; then
-  codex exec -C "$REPO_ROOT" \
+  timeout 300 codex exec -C "$REPO_ROOT" \
     --dangerously-bypass-approvals-and-sandbox \
     "Read the file at $PROMPT_FILE and follow the review instructions inside it." \
-    > "$CODEX_OUT" 2>&1 &
+    > "$CODEX_OUT" 2>"$CODEX_ERR" &
   CODEX_PID=$!
 fi
 
 # Gemini (background) — only if available
-if [ "$GEMINI_AVAILABLE" = "yes" ] && [ -f ~/.env/gemini_cli.key ]; then
-  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) gemini --yolo \
-    --include-directories /tmp \
+if [ "$GEMINI_AVAILABLE" = "yes" ]; then
+  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) timeout 300 gemini --yolo \
+    --include-directories "$PROMPT_DIR" \
     -p "Read the file at $PROMPT_FILE and follow the review instructions inside it." \
     > "$GEMINI_OUT" 2>&1 &
   GEMINI_PID=$!
@@ -149,19 +154,35 @@ fi
 # Wait for both
 [ -n "$CODEX_PID" ] && { wait $CODEX_PID; CODEX_EXIT=$?; }
 [ -n "$GEMINI_PID" ] && { wait $GEMINI_PID; GEMINI_EXIT=$?; }
+
+# Output results inline (parsed in Step 4 — no temp files need to persist)
+echo "===CODEX_EXIT=${CODEX_EXIT:--1}==="
+echo "===CODEX_OUTPUT_START==="
+cat "$CODEX_OUT" 2>/dev/null || true
+echo ""
+echo "===CODEX_OUTPUT_END==="
+echo "===CODEX_STDERR_START==="
+cat "$CODEX_ERR" 2>/dev/null || true
+echo ""
+echo "===CODEX_STDERR_END==="
+echo "===GEMINI_EXIT=${GEMINI_EXIT:--1}==="
+echo "===GEMINI_OUTPUT_START==="
+cat "$GEMINI_OUT" 2>/dev/null || true
+echo ""
+echo "===GEMINI_OUTPUT_END==="
 ```
 
-### Step 4: Read and Validate Outputs
+### Step 4: Parse and Validate Outputs
 
-Read each output file. Check for:
-- Non-zero exit code → mark as "Unavailable: CLI exited with error (exit code $EXIT)"
-- Empty output → mark as "Unavailable: no output produced"
+Parse the delimited output from Step 3. Extract each model's output from the `===..._START===` / `===..._END===` markers, and read the exit codes from the `===..._EXIT=N===` lines.
 
-Clean up ALL temp files after reading:
+Validate each model's output:
+- Empty output (0 lines between markers) → mark as "Unavailable: no output produced"
+- Non-empty output (>10 lines) with non-zero exit code → use the output and prepend a warning: "(Warning: CLI exited with code N — output may be partial. Stderr: [content from CODEX_STDERR section if applicable])"
+- Non-zero exit code AND output is ≤10 lines → mark as "Unavailable: CLI exited with error (exit code N)"
+- If Codex stderr contains only shell-init warnings (nvm, rvm, etc.) and stdout has substantive content, treat as a successful run with a warning note
 
-```bash
-rm -f "$PROMPT_FILE" "$CODEX_OUT" "$GEMINI_OUT"
-```
+Temp files are cleaned up automatically by the EXIT trap in Step 3. No manual cleanup is needed.
 
 ### Step 5: Synthesize Consensus
 
@@ -207,7 +228,7 @@ Present your findings in this structure:
 - Launch CLIs in parallel, not sequentially
 - Do NOT modify the artifact — only review it
 - Do NOT skip concerns because they seem minor — surface everything and let severity classification do the prioritization
-- Clean up ALL temp files after reading outputs
+- Temp files are cleaned up automatically via the EXIT trap — do not add manual cleanup
 - If only one CLI is available, still run the review with that single model
 
 ## Examples

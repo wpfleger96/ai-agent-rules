@@ -81,13 +81,15 @@ Follow this structured approach for thorough analysis:
 
 Launch the external CLI reviews immediately so they run in parallel with your own analysis (Phases 1-4). The external models review the diff independently — without your findings — ensuring unbiased perspectives.
 
-#### Step 1: Save the Diff
+#### Step 1: Create Work Directory and Save the Diff
 
-Write the gathered diff to `/tmp/crossfire-review.diff` so the background script can access it.
+Create a unique work directory for this crossfire session by running `mktemp -d /tmp/crossfire-review-XXXXXX`. Note the returned path — use it for all file operations in Phase 0 and Phase 5.
+
+Write the gathered diff to `{work_dir}/review.diff`.
 
 #### Step 2: Build and Write the Review Prompt
 
-Write a prompt file to `/tmp/crossfire-review.prompt` with these sections in order:
+Write a prompt file to `{work_dir}/prompt.txt` with these sections in order:
 
 1. **Preamble:**
 ```
@@ -115,38 +117,49 @@ Structure your response as:
 <if you would have taken a fundamentally different approach, describe it briefly>
 ```
 
-3. **Artifact:** Append the diff after a `--- ARTIFACT ---` separator. Read it from `/tmp/crossfire-review.diff`.
+3. **Artifact:** Append the diff after a `--- ARTIFACT ---` separator. Read it from `{work_dir}/review.diff`.
 
 #### Step 3: Launch CLIs in Background
 
-Use a **single Bash call with `run_in_background=true`**. This fires the command and returns immediately so you can continue to Phase 1 while the CLIs execute.
+Use a **single Bash call with `run_in_background=true`**. Substitute the work directory path from Step 1 for `$WORK_DIR` in the command (use the literal path, not a variable reference). This fires the command and returns immediately so you can continue to Phase 1 while the CLIs execute. When the background task completes, the inline delimited output arrives via the background notification — Phase 5 parses it from there.
 
 ```bash
+WORK_DIR="<path from Step 1>"
+[ -d "$WORK_DIR" ] || { echo "ERROR: WORK_DIR does not exist: $WORK_DIR"; exit 1; }
+
 # Check CLI availability
 CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
 GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -f ~/.env/gemini_cli.key ] && echo "yes" || echo "no")
 
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+CODEX_OUT=$(mktemp)
+CODEX_ERR=$(mktemp)
+GEMINI_OUT=$(mktemp)
+
+# Clean up all temp files when shell exits (normal or interrupt)
+trap 'rm -rf "$WORK_DIR" "$CODEX_OUT" "$CODEX_ERR" "$GEMINI_OUT"' EXIT INT TERM
+
 CODEX_RAN="no"; GEMINI_RAN="no"
 CODEX_EXIT="-1"; GEMINI_EXIT="-1"
 
 # Launch Codex (background)
 if [ "$CODEX_AVAILABLE" = "yes" ]; then
   CODEX_RAN="yes"
-  codex exec -C "$REPO_ROOT" \
+  timeout 300 codex exec -C "$REPO_ROOT" \
     --dangerously-bypass-approvals-and-sandbox \
-    "Read the file at /tmp/crossfire-review.prompt and follow the review instructions inside it." \
-    > /tmp/crossfire-review.codex 2>&1 &
+    "Read the file at $WORK_DIR/prompt.txt and follow the review instructions inside it." \
+    > "$CODEX_OUT" 2>"$CODEX_ERR" &
   CODEX_PID=$!
 fi
 
 # Launch Gemini (background)
-if [ "$GEMINI_AVAILABLE" = "yes" ] && [ -f ~/.env/gemini_cli.key ]; then
+if [ "$GEMINI_AVAILABLE" = "yes" ]; then
   GEMINI_RAN="yes"
-  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) gemini --yolo \
-    --include-directories /tmp \
-    -p "Read the file at /tmp/crossfire-review.prompt and follow the review instructions inside it." \
-    > /tmp/crossfire-review.gemini 2>&1 &
+  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) timeout 300 gemini --yolo \
+    --include-directories "$WORK_DIR" \
+    -p "Read the file at $WORK_DIR/prompt.txt and follow the review instructions inside it." \
+    > "$GEMINI_OUT" 2>&1 &
   GEMINI_PID=$!
 fi
 
@@ -154,18 +167,28 @@ fi
 [ -n "$CODEX_PID" ] && { wait $CODEX_PID; CODEX_EXIT=$?; }
 [ -n "$GEMINI_PID" ] && { wait $GEMINI_PID; GEMINI_EXIT=$?; }
 
-# Write meta file
-cat > /tmp/crossfire-review.meta << EOF
-CODEX_RAN=$CODEX_RAN
-CODEX_EXIT=$CODEX_EXIT
-GEMINI_RAN=$GEMINI_RAN
-GEMINI_EXIT=$GEMINI_EXIT
-EOF
-
-echo "Crossfire CLIs complete. Results in /tmp/crossfire-review.*"
+# Output results inline (parsed by Phase 5 — no temp files need to persist)
+echo "===CROSSFIRE_RESULTS==="
+echo "CODEX_RAN=$CODEX_RAN"
+echo "CODEX_EXIT=$CODEX_EXIT"
+echo "GEMINI_RAN=$GEMINI_RAN"
+echo "GEMINI_EXIT=$GEMINI_EXIT"
+echo "===CODEX_OUTPUT_START==="
+cat "$CODEX_OUT" 2>/dev/null || true
+echo ""
+echo "===CODEX_OUTPUT_END==="
+echo "===CODEX_STDERR_START==="
+cat "$CODEX_ERR" 2>/dev/null || true
+echo ""
+echo "===CODEX_STDERR_END==="
+echo "===GEMINI_OUTPUT_START==="
+cat "$GEMINI_OUT" 2>/dev/null || true
+echo ""
+echo "===GEMINI_OUTPUT_END==="
+echo "===CROSSFIRE_RESULTS_END==="
 ```
 
-If neither CLI is available, the meta file will show both as not run — Phase 5 will note "Crossfire unavailable."
+If neither CLI is available, the inline output will show both as not run — Phase 5 will note "Crossfire unavailable."
 
 **Proceed immediately to Phase 1 without waiting for the background notification.**
 
@@ -249,24 +272,23 @@ The crossfire CLIs were launched in Phase 0 and have been running in parallel wi
 
 #### Step 1: Retrieve Results
 
-Read the results from the fixed paths written during Phase 0:
+Parse the output from the Phase 0 background task. The results are delimited with `===...===` markers. Extract:
+- `CODEX_RAN` and `GEMINI_RAN` from the metadata section
+- Each model's output from the `===..._OUTPUT_START===` / `===..._OUTPUT_END===` markers
+- Each model's exit code from the metadata
+- Codex stderr from the `===CODEX_STDERR_START===` / `===CODEX_STDERR_END===` markers
 
-1. Read `/tmp/crossfire-review.meta` to confirm which CLIs ran and their exit codes.
-2. Read `/tmp/crossfire-review.codex` if Codex was run.
-3. Read `/tmp/crossfire-review.gemini` if Gemini was run.
+Validate each model's output:
+- If model didn't run (`..._RAN=no`) → note "Crossfire unavailable: `codex`/`gemini` CLI not found"
+- If neither model ran → note "Crossfire unavailable: neither `codex` nor `gemini` CLI found"
+- Empty output (0 lines between markers) → mark as "Unavailable: no output produced"
+- Non-empty output (>10 lines) with non-zero exit code → use the output and prepend a warning: "(Warning: CLI exited with code N — output may be partial. Stderr: [content from CODEX_STDERR section if applicable])"
+- Non-zero exit code AND output is ≤10 lines → mark as "Unavailable: CLI exited with error (exit code N)"
+- If Codex stderr contains only shell-init warnings (nvm, rvm, etc.) and stdout has substantive content, treat as a successful run with a warning note
 
-For each output:
-- If the meta file shows neither CLI ran → note "Crossfire unavailable: neither `codex` nor `gemini` CLI found"
-- If exit code was non-zero → mark as "Unavailable: CLI exited with error (exit code N)"
-- If the output file is empty → mark as "Unavailable: no output produced"
+Temp files are cleaned up automatically by the EXIT trap in Phase 0 Step 3. No manual cleanup is needed.
 
-#### Step 2: Clean Up
-
-```bash
-rm -f /tmp/crossfire-review.prompt /tmp/crossfire-review.diff /tmp/crossfire-review.codex /tmp/crossfire-review.gemini /tmp/crossfire-review.meta
-```
-
-#### Step 3: Produce Crossfire Report
+#### Step 2: Produce Crossfire Report
 
 Synthesize the raw outputs into a structured crossfire report:
 
