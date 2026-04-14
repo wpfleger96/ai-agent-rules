@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.31.3 (2026-04-14)
+
+### Bug Fixes
+
+- Dev-docs PLAN files land in monorepo app dir, not monorepo root
+  ([`0b80dc0`](https://github.com/wpfleger96/ai-rules/commit/0b80dc06022a8146d9748a23ad508599fff08d08))
+
+In monorepos the agent's CWD is <monorepo>/<app>/ but PLAN__ files were written to <monorepo>/ —
+  invisible when the IDE opens at the app level. Introduces a {project_root} variable that combines
+  --git-common-dir (worktree-safe repo root) with --show-toplevel (working tree root) to compute the
+  correct target for all four scenarios: standard repo, worktree, monorepo, and worktree+monorepo.
+
+
 ## v0.31.2 (2026-04-14)
 
 ### Bug Fixes
