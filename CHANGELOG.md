@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v0.31.2 (2026-04-14)
+
+### Bug Fixes
+
+- Harden crossfire CLI orchestration for reliability and concurrency
+  ([`9a97595`](https://github.com/wpfleger96/ai-rules/commit/9a975959f029ece090d2755c60ca5095dea3d7aa))
+
+Gemini crashed scanning all of /tmp when given --include-directories /tmp, Codex produced
+  false-negative "unavailable" results from nvm stderr noise, and neither CLI had timeout
+  protection. Fixed by isolating prompt files in unique mktemp -d subdirectories, separating Codex
+  stderr, adding timeout 300, and switching from temp-file-based result passing to inline delimited
+  output with trap EXIT cleanup.
+
+
 ## v0.31.1 (2026-04-13)
 
 ### Bug Fixes
