@@ -65,6 +65,7 @@ class ToolSpec:
     get_version: Callable[[], str | None]
     is_installed: Callable[[], bool]
     github_repo: str | None = None
+    is_enabled: Callable[[], bool] | None = None
 
     @property
     def github_install_url(self) -> str | None:

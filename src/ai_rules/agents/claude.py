@@ -2,7 +2,7 @@
 
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from ai_rules.agents.base import Agent
 from ai_rules.utils import is_managed_target
@@ -34,39 +34,6 @@ class ClaudeAgent(Agent):
     @property
     def config_file_format(self) -> str:
         return "json"
-
-    def _get_configured_hooks(self, settings: dict[str, Any]) -> set[str]:
-        """Get set of hook filenames that have configurations in settings.
-
-        Scans settings['hooks'] for any command that references a file in ~/.claude/hooks/.
-
-        Args:
-            settings: Merged settings dict containing hooks configuration
-
-        Returns:
-            Set of hook filenames (e.g., {'subagentStop.py', 'skillRouter.py'})
-        """
-        import re
-
-        configured = set()
-        hooks_config = settings.get("hooks", {})
-
-        for event_handlers in hooks_config.values():
-            for handler in event_handlers:
-                for hook in handler.get("hooks", []):
-                    if hook.get("type") == "command":
-                        command = hook.get("command", "")
-                        if (
-                            "~/.claude/hooks/" in command
-                            or "/.claude/hooks/" in command
-                        ):
-                            match = re.search(
-                                r"[~/.]*/\.claude/hooks/(\w+\.py)", command
-                            )
-                            if match:
-                                configured.add(match.group(1))
-
-        return configured
 
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
@@ -106,28 +73,14 @@ class ClaudeAgent(Agent):
 
         hooks_dir = self.config_dir / "claude" / "hooks"
         if hooks_dir.exists():
-            import json
-
-            base_settings_path = self.config_dir / "claude" / "settings.json"
-            if base_settings_path.exists():
-                try:
-                    with open(base_settings_path) as f:
-                        base_settings = json.load(f)
-                    merged_settings = self.config.merge_settings(
-                        "claude", base_settings
+            for hook_file in sorted(hooks_dir.iterdir()):
+                if hook_file.is_file():
+                    result.append(
+                        (
+                            Path(f"~/.claude/hooks/{hook_file.name}"),
+                            hook_file,
+                        )
                     )
-                    configured_hooks = self._get_configured_hooks(merged_settings)
-
-                    for hook_file in sorted(hooks_dir.glob("*.py")):
-                        if hook_file.name in configured_hooks:
-                            result.append(
-                                (
-                                    Path(f"~/.claude/hooks/{hook_file.name}"),
-                                    hook_file,
-                                )
-                            )
-                except (json.JSONDecodeError, OSError):
-                    pass
 
         return result
 

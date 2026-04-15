@@ -873,27 +873,29 @@ class Config:
         if cache_path:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-            if config_format == "json" and cache_path.exists():
-                try:
-                    tracker = ManagedFieldsTracker()
+            if config_format == "json":
+                tracker = ManagedFieldsTracker()
 
-                    with open(cache_path) as f:
-                        existing = json.load(f)
+                if cache_path.exists():
+                    try:
+                        with open(cache_path) as f:
+                            existing = json.load(f)
 
-                    existing = tracker.cleanup_stale_entries(existing, base_settings)
+                        existing = tracker.cleanup_stale_entries(existing, merged)
 
-                    for field in PRESERVED_FIELDS:
-                        if field in existing:
-                            merged[field] = existing[field]
+                        for field in PRESERVED_FIELDS:
+                            if field in existing:
+                                merged[field] = existing[field]
+                    except (OSError, json.JSONDecodeError):
+                        pass
 
-                    for field in PRESERVED_FIELDS:
-                        if field in base_settings:
-                            tracker.set_field_contributions(field, base_settings[field])
-                        else:
-                            tracker.set_field_contributions(field, None)
-                    tracker.save()
-                except (OSError, json.JSONDecodeError):
-                    pass
+                for field in PRESERVED_FIELDS:
+                    merged_value = merged.get(field)
+                    if merged_value:
+                        tracker.set_field_contributions(field, merged_value)
+                    else:
+                        tracker.set_field_contributions(field, None)
+                tracker.save()
 
             _dump_config_file(cache_path, merged, config_format)
 
