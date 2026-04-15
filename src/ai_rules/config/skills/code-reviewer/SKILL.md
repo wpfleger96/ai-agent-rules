@@ -121,17 +121,19 @@ Structure your response as:
 
 #### Step 3: Launch CLIs in Background
 
-Use a **single Bash call with `run_in_background=true`**. Substitute the work directory path from Step 1 for `$WORK_DIR` in the command (use the literal path, not a variable reference). This fires the command and returns immediately so you can continue to Phase 1 while the CLIs execute. When the background task completes, the inline delimited output arrives via the background notification — Phase 5 parses it from there.
+Use a **single Bash call with `run_in_background=true`**. Substitute the work directory path from Step 1 for `$WORK_DIR` in the command (use the literal path, not a variable reference). This fires the command and returns immediately so you can continue to Phase 1 while the CLIs execute. When the background task completes, the inline delimited output arrives via the background notification — Phase 5 parses it from there. The prompt is piped via stdin rather than passed as a CLI argument — large diffs exceed the OS `ARG_MAX` limit (~256KB on macOS).
 
 ```bash
 WORK_DIR="<path from Step 1>"
 [ -d "$WORK_DIR" ] || { echo "ERROR: WORK_DIR does not exist: $WORK_DIR"; exit 1; }
 
 # Check CLI availability
-CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
+CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && [ -f ~/.env/openai.key ] && echo "yes" || echo "no")
 GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -f ~/.env/gemini_cli.key ] && echo "yes" || echo "no")
 
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+# Gemini's ImportProcessor resolves @-refs relative to cwd — ENOENT errors from subdirs
+cd "$REPO_ROOT"
 
 CODEX_OUT=$(mktemp)
 CODEX_ERR=$(mktemp)
@@ -146,9 +148,10 @@ CODEX_EXIT="-1"; GEMINI_EXIT="-1"
 # Launch Codex (background)
 if [ "$CODEX_AVAILABLE" = "yes" ]; then
   CODEX_RAN="yes"
-  timeout 300 codex exec -C "$REPO_ROOT" \
+  OPENAI_API_KEY=$(cat ~/.env/openai.key) timeout 300 codex exec -C "$REPO_ROOT" \
     --dangerously-bypass-approvals-and-sandbox \
-    "Read the file at $WORK_DIR/prompt.txt and follow the review instructions inside it." \
+    "Follow the review instructions below." \
+    < "$WORK_DIR/prompt.txt" \
     > "$CODEX_OUT" 2>"$CODEX_ERR" &
   CODEX_PID=$!
 fi

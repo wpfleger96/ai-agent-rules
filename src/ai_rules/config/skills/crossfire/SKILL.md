@@ -58,7 +58,7 @@ After determining the artifact (and optional review focus), proceed to **Orchest
 ### Step 1: Check CLI Availability
 
 ```bash
-CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
+CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && [ -f ~/.env/openai.key ] && echo "yes" || echo "no")
 GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -f ~/.env/gemini_cli.key ] && echo "yes" || echo "no")
 ```
 
@@ -129,15 +129,18 @@ CODEX_OUT=$(mktemp)
 CODEX_ERR=$(mktemp)
 GEMINI_OUT=$(mktemp)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+# Gemini's ImportProcessor resolves @-refs relative to cwd — ENOENT errors from subdirs
+cd "$REPO_ROOT"
 
 # Clean up all temp files when shell exits (normal or interrupt)
 trap 'rm -rf "$PROMPT_DIR" "$CODEX_OUT" "$CODEX_ERR" "$GEMINI_OUT"' EXIT INT TERM
 
 # Codex (background) — only if available
 if [ "$CODEX_AVAILABLE" = "yes" ]; then
-  timeout 300 codex exec -C "$REPO_ROOT" \
+  OPENAI_API_KEY=$(cat ~/.env/openai.key) timeout 300 codex exec -C "$REPO_ROOT" \
     --dangerously-bypass-approvals-and-sandbox \
-    "Read the file at $PROMPT_FILE and follow the review instructions inside it." \
+    "Follow the review instructions below." \
+    < "$PROMPT_FILE" \
     > "$CODEX_OUT" 2>"$CODEX_ERR" &
   CODEX_PID=$!
 fi
