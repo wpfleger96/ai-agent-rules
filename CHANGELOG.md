@@ -1,6 +1,51 @@
 # CHANGELOG
 
 
+## v0.31.5 (2026-04-15)
+
+### Bug Fixes
+
+- Make crossfire Codex invocation work with API key auth and stdin
+  ([`ad37829`](https://github.com/wpfleger96/ai-rules/commit/ad37829b4451be69335c56afa623410852ecdb16))
+
+codex exec rejects ChatGPT OAuth for all models — setting OPENAI_API_KEY from ~/.env/openai.key
+  switches the auth path. Prompt file instruction was unreliable (codex sometimes ran cat, sometimes
+  hung for stdin) — piping via stdin is consistent. cd to REPO_ROOT before launching CLIs so
+  Gemini's ImportProcessor doesn't emit ENOENT errors from submodule directories.
+
+- Track profile-contributed hooks and deploy all hook scripts
+  ([`3f667eb`](https://github.com/wpfleger96/ai-rules/commit/3f667ebd26931623698cb49ea3fe340533835710))
+
+ManagedFieldsTracker used base_settings (raw repo file) as the source of truth for PRESERVED_FIELDS
+  contributions. Hooks added via profile settings_overrides were never tracked, so profile switches
+  couldn't clean up stale entries. Now uses the merged settings and tracks on first install too.
+
+Hook script deployment only symlinked .py files matching a regex. Shell scripts (.sh) in the hooks
+  directory were silently ignored. Now deploys all files unconditionally -- settings and MCP config
+  control which ones are actually invoked.
+
+Also adds is_enabled callback to ToolSpec for profile-conditional tools.
+
+### Refactoring
+
+- Move settings cache logic to Agent, make preserved fields agent-owned
+  ([`ae73521`](https://github.com/wpfleger96/ai-rules/commit/ae73521f6445d5ce3a9a226ccce487bcf8998316))
+
+AGENT_CONFIG_METADATA in config.py duplicated data the agent classes already owned
+  (config_file_name, config_file_format). Settings cache methods (build_merged_settings,
+  is_cache_stale, get_cache_diff) took agent name strings and did internal lookups — but every
+  caller already had an agent instance.
+
+Moved cache methods to Agent base class where they read format and preserved_fields from self. Each
+  agent subclass now declares which config fields are tool-managed (claude: enabledPlugins/hooks,
+  codex: projects, gemini: ide, goose: extensions). Preservation logic lifted from JSON-only to all
+  formats — fixes bogus stale-cache diffs for codex config.toml and goose config.yaml.
+
+Deleted AGENT_CONFIG_METADATA and PRESERVED_FIELDS. Added AGENT_FORMATS and FORMAT_CONFIG_FILES for
+  the few string-based lookups that remain (validate_override_path, config show). Made config I/O
+  helpers public.
+
+
 ## v0.31.4 (2026-04-15)
 
 ### Bug Fixes
