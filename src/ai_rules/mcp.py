@@ -5,11 +5,13 @@ import json
 import shutil
 import tempfile
 
+from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from functools import cached_property
 from pathlib import Path
 from typing import Any, cast
+
+import yaml
 
 from .config import Config
 from .utils import deep_merge
@@ -34,38 +36,57 @@ class MCPStatus:
         self.has_overrides: dict[str, bool] = {}
 
 
-MANAGED_BY_KEY = "_managedBy"
 MANAGED_BY_VALUE = "ai-rules"
 
 
-class MCPManager:
+class MCPManager(ABC):
+    """Abstract base for agent-specific MCP config managers."""
+
     BACKUP_SUFFIX = "ai-rules-backup"
 
+    # --- abstract interface ---------------------------------------------------
+
     @property
-    def CLAUDE_JSON(self) -> Path:
-        return Path.home() / ".claude.json"
+    @abstractmethod
+    def _marker_field(self) -> str:
+        """Field name used to mark managed MCP entries."""
+
+    @abstractmethod
+    def _read_installed(self) -> dict[str, Any]:
+        """Return the currently installed MCP entries as {name: config}."""
+
+    @abstractmethod
+    def _write_installed(self, mcps: dict[str, Any]) -> None:
+        """Persist the full set of MCP entries, merging with non-MCP config."""
+
+    @abstractmethod
+    def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
+        """Convert shared MCP format to agent-native format."""
+
+    # --- shared logic --------------------------------------------------------
 
     def load_managed_mcps(self, config_dir: Path, config: Config) -> dict[str, Any]:
         """Load managed MCP definitions and apply user overrides.
 
-        Args:
-            config_dir: Config directory path
-            config: Config instance with user overrides
-
-        Returns:
-            Dictionary of MCP name -> MCP config (with overrides applied)
+        Prefers config/mcps.json (shared); falls back to config/claude/mcps.json
+        for backward compatibility.
         """
-        mcps_file = config_dir / "claude" / "mcps.json"
-        if not mcps_file.exists():
-            return {}
+        shared_file = config_dir / "mcps.json"
+        legacy_file = config_dir / "claude" / "mcps.json"
 
-        with open(mcps_file) as f:
-            base_mcps = json.load(f)
+        if shared_file.exists():
+            with open(shared_file) as f:
+                base_mcps: dict[str, Any] = json.load(f)
+        elif legacy_file.exists():
+            with open(legacy_file) as f:
+                base_mcps = json.load(f)
+        else:
+            return {}
 
         mcp_overrides = config.mcp_overrides if hasattr(config, "mcp_overrides") else {}
 
-        merged_mcps = {}
-        for name, _mcp_config in {**base_mcps, **mcp_overrides}.items():
+        merged_mcps: dict[str, Any] = {}
+        for name in {**base_mcps, **mcp_overrides}:
             if name in base_mcps and name in mcp_overrides:
                 merged_mcps[name] = deep_merge(base_mcps[name], mcp_overrides[name])
             elif name in base_mcps:
@@ -75,115 +96,36 @@ class MCPManager:
 
         return merged_mcps
 
-    @cached_property
-    def claude_json(self) -> dict[str, Any]:
-        """Cached ~/.claude.json file contents.
-
-        Returns:
-            Dictionary containing Claude Code config
-        """
-        if not self.CLAUDE_JSON.exists():
-            return {}
-
-        with open(self.CLAUDE_JSON) as f:
-            return cast(dict[str, Any], json.load(f))
-
-    def invalidate_cache(self) -> None:
-        """Clear cached claude_json after writes to ensure fresh reads."""
-        if "claude_json" in self.__dict__:
-            del self.__dict__["claude_json"]
-
-    def save_claude_json(self, data: dict[str, Any]) -> None:
-        """Save ~/.claude.json file atomically.
-
-        Args:
-            data: Dictionary to save
-        """
-        self.CLAUDE_JSON.parent.mkdir(parents=True, exist_ok=True)
-
-        fd, temp_path = tempfile.mkstemp(
-            dir=self.CLAUDE_JSON.parent, prefix=f".{self.CLAUDE_JSON.name}."
-        )
-        try:
-            with open(fd, "w") as f:
-                json.dump(data, f, indent=2)
-
-            if self.CLAUDE_JSON.exists():
-                shutil.copystat(self.CLAUDE_JSON, temp_path)
-
-            shutil.move(temp_path, self.CLAUDE_JSON)
-
-            self.invalidate_cache()
-        except Exception:
-            if Path(temp_path).exists():
-                Path(temp_path).unlink()
-            raise
-
-    def create_backup(self) -> Path | None:
-        """Create a timestamped backup of ~/.claude.json.
-
-        Returns:
-            Path to backup file, or None if source doesn't exist
-        """
-        if not self.CLAUDE_JSON.exists():
-            return None
-
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup_path = self.CLAUDE_JSON.with_suffix(
-            f"{self.CLAUDE_JSON.suffix}.{self.BACKUP_SUFFIX}.{timestamp}"
-        )
-        shutil.copy2(self.CLAUDE_JSON, backup_path)
-        return backup_path
-
     def detect_conflicts(
         self, expected: dict[str, Any], installed: dict[str, Any]
     ) -> list[str]:
-        """Detect MCPs that have been modified locally.
-
-        Args:
-            expected: Expected MCP configs from repo
-            installed: Currently installed MCP configs
-
-        Returns:
-            List of MCP names that differ
-        """
+        """Detect MCPs that have been modified locally."""
         conflicts = []
+        marker = self._marker_field
         for name, expected_config in expected.items():
             if name in installed:
-                expected_without_marker = {
-                    k: v for k, v in expected_config.items() if k != MANAGED_BY_KEY
+                expected_clean = {
+                    k: v for k, v in expected_config.items() if k != marker
                 }
-                installed_without_marker = {
-                    k: v for k, v in installed[name].items() if k != MANAGED_BY_KEY
+                installed_clean = {
+                    k: v for k, v in installed[name].items() if k != marker
                 }
-                if expected_without_marker != installed_without_marker:
+                if expected_clean != installed_clean:
                     conflicts.append(name)
         return conflicts
 
     def format_diff(
         self, name: str, expected: dict[str, Any], installed: dict[str, Any]
     ) -> str:
-        """Format a diff between expected and installed MCP config.
-
-        Args:
-            name: MCP name
-            expected: Expected config
-            installed: Installed config
-
-        Returns:
-            Formatted diff string
-        """
+        """Format a unified diff between expected and installed MCP config."""
         import difflib
 
         expected_json = json.dumps(expected, indent=2)
         installed_json = json.dumps(installed, indent=2)
 
-        expected_lines = expected_json.splitlines(keepends=True)
-        installed_lines = installed_json.splitlines(keepends=True)
-
         diff = difflib.unified_diff(
-            expected_lines,
-            installed_lines,
+            expected_json.splitlines(keepends=True),
+            installed_json.splitlines(keepends=True),
             fromfile="Expected (repo)",
             tofile="Installed (local)",
             lineterm="",
@@ -192,22 +134,31 @@ class MCPManager:
         return f"MCP '{name}' has been modified locally:\n" + "".join(diff)
 
     def format_pending(self, name: str, expected: dict[str, Any]) -> str:
-        """Format expected MCP config for pending installation.
-
-        Args:
-            name: MCP name
-            expected: Expected config
-
-        Returns:
-            Formatted JSON string with Rich markup
-        """
-        display_config = {k: v for k, v in expected.items() if k != MANAGED_BY_KEY}
+        """Format expected MCP config for pending installation."""
+        marker = self._marker_field
+        display_config = {k: v for k, v in expected.items() if k != marker}
         config_json = json.dumps(display_config, indent=2)
 
         lines = ["[dim]    Will be installed with:[/dim]"]
         for line in config_json.splitlines():
             lines.append(f"[green]    {line}[/green]")
         return "\n".join(lines)
+
+    def _create_backup(self, target: Path) -> Path | None:
+        """Create a timestamped backup of a config file."""
+        if not target.exists():
+            return None
+
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_path = target.with_suffix(
+            f"{target.suffix}.{self.BACKUP_SUFFIX}.{timestamp}"
+        )
+        shutil.copy2(target, backup_path)
+        return backup_path
+
+    def _target_path(self) -> Path:
+        """Return the agent config file path (used for backups by subclasses)."""
+        raise NotImplementedError
 
     def install_mcps(
         self,
@@ -216,42 +167,28 @@ class MCPManager:
         force: bool = False,
         dry_run: bool = False,
     ) -> tuple[OperationResult, str, list[str]]:
-        """Install managed MCPs into ~/.claude.json.
-
-        Auto-removes MCPs that were previously tracked but are no longer in current config.
-
-        Args:
-            config_dir: Config directory path
-            config: Config instance with user overrides
-            force: Skip confirmation prompts
-            dry_run: Don't actually modify files
-
-        Returns:
-            Tuple of (result, message, conflicts_list)
-        """
+        """Install managed MCPs into the agent's config file."""
         managed_mcps = self.load_managed_mcps(config_dir, config)
 
-        for _name, mcp_config in managed_mcps.items():
-            mcp_config[MANAGED_BY_KEY] = MANAGED_BY_VALUE
+        native_mcps: dict[str, Any] = {}
+        for name, shared_cfg in managed_mcps.items():
+            translated = self._translate(shared_cfg)
+            translated[self._marker_field] = MANAGED_BY_VALUE
+            native_mcps[name] = translated
 
-        claude_data = self.claude_json
-        current_mcps = claude_data.get("mcpServers", {})
+        current_mcps = self._read_installed()
 
         tracked_mcps = {
             name
             for name, cfg in current_mcps.items()
-            if cfg.get(MANAGED_BY_KEY) == MANAGED_BY_VALUE
+            if cfg.get(self._marker_field) == MANAGED_BY_VALUE
         }
-        removed_mcps = tracked_mcps - set(managed_mcps.keys())
+        removed_mcps = tracked_mcps - set(native_mcps.keys())
 
-        if not managed_mcps and not removed_mcps:
-            return (
-                OperationResult.NOT_FOUND,
-                "No MCPs to install or remove",
-                [],
-            )
+        if not native_mcps and not removed_mcps:
+            return (OperationResult.NOT_FOUND, "No MCPs to install or remove", [])
 
-        conflicts = self.detect_conflicts(managed_mcps, current_mcps)
+        conflicts = self.detect_conflicts(native_mcps, current_mcps)
 
         if conflicts and not force:
             return (
@@ -261,60 +198,35 @@ class MCPManager:
             )
 
         if dry_run:
-            msg = f"Would update {len(managed_mcps)} MCPs, remove {len(removed_mcps)}"
+            msg = f"Would update {len(native_mcps)} MCPs, remove {len(removed_mcps)}"
             return (OperationResult.UPDATED, msg, conflicts)
-
-        if not managed_mcps and not removed_mcps:
-            new_tracking = set(managed_mcps.keys())
-            if tracked_mcps == new_tracking:
-                return (
-                    OperationResult.ALREADY_INSTALLED,
-                    "MCPs are already installed",
-                    [],
-                )
-
-        backup_path = self.create_backup() if (managed_mcps or removed_mcps) else None
 
         for name in removed_mcps:
             current_mcps.pop(name, None)
 
-        claude_data.setdefault("mcpServers", {})
-        claude_data["mcpServers"].update(managed_mcps)
+        current_mcps.update(native_mcps)
 
-        self.save_claude_json(claude_data)
+        self._write_installed(current_mcps)
 
         parts = []
-        if managed_mcps:
-            parts.append(f"installed {len(managed_mcps)}")
+        if native_mcps:
+            parts.append(f"installed {len(native_mcps)}")
         if removed_mcps:
             parts.append(f"removed {len(removed_mcps)}")
         msg = f"MCPs {', '.join(parts)}"
-        if backup_path:
-            msg += f" (backup: {backup_path})"
 
         return (OperationResult.UPDATED, msg, [])
 
     def uninstall_mcps(
         self, force: bool = False, dry_run: bool = False
     ) -> tuple[OperationResult, str]:
-        """Uninstall managed MCPs from ~/.claude.json.
+        """Uninstall managed MCPs from the agent's config file."""
+        current_mcps = self._read_installed()
 
-        Args:
-            force: Skip confirmation prompts
-            dry_run: Don't actually modify files
-
-        Returns:
-            Tuple of (result, message)
-        """
-        claude_data = self.claude_json
-        if not claude_data or "mcpServers" not in claude_data:
-            return (OperationResult.NOT_FOUND, "No MCPs found in ~/.claude.json")
-
-        current_mcps = claude_data["mcpServers"]
         tracked_mcps = {
             name
             for name, cfg in current_mcps.items()
-            if cfg.get(MANAGED_BY_KEY) == MANAGED_BY_VALUE
+            if cfg.get(self._marker_field) == MANAGED_BY_VALUE
         }
 
         if not tracked_mcps:
@@ -326,65 +238,389 @@ class MCPManager:
                 f"Would remove {len(tracked_mcps)} MCPs (dry run)",
             )
 
-        backup_path = self.create_backup()
-
         for name in tracked_mcps:
             current_mcps.pop(name, None)
 
-        self.save_claude_json(claude_data)
+        self._write_installed(current_mcps)
 
-        backup_msg = f" (backup: {backup_path})" if backup_path else ""
-        return (
-            OperationResult.REMOVED,
-            f"Removed {len(tracked_mcps)} MCPs{backup_msg}",
-        )
+        return (OperationResult.REMOVED, f"Removed {len(tracked_mcps)} MCPs")
 
     def get_status(self, config_dir: Path, config: Config) -> MCPStatus:
-        """Get status of managed and unmanaged MCPs.
-
-        Args:
-            config_dir: Config directory path
-            config: Config instance
-
-        Returns:
-            MCPStatus object with categorized MCPs
-        """
-        self.invalidate_cache()
-
+        """Get status of managed and unmanaged MCPs."""
         status = MCPStatus()
         managed_mcps = self.load_managed_mcps(config_dir, config)
 
-        for _name, mcp_config in managed_mcps.items():
-            mcp_config[MANAGED_BY_KEY] = MANAGED_BY_VALUE
+        native_mcps: dict[str, Any] = {}
+        for name, shared_cfg in managed_mcps.items():
+            translated = self._translate(shared_cfg)
+            translated[self._marker_field] = MANAGED_BY_VALUE
+            native_mcps[name] = translated
 
-        claude_data = self.claude_json
-        installed_mcps = claude_data.get("mcpServers", {})
-
+        installed_mcps = self._read_installed()
         mcp_overrides = config.mcp_overrides if hasattr(config, "mcp_overrides") else {}
+        marker = self._marker_field
 
         for name, mcp_config in installed_mcps.items():
-            if mcp_config.get(MANAGED_BY_KEY) == MANAGED_BY_VALUE:
-                if name in managed_mcps:
+            if mcp_config.get(marker) == MANAGED_BY_VALUE:
+                if name in native_mcps:
                     status.managed_mcps[name] = mcp_config
-                    expected_config = managed_mcps.get(name, {})
-                    expected_without_marker = {
-                        k: v for k, v in expected_config.items() if k != MANAGED_BY_KEY
+                    expected_clean = {
+                        k: v for k, v in native_mcps[name].items() if k != marker
                     }
-                    installed_without_marker = {
-                        k: v for k, v in mcp_config.items() if k != MANAGED_BY_KEY
+                    installed_clean = {
+                        k: v for k, v in mcp_config.items() if k != marker
                     }
-                    status.installed[name] = (
-                        expected_without_marker == installed_without_marker
-                    )
+                    status.installed[name] = expected_clean == installed_clean
                     status.has_overrides[name] = name in mcp_overrides
                 else:
                     status.stale_mcps[name] = mcp_config
             else:
                 status.unmanaged_mcps[name] = mcp_config
 
-        for name, mcp_config in managed_mcps.items():
+        for name, mcp_config in native_mcps.items():
             if name not in installed_mcps:
                 status.pending_mcps[name] = mcp_config
                 status.has_overrides[name] = name in mcp_overrides
 
         return status
+
+
+# ---------------------------------------------------------------------------
+# Claude
+# ---------------------------------------------------------------------------
+
+
+class ClaudeMCPManager(MCPManager):
+    """Manages MCPs in ~/.claude.json under the mcpServers key."""
+
+    @property
+    def _marker_field(self) -> str:
+        return "_managedBy"
+
+    @property
+    def _claude_json_path(self) -> Path:
+        return Path.home() / ".claude.json"
+
+    def _target_path(self) -> Path:
+        return self._claude_json_path
+
+    def _read_installed(self) -> dict[str, Any]:
+        if not self._claude_json_path.exists():
+            return {}
+        with open(self._claude_json_path) as f:
+            data: dict[str, Any] = json.load(f)
+        return cast(dict[str, Any], data.get("mcpServers", {}))
+
+    def _write_installed(self, mcps: dict[str, Any]) -> None:
+        self._claude_json_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if self._claude_json_path.exists():
+            with open(self._claude_json_path) as f:
+                data: dict[str, Any] = json.load(f)
+        else:
+            data = {}
+
+        data.setdefault("mcpServers", {})
+        data["mcpServers"] = mcps
+
+        self._write_json_atomic(self._claude_json_path, data)
+
+    def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
+        return {
+            k: v for k, v in shared_config.items() if k not in ("description", "name")
+        }
+
+    def _write_json_atomic(self, path: Path, data: dict[str, Any]) -> None:
+        fd, temp_path = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+        try:
+            with open(fd, "w") as f:
+                json.dump(data, f, indent=2)
+            if path.exists():
+                shutil.copystat(path, temp_path)
+            shutil.move(temp_path, path)
+        except Exception:
+            if Path(temp_path).exists():
+                Path(temp_path).unlink()
+            raise
+
+    # Preserve the claude_json cached-property interface used in cli.py
+    @property
+    def claude_json(self) -> dict[str, Any]:
+        if not self._claude_json_path.exists():
+            return {}
+        with open(self._claude_json_path) as f:
+            return cast(dict[str, Any], json.load(f))
+
+    # Backward-compat alias so existing cli.py code still works
+    @property
+    def CLAUDE_JSON(self) -> Path:
+        return self._claude_json_path
+
+    def install_mcps(
+        self,
+        config_dir: Path,
+        config: Config,
+        force: bool = False,
+        dry_run: bool = False,
+    ) -> tuple[OperationResult, str, list[str]]:
+        """Install MCPs, creating a timestamped backup of ~/.claude.json first."""
+        if not dry_run and self._claude_json_path.exists():
+            self._create_backup(self._claude_json_path)
+        result, msg, conflicts = super().install_mcps(
+            config_dir, config, force, dry_run
+        )
+        return result, msg, conflicts
+
+    def uninstall_mcps(
+        self, force: bool = False, dry_run: bool = False
+    ) -> tuple[OperationResult, str]:
+        if not dry_run:
+            backup = self._create_backup(self._claude_json_path)
+            result, msg = super().uninstall_mcps(force, dry_run)
+            if backup:
+                msg += f" (backup: {backup})"
+            return result, msg
+        return super().uninstall_mcps(force, dry_run)
+
+
+# ---------------------------------------------------------------------------
+# Goose
+# ---------------------------------------------------------------------------
+
+
+class GooseMCPManager(MCPManager):
+    """Manages MCPs in ~/.config/goose/config.yaml under the extensions key."""
+
+    @property
+    def _marker_field(self) -> str:
+        return "_managed_by"
+
+    @property
+    def _config_path(self) -> Path:
+        return Path.home() / ".config" / "goose" / "config.yaml"
+
+    def _target_path(self) -> Path:
+        return self._config_path
+
+    def _load_full_config(self) -> dict[str, Any]:
+        if not self._config_path.exists():
+            return {}
+        with open(self._config_path) as f:
+            result = yaml.safe_load(f)
+        return cast(dict[str, Any], result) if result else {}
+
+    def _read_installed(self) -> dict[str, Any]:
+        full = self._load_full_config()
+        extensions = full.get("extensions", {})
+        if not isinstance(extensions, dict):
+            return {}
+        return cast(dict[str, Any], extensions)
+
+    def _write_installed(self, mcps: dict[str, Any]) -> None:
+        self._config_path.parent.mkdir(parents=True, exist_ok=True)
+        full = self._load_full_config()
+        full["extensions"] = mcps
+        with open(self._config_path, "w") as f:
+            yaml.safe_dump(full, f, default_flow_style=False, sort_keys=False)
+
+    def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "type": "stdio",
+            "cmd": shared_config.get("command", ""),
+            "args": shared_config.get("args", []),
+            "envs": shared_config.get("env", {}),
+            "env_keys": [],
+            "enabled": True,
+            "name": shared_config.get("name", ""),
+            "description": shared_config.get("description", ""),
+            "timeout": 300,
+            "bundled": False,
+            "available_tools": [],
+        }
+
+
+# ---------------------------------------------------------------------------
+# Codex
+# ---------------------------------------------------------------------------
+
+
+class CodexMCPManager(MCPManager):
+    """Manages MCPs in ~/.codex/config.toml under the mcp_servers section.
+
+    Uses tomlkit for round-trip editing so non-MCP keys (approval_policy,
+    trust_level, model) and comments are preserved.
+
+    The managed-names list is stored in a dedicated [_ai_rules_managed] section
+    because TOML inline per-table markers are awkward.
+    """
+
+    _MANAGED_SECTION = "_ai_rules_managed"
+
+    @property
+    def _marker_field(self) -> str:
+        # Codex uses a dedicated section rather than per-entry markers;
+        # this value is returned for interface compatibility but not embedded
+        # inside individual MCP entries.
+        return "_ai_rules_managed_entry"
+
+    @property
+    def _config_path(self) -> Path:
+        return Path.home() / ".codex" / "config.toml"
+
+    def _target_path(self) -> Path:
+        return self._config_path
+
+    def _load_doc(self) -> Any:
+        import tomlkit
+
+        if not self._config_path.exists():
+            return tomlkit.document()
+        with open(self._config_path) as f:
+            return tomlkit.load(f)
+
+    def _get_managed_names(self, doc: Any) -> set[str]:
+        section = doc.get(self._MANAGED_SECTION, {})
+        names = section.get("names", [])
+        return set(names) if isinstance(names, list) else set()
+
+    def _read_installed(self) -> dict[str, Any]:
+        import tomlkit
+
+        doc = self._load_doc()
+        managed_names = self._get_managed_names(doc)
+        mcp_servers = doc.get("mcp_servers", tomlkit.table())
+        if not isinstance(mcp_servers, dict):
+            return {}
+
+        result: dict[str, Any] = {}
+        for name, cfg in mcp_servers.items():
+            entry = dict(cfg) if hasattr(cfg, "items") else {}
+            if name in managed_names:
+                entry[self._marker_field] = MANAGED_BY_VALUE
+            result[name] = entry
+        return result
+
+    def _write_installed(self, mcps: dict[str, Any]) -> None:
+        import tomlkit
+
+        self._config_path.parent.mkdir(parents=True, exist_ok=True)
+        doc = self._load_doc()
+
+        managed_names: list[str] = []
+        mcp_table = tomlkit.table()
+
+        for name, cfg in mcps.items():
+            is_managed = cfg.get(self._marker_field) == MANAGED_BY_VALUE
+            entry = tomlkit.table()
+            for k, v in cfg.items():
+                if k == self._marker_field:
+                    continue
+                if isinstance(v, dict):
+                    sub = tomlkit.table()
+                    for sk, sv in v.items():
+                        sub[sk] = sv
+                    entry[k] = sub
+                else:
+                    entry[k] = v
+            mcp_table[name] = entry
+            if is_managed:
+                managed_names.append(name)
+
+        doc["mcp_servers"] = mcp_table
+
+        mgmt_section = tomlkit.table()
+        mgmt_section["names"] = managed_names
+        doc[self._MANAGED_SECTION] = mgmt_section
+
+        with open(self._config_path, "w") as f:
+            f.write(tomlkit.dumps(doc))
+
+    def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        if "command" in shared_config:
+            result["command"] = shared_config["command"]
+        if "args" in shared_config:
+            result["args"] = shared_config["args"]
+        if "env" in shared_config:
+            result["env"] = shared_config["env"]
+        return result
+
+    def detect_conflicts(
+        self, expected: dict[str, Any], installed: dict[str, Any]
+    ) -> list[str]:
+        """Conflict detection strips the per-entry marker added during read."""
+        marker = self._marker_field
+        conflicts = []
+        for name, expected_config in expected.items():
+            if name in installed:
+                expected_clean = {
+                    k: v for k, v in expected_config.items() if k != marker
+                }
+                installed_clean = {
+                    k: v for k, v in installed[name].items() if k != marker
+                }
+                if expected_clean != installed_clean:
+                    conflicts.append(name)
+        return conflicts
+
+
+# ---------------------------------------------------------------------------
+# Gemini
+# ---------------------------------------------------------------------------
+
+
+class GeminiMCPManager(MCPManager):
+    """Manages MCPs in ~/.gemini/settings.json under the mcpServers key."""
+
+    @property
+    def _marker_field(self) -> str:
+        return "_managedBy"
+
+    @property
+    def _config_path(self) -> Path:
+        return Path.home() / ".gemini" / "settings.json"
+
+    def _target_path(self) -> Path:
+        return self._config_path
+
+    def _load_full_config(self) -> dict[str, Any]:
+        if not self._config_path.exists():
+            return {}
+        with open(self._config_path) as f:
+            data: dict[str, Any] = json.load(f)
+        return data
+
+    def _read_installed(self) -> dict[str, Any]:
+        full = self._load_full_config()
+        return cast(dict[str, Any], full.get("mcpServers", {}))
+
+    def _write_installed(self, mcps: dict[str, Any]) -> None:
+        self._config_path.parent.mkdir(parents=True, exist_ok=True)
+        full = self._load_full_config()
+        full["mcpServers"] = mcps
+
+        fd, temp_path = tempfile.mkstemp(
+            dir=self._config_path.parent, prefix=f".{self._config_path.name}."
+        )
+        try:
+            with open(fd, "w") as f:
+                json.dump(full, f, indent=2)
+            if self._config_path.exists():
+                shutil.copystat(self._config_path, temp_path)
+            shutil.move(temp_path, self._config_path)
+        except Exception:
+            if Path(temp_path).exists():
+                Path(temp_path).unlink()
+            raise
+
+    def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        if "command" in shared_config:
+            result["command"] = shared_config["command"]
+        if "args" in shared_config:
+            result["args"] = shared_config["args"]
+        if "env" in shared_config:
+            result["env"] = shared_config["env"]
+        result["timeout"] = 30000
+        result["trust"] = False
+        return result

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ai_rules.agents.base import Agent
 
 if TYPE_CHECKING:
-    pass
+    from ai_rules.mcp import MCPManager
 
 
 class GooseAgent(Agent):
@@ -49,3 +49,8 @@ class GooseAgent(Agent):
             result.append((Path("~/.config/goose/config.yaml"), target_file))
 
         return result
+
+    def get_mcp_manager(self) -> "MCPManager":
+        from ai_rules.mcp import GooseMCPManager
+
+        return GooseMCPManager()

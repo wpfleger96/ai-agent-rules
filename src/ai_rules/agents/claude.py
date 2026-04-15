@@ -5,11 +5,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from ai_rules.agents.base import Agent
-from ai_rules.mcp import MCPManager, MCPStatus, OperationResult
 from ai_rules.utils import is_managed_target
 
 if TYPE_CHECKING:
     from ai_rules.claude_extensions import ClaudeExtensionStatus
+    from ai_rules.mcp import MCPManager
 
 
 class ClaudeAgent(Agent):
@@ -152,44 +152,10 @@ class ClaudeAgent(Agent):
                     pass
         return deprecated
 
-    def install_mcps(
-        self, force: bool = False, dry_run: bool = False
-    ) -> tuple[OperationResult, str, list[str]]:
-        """Install managed MCPs into ~/.claude.json.
+    def get_mcp_manager(self) -> "MCPManager":
+        from ai_rules.mcp import ClaudeMCPManager
 
-        Args:
-            force: Skip confirmation prompts
-            dry_run: Don't actually modify files
-
-        Returns:
-            Tuple of (result, message, conflicts_list)
-        """
-        manager = MCPManager()
-        return manager.install_mcps(self.config_dir, self.config, force, dry_run)
-
-    def uninstall_mcps(
-        self, force: bool = False, dry_run: bool = False
-    ) -> tuple[OperationResult, str]:
-        """Uninstall managed MCPs from ~/.claude.json.
-
-        Args:
-            force: Skip confirmation prompts
-            dry_run: Don't actually modify files
-
-        Returns:
-            Tuple of (result, message)
-        """
-        manager = MCPManager()
-        return manager.uninstall_mcps(force, dry_run)
-
-    def get_mcp_status(self) -> MCPStatus:
-        """Get status of managed and unmanaged MCPs.
-
-        Returns:
-            MCPStatus object with categorized MCPs
-        """
-        manager = MCPManager()
-        return manager.get_status(self.config_dir, self.config)
+        return ClaudeMCPManager()
 
     def get_extension_status(self) -> "ClaudeExtensionStatus":
         """Get status of Claude extensions (agents, commands, hooks).

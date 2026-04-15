@@ -2,8 +2,12 @@
 
 from functools import cached_property
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ai_rules.agents.base import Agent
+
+if TYPE_CHECKING:
+    from ai_rules.mcp import MCPManager
 
 
 class CodexAgent(Agent):
@@ -45,3 +49,8 @@ class CodexAgent(Agent):
             result.append((Path("~/.codex/config.toml"), target_file))
 
         return result
+
+    def get_mcp_manager(self) -> "MCPManager":
+        from ai_rules.mcp import CodexMCPManager
+
+        return CodexMCPManager()

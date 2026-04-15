@@ -2,8 +2,12 @@
 
 from functools import cached_property
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ai_rules.agents.base import Agent
+
+if TYPE_CHECKING:
+    from ai_rules.mcp import MCPManager
 
 
 class GeminiAgent(Agent):
@@ -45,3 +49,8 @@ class GeminiAgent(Agent):
             result.append((Path("~/.gemini/settings.json"), target_file))
 
         return result
+
+    def get_mcp_manager(self) -> "MCPManager":
+        from ai_rules.mcp import GeminiMCPManager
+
+        return GeminiMCPManager()

@@ -1104,22 +1104,21 @@ def install(
 
     user_results = install_user_symlinks(selected_agents, yes, dry_run)
 
-    from ai_rules.agents.claude import ClaudeAgent
+    from ai_rules.mcp import OperationResult
 
-    claude_agent = next((a for a in selected_agents if a.agent_id == "claude"), None)
-    if claude_agent and isinstance(claude_agent, ClaudeAgent):
-        from ai_rules.mcp import MCPManager, OperationResult
+    for agent in selected_agents:
+        mgr = agent.get_mcp_manager()
+        if mgr is None:
+            continue
 
-        result, message, conflicts = claude_agent.install_mcps(
-            force=yes, dry_run=dry_run
-        )
+        result, message, conflicts = agent.install_mcps(force=yes, dry_run=dry_run)
 
         if conflicts and not yes:
-            console.print("\n[bold yellow]MCP Conflicts Detected:[/bold yellow]")
-            mgr = MCPManager()
+            console.print(
+                f"\n[bold yellow]MCP Conflicts Detected ({agent.name}):[/bold yellow]"
+            )
             expected_mcps = mgr.load_managed_mcps(config_dir, config)
-            claude_data = mgr.claude_json
-            installed_mcps = claude_data.get("mcpServers", {})
+            installed_mcps = mgr._read_installed()
 
             for conflict_name in conflicts:
                 expected = expected_mcps.get(conflict_name, {})
@@ -1133,9 +1132,7 @@ def install(
             ):
                 console.print("[yellow]Skipped MCP installation[/yellow]")
             else:
-                result, message, _ = claude_agent.install_mcps(
-                    force=True, dry_run=dry_run
-                )
+                result, message, _ = agent.install_mcps(force=True, dry_run=dry_run)
                 console.print(f"[green]✓[/green] {message}")
         elif result == OperationResult.UPDATED:
             console.print(f"[green]✓[/green] {message}")
@@ -1144,6 +1141,8 @@ def install(
         elif result != OperationResult.NOT_FOUND:
             console.print(f"[yellow]⚠[/yellow] {message}")
 
+    claude_agent = next((a for a in selected_agents if a.agent_id == "claude"), None)
+    if claude_agent is not None:
         if config.plugins or config.marketplaces:
             from ai_rules.plugins import (
                 OperationResult as PluginOperationResult,
@@ -1178,8 +1177,8 @@ def install(
                     "[dim]○[/dim] Skipped plugin sync (claude CLI not available)"
                 )
 
-        if selected_agents:
-            cleanup_orphaned_symlinks(selected_agents, config_dir, config, yes, dry_run)
+    if selected_agents:
+        cleanup_orphaned_symlinks(selected_agents, config_dir, config, yes, dry_run)
 
     total_created = user_results["created"]
     total_updated = user_results["updated"]
@@ -1286,7 +1285,6 @@ def status(agents: str | None) -> None:
     """Check status of AI agent symlinks."""
     from rich.console import Console
 
-    from ai_rules.agents.claude import ClaudeAgent
     from ai_rules.config import AGENT_CONFIG_METADATA, Config
     from ai_rules.state import get_active_profile
     from ai_rules.symlinks import check_symlink
@@ -1345,65 +1343,59 @@ def status(agents: str | None) -> None:
                 all_correct = False
                 cache_stale = True
 
-        if isinstance(agent, ClaudeAgent):
-            mcp_status = agent.get_mcp_status()
-            if (
-                mcp_status.managed_mcps
-                or mcp_status.unmanaged_mcps
-                or mcp_status.pending_mcps
-                or mcp_status.stale_mcps
-            ):
-                console.print("  [bold]MCPs:[/bold]")
-                for name in sorted(mcp_status.managed_mcps.keys()):
-                    installed = mcp_status.installed.get(name, False)
-                    has_override = mcp_status.has_overrides.get(name, False)
-                    status_text = (
-                        "[green]Installed[/green]"
-                        if installed
-                        else "[yellow]Outdated[/yellow]"
-                    )
-                    override_text = ", override" if has_override else ""
-                    console.print(
-                        f"    {name:<20} {status_text} [dim](managed{override_text})[/dim]"
-                    )
-                    if not installed:
-                        from ai_rules.mcp import MCPManager
-
-                        mgr = MCPManager()
-                        expected = mgr.load_managed_mcps(config_dir, config).get(
-                            name, {}
-                        )
-                        installed_config = mcp_status.managed_mcps.get(name, {})
-                        diff = mgr.format_diff(name, expected, installed_config)
-                        if diff:
-                            for line in diff.split("\n"):
-                                if line.startswith("MCP"):
-                                    continue
-                                if line.strip():
-                                    console.print(f"      [dim]{line}[/dim]")
-                        all_correct = False
-                for name in sorted(mcp_status.pending_mcps.keys()):
-                    has_override = mcp_status.has_overrides.get(name, False)
-                    override_text = ", override" if has_override else ""
-                    console.print(
-                        f"    {name:<20} [yellow]Not installed[/yellow] [dim](managed{override_text})[/dim]"
-                    )
-                    from ai_rules.mcp import MCPManager
-
-                    mgr = MCPManager()
+        mcp_status = agent.get_mcp_status()
+        if mcp_status is not None and (
+            mcp_status.managed_mcps
+            or mcp_status.unmanaged_mcps
+            or mcp_status.pending_mcps
+            or mcp_status.stale_mcps
+        ):
+            mgr = agent.get_mcp_manager()
+            console.print("  [bold]MCPs:[/bold]")
+            for name in sorted(mcp_status.managed_mcps.keys()):
+                is_installed = mcp_status.installed.get(name, False)
+                has_override = mcp_status.has_overrides.get(name, False)
+                status_text = (
+                    "[green]Installed[/green]"
+                    if is_installed
+                    else "[yellow]Outdated[/yellow]"
+                )
+                override_text = ", override" if has_override else ""
+                console.print(
+                    f"    {name:<20} {status_text} [dim](managed{override_text})[/dim]"
+                )
+                if not is_installed and mgr is not None:
+                    expected = mgr.load_managed_mcps(config_dir, config).get(name, {})
+                    installed_config = mcp_status.managed_mcps.get(name, {})
+                    diff = mgr.format_diff(name, expected, installed_config)
+                    if diff:
+                        for line in diff.split("\n"):
+                            if line.startswith("MCP"):
+                                continue
+                            if line.strip():
+                                console.print(f"      [dim]{line}[/dim]")
+                    all_correct = False
+            for name in sorted(mcp_status.pending_mcps.keys()):
+                has_override = mcp_status.has_overrides.get(name, False)
+                override_text = ", override" if has_override else ""
+                console.print(
+                    f"    {name:<20} [yellow]Not installed[/yellow] [dim](managed{override_text})[/dim]"
+                )
+                if mgr is not None:
                     expected = mcp_status.pending_mcps.get(name, {})
                     pending_output = mgr.format_pending(name, expected)
                     if pending_output:
                         console.print(pending_output)
-                    all_correct = False
-                for name in sorted(mcp_status.stale_mcps.keys()):
-                    console.print(
-                        f"    {name:<20} [red]Should be removed[/red] [dim](no longer in config)[/dim]"
-                    )
-                    all_correct = False
-                for name in sorted(mcp_status.unmanaged_mcps.keys()):
-                    console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
+                all_correct = False
+            for name in sorted(mcp_status.stale_mcps.keys()):
+                console.print(
+                    f"    {name:<20} [red]Should be removed[/red] [dim](no longer in config)[/dim]"
+                )
+                all_correct = False
+            for name in sorted(mcp_status.unmanaged_mcps.keys()):
+                console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
 
+        if agent.agent_id == "claude":
             plugin_result = _get_plugin_status(config)
             if plugin_result is not None:
                 plugin_manager, plugin_status = plugin_result
@@ -1431,26 +1423,25 @@ def status(agents: str | None) -> None:
                     for key in sorted(plugin_status.extra):
                         console.print(f"    {key:<20} [dim]Unmanaged[/dim]")
 
-            extension_status = agent.get_extension_status()
+            extension_status = agent.get_extension_status()  # type: ignore[attr-defined]
 
             merged_settings_for_hooks = {}
-            if isinstance(agent, ClaudeAgent):
-                agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
-                if agent_config:
-                    base_settings_path = (
-                        config_dir / agent.agent_id / agent_config["config_file"]
-                    )
-                    if base_settings_path.exists():
-                        import json
+            agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
+            if agent_config:
+                base_settings_path = (
+                    config_dir / agent.agent_id / agent_config["config_file"]
+                )
+                if base_settings_path.exists():
+                    import json
 
-                        try:
-                            with open(base_settings_path) as f:
-                                base_settings = json.load(f)
-                            merged_settings_for_hooks = config.merge_settings(
-                                agent.agent_id, base_settings
-                            )
-                        except (json.JSONDecodeError, OSError):
-                            pass
+                    try:
+                        with open(base_settings_path) as f:
+                            base_settings = json.load(f)
+                        merged_settings_for_hooks = config.merge_settings(
+                            agent.agent_id, base_settings
+                        )
+                    except (json.JSONDecodeError, OSError):
+                        pass
 
             from ai_rules.claude_extensions import ClaudeExtensionManager
 
@@ -1661,7 +1652,6 @@ def uninstall(yes: bool, agents: str | None) -> None:
     from rich.console import Console
     from rich.prompt import Confirm
 
-    from ai_rules.agents.claude import ClaudeAgent
     from ai_rules.config import Config
     from ai_rules.symlinks import remove_symlink
 
@@ -1701,7 +1691,7 @@ def uninstall(yes: bool, agents: str | None) -> None:
                 console.print(f"  [yellow]○[/yellow] {target} [dim]({message})[/dim]")
                 total_skipped += 1
 
-        if isinstance(agent, ClaudeAgent):
+        if agent.get_mcp_manager() is not None:
             from ai_rules.mcp import OperationResult
 
             result, message = agent.uninstall_mcps(force=yes, dry_run=False)

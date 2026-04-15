@@ -3,9 +3,16 @@
 import json
 
 import pytest
+import yaml
 
 from ai_rules.config import Config
-from ai_rules.mcp import MCPManager, OperationResult
+from ai_rules.mcp import (
+    ClaudeMCPManager,
+    CodexMCPManager,
+    GeminiMCPManager,
+    GooseMCPManager,
+    OperationResult,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -19,8 +26,8 @@ def setup_test_mcp(test_repo):
 
 @pytest.fixture
 def manager():
-    """Create an MCPManager instance."""
-    return MCPManager()
+    """Create a ClaudeMCPManager instance."""
+    return ClaudeMCPManager()
 
 
 @pytest.fixture
@@ -284,3 +291,304 @@ def test_install_removes_mcps_no_longer_in_repo(manager, mock_home, test_repo):
     with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         assert "test-mcp" not in data.get("mcpServers", {})
+
+
+# ---------------------------------------------------------------------------
+# Shared MCP source: config/mcps.json vs legacy config/claude/mcps.json
+# ---------------------------------------------------------------------------
+
+
+def test_load_prefers_shared_mcps_json(manager, test_repo):
+    """Shared config/mcps.json takes precedence over legacy claude/mcps.json."""
+    shared_file = test_repo / "mcps.json"
+    shared_file.write_text(
+        json.dumps({"shared-mcp": {"command": "uvx", "args": ["shared"]}})
+    )
+
+    config = Config()
+    mcps = manager.load_managed_mcps(test_repo, config)
+
+    assert "shared-mcp" in mcps
+    assert "test-mcp" not in mcps
+
+
+def test_load_falls_back_to_claude_mcps_json(manager, test_repo):
+    """Falls back to claude/mcps.json when config/mcps.json is absent."""
+    assert not (test_repo / "mcps.json").exists()
+
+    config = Config()
+    mcps = manager.load_managed_mcps(test_repo, config)
+
+    assert "test-mcp" in mcps
+
+
+# ---------------------------------------------------------------------------
+# GooseMCPManager
+# ---------------------------------------------------------------------------
+
+
+def test_goose_translate_maps_shared_format(mock_home):
+    """_translate converts shared format to Goose extension format."""
+    mgr = GooseMCPManager()
+    shared = {
+        "command": "uvx",
+        "args": ["recall-mcp-server"],
+        "env": {"RECALL_WIKI_PATH": "~/.recall"},
+        "name": "Recall",
+        "description": "Persistent LLM knowledge base",
+    }
+
+    result = mgr._translate(shared)
+
+    assert result["type"] == "stdio"
+    assert result["cmd"] == "uvx"
+    assert result["args"] == ["recall-mcp-server"]
+    assert result["envs"] == {"RECALL_WIKI_PATH": "~/.recall"}
+    assert result["env_keys"] == []
+    assert result["enabled"] is True
+    assert result["timeout"] == 300
+    assert result["bundled"] is False
+    assert result["available_tools"] == []
+    assert result["name"] == "Recall"
+    assert result["description"] == "Persistent LLM knowledge base"
+
+
+def test_goose_translate_minimal_config(mock_home):
+    """_translate handles missing optional fields gracefully."""
+    mgr = GooseMCPManager()
+    result = mgr._translate({"command": "uvx"})
+
+    assert result["cmd"] == "uvx"
+    assert result["args"] == []
+    assert result["envs"] == {}
+
+
+def test_goose_install_and_uninstall(mock_home, test_repo):
+    """GooseMCPManager writes to ~/.config/goose/config.yaml and removes on uninstall."""
+    shared_file = test_repo / "mcps.json"
+    shared_file.write_text(
+        json.dumps(
+            {"recall": {"command": "uvx", "args": ["recall-mcp-server"], "env": {}}}
+        )
+    )
+
+    mgr = GooseMCPManager()
+    config = Config()
+
+    result, message, conflicts = mgr.install_mcps(test_repo, config)
+    assert result == OperationResult.UPDATED
+    assert conflicts == []
+
+    config_path = mock_home / ".config" / "goose" / "config.yaml"
+    assert config_path.exists()
+    with open(config_path) as f:
+        data = yaml.safe_load(f)
+
+    assert "recall" in data["extensions"]
+    assert data["extensions"]["recall"]["_managed_by"] == "ai-rules"
+    assert data["extensions"]["recall"]["cmd"] == "uvx"
+
+    result, message = mgr.uninstall_mcps()
+    assert result == OperationResult.REMOVED
+    with open(config_path) as f:
+        data = yaml.safe_load(f)
+    assert "recall" not in data.get("extensions", {})
+
+
+def test_goose_preserves_non_extension_keys(mock_home, test_repo):
+    """Goose install does not clobber GOOSE_MODEL or other existing config keys."""
+    config_path = mock_home / ".config" / "goose"
+    config_path.mkdir(parents=True)
+    (config_path / "config.yaml").write_text(
+        "GOOSE_MODEL: claude-opus-4-5\nGOOSE_PROVIDER: anthropic\n"
+    )
+
+    shared_file = test_repo / "mcps.json"
+    shared_file.write_text(json.dumps({"mcp-a": {"command": "uvx", "args": []}}))
+
+    mgr = GooseMCPManager()
+    mgr.install_mcps(test_repo, Config())
+
+    with open(config_path / "config.yaml") as f:
+        data = yaml.safe_load(f)
+
+    assert data["GOOSE_MODEL"] == "claude-opus-4-5"
+    assert data["GOOSE_PROVIDER"] == "anthropic"
+    assert "mcp-a" in data["extensions"]
+
+
+# ---------------------------------------------------------------------------
+# CodexMCPManager
+# ---------------------------------------------------------------------------
+
+
+def test_codex_translate_maps_shared_format(mock_home):
+    """_translate extracts command/args/env for TOML."""
+    mgr = CodexMCPManager()
+    shared = {
+        "command": "uvx",
+        "args": ["recall-mcp-server"],
+        "env": {"RECALL_WIKI_PATH": "~/.recall"},
+        "name": "Recall",
+        "description": "ignored",
+    }
+
+    result = mgr._translate(shared)
+
+    assert result["command"] == "uvx"
+    assert result["args"] == ["recall-mcp-server"]
+    assert result["env"] == {"RECALL_WIKI_PATH": "~/.recall"}
+    assert "name" not in result
+    assert "description" not in result
+
+
+def test_codex_translate_minimal_config(mock_home):
+    """_translate handles configs with only a command."""
+    mgr = CodexMCPManager()
+    result = mgr._translate({"command": "npx"})
+    assert result["command"] == "npx"
+    assert "args" not in result
+    assert "env" not in result
+
+
+def test_codex_install_and_uninstall(mock_home, test_repo):
+    """CodexMCPManager writes to ~/.codex/config.toml and cleans up on uninstall."""
+    import tomlkit
+
+    shared_file = test_repo / "mcps.json"
+    shared_file.write_text(
+        json.dumps(
+            {"recall": {"command": "uvx", "args": ["recall-mcp-server"], "env": {}}}
+        )
+    )
+
+    mgr = CodexMCPManager()
+    result, message, conflicts = mgr.install_mcps(test_repo, Config())
+    assert result == OperationResult.UPDATED
+
+    config_path = mock_home / ".codex" / "config.toml"
+    assert config_path.exists()
+    with open(config_path) as f:
+        doc = tomlkit.load(f)
+
+    mcp_servers = dict(doc["mcp_servers"])  # type: ignore[arg-type]
+    assert "recall" in mcp_servers
+    managed_section = doc["_ai_rules_managed"]
+    managed_names = list(managed_section["names"])  # type: ignore[index,arg-type]
+    assert "recall" in managed_names
+
+    result, message = mgr.uninstall_mcps()
+    assert result == OperationResult.REMOVED
+    with open(config_path) as f:
+        doc = tomlkit.load(f)
+    mcp_servers_after = dict(doc.get("mcp_servers", {}))
+    assert "recall" not in mcp_servers_after
+    managed_after = doc.get("_ai_rules_managed", {})
+    names_after = list(managed_after.get("names", []))
+    assert "recall" not in names_after
+
+
+def test_codex_preserves_non_mcp_keys(mock_home, test_repo):
+    """Codex install preserves approval_policy, model, and other config keys."""
+    import tomlkit
+
+    config_dir = mock_home / ".codex"
+    config_dir.mkdir(parents=True)
+    original = 'model = "gpt-5.2-codex"\napproval_policy = "on-request"\n'
+    (config_dir / "config.toml").write_text(original)
+
+    shared_file = test_repo / "mcps.json"
+    shared_file.write_text(json.dumps({"mcp-a": {"command": "uvx", "args": []}}))
+
+    CodexMCPManager().install_mcps(test_repo, Config())
+
+    with open(config_dir / "config.toml") as f:
+        doc = tomlkit.load(f)
+
+    assert doc["model"] == "gpt-5.2-codex"
+    assert doc["approval_policy"] == "on-request"
+    assert "mcp-a" in dict(doc["mcp_servers"])  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------
+# GeminiMCPManager
+# ---------------------------------------------------------------------------
+
+
+def test_gemini_translate_adds_timeout_and_trust(mock_home):
+    """_translate adds timeout and trust fields to Gemini MCP config."""
+    mgr = GeminiMCPManager()
+    shared = {
+        "command": "uvx",
+        "args": ["recall-mcp-server"],
+        "env": {"RECALL_WIKI_PATH": "~/.recall"},
+    }
+
+    result = mgr._translate(shared)
+
+    assert result["command"] == "uvx"
+    assert result["args"] == ["recall-mcp-server"]
+    assert result["env"] == {"RECALL_WIKI_PATH": "~/.recall"}
+    assert result["timeout"] == 30000
+    assert result["trust"] is False
+
+
+def test_gemini_translate_minimal_config(mock_home):
+    """_translate handles configs with only command and args."""
+    mgr = GeminiMCPManager()
+    result = mgr._translate({"command": "node", "args": ["server.js"]})
+    assert result["command"] == "node"
+    assert result["timeout"] == 30000
+    assert result["trust"] is False
+    assert "env" not in result
+
+
+def test_gemini_install_and_uninstall(mock_home, test_repo):
+    """GeminiMCPManager writes to ~/.gemini/settings.json and removes on uninstall."""
+    shared_file = test_repo / "mcps.json"
+    shared_file.write_text(
+        json.dumps(
+            {"recall": {"command": "uvx", "args": ["recall-mcp-server"], "env": {}}}
+        )
+    )
+
+    mgr = GeminiMCPManager()
+    result, message, conflicts = mgr.install_mcps(test_repo, Config())
+    assert result == OperationResult.UPDATED
+
+    config_path = mock_home / ".gemini" / "settings.json"
+    assert config_path.exists()
+    with open(config_path) as f:
+        data = json.load(f)
+
+    assert "recall" in data["mcpServers"]
+    assert data["mcpServers"]["recall"]["_managedBy"] == "ai-rules"
+    assert data["mcpServers"]["recall"]["timeout"] == 30000
+    assert data["mcpServers"]["recall"]["trust"] is False
+
+    result, message = mgr.uninstall_mcps()
+    assert result == OperationResult.REMOVED
+    with open(config_path) as f:
+        data = json.load(f)
+    assert "recall" not in data.get("mcpServers", {})
+
+
+def test_gemini_preserves_non_mcp_keys(mock_home, test_repo):
+    """Gemini install preserves context, tools, model, and other keys."""
+    gemini_dir = mock_home / ".gemini"
+    gemini_dir.mkdir(parents=True)
+    existing = {"model": "gemini-3.1-pro-preview", "context": {}, "ui": {}}
+    (gemini_dir / "settings.json").write_text(json.dumps(existing))
+
+    shared_file = test_repo / "mcps.json"
+    shared_file.write_text(json.dumps({"mcp-a": {"command": "uvx", "args": []}}))
+
+    GeminiMCPManager().install_mcps(test_repo, Config())
+
+    with open(gemini_dir / "settings.json") as f:
+        data = json.load(f)
+
+    assert data["model"] == "gemini-3.1-pro-preview"
+    assert data["context"] == {}
+    assert data["ui"] == {}
+    assert "mcp-a" in data["mcpServers"]
