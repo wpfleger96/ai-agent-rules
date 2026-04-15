@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.31.4 (2026-04-15)
+
+### Bug Fixes
+
+- Restore codex model config
+  ([`cc9aac9`](https://github.com/wpfleger96/ai-rules/commit/cc9aac94111d8ba74c8fe47563f6a2ee033e7319))
+
+### Refactoring
+
+- Extract multi-agent MCPManager from Claude-only implementation
+  ([`63fcf4f`](https://github.com/wpfleger96/ai-rules/commit/63fcf4f6b8dff161d45ddc260017e36fe7dbdd1d))
+
+MCPManager was hardcoded to write only to ~/.claude.json. Refactored into an abstract base class
+  with four agent-specific subclasses (Claude, Goose, Codex, Gemini), each translating a shared MCP
+  definition format to the agent's native config (JSON, YAML, TOML). Agent base class gains
+  get_mcp_manager() interface so the CLI can dispatch polymorphically instead of isinstance guards.
+
+
 ## v0.31.3 (2026-04-14)
 
 ### Bug Fixes
