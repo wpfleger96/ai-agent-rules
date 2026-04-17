@@ -23,14 +23,9 @@ classifiers = [
 ]
 dependencies = [
     "click>=8.1",
-    "hatch>=1.15.1",
     "packaging>=21.0",
-    "pytest>=8.4.2",
-    "pytest-cov>=7.0.0",
-    "pytest-xdist>=3.8.0",
     "pyyaml>=6.0",
     "rich>=13.0",
-    "ruff>=0.14.3",
     "tomli>=2.0.0; python_version<'3.11'",
     "tomli-w>=1.0.0",
     "tomlkit>=0.12.0",
@@ -105,7 +100,13 @@ disable_error_code = ["var-annotated", "type-arg"]
 
 [dependency-groups]
 dev = [
+    "hatch>=1.15.1",
+    "jsonschema>=4.23.0",
     "mypy>=1.18.2",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.14.3",
 ]
 
 [tool.pytest.ini_options]
@@ -122,4 +123,6 @@ markers = [
     "completions: marks tests for shell completion functionality",
     "config: marks tests for configuration functionality",
     "state: mark tests for profile state tracking",
+    "schema: marks tests that validate configs against provider JSON schemas",
+    "network: marks tests that require network access to fetch remote schemas",
 ]

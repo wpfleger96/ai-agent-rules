@@ -237,3 +237,132 @@ mcp_overrides: "should be a dict"
 
         with pytest.raises(ProfileError, match="mcp_overrides must be a dict"):
             loader.load_profile("invalid")
+
+
+@pytest.mark.unit
+class TestNestedSettingsOverrideInheritance:
+    def test_claude_env_block_merges_across_inheritance(self, profiles_dir):
+        (profiles_dir / "parent.yaml").write_text("""
+name: parent
+settings_overrides:
+  claude:
+    env:
+      VAR_A: "parent"
+""")
+        (profiles_dir / "child.yaml").write_text("""
+name: child
+extends: parent
+settings_overrides:
+  claude:
+    env:
+      VAR_B: "child"
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert profile.settings_overrides["claude"]["env"]["VAR_A"] == "parent"
+        assert profile.settings_overrides["claude"]["env"]["VAR_B"] == "child"
+
+    def test_child_overrides_parent_env_key(self, profiles_dir):
+        (profiles_dir / "parent.yaml").write_text("""
+name: parent
+settings_overrides:
+  claude:
+    env:
+      MODEL_KEY: "old"
+""")
+        (profiles_dir / "child.yaml").write_text("""
+name: child
+extends: parent
+settings_overrides:
+  claude:
+    env:
+      MODEL_KEY: "new"
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert profile.settings_overrides["claude"]["env"]["MODEL_KEY"] == "new"
+
+    def test_gemini_nested_model_security_inheritance(self, profiles_dir):
+        (profiles_dir / "parent.yaml").write_text("""
+name: parent
+settings_overrides:
+  gemini:
+    model:
+      name: "gemini-x"
+""")
+        (profiles_dir / "child.yaml").write_text("""
+name: child
+extends: parent
+settings_overrides:
+  gemini:
+    security:
+      auth:
+        selectedType: "key"
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert profile.settings_overrides["gemini"]["model"]["name"] == "gemini-x"
+        assert (
+            profile.settings_overrides["gemini"]["security"]["auth"]["selectedType"]
+            == "key"
+        )
+
+    def test_multi_agent_overrides_preserved_across_inheritance(self, profiles_dir):
+        (profiles_dir / "parent.yaml").write_text("""
+name: parent
+settings_overrides:
+  claude:
+    env:
+      SHARED_VAR: "from-parent"
+  gemini:
+    ui:
+      useFullWidth: false
+""")
+        (profiles_dir / "child.yaml").write_text("""
+name: child
+extends: parent
+settings_overrides:
+  gemini:
+    ui:
+      useFullWidth: true
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert (
+            profile.settings_overrides["claude"]["env"]["SHARED_VAR"] == "from-parent"
+        )
+        assert profile.settings_overrides["gemini"]["ui"]["useFullWidth"] is True
+
+    def test_goose_extension_deep_merged_across_profiles(self, profiles_dir):
+        (profiles_dir / "parent.yaml").write_text("""
+name: parent
+settings_overrides:
+  goose:
+    extensions:
+      developer:
+        timeout: 300
+""")
+        (profiles_dir / "child.yaml").write_text("""
+name: child
+extends: parent
+settings_overrides:
+  goose:
+    extensions:
+      developer:
+        enabled: false
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        dev = profile.settings_overrides["goose"]["extensions"]["developer"]
+        assert dev["timeout"] == 300
+        assert dev["enabled"] is False

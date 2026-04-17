@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Community-maintained structural schema. No official Goose JSON Schema exists as of 2026-04-17.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["GOOSE_MODEL", "GOOSE_PROVIDER", "extensions"],
+  "properties": {
+    "GOOSE_MODEL": {
+      "type": "string"
+    },
+    "GOOSE_PROVIDER": {
+      "type": "string"
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["enabled", "type"],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string"
+          },
+          "timeout": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "bundled": {
+            "type": "boolean"
+          },
+          "available_tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

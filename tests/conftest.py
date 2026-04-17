@@ -1,8 +1,71 @@
+import json
+import os
+import tempfile
+import time
+import urllib.error
+import urllib.request
+
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from click.testing import CliRunner
+
+_SCHEMA_CACHE_DIR = Path(__file__).parent / "fixtures" / "schemas" / "cache"
+
+
+def _atomic_write(path: Path, data: str) -> None:
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        os.write(fd, data.encode())
+        os.close(fd)
+        os.replace(tmp, path)
+    except BaseException:
+        os.close(fd)
+        os.unlink(tmp)
+        raise
+
+
+def get_schema(
+    agent: str,
+    url: str,
+    ttl_days: int = 1,
+    _cache_dir: Path | None = None,
+) -> dict[str, Any] | None:
+    cache_dir = _cache_dir or _SCHEMA_CACHE_DIR
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / f"{agent}.schema.json"
+
+    if cache_file.exists():
+        age = time.time() - cache_file.stat().st_mtime
+        if age < ttl_days * 86400:
+            try:
+                result: dict[str, Any] = json.loads(cache_file.read_text())
+                return result
+            except json.JSONDecodeError:
+                pass
+
+    try:
+        resp = urllib.request.urlopen(url, timeout=10)  # noqa: S310
+        data = resp.read().decode()
+        schema: dict[str, Any] = json.loads(data)
+        _atomic_write(cache_file, data)
+        return schema
+    except (urllib.error.URLError, OSError, json.JSONDecodeError):
+        if cache_file.exists():
+            try:
+                stale: dict[str, Any] = json.loads(cache_file.read_text())
+                return stale
+            except json.JSONDecodeError:
+                pass
+        return None
+
+
+@pytest.fixture(scope="session")
+def schema_fetcher():
+    """Provide the get_schema function for schema validation tests."""
+    return get_schema
 
 
 @pytest.fixture(autouse=True)
@@ -30,6 +93,14 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "config: Tests for the config sub-module")
     config.addinivalue_line("markers", "agents: Tests for the agents sub-module")
     config.addinivalue_line("markers", "bootstrap: Tests for the bootstrap sub-module")
+    config.addinivalue_line(
+        "markers",
+        "schema: Tests that validate configs against provider JSON schemas",
+    )
+    config.addinivalue_line(
+        "markers",
+        "network: Tests that require network access to fetch remote schemas",
+    )
 
 
 @pytest.fixture

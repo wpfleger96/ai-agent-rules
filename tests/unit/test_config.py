@@ -922,3 +922,83 @@ class TestTomlSupport:
 
         agent.build_merged_settings()
         assert not agent.is_cache_stale()
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestMergeSettingsAgentShapes:
+    def test_claude_env_override_preserves_base_keys(self):
+        config = Config(
+            settings_overrides={"claude": {"env": {"CLAUDE_CODE_EFFORT_LEVEL": "high"}}}
+        )
+        base = {
+            "env": {
+                "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
+                "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6",
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
+                "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-6",
+                "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
+                "CLAUDE_CODE_EFFORT_LEVEL": "max",
+            }
+        }
+        result = config.merge_settings("claude", base)
+
+        assert result["env"]["CLAUDE_CODE_EFFORT_LEVEL"] == "high"
+        assert result["env"]["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "claude-sonnet-4-6"
+        assert result["env"]["ANTHROPIC_DEFAULT_OPUS_MODEL"] == "claude-opus-4-6"
+        assert (
+            result["env"]["ANTHROPIC_DEFAULT_HAIKU_MODEL"]
+            == "claude-haiku-4-5-20251001"
+        )
+        assert result["env"]["CLAUDE_CODE_SUBAGENT_MODEL"] == "claude-sonnet-4-6"
+
+    def test_gemini_model_block_added_to_base(self):
+        config = Config(
+            settings_overrides={"gemini": {"model": {"name": "gemini-3.1-pro-preview"}}}
+        )
+        base = {
+            "context": {"fileName": ["GEMINI.md", "AGENTS.md"]},
+            "tools": {},
+            "ide": {},
+        }
+        result = config.merge_settings("gemini", base)
+
+        assert result["model"]["name"] == "gemini-3.1-pro-preview"
+        assert result["context"]["fileName"] == ["GEMINI.md", "AGENTS.md"]
+        assert "tools" in result
+        assert "ide" in result
+
+    def test_goose_top_level_override_preserves_extensions(self):
+        config = Config(
+            settings_overrides={"goose": {"GOOSE_MODEL": "claude-opus-4-6"}}
+        )
+        base = {
+            "GOOSE_MODEL": "claude-sonnet-4-6",
+            "GOOSE_PROVIDER": "anthropic",
+            "extensions": {"developer": {"enabled": True}},
+        }
+        result = config.merge_settings("goose", base)
+
+        assert result["GOOSE_MODEL"] == "claude-opus-4-6"
+        assert result["GOOSE_PROVIDER"] == "anthropic"
+        assert result["extensions"]["developer"]["enabled"] is True
+
+    def test_codex_flat_override_preserves_siblings(self):
+        config = Config(settings_overrides={"codex": {"model": "gpt-5.2"}})
+        base = {
+            "model": "gpt-5.4",
+            "approval_policy": "on-request",
+            "trust_level": "trusted",
+        }
+        result = config.merge_settings("codex", base)
+
+        assert result["model"] == "gpt-5.2"
+        assert result["approval_policy"] == "on-request"
+        assert result["trust_level"] == "trusted"
+
+    def test_no_override_returns_base_unchanged(self):
+        config = Config(settings_overrides={})
+        base = {"env": {"KEY": "value"}, "permissions": {"allow": []}}
+        result = config.merge_settings("claude", base)
+
+        assert result == base
