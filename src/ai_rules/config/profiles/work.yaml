@@ -6,7 +6,8 @@ settings_overrides:
     env:
       ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-4-6[1m]"
       CLAUDE_CODE_SUBAGENT_MODEL: "claude-sonnet-4-6[1m]"
-      ANTHROPIC_DEFAULT_OPUS_MODEL: "claude-opus-4-6[1m]"
+      ANTHROPIC_DEFAULT_OPUS_MODEL: "claude-opus-4-7[1m]"
+      CLAUDE_CODE_EFFORT_LEVEL: "max"
     model: opusplan
   gemini:
     model:
