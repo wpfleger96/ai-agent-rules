@@ -93,7 +93,6 @@ class TestConfigFileStructuralInvariants:
     def test_codex_has_required_flat_keys(self, codex_config):
         assert "model" in codex_config
         assert "approval_policy" in codex_config
-        assert "trust_level" in codex_config
 
     def test_codex_approval_policy_is_valid_value(self, codex_config):
         assert codex_config["approval_policy"] in {

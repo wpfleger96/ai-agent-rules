@@ -96,7 +96,6 @@ class TestCodexDeepMerge:
     BASE = {
         "model": "gpt-5.4",
         "approval_policy": "on-request",
-        "trust_level": "trusted",
     }
 
     def test_flat_model_override(self):
@@ -105,7 +104,6 @@ class TestCodexDeepMerge:
 
         assert result["model"] == "gpt-5.2-codex"
         assert result["approval_policy"] == "on-request"
-        assert result["trust_level"] == "trusted"
 
     def test_new_key_added_to_flat_config(self):
         override = {"full_auto": True}
@@ -114,7 +112,6 @@ class TestCodexDeepMerge:
         assert result["full_auto"] is True
         assert result["model"] == "gpt-5.4"
         assert result["approval_policy"] == "on-request"
-        assert result["trust_level"] == "trusted"
 
     def test_unrelated_keys_survive_merge(self):
         base = {**self.BASE, "projects": ["my-project"]}

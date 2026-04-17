@@ -988,13 +988,11 @@ class TestMergeSettingsAgentShapes:
         base = {
             "model": "gpt-5.4",
             "approval_policy": "on-request",
-            "trust_level": "trusted",
         }
         result = config.merge_settings("codex", base)
 
         assert result["model"] == "gpt-5.2"
         assert result["approval_policy"] == "on-request"
-        assert result["trust_level"] == "trusted"
 
     def test_no_override_returns_base_unchanged(self):
         config = Config(settings_overrides={})
