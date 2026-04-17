@@ -1,6 +1,85 @@
 # CHANGELOG
 
 
+## v0.32.0 (2026-04-17)
+
+### Bug Fixes
+
+- Codex exec non-TTY hang, cache activation for preserved_fields
+  ([`95bc7cd`](https://github.com/wpfleger96/ai-rules/commit/95bc7cdd8680c147825d851936198a2b37ee11c3))
+
+codex exec hangs in non-TTY contexts (Claude Code's Bash tool) because it waits for stdin that never
+  arrives. The ad37829 fix piped prompts via stdin, which worked but caused Codex to echo the full
+  prompt to stderr. The OPENAI_API_KEY injection was also unnecessary — ChatGPT OAuth works when the
+  configured model supports exec mode.
+
+Fix: close stdin with < /dev/null and instruct Codex to cat the prompt file via its shell tool. Drop
+  API key injection and key-file guard.
+
+Separately, the cache system only activated when settings_overrides existed, but agents with
+  preserved_fields (codex: projects, claude: hooks/plugins, goose: extensions, gemini: ide) need the
+  cache as a write buffer even without overrides — otherwise the symlink points to the git-tracked
+  source and the agent dirties the repo. Add Agent.needs_cache property and a force parameter on
+  Config cache helpers so all four agents route through the cache unconditionally.
+
+Also make the crossfire skill auto-execute by replacing the persona description with an imperative
+  heading.
+
+- Complete preserved_fields cache symmetry across all code paths
+  ([`38a44cb`](https://github.com/wpfleger96/ai-rules/commit/38a44cbf7c916f322d010ca959c305673a0d98b6))
+
+The previous commit expanded cache creation to agents with preserved_fields, but three code paths
+  still assumed "overrides = cache": cleanup_orphaned_cache deleted caches it shouldn't have, config
+  show --merged skipped agents with preserved-field caches, and direct dict access on
+  settings_overrides would KeyError for agents that only have preserved_fields.
+
+Make cleanup_orphaned_cache require an explicit agents_needing_cache set (removes the unsafe
+  settings_overrides-only fallback), fix config show --merged to detect cache files regardless of
+  overrides, and guard dict accesses with .get().
+
+- Remove invalid config keys caught by schema validation tests
+  ([`613080a`](https://github.com/wpfleger96/ai-rules/commit/613080a2c070cc37ddc79cea98f324fab17a8d6a))
+
+Codex config.toml had `trust_level` at the top level, but it's a per-project key (nested under
+  `projects` in the schema). Removed.
+
+Claude settings.json had `Search(*)` in permissions.allow — `Search` is not a valid tool name, it
+  was a no-op. Removed. `Skill(*)` and `Read(*)` are valid patterns kept as-is; the SchemaStore
+  community schema's regex incorrectly rejects them (xfail in test).
+
+Also excludes network-dependent schema tests from `just test` default run to prevent external schema
+  drift from blocking local development.
+
+### Features
+
+- Add personal profile and three-tier profile hierarchy
+  ([`ada6554`](https://github.com/wpfleger96/ai-rules/commit/ada6554f7a4e1c49bcaf47a7d12084aaef74236d))
+
+Establishes default → personal → work inheritance chain. Default stays lean with cc-marketplace as
+  the only bundled default. Personal extends default with preferred model (opusplan). Work extends
+  personal with extended-context model overrides.
+
+Cleans up personal artifacts that leaked into the base tier: removes unused beads/perles Bash
+  permissions, removes plugin-dev plugin from default profile, genericizes personal username and org
+  references in AGENTS.md examples. Removes vestigial enabledPlugins from base settings.json, dead
+  is_enabled field from ToolSpec, and stale refactoring comment in config.py. Adds empty mcps.json
+  so profile mcp_overrides can merge onto a base.
+
+### Testing
+
+- Add config validation and deep-merge regression test suite
+  ([`5bc21e3`](https://github.com/wpfleger96/ai-rules/commit/5bc21e365c9c84f41925807bb250f7df282e8a20))
+
+Zero test coverage existed for deep_merge() through real agent config shapes, so profile inheritance
+  could silently regress to shallow merge with no test failure. No test validated bundled config
+  files are parseable or structurally correct either.
+
+Adds 60 new tests across three layers: deep-merge through all four agents' config shapes (19 tests),
+  structural validation of bundled configs and profiles (23 tests), and schema validation against
+  provider JSON Schemas with offline-safe TTL cache (12 tests). Also moves test/lint deps (pytest,
+  ruff, hatch, etc.) from runtime to dev dependency group where they belong.
+
+
 ## v0.31.5 (2026-04-15)
 
 ### Bug Fixes
