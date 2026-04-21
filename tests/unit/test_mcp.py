@@ -7,6 +7,7 @@ import yaml
 
 from ai_rules.config import Config
 from ai_rules.mcp import (
+    AmpMCPManager,
     ClaudeMCPManager,
     CodexMCPManager,
     GeminiMCPManager,
@@ -592,3 +593,87 @@ def test_gemini_preserves_non_mcp_keys(mock_home, test_repo):
     assert data["context"] == {}
     assert data["ui"] == {}
     assert "mcp-a" in data["mcpServers"]
+
+
+# ---------------------------------------------------------------------------
+# AmpMCPManager
+# ---------------------------------------------------------------------------
+
+
+def test_amp_translate_maps_shared_format(mock_home):
+    """_translate strips name/description and passes command/args/env."""
+    mgr = AmpMCPManager()
+    shared = {
+        "command": "uvx",
+        "args": ["recall-mcp-server"],
+        "env": {"RECALL_WIKI_PATH": "~/.recall"},
+        "name": "Recall",
+        "description": "ignored",
+    }
+
+    result = mgr._translate(shared)
+
+    assert result["command"] == "uvx"
+    assert result["args"] == ["recall-mcp-server"]
+    assert result["env"] == {"RECALL_WIKI_PATH": "~/.recall"}
+    assert "name" not in result
+    assert "description" not in result
+
+
+def test_amp_translate_minimal_config(mock_home):
+    """_translate handles configs with only a command."""
+    mgr = AmpMCPManager()
+    result = mgr._translate({"command": "npx"})
+    assert result["command"] == "npx"
+    assert "args" not in result
+    assert "env" not in result
+
+
+def test_amp_install_and_uninstall(mock_home, test_repo):
+    """AmpMCPManager writes to ~/.config/amp/settings.json and removes on uninstall."""
+    shared_file = test_repo / "mcps.json"
+    shared_file.write_text(
+        json.dumps(
+            {"recall": {"command": "uvx", "args": ["recall-mcp-server"], "env": {}}}
+        )
+    )
+
+    mgr = AmpMCPManager()
+    result, message, conflicts = mgr.install_mcps(test_repo, Config())
+    assert result == OperationResult.UPDATED
+    assert conflicts == []
+
+    config_path = mock_home / ".config" / "amp" / "settings.json"
+    assert config_path.exists()
+    with open(config_path) as f:
+        data = json.load(f)
+
+    assert "recall" in data["amp.mcpServers"]
+    assert data["amp.mcpServers"]["recall"]["_managedBy"] == "ai-rules"
+    assert data["amp.mcpServers"]["recall"]["command"] == "uvx"
+
+    result, message = mgr.uninstall_mcps()
+    assert result == OperationResult.REMOVED
+    with open(config_path) as f:
+        data = json.load(f)
+    assert "recall" not in data.get("amp.mcpServers", {})
+
+
+def test_amp_preserves_non_mcp_keys(mock_home, test_repo):
+    """Amp install preserves existing amp.* settings and other keys."""
+    amp_dir = mock_home / ".config" / "amp"
+    amp_dir.mkdir(parents=True)
+    existing = {"amp.showCosts": True, "amp.anthropic.thinking.enabled": True}
+    (amp_dir / "settings.json").write_text(json.dumps(existing))
+
+    shared_file = test_repo / "mcps.json"
+    shared_file.write_text(json.dumps({"mcp-a": {"command": "uvx", "args": []}}))
+
+    AmpMCPManager().install_mcps(test_repo, Config())
+
+    with open(amp_dir / "settings.json") as f:
+        data = json.load(f)
+
+    assert data["amp.showCosts"] is True
+    assert data["amp.anthropic.thinking.enabled"] is True
+    assert "mcp-a" in data["amp.mcpServers"]

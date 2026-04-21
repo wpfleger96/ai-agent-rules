@@ -624,3 +624,63 @@ class GeminiMCPManager(MCPManager):
         result["timeout"] = 30000
         result["trust"] = False
         return result
+
+
+# ---------------------------------------------------------------------------
+# Amp
+# ---------------------------------------------------------------------------
+
+
+class AmpMCPManager(MCPManager):
+    """Manages MCPs in ~/.config/amp/settings.json under the amp.mcpServers key."""
+
+    @property
+    def _marker_field(self) -> str:
+        return "_managedBy"
+
+    @property
+    def _config_path(self) -> Path:
+        return Path.home() / ".config" / "amp" / "settings.json"
+
+    def _target_path(self) -> Path:
+        return self._config_path
+
+    def _load_full_config(self) -> dict[str, Any]:
+        if not self._config_path.exists():
+            return {}
+        with open(self._config_path) as f:
+            data: dict[str, Any] = json.load(f)
+        return data
+
+    def _read_installed(self) -> dict[str, Any]:
+        full = self._load_full_config()
+        return cast(dict[str, Any], full.get("amp.mcpServers", {}))
+
+    def _write_installed(self, mcps: dict[str, Any]) -> None:
+        self._config_path.parent.mkdir(parents=True, exist_ok=True)
+        full = self._load_full_config()
+        full["amp.mcpServers"] = mcps
+
+        fd, temp_path = tempfile.mkstemp(
+            dir=self._config_path.parent, prefix=f".{self._config_path.name}."
+        )
+        try:
+            with open(fd, "w") as f:
+                json.dump(full, f, indent=2)
+            if self._config_path.exists():
+                shutil.copystat(self._config_path, temp_path)
+            shutil.move(temp_path, self._config_path)
+        except Exception:
+            if Path(temp_path).exists():
+                Path(temp_path).unlink()
+            raise
+
+    def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        if "command" in shared_config:
+            result["command"] = shared_config["command"]
+        if "args" in shared_config:
+            result["args"] = shared_config["args"]
+        if "env" in shared_config:
+            result["env"] = shared_config["env"]
+        return result

@@ -99,6 +99,7 @@ def get_agents(config_dir: Path, config: "Config") -> list["Agent"]:
     Returns:
         List of all available agent instances
     """
+    from ai_rules.agents.amp import AmpAgent
     from ai_rules.agents.claude import ClaudeAgent
     from ai_rules.agents.codex import CodexAgent
     from ai_rules.agents.gemini import GeminiAgent
@@ -106,6 +107,7 @@ def get_agents(config_dir: Path, config: "Config") -> list["Agent"]:
     from ai_rules.agents.shared import SharedAgent
 
     return [
+        AmpAgent(config_dir, config),
         ClaudeAgent(config_dir, config),
         CodexAgent(config_dir, config),
         GeminiAgent(config_dir, config),
@@ -169,6 +171,7 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
     check_paths = [
         Path.home() / ".claude",
         Path.home() / ".codex",
+        Path.home() / ".config" / "amp",
         Path.home() / ".config" / "goose",
         Path.home() / "AGENTS.md",
     ]

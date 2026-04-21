@@ -42,6 +42,7 @@ __all__ = [
 ]
 
 AGENT_FORMATS: dict[str, str] = {
+    "amp": "json",
     "claude": "json",
     "codex": "toml",
     "gemini": "json",
@@ -55,6 +56,7 @@ FORMAT_CONFIG_FILES: dict[str, str] = {
 }
 
 AGENT_SKILLS_DIRS = {
+    "amp": Path("~/.config/agents/skills"),
     "claude": Path("~/.claude/skills"),
     "codex": Path("~/.agents/skills"),
     # Gemini CLI not listed here — it discovers skills from ~/.agents/skills/ via

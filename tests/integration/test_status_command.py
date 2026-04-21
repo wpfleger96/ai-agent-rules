@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 import yaml
 
+from ai_rules.agents.amp import AmpAgent
 from ai_rules.agents.claude import ClaudeAgent
 from ai_rules.agents.codex import CodexAgent
 from ai_rules.agents.gemini import GeminiAgent
@@ -254,14 +255,15 @@ class TestStatusCacheValidation:
         config.plugins = []
         config.marketplaces = []
 
+        amp = AmpAgent(test_repo, config)
         claude = ClaudeAgent(test_repo, config)
         codex = CodexAgent(test_repo, config)
         gemini = GeminiAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
         shared = SharedAgent(test_repo, config)
-        for agent in [claude, codex, gemini, goose]:
+        for agent in [amp, claude, codex, gemini, goose]:
             agent.build_merged_settings()
-        for agent in [claude, codex, gemini, goose, shared]:
+        for agent in [amp, claude, codex, gemini, goose, shared]:
             for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, force=False, dry_run=False)
@@ -289,14 +291,15 @@ class TestStatusCacheValidation:
         config = Config.load()
         config.plugins = []
         config.marketplaces = []
+        amp = AmpAgent(test_repo, config)
         claude = ClaudeAgent(test_repo, config)
         codex = CodexAgent(test_repo, config)
         gemini = GeminiAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
         shared = SharedAgent(test_repo, config)
-        for agent in [claude, codex, gemini, goose]:
+        for agent in [amp, claude, codex, gemini, goose]:
             agent.build_merged_settings()
-        for agent in [claude, codex, gemini, goose, shared]:
+        for agent in [amp, claude, codex, gemini, goose, shared]:
             for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, force=False, dry_run=False)

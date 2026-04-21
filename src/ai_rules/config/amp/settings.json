@@ -1,0 +1,7 @@
+{
+  "amp.anthropic.thinking.enabled": true,
+  "amp.showCosts": true,
+  "amp.git.commit.coauthor.enabled": false,
+  "amp.git.commit.ampThread.enabled": false,
+  "amp.agent.deepReasoningEffort": "xhigh"
+}

@@ -13,6 +13,11 @@ def config_root():
 
 
 @pytest.fixture(scope="module")
+def amp_config(config_root):
+    return load_config_file(config_root / "amp" / "settings.json", "json")
+
+
+@pytest.fixture(scope="module")
 def claude_config(config_root):
     return load_config_file(config_root / "claude" / "settings.json", "json")
 
@@ -38,6 +43,7 @@ class TestConfigFileSyntax:
     @pytest.mark.parametrize(
         "agent,filename,fmt",
         [
+            ("amp", "settings.json", "json"),
             ("claude", "settings.json", "json"),
             ("codex", "config.toml", "toml"),
             ("gemini", "settings.json", "json"),
@@ -50,6 +56,7 @@ class TestConfigFileSyntax:
     @pytest.mark.parametrize(
         "agent,filename,fmt",
         [
+            ("amp", "settings.json", "json"),
             ("claude", "settings.json", "json"),
             ("codex", "config.toml", "toml"),
             ("gemini", "settings.json", "json"),
@@ -65,6 +72,12 @@ class TestConfigFileSyntax:
 @pytest.mark.unit
 @pytest.mark.config
 class TestConfigFileStructuralInvariants:
+    def test_amp_settings_keys_are_prefixed(self, amp_config):
+        for key in amp_config:
+            assert key.startswith("amp."), (
+                f"Amp setting key {key!r} missing amp. prefix"
+            )
+
     def test_claude_has_env_and_permissions(self, claude_config):
         assert isinstance(claude_config["env"], dict)
         assert isinstance(claude_config["permissions"], dict)

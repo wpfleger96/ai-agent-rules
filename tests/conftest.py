@@ -156,6 +156,13 @@ def test_repo(tmp_path):
     (gemini_dir / "settings.json").write_text('{"name": "gemini-3.1-pro-preview"}')
     (gemini_dir / "GEMINI.md").write_text("@~/AGENTS.md\n")
 
+    amp_dir = config_root / "amp"
+    amp_dir.mkdir()
+    (amp_dir / "settings.json").write_text(
+        '{"amp.anthropic.thinking.enabled": true, "amp.showCosts": true}'
+    )
+    (amp_dir / "AGENTS.md").write_text("@~/AGENTS.md\n")
+
     goose_dir = config_root / "goose"
     goose_dir.mkdir()
     (goose_dir / "config.yaml").write_text("test: config")
