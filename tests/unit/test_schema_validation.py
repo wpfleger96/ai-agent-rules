@@ -11,6 +11,17 @@ import pytest
 
 from ai_rules.config import load_config_file
 
+# Exact permission strings that the SchemaStore permissionRule pattern
+# incorrectly rejects.  The regex lookahead (?=.*[^)*?]) requires at least
+# one non-wildcard character inside the argument, so bare (*) fails.
+# Upstream issue: https://github.com/SchemaStore/schemastore/issues/5598
+KNOWN_CLAUDE_SCHEMA_FALSE_POSITIVES: frozenset[str] = frozenset(
+    {
+        "Read(*)",
+        "Skill(*)",
+    }
+)
+
 # Live URLs point at upstream main — intentionally floating so tests catch
 # schema drift early. These tests are excluded from default runs via the
 # network marker; failures indicate real config/schema divergence.
@@ -27,6 +38,13 @@ GOOSE_SCHEMA_PATH = (
 
 def _config_root() -> Path:
     return Path(str(resource_files("ai_rules") / "config"))
+
+
+def _is_known_false_positive(err: jsonschema.ValidationError) -> bool:
+    return (
+        err.validator == "pattern"
+        and err.instance in KNOWN_CLAUDE_SCHEMA_FALSE_POSITIVES
+    )
 
 
 @pytest.mark.schema
@@ -53,14 +71,22 @@ class TestSchemaValidation:
             pytest.skip("Gemini schema unavailable (offline or cache miss)")
         return schema
 
-    @pytest.mark.xfail(
-        reason="SchemaStore community regex rejects valid (*) glob patterns — schema bug, not config bug",
-        raises=jsonschema.ValidationError,
-        strict=False,
-    )
     def test_claude_settings_validates_against_schema(self, claude_schema):
         config = load_config_file(_config_root() / "claude" / "settings.json", "json")
-        jsonschema.validate(config, claude_schema)
+        validator = jsonschema.Draft7Validator(claude_schema)
+        all_errors = list(validator.iter_errors(config))
+
+        known = [e for e in all_errors if _is_known_false_positive(e)]
+        unexpected = [e for e in all_errors if not _is_known_false_positive(e)]
+
+        if unexpected:
+            raise unexpected[0]
+
+        if known:
+            pytest.xfail(
+                f"SchemaStore permissionRule false positive "
+                f"({len(known)} instance(s): {[e.instance for e in known]})"
+            )
 
     def test_codex_config_validates_against_schema(self, codex_schema):
         config = load_config_file(_config_root() / "codex" / "config.toml", "toml")

@@ -136,5 +136,6 @@
     "command": "claude-statusline"
   },
   "alwaysThinkingEnabled": true,
+  "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true
 }
