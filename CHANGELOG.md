@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.33.0 (2026-04-21)
+
+### Features
+
+- Add amp as a managed agent
+  ([`a5332c1`](https://github.com/wpfleger96/ai-rules/commit/a5332c186236e098720dfdfadcf14a2280f99597))
+
+Amp (ampcode.com) uses AGENTS.md for guidance and JSON settings at ~/.config/amp/settings.json with
+  flat amp.*-prefixed keys. Base config maps Claude Code equivalents: thinking enabled, attribution
+  disabled, xhigh reasoning effort. MCP servers managed under the amp.mcpServers key. Skills
+  directory at ~/.config/agents/skills/ added to shared skills distribution.
+
+
 ## v0.32.0 (2026-04-17)
 
 ### Bug Fixes
