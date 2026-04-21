@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.35.0 (2026-04-21)
+
+### Features
+
+- Enable thinking summaries and tighten schema validation
+  ([`7c105e4`](https://github.com/wpfleger96/ai-rules/commit/7c105e4ca18ef0d6595dcffb0ac003207ea64d66))
+
+Add `showThinkingSummaries: true` to Claude settings so thinking blocks render as summaries instead
+  of being omitted.
+
+Replace the blanket `@pytest.mark.xfail` on the Claude schema test with an explicit allowlist of
+  known SchemaStore false positives (`Read(*)`, `Skill(*)`). The test now collects all validation
+  errors and only suppresses the specific known instances — any new schema violations surface as
+  real failures.
+
+Upstream: https://github.com/SchemaStore/schemastore/issues/5598
+
+
 ## v0.34.0 (2026-04-21)
 
 ### Features
