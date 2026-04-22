@@ -114,6 +114,40 @@ settings_overrides:
         assert profile.settings_overrides["claude"]["theme"] == "dark"
         assert profile.settings_overrides["claude"]["timeout"] == 60
 
+    def test_codex_status_line_override_replaces_parent_list(self, profiles_dir):
+        """Codex footer overrides should replace the full ordered list."""
+        (profiles_dir / "base.yaml").write_text("""
+name: base
+settings_overrides:
+  codex:
+    tui:
+      status_line:
+        - model-with-reasoning
+        - current-dir
+        - git-branch
+        - context-used
+        - used-tokens
+        - session-id
+""")
+        (profiles_dir / "child.yaml").write_text("""
+name: child
+extends: base
+settings_overrides:
+  codex:
+    tui:
+      status_line:
+        - model-with-reasoning
+        - session-id
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert profile.settings_overrides["codex"]["tui"]["status_line"] == [
+            "model-with-reasoning",
+            "session-id",
+        ]
+
     def test_circular_inheritance_detected(self, profiles_dir):
         """Test that circular inheritance raises error."""
         (profiles_dir / "a.yaml").write_text("""

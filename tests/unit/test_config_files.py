@@ -150,6 +150,16 @@ class TestConfigFileStructuralInvariants:
     def test_codex_has_analytics_disabled(self, codex_config):
         assert codex_config["analytics"]["enabled"] is False
 
+    def test_codex_has_status_line_defaults(self, codex_config):
+        assert codex_config["tui"]["status_line"] == [
+            "model-with-reasoning",
+            "current-dir",
+            "git-branch",
+            "context-used",
+            "used-tokens",
+            "session-id",
+        ]
+
     def test_gemini_has_approval_mode(self, gemini_config):
         assert gemini_config["general"]["defaultApprovalMode"] == "auto_edit"
 

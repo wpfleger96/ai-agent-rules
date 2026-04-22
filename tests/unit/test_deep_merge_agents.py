@@ -57,12 +57,11 @@ class TestClaudeDeepMerge:
         assert len(result["env"]) == 7
         assert result["env"]["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "claude-sonnet-4-6"
 
-    def test_permissions_allow_array_merge_element_by_element(self):
+    def test_permissions_allow_array_replaced_wholesale(self):
         override = {"permissions": {"allow": ["Bash(dog:*)"]}}
         result = deep_merge(self.BASE, override)
 
-        assert result["permissions"]["allow"][0] == "Bash(dog:*)"
-        assert result["permissions"]["allow"][1] == "Read(*)"
+        assert result["permissions"]["allow"] == ["Bash(dog:*)"]
 
     def test_attribution_partial_override(self):
         override = {"attribution": {"commit": "abc123"}}
@@ -177,12 +176,11 @@ class TestGeminiDeepMerge:
         assert "context" in result
         assert "ide" in result
 
-    def test_context_filename_array_merge(self):
+    def test_context_filename_array_replaced_wholesale(self):
         override = {"context": {"fileName": ["ONLY.md"]}}
         result = deep_merge(self.BASE, override)
 
-        assert result["context"]["fileName"][0] == "ONLY.md"
-        assert result["context"]["fileName"][1] == "AGENTS.md"
+        assert result["context"]["fileName"] == ["ONLY.md"]
 
 
 @pytest.mark.unit
@@ -234,9 +232,8 @@ class TestGooseDeepMerge:
         assert "memory" in result["extensions"]
         assert result["extensions"]["new_ext"]["enabled"] is True
 
-    def test_extension_available_tools_array_merge(self):
+    def test_extension_available_tools_array_replaced_wholesale(self):
         override = {"extensions": {"developer": {"available_tools": ["tool_x"]}}}
         result = deep_merge(self.BASE, override)
 
-        assert result["extensions"]["developer"]["available_tools"][0] == "tool_x"
-        assert result["extensions"]["developer"]["available_tools"][1] == "tool_b"
+        assert result["extensions"]["developer"]["available_tools"] == ["tool_x"]

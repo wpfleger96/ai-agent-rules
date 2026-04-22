@@ -218,6 +218,39 @@ ai-agent-rules override set claude.modle "sonnet"
 
 Path validation ensures you only set valid overrides that exist in the base settings, preventing typos and configuration errors.
 
+#### Codex Native Status Line
+
+Codex stores footer configuration in `~/.codex/config.toml` under `[tui].status_line`, so `ai-agent-rules` manages the native Codex footer directly instead of installing a separate status line tool. The bundled default is chosen to stay as close as possible to our Claude status line while using only Codex's built-in footer items.
+
+| Claude status line | Codex native item |
+|--------------------|-------------------|
+| `model` | `model-with-reasoning` |
+| `directory` | `current-dir` |
+| `git-branch` | `git-branch` |
+| `context-percentage` | `context-used` |
+| `context-tokens` | `used-tokens` |
+| `session-id` | `session-id` |
+| `cost` | No native Codex equivalent |
+| `lines-changed` | No native Codex equivalent |
+| `session-clock` | No native Codex equivalent |
+
+You can replace the default Codex footer per machine with `settings_overrides`:
+
+```yaml
+settings_overrides:
+  codex:
+    tui:
+      status_line:
+        - model-with-reasoning
+        - current-dir
+        - git-branch
+        - context-used
+        - used-tokens
+        - session-id
+```
+
+`codex.tui.status_line` replaces the entire footer list, so setting a shorter array removes the bundled defaults instead of merging with them.
+
 ### Profiles - Machine-Specific Configuration
 
 Profiles let you group configuration overrides into named presets. Instead of manually maintaining different `~/.ai-agent-rules-config.yaml` files across machines, define profiles once and select them at install time.

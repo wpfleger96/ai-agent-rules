@@ -638,8 +638,8 @@ class TestPathValidation:
 class TestDeepMergeWithArrays:
     """Test deep merge functionality with array support."""
 
-    def test_merge_arrays_element_by_element(self):
-        """Test that arrays are merged element by element."""
+    def test_merge_arrays_replaced_wholesale(self):
+        """Override list replaces base list entirely."""
         from ai_rules.utils import deep_merge
 
         base = {"items": ["a", "b", "c"]}
@@ -647,10 +647,10 @@ class TestDeepMergeWithArrays:
 
         result = deep_merge(base, override)
 
-        assert result["items"] == ["x", "y", "c"]
+        assert result["items"] == ["x", "y"]
 
-    def test_merge_array_with_dict_elements(self):
-        """Test merging arrays containing dicts."""
+    def test_merge_array_with_dict_elements_replaced(self):
+        """Override list of dicts replaces base list entirely."""
         from ai_rules.utils import deep_merge
 
         base = {
@@ -665,12 +665,10 @@ class TestDeepMergeWithArrays:
 
         result = deep_merge(base, override)
 
-        assert result["hooks"]["SubagentStop"][0]["command"] == "new.py"
-        assert result["hooks"]["SubagentStop"][0]["type"] == "command"
-        assert result["hooks"]["SubagentStop"][1]["command"] == "other.py"
+        assert result["hooks"]["SubagentStop"] == [{"command": "new.py"}]
 
     def test_merge_extends_base_array_if_override_longer(self):
-        """Test that override can extend base array."""
+        """Override list replaces base even when longer."""
         from ai_rules.utils import deep_merge
 
         base = {"items": ["a"]}
@@ -680,8 +678,8 @@ class TestDeepMergeWithArrays:
 
         assert result["items"] == ["x", "y", "z"]
 
-    def test_merge_preserves_base_array_elements_not_overridden(self):
-        """Test that array elements not in override are preserved."""
+    def test_merge_shorter_override_replaces_base_array(self):
+        """Shorter override list fully replaces longer base list."""
         from ai_rules.utils import deep_merge
 
         base = {"items": ["a", "b", "c", "d"]}
@@ -689,10 +687,10 @@ class TestDeepMergeWithArrays:
 
         result = deep_merge(base, override)
 
-        assert result["items"] == ["x", "b", "c", "d"]
+        assert result["items"] == ["x"]
 
-    def test_merge_nested_arrays_in_dicts(self):
-        """Test merging nested structures with arrays."""
+    def test_merge_nested_arrays_in_dicts_replaced(self):
+        """Override lists inside nested dicts are replaced wholesale."""
         from ai_rules.utils import deep_merge
 
         base = {
@@ -704,9 +702,7 @@ class TestDeepMergeWithArrays:
 
         result = deep_merge(base, override)
 
-        hooks_elem = result["hooks"]["SubagentStop"][0]["hooks"][0]
-        assert hooks_elem["command"] == "new.py"
-        assert hooks_elem["type"] == "command"
+        assert result["hooks"]["SubagentStop"] == [{"hooks": [{"command": "new.py"}]}]
 
 
 class TestCacheCleanup:
@@ -841,6 +837,58 @@ settings_overrides:
         assert config.settings_overrides["claude"]["model"] == "user-model"
         assert config.settings_overrides["claude"]["timeout"] == 30
 
+    def test_codex_status_line_user_override_replaces_profile_list(
+        self, tmp_path, monkeypatch
+    ):
+        """Codex footer overrides should replace the full profile list on load."""
+        Config._load_cached.cache_clear()
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        (home / ".ai-agent-rules-config.yaml").write_text("""
+settings_overrides:
+  codex:
+    tui:
+      status_line:
+        - model-with-reasoning
+        - session-id
+""")
+
+        profiles_dir = tmp_path / "profiles"
+        profiles_dir.mkdir()
+        (profiles_dir / "work.yaml").write_text("""
+name: work
+settings_overrides:
+  codex:
+    tui:
+      status_line:
+        - model-with-reasoning
+        - current-dir
+        - git-branch
+        - context-used
+        - used-tokens
+        - session-id
+""")
+
+        from ai_rules.profiles import ProfileLoader
+
+        original_init = ProfileLoader.__init__
+
+        def mock_init(self, profiles_dir_arg=None):
+            original_init(self, profiles_dir=profiles_dir_arg or profiles_dir)
+
+        monkeypatch.setattr(ProfileLoader, "__init__", mock_init)
+
+        config = Config.load(profile="work")
+
+        assert config.settings_overrides["codex"]["tui"]["status_line"] == [
+            "model-with-reasoning",
+            "session-id",
+        ]
+
 
 @pytest.mark.unit
 @pytest.mark.config
@@ -885,6 +933,20 @@ class TestTomlSupport:
 
         is_valid, error, _warning, _suggestions = validate_override_path(
             "codex", "model", tmp_path
+        )
+
+        assert is_valid
+        assert error == ""
+
+    def test_validate_codex_nested_override_path_valid(self, tmp_path):
+        settings_dir = tmp_path / "codex"
+        settings_dir.mkdir(parents=True)
+        (settings_dir / "config.toml").write_text(
+            'model = "gpt-5.2-codex"\n[tui]\nstatus_line = ["model-with-reasoning"]\n'
+        )
+
+        is_valid, error, _warning, _suggestions = validate_override_path(
+            "codex", "tui.status_line", tmp_path
         )
 
         assert is_valid
@@ -993,6 +1055,41 @@ class TestMergeSettingsAgentShapes:
 
         assert result["model"] == "gpt-5.2"
         assert result["approval_policy"] == "on-request"
+
+    def test_codex_status_line_override_replaces_entire_list(self):
+        config = Config(
+            settings_overrides={
+                "codex": {
+                    "tui": {
+                        "status_line": [
+                            "model-with-reasoning",
+                            "session-id",
+                        ]
+                    }
+                }
+            }
+        )
+        base = {
+            "model": "gpt-5.4",
+            "approval_policy": "on-request",
+            "tui": {
+                "status_line": [
+                    "model-with-reasoning",
+                    "current-dir",
+                    "git-branch",
+                    "context-used",
+                    "used-tokens",
+                    "session-id",
+                ]
+            },
+        }
+
+        result = config.merge_settings("codex", base)
+
+        assert result["tui"]["status_line"] == [
+            "model-with-reasoning",
+            "session-id",
+        ]
 
     def test_no_override_returns_base_unchanged(self):
         config = Config(settings_overrides={})
