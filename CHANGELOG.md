@@ -1,6 +1,40 @@
 # CHANGELOG
 
 
+## v0.37.0 (2026-04-22)
+
+### Features
+
+- Map Claude Code settings to Amp, Codex, Gemini, and Goose
+  ([`9ad4a04`](https://github.com/wpfleger96/ai-agent-rules/commit/9ad4a04a5a7b0c937beba075bbcd2dc15ef28d88))
+
+Claude Code has extensive config tuning (reasoning effort, tool permissions, session retention,
+  attribution, telemetry). The other agents had minimal configuration. This maps each setting to its
+  closest equivalent per upstream schema, validated against cached JSON schemas from the config
+  validation framework.
+
+Codex: reasoning effort/summary, history persistence, analytics,
+
+attribution. Gemini: read-only tool allowlist with auto_edit mode, session retention, inline
+  thinking. Goose: telemetry disabled. Amp: anthropic effort/thinking, deny permissions for
+  destructive
+
+ops, notifications. Work profile: Codex fast mode, Goose config excluded (MDM-managed).
+
+### Testing
+
+- Run schema validation in default suite
+  ([`a60f6ed`](https://github.com/wpfleger96/ai-agent-rules/commit/a60f6eddbde96d8ddf8e15f1feb5709c71e940ca))
+
+The schema checks were effectively dormant because the normal test path and CI skipped the live
+  validation class. Run them from the default suite so schema drift shows up in the same place as
+  the rest of the project's regressions.
+
+Split deterministic schema fetcher coverage from integration-style config compatibility checks so
+  the test layout matches the real boundary and Goose validation no longer rides along with the
+  remote-fetch marker.
+
+
 ## v0.36.0 (2026-04-21)
 
 ### Features
