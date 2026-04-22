@@ -95,11 +95,11 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "bootstrap: Tests for the bootstrap sub-module")
     config.addinivalue_line(
         "markers",
-        "schema: Tests that validate configs against provider JSON schemas",
+        "schema: Tests that validate bundled configs against provider or fixture schemas",
     )
     config.addinivalue_line(
         "markers",
-        "network: Tests that require network access to fetch remote schemas",
+        "network: Tests that fetch remote schemas during execution",
     )
 
 

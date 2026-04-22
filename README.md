@@ -395,6 +395,7 @@ just type-check   # Run mypy type checking
 just test         # Run all tests
 just test-unit    # Unit tests only
 just test-integration  # Integration tests only
+just validate-schemas  # Schema validation tests
 
 # Build
 just build        # Build package
@@ -406,10 +407,10 @@ The test suite includes both unit tests and integration tests.
 
 Using just (recommended):
 ```bash
-just test         # Run all tests with default config
+just test         # Run all tests
 just test-unit    # Only unit tests
 just test-integration  # Only integration tests
-just test-cov     # Tests with coverage report
+just validate-schemas  # Only schema validation tests
 ```
 
 Using uv directly:
@@ -417,6 +418,7 @@ Using uv directly:
 uv run pytest [--cov=src --cov-report=term-missing]  # All tests
 uv run pytest -m unit      # Unit tests only
 uv run pytest -m integration  # Integration tests only
+uv run pytest -m schema    # Schema validation tests only
 ```
 
 ## Troubleshooting

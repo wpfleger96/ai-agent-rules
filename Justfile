@@ -41,7 +41,7 @@ pre-commit: sync type-check lint format test
 
 # Testing
 test:
-    uv run pytest -m "not network"
+    uv run pytest
 
 test-unit:
     uv run pytest -m unit
@@ -49,8 +49,8 @@ test-unit:
 test-integration:
     uv run pytest -m integration
 
-test-network:
-    uv run pytest -m network
+validate-schemas:
+    uv run pytest -m schema
 
 # Build & Package
 build: sync

@@ -123,6 +123,6 @@ markers = [
     "completions: marks tests for shell completion functionality",
     "config: marks tests for configuration functionality",
     "state: mark tests for profile state tracking",
-    "schema: marks tests that validate configs against provider JSON schemas",
-    "network: marks tests that require network access to fetch remote schemas",
+    "schema: marks tests that validate bundled configs against provider or fixture schemas",
+    "network: marks tests that fetch remote schemas during execution",
 ]
