@@ -1817,17 +1817,40 @@ def upgrade(
         get_updatable_tools,
         perform_tool_upgrade,
     )
+    from ai_rules.bootstrap.installer import install_tool
     from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES
 
     console = Console()
 
     resolved_only = _TOOL_ID_ALIASES.get(only, only) if only else None
-    tools = [
+    all_tools = [
         t
         for t in get_updatable_tools()
         if resolved_only is None or t.tool_id == resolved_only
     ]
-    tools = [t for t in tools if t.is_installed()]
+    tools = [t for t in all_tools if t.is_installed()]
+    missing_tools = [t for t in all_tools if not t.is_installed()]
+
+    for tool in missing_tools:
+        console.print(f"[yellow]⚠[/yellow] {tool.display_name} is not installed")
+
+    if missing_tools and not check:
+        if yes or Confirm.ask("\nReinstall missing tools?", default=True):
+            for tool in missing_tools:
+                from_github = tool.github_install_url is not None
+                with console.status(f"Installing {tool.display_name}..."):
+                    success, msg = install_tool(
+                        tool.package_name,
+                        from_github=from_github,
+                        github_url=tool.github_install_url,
+                    )
+                if success:
+                    console.print(f"[green]✓[/green] {tool.display_name} reinstalled")
+                    tools.append(tool)
+                else:
+                    console.print(
+                        f"[red]Error:[/red] Failed to install {tool.display_name}: {msg}"
+                    )
 
     if not tools:
         if only:
