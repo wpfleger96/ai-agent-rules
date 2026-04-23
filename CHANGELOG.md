@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v0.39.0 (2026-04-23)
+
+### Documentation
+
+- Update documentation to reflect multi-agent expansion
+  ([`4562aeb`](https://github.com/wpfleger96/ai-agent-rules/commit/4562aeb4f92a07d329dfac02ab2f0ae3a24d338a))
+
+README and AGENTS.md still described a 2-agent tool (Claude + Goose) despite the project supporting
+  5 agents since v0.33. Three fully supported agents (Codex CLI, Gemini CLI, Amp) were entirely
+  absent from user-facing docs, along with MCP management, the three-tier profile hierarchy, and
+  several CLI commands.
+
+### Features
+
+- **claude**: Enable verbose view mode for expanded tool output
+  ([`70755ab`](https://github.com/wpfleger96/ai-agent-rules/commit/70755abbdd41d250dcd82301c18e5d299f971c88))
+
+Fullscreen TUI collapses all tool call results by default, requiring click-to-expand on each one.
+  viewMode "verbose" keeps them expanded in the live view without needing Ctrl+O transcript mode.
+
+
 ## v0.38.0 (2026-04-22)
 
 ### Bug Fixes
