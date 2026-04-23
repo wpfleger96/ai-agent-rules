@@ -1,6 +1,18 @@
 # CHANGELOG
 
 
+## v0.40.1 (2026-04-23)
+
+### Bug Fixes
+
+- Detect and reinstall missing tools during upgrade
+  ([`014543a`](https://github.com/wpfleger96/ai-agent-rules/commit/014543a25268e00b19960f3cbced25d62dbcb460))
+
+`ai-rules upgrade` silently skipped tools that were uninstalled externally (e.g. `uv tool
+  uninstall`) because the is_installed() filter dropped them with no warning. Since ai-agent-rules
+  itself always passes is_installed(), the empty-list guard never fired.
+
+
 ## v0.40.0 (2026-04-23)
 
 ### Chores
