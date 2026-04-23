@@ -1,0 +1,1 @@
+"""Config target base classes."""

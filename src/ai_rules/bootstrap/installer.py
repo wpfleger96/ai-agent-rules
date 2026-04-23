@@ -279,11 +279,11 @@ def ensure_statusline_installed(
         try:
             from ai_rules.bootstrap.updater import (
                 check_tool_updates,
-                get_tool_by_id,
                 perform_tool_upgrade,
             )
+            from ai_rules.tools.statusline import StatuslineTool
 
-            statusline_tool = get_tool_by_id("statusline")
+            statusline_tool = StatuslineTool.INSTALL_SPEC
             if statusline_tool:
                 update_info = check_tool_updates(statusline_tool, timeout=10)
                 if update_info and update_info.has_update:

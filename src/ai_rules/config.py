@@ -49,6 +49,7 @@ AGENT_FORMATS: dict[str, str] = {
     "codex": "toml",
     "gemini": "json",
     "goose": "yaml",
+    "statusline": "yaml",
 }
 
 FORMAT_CONFIG_FILES: dict[str, str] = {

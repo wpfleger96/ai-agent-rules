@@ -19,12 +19,12 @@ from .installer import (
     uninstall_tool,
 )
 from .updater import (
-    UPDATABLE_TOOLS,
     ToolSpec,
     UpdateInfo,
     check_index_updates,
     check_tool_updates,
     get_tool_by_id,
+    get_updatable_tools,
     perform_tool_upgrade,
 )
 from .version import is_newer, parse_version
@@ -41,11 +41,11 @@ __all__ = [
     "install_tool",
     "is_command_available",
     "uninstall_tool",
-    "UPDATABLE_TOOLS",
     "ToolSpec",
     "UpdateInfo",
     "check_index_updates",
     "check_tool_updates",
     "get_tool_by_id",
+    "get_updatable_tools",
     "perform_tool_upgrade",
 ]

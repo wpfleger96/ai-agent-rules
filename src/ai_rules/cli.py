@@ -16,9 +16,9 @@ import click
 if TYPE_CHECKING:
     from click.shell_completion import CompletionItem
 
-    from ai_rules.agents.base import Agent
     from ai_rules.config import Config
     from ai_rules.profiles import Profile
+    from ai_rules.targets.base import ConfigTarget
 
 logger = logging.getLogger(__name__)
 
@@ -95,15 +95,15 @@ def get_git_repo_root() -> Path:
     )
 
 
-def get_agents(config_dir: Path, config: "Config") -> list["Agent"]:
-    """Get all agent instances.
+def get_targets(config_dir: Path, config: "Config") -> list["ConfigTarget"]:
+    """Get all config target instances.
 
     Args:
         config_dir: Path to the config directory (use get_config_dir())
         config: Configuration object
 
     Returns:
-        List of all available agent instances
+        List of all available config target instances
     """
     from ai_rules.agents.amp import AmpAgent
     from ai_rules.agents.claude import ClaudeAgent
@@ -111,6 +111,7 @@ def get_agents(config_dir: Path, config: "Config") -> list["Agent"]:
     from ai_rules.agents.gemini import GeminiAgent
     from ai_rules.agents.goose import GooseAgent
     from ai_rules.agents.shared import SharedAgent
+    from ai_rules.tools.statusline import StatuslineTool
 
     return [
         AmpAgent(config_dir, config),
@@ -119,23 +120,24 @@ def get_agents(config_dir: Path, config: "Config") -> list["Agent"]:
         GeminiAgent(config_dir, config),
         GooseAgent(config_dir, config),
         SharedAgent(config_dir, config),
+        StatuslineTool(config_dir, config),
     ]
 
 
-def complete_agents(
+def complete_targets(
     ctx: click.Context, param: click.Parameter, incomplete: str
 ) -> list["CompletionItem"]:
-    """Dynamically discover and complete agent names for --agents option."""
+    """Dynamically discover and complete target names for --agents option."""
     from click.shell_completion import CompletionItem
 
     from ai_rules.config import Config
 
     config_dir = get_config_dir()
     config = Config.load()
-    agents = get_agents(config_dir, config)
-    agent_ids = [agent.agent_id for agent in agents]
+    targets = get_targets(config_dir, config)
+    target_ids = [target.target_id for target in targets]
 
-    return [CompletionItem(aid) for aid in agent_ids if aid.startswith(incomplete)]
+    return [CompletionItem(tid) for tid in target_ids if tid.startswith(incomplete)]
 
 
 def complete_profiles(
@@ -214,34 +216,34 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
     return broken_symlinks
 
 
-def select_agents(
-    all_agents: list["Agent"], filter_string: str | None
-) -> list["Agent"]:
-    """Select agents based on filter string.
+def select_targets(
+    all_targets: list["ConfigTarget"], filter_string: str | None
+) -> list["ConfigTarget"]:
+    """Select targets based on filter string.
 
     Args:
-        all_agents: List of all available agents
-        filter_string: Comma-separated agent IDs (e.g., "claude,goose") or None for all
+        all_targets: List of all available targets
+        filter_string: Comma-separated target IDs (e.g., "claude,goose") or None for all
 
     Returns:
-        List of selected agents
+        List of selected targets
 
     Raises:
-        SystemExit: If no agents match the filter
+        SystemExit: If no targets match the filter
     """
     from rich.console import Console
 
     console = Console()
 
     if not filter_string:
-        return all_agents
+        return all_targets
 
     requested_ids = {a.strip() for a in filter_string.split(",") if a.strip()}
-    selected = [agent for agent in all_agents if agent.agent_id in requested_ids]
+    selected = [target for target in all_targets if target.target_id in requested_ids]
 
     if not selected:
-        invalid_ids = requested_ids - {a.agent_id for a in all_agents}
-        available_ids = [a.agent_id for a in all_agents]
+        invalid_ids = requested_ids - {a.target_id for a in all_targets}
+        available_ids = [a.target_id for a in all_targets]
         console.print(
             f"[red]Error:[/red] Invalid agent ID(s): {', '.join(sorted(invalid_ids))}\n"
             f"[dim]Available agents: {', '.join(available_ids)}[/dim]"
@@ -291,7 +293,7 @@ def format_summary(
         console.print(f"  [red]{errors} error(s)[/red]")
 
 
-def _display_pending_symlink_changes(agents: list["Agent"]) -> bool:
+def _display_pending_symlink_changes(targets: list["ConfigTarget"]) -> bool:
     """Display what symlink changes will be made.
 
     Returns:
@@ -304,7 +306,7 @@ def _display_pending_symlink_changes(agents: list["Agent"]) -> bool:
     console = Console()
     found_changes = False
 
-    for agent in agents:
+    for agent in targets:
         agent_changes: list[tuple[str, Path, Path, str | None]] = []
         for target, source in agent.get_filtered_symlinks():
             target_path = target.expanduser()
@@ -385,7 +387,7 @@ def _display_pending_plugin_changes(config: "Config") -> bool:
     return found_changes
 
 
-def check_first_run(agents: list["Agent"], force: bool) -> bool:
+def check_first_run(targets: list["ConfigTarget"], force: bool) -> bool:
     """Check if this is the first run and prompt user if needed.
 
     Returns:
@@ -398,7 +400,7 @@ def check_first_run(agents: list["Agent"], force: bool) -> bool:
 
     existing_files = []
 
-    for agent in agents:
+    for agent in targets:
         for target, _ in agent.get_filtered_symlinks():
             target_path = target.expanduser()
             if target_path.exists() and not target_path.is_symlink():
@@ -484,7 +486,7 @@ def main() -> None:
 
 
 def cleanup_orphaned_symlinks(
-    selected_agents: list["Agent"],
+    selected_targets: list["ConfigTarget"],
     config_dir: Path,
     config: "Config",
     force: bool,
@@ -493,7 +495,7 @@ def cleanup_orphaned_symlinks(
     """Cleanup all orphaned symlinks across all config types.
 
     Args:
-        selected_agents: List of agents to check
+        selected_targets: List of targets to check
         config_dir: Path to the config directory
         config: Config object
         force: Skip confirmation prompts
@@ -534,7 +536,7 @@ def cleanup_orphaned_symlinks(
                                 f"  [yellow]⚠[/yellow] Could not remove {path}: {e}"
                             )
 
-    claude_agent = next((a for a in selected_agents if a.agent_id == "claude"), None)
+    claude_agent = next((a for a in selected_targets if a.target_id == "claude"), None)
     if claude_agent:
         base_settings_path = config_dir / "claude" / "settings.json"
         if base_settings_path.exists():
@@ -563,7 +565,7 @@ def cleanup_orphaned_symlinks(
             except (json.JSONDecodeError, OSError) as e:
                 console.print(f"[dim]Could not check for orphaned hooks: {e}[/dim]")
 
-    shared_agent = next((a for a in selected_agents if a.agent_id == ""), None)
+    shared_agent = next((a for a in selected_targets if a.target_id == ""), None)
     if shared_agent:
         from ai_rules.config import AGENT_SKILLS_DIRS
 
@@ -597,12 +599,12 @@ def cleanup_orphaned_symlinks(
 
 
 def cleanup_deprecated_symlinks(
-    selected_agents: list["Agent"], config_dir: Path, force: bool, dry_run: bool
+    selected_targets: list["ConfigTarget"], config_dir: Path, force: bool, dry_run: bool
 ) -> int:
     """Remove deprecated symlinks that point to our config files.
 
     Args:
-        selected_agents: List of agents to check for deprecated symlinks
+        selected_targets: List of targets to check for deprecated symlinks
         config_dir: Path to the config directory (repo/config)
         force: Skip confirmation prompts
         dry_run: Don't actually remove symlinks
@@ -617,7 +619,7 @@ def cleanup_deprecated_symlinks(
     console = Console()
     removed_count = 0
 
-    for agent in selected_agents:
+    for agent in selected_targets:
         deprecated_paths = agent.get_deprecated_symlinks()
 
         for deprecated_path in deprecated_paths:
@@ -646,9 +648,9 @@ def cleanup_deprecated_symlinks(
 
 
 def install_user_symlinks(
-    selected_agents: list["Agent"], force: bool, dry_run: bool
+    selected_targets: list["ConfigTarget"], force: bool, dry_run: bool
 ) -> dict[str, int]:
-    """Install user-level symlinks for all selected agents.
+    """Install user-level symlinks for all selected targets.
 
     Returns dict with keys: created, updated, skipped, excluded, errors
     """
@@ -659,13 +661,13 @@ def install_user_symlinks(
     console = Console()
     console.print("[bold cyan]User-Level Configuration[/bold cyan]")
 
-    if selected_agents:
-        config_dir = selected_agents[0].config_dir
-        cleanup_deprecated_symlinks(selected_agents, config_dir, force, dry_run)
+    if selected_targets:
+        config_dir = selected_targets[0].config_dir
+        cleanup_deprecated_symlinks(selected_targets, config_dir, force, dry_run)
 
     created = updated = skipped = excluded = errors = 0
 
-    for agent in selected_agents:
+    for agent in selected_targets:
         console.print(f"\n[bold]{agent.name}[/bold]")
 
         filtered_symlinks = agent.get_filtered_symlinks()
@@ -974,7 +976,7 @@ def setup(
 @click.option(
     "--agents",
     help="Comma-separated list of agents to install (default: all)",
-    shell_complete=complete_agents,
+    shell_complete=complete_targets,
 )
 @click.option(
     "--skip-completions",
@@ -1062,11 +1064,11 @@ def install(
     if profile and profile != "default":
         console.print(f"[dim]Using profile: {profile}[/dim]\n")
 
-    all_agents = get_agents(config_dir, config)
-    selected_agents = select_agents(all_agents, agents)
+    all_targets = get_targets(config_dir, config)
+    selected_targets = select_targets(all_targets, agents)
 
     if not dry_run:
-        for agent in all_agents:
+        for agent in all_targets:
             base_path = agent._base_settings_path
             if base_path.exists():
                 try:
@@ -1103,7 +1105,7 @@ def install(
             console.print("[dim]New symlinks will be created below...[/dim]\n")
 
     if not dry_run and not yes:
-        has_changes = _display_pending_symlink_changes(selected_agents)
+        has_changes = _display_pending_symlink_changes(selected_targets)
         has_plugin_changes = _display_pending_plugin_changes(config)
 
         if has_changes or has_plugin_changes:
@@ -1112,7 +1114,7 @@ def install(
                 console.print("[yellow]Installation cancelled[/yellow]")
                 sys.exit(0)
         elif not has_changes and not has_plugin_changes:
-            if not check_first_run(selected_agents, yes):
+            if not check_first_run(selected_targets, yes):
                 console.print("[yellow]Installation cancelled[/yellow]")
                 sys.exit(0)
     elif not dry_run and yes:
@@ -1122,27 +1124,30 @@ def install(
         console.print("[bold]Dry run mode - no changes will be made[/bold]\n")
 
     if not dry_run:
-        agents_needing_cache = {a.agent_id for a in selected_agents if a.needs_cache}
+        agents_needing_cache = {a.target_id for a in selected_targets if a.needs_cache}
         orphaned = config.cleanup_orphaned_cache(agents_needing_cache)
         if orphaned:
             console.print(
                 f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
             )
 
-    user_results = install_user_symlinks(selected_agents, yes, dry_run)
+    user_results = install_user_symlinks(selected_targets, yes, dry_run)
 
+    from ai_rules.agents.base import Agent
     from ai_rules.mcp import OperationResult
 
-    for agent in selected_agents:
-        mgr = agent.get_mcp_manager()
+    for target in selected_targets:
+        if not isinstance(target, Agent):
+            continue
+        mgr = target.get_mcp_manager()
         if mgr is None:
             continue
 
-        result, message, conflicts = agent.install_mcps(force=yes, dry_run=dry_run)
+        result, message, conflicts = target.install_mcps(force=yes, dry_run=dry_run)
 
         if conflicts and not yes:
             console.print(
-                f"\n[bold yellow]MCP Conflicts Detected ({agent.name}):[/bold yellow]"
+                f"\n[bold yellow]MCP Conflicts Detected ({target.name}):[/bold yellow]"
             )
             expected_mcps = mgr.load_managed_mcps(config_dir, config)
             installed_mcps = mgr._read_installed()
@@ -1159,7 +1164,7 @@ def install(
             ):
                 console.print("[yellow]Skipped MCP installation[/yellow]")
             else:
-                result, message, _ = agent.install_mcps(force=True, dry_run=dry_run)
+                result, message, _ = target.install_mcps(force=True, dry_run=dry_run)
                 console.print(f"[green]✓[/green] {message}")
         elif result == OperationResult.UPDATED:
             console.print(f"[green]✓[/green] {message}")
@@ -1168,7 +1173,7 @@ def install(
         elif result != OperationResult.NOT_FOUND:
             console.print(f"[yellow]⚠[/yellow] {message}")
 
-    claude_agent = next((a for a in selected_agents if a.agent_id == "claude"), None)
+    claude_agent = next((a for a in selected_targets if a.target_id == "claude"), None)
     if claude_agent is not None:
         if config.plugins or config.marketplaces:
             from ai_rules.plugins import (
@@ -1204,8 +1209,8 @@ def install(
                     "[dim]○[/dim] Skipped plugin sync (claude CLI not available)"
                 )
 
-    if selected_agents:
-        cleanup_orphaned_symlinks(selected_agents, config_dir, config, yes, dry_run)
+    if selected_targets:
+        cleanup_orphaned_symlinks(selected_targets, config_dir, config, yes, dry_run)
 
     total_created = user_results["created"]
     total_updated = user_results["updated"]
@@ -1306,7 +1311,7 @@ def _display_symlink_status(
 @click.option(
     "--agents",
     help="Comma-separated list of agents to check (default: all)",
-    shell_complete=complete_agents,
+    shell_complete=complete_targets,
 )
 def status(agents: str | None) -> None:
     """Check status of AI agent symlinks."""
@@ -1320,8 +1325,8 @@ def status(agents: str | None) -> None:
 
     config_dir = get_config_dir()
     config = Config.load()
-    all_agents = get_agents(config_dir, config)
-    selected_agents = select_agents(all_agents, agents)
+    all_targets = get_targets(config_dir, config)
+    selected_targets = select_targets(all_targets, agents)
 
     console.print("[bold]AI Rules Status[/bold]\n")
 
@@ -1331,49 +1336,55 @@ def status(agents: str | None) -> None:
 
     all_correct = True
 
+    from ai_rules.agents.base import Agent
+
     console.print("[bold cyan]User-Level Configuration[/bold cyan]\n")
     cache_stale = False
-    for agent in selected_agents:
-        console.print(f"[bold]{agent.name}:[/bold]")
+    for target in selected_targets:
+        console.print(f"[bold]{target.name}:[/bold]")
 
-        all_symlinks = agent.symlinks
-        filtered_symlinks = agent.get_filtered_symlinks()
+        all_symlinks = target.symlinks
+        filtered_symlinks = target.get_filtered_symlinks()
         excluded_symlinks = [
             (t, s) for t, s in all_symlinks if (t, s) not in filtered_symlinks
         ]
 
-        for target, source in filtered_symlinks:
-            target_str = str(target)
+        for tgt, source in filtered_symlinks:
+            target_str = str(tgt)
             if any(
                 ext in target_str
                 for ext in ["/agents/", "/commands/", "/skills/", "/hooks/"]
             ):
                 continue
 
-            status_code, message = check_symlink(target, source)
-            is_correct = _display_symlink_status(status_code, target, source, message)
+            status_code, message = check_symlink(tgt, source)
+            is_correct = _display_symlink_status(status_code, tgt, source, message)
             if not is_correct:
                 all_correct = False
 
-        for target, _ in excluded_symlinks:
-            console.print(f"  [dim]○[/dim] {target} [dim](excluded by config)[/dim]")
-        if agent.needs_cache:
-            if agent.is_cache_stale():
+        for tgt, _ in excluded_symlinks:
+            console.print(f"  [dim]○[/dim] {tgt} [dim](excluded by config)[/dim]")
+        if target.needs_cache:
+            if target.is_cache_stale():
                 console.print("  [yellow]⚠[/yellow] Cached settings are stale")
-                diff_output = agent.get_cache_diff()
+                diff_output = target.get_cache_diff()
                 if diff_output:
                     console.print(diff_output)
                 all_correct = False
                 cache_stale = True
 
-        mcp_status = agent.get_mcp_status()
-        if mcp_status is not None and (
-            mcp_status.managed_mcps
-            or mcp_status.unmanaged_mcps
-            or mcp_status.pending_mcps
-            or mcp_status.stale_mcps
+        mcp_status = target.get_mcp_status() if isinstance(target, Agent) else None
+        if (
+            mcp_status is not None
+            and isinstance(target, Agent)
+            and (
+                mcp_status.managed_mcps
+                or mcp_status.unmanaged_mcps
+                or mcp_status.pending_mcps
+                or mcp_status.stale_mcps
+            )
         ):
-            mgr = agent.get_mcp_manager()
+            mgr = target.get_mcp_manager()
             console.print("  [bold]MCPs:[/bold]")
             for name in sorted(mcp_status.managed_mcps.keys()):
                 is_installed = mcp_status.installed.get(name, False)
@@ -1418,7 +1429,7 @@ def status(agents: str | None) -> None:
             for name in sorted(mcp_status.unmanaged_mcps.keys()):
                 console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
 
-        if agent.agent_id == "claude":
+        if target.target_id == "claude":
             plugin_result = _get_plugin_status(config)
             if plugin_result is not None:
                 plugin_manager, plugin_status = plugin_result
@@ -1446,19 +1457,19 @@ def status(agents: str | None) -> None:
                     for key in sorted(plugin_status.extra):
                         console.print(f"    {key:<20} [dim]Unmanaged[/dim]")
 
-            extension_status = agent.get_extension_status()  # type: ignore[attr-defined]
+            extension_status = target.get_extension_status()  # type: ignore[attr-defined]
 
             merged_settings_for_hooks = {}
-            base_settings_path = agent._base_settings_path
+            base_settings_path = target._base_settings_path
             if base_settings_path.exists():
                 from ai_rules.config import CONFIG_PARSE_ERRORS, load_config_file
 
                 try:
                     base_settings = load_config_file(
-                        base_settings_path, agent.config_file_format
+                        base_settings_path, target.config_file_format
                     )
                     merged_settings_for_hooks = config.merge_settings(
-                        agent.agent_id, base_settings
+                        target.target_id, base_settings
                     )
                 except CONFIG_PARSE_ERRORS:
                     pass
@@ -1537,7 +1548,7 @@ def status(agents: str | None) -> None:
                         )
                         all_correct = False
 
-        skill_status = agent.get_skill_status()
+        skill_status = target.get_skill_status() if isinstance(target, Agent) else None
         orphaned_skills = {}
         if skill_status:
             from ai_rules.config import AGENT_SKILLS_DIRS
@@ -1545,9 +1556,9 @@ def status(agents: str | None) -> None:
 
             skill_manager = SkillManager(
                 config_dir=config_dir,
-                agent_id=agent.agent_id,
+                agent_id=target.target_id,
                 user_skills_dirs=(
-                    list(AGENT_SKILLS_DIRS.values()) if agent.agent_id == "" else None
+                    list(AGENT_SKILLS_DIRS.values()) if target.target_id == "" else None
                 ),
             )
             orphaned_skills_list = skill_manager.get_orphaned_skills()
@@ -1667,7 +1678,7 @@ def status(agents: str | None) -> None:
 @click.option(
     "--agents",
     help="Comma-separated list of agents to uninstall (default: all)",
-    shell_complete=complete_agents,
+    shell_complete=complete_targets,
 )
 def uninstall(yes: bool, agents: str | None) -> None:
     """Remove AI agent symlinks."""
@@ -1681,14 +1692,16 @@ def uninstall(yes: bool, agents: str | None) -> None:
 
     config_dir = get_config_dir()
     config = Config.load()
-    all_agents = get_agents(config_dir, config)
-    selected_agents = select_agents(all_agents, agents)
+    all_targets = get_targets(config_dir, config)
+    selected_targets = select_targets(all_targets, agents)
+
+    from ai_rules.agents.base import Agent
 
     if not yes:
         console.print("[yellow]Warning:[/yellow] This will remove symlinks for:\n")
         console.print("[bold]Agents:[/bold]")
-        for agent in selected_agents:
-            console.print(f"  • {agent.name}")
+        for target in selected_targets:
+            console.print(f"  • {target.name}")
         console.print()
         if not Confirm.ask("Continue?", default=False):
             console.print("[yellow]Uninstall cancelled[/yellow]")
@@ -1698,25 +1711,25 @@ def uninstall(yes: bool, agents: str | None) -> None:
     total_skipped = 0
 
     console.print("\n[bold cyan]User-Level Configuration[/bold cyan]")
-    for agent in selected_agents:
-        console.print(f"\n[bold]{agent.name}[/bold]")
+    for target in selected_targets:
+        console.print(f"\n[bold]{target.name}[/bold]")
 
-        for target, _ in agent.get_filtered_symlinks():
-            success, message = remove_symlink(target, yes)
+        for tgt, _ in target.get_filtered_symlinks():
+            success, message = remove_symlink(tgt, yes)
 
             if success:
-                console.print(f"  [green]✓[/green] {target} removed")
+                console.print(f"  [green]✓[/green] {tgt} removed")
                 total_removed += 1
             elif "Does not exist" in message:
-                console.print(f"  [dim]•[/dim] {target} [dim](not installed)[/dim]")
+                console.print(f"  [dim]•[/dim] {tgt} [dim](not installed)[/dim]")
             else:
-                console.print(f"  [yellow]○[/yellow] {target} [dim]({message})[/dim]")
+                console.print(f"  [yellow]○[/yellow] {tgt} [dim]({message})[/dim]")
                 total_skipped += 1
 
-        if agent.get_mcp_manager() is not None:
+        if isinstance(target, Agent) and target.get_mcp_manager() is not None:
             from ai_rules.mcp import OperationResult
 
-            result, message = agent.uninstall_mcps(force=yes, dry_run=False)
+            result, message = target.uninstall_mcps(force=yes, dry_run=False)
             if result == OperationResult.REMOVED:
                 console.print(f"  [green]✓[/green] {message}")
             elif result == OperationResult.NOT_FOUND:
@@ -1740,7 +1753,7 @@ def list_agents_cmd() -> None:
 
     config_dir = get_config_dir()
     config = Config.load()
-    agents = get_agents(config_dir, config)
+    targets = get_targets(config_dir, config)
 
     table = Table(title="Available AI Agents", show_header=True)
     table.add_column("ID", style="cyan")
@@ -1748,14 +1761,14 @@ def list_agents_cmd() -> None:
     table.add_column("Symlinks", justify="right")
     table.add_column("Status")
 
-    for agent in agents:
-        all_symlinks = agent.symlinks
-        filtered_symlinks = agent.get_filtered_symlinks()
+    for target in targets:
+        all_symlinks = target.symlinks
+        filtered_symlinks = target.get_filtered_symlinks()
         excluded_count = len(all_symlinks) - len(filtered_symlinks)
 
         installed = 0
-        for target, source in filtered_symlinks:
-            status_code, _ = check_symlink(target, source)
+        for tgt, source in filtered_symlinks:
+            status_code, _ = check_symlink(tgt, source)
             if status_code == "correct":
                 installed += 1
 
@@ -1764,7 +1777,7 @@ def list_agents_cmd() -> None:
         if excluded_count > 0:
             status += f" ({excluded_count} excluded)"
 
-        table.add_row(agent.agent_id, agent.name, str(total), status)
+        table.add_row(target.target_id, target.name, str(total), status)
 
     console.print(table)
 
@@ -1800,8 +1813,8 @@ def upgrade(
     from rich.prompt import Confirm
 
     from ai_rules.bootstrap import (
-        UPDATABLE_TOOLS,
         check_tool_updates,
+        get_updatable_tools,
         perform_tool_upgrade,
     )
     from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES
@@ -1811,7 +1824,7 @@ def upgrade(
     resolved_only = _TOOL_ID_ALIASES.get(only, only) if only else None
     tools = [
         t
-        for t in UPDATABLE_TOOLS
+        for t in get_updatable_tools()
         if resolved_only is None or t.tool_id == resolved_only
     ]
     tools = [t for t in tools if t.is_installed()]
@@ -1981,9 +1994,9 @@ def info() -> None:
     from rich.table import Table
 
     from ai_rules.bootstrap import (
-        UPDATABLE_TOOLS,
         check_tool_updates,
         get_tool_source,
+        get_updatable_tools,
     )
 
     console = Console()
@@ -1996,7 +2009,7 @@ def info() -> None:
 
     has_updates = False
 
-    for tool in UPDATABLE_TOOLS:
+    for tool in get_updatable_tools():
         tool_name = tool.display_name
 
         if not tool.is_installed():
@@ -2030,7 +2043,7 @@ def info() -> None:
 @click.option(
     "--agents",
     help="Comma-separated list of agents to validate (default: all)",
-    shell_complete=complete_agents,
+    shell_complete=complete_targets,
 )
 def validate(agents: str | None) -> None:
     """Validate configuration and source files."""
@@ -2042,8 +2055,8 @@ def validate(agents: str | None) -> None:
 
     config_dir = get_config_dir()
     config = Config.load()
-    all_agents = get_agents(config_dir, config)
-    selected_agents = select_agents(all_agents, agents)
+    all_targets = get_targets(config_dir, config)
+    selected_targets = select_targets(all_targets, agents)
 
     console.print("[bold]Validating AI Rules Configuration[/bold]\n")
 
@@ -2051,33 +2064,33 @@ def validate(agents: str | None) -> None:
     total_checked = 0
     total_issues = 0
 
-    for agent in selected_agents:
-        console.print(f"[bold]{agent.name}:[/bold]")
-        agent_issues = []
+    for target in selected_targets:
+        console.print(f"[bold]{target.name}:[/bold]")
+        target_issues = []
 
-        for _target, source in agent.symlinks:
+        for _tgt, source in target.symlinks:
             total_checked += 1
 
             if not source.exists():
-                agent_issues.append((source, "Source file does not exist"))
+                target_issues.append((source, "Source file does not exist"))
                 all_valid = False
             elif not source.is_file() and not source.is_dir():
-                agent_issues.append((source, "Source is not a file or directory"))
+                target_issues.append((source, "Source is not a file or directory"))
                 all_valid = False
             else:
                 console.print(f"  [green]✓[/green] {source.name}")
 
         excluded_symlinks = [
             (t, s)
-            for t, s in agent.symlinks
-            if (t, s) not in agent.get_filtered_symlinks()
+            for t, s in target.symlinks
+            if (t, s) not in target.get_filtered_symlinks()
         ]
         if excluded_symlinks:
             console.print(
                 f"  [dim]({len(excluded_symlinks)} symlink(s) excluded by config)[/dim]"
             )
 
-        for path, issue in agent_issues:
+        for path, issue in target_issues:
             console.print(f"  [red]✗[/red] {path}")
             console.print(f"    [dim]{issue}[/dim]")
             total_issues += 1
@@ -2097,7 +2110,7 @@ def validate(agents: str | None) -> None:
 @click.option(
     "--agents",
     help="Comma-separated list of agents to check (default: all)",
-    shell_complete=complete_agents,
+    shell_complete=complete_targets,
 )
 def diff(agents: str | None) -> None:
     """Show differences between repo configs and installed symlinks."""
@@ -2110,36 +2123,36 @@ def diff(agents: str | None) -> None:
 
     config_dir = get_config_dir()
     config = Config.load()
-    all_agents = get_agents(config_dir, config)
-    selected_agents = select_agents(all_agents, agents)
+    all_targets = get_targets(config_dir, config)
+    selected_targets = select_targets(all_targets, agents)
 
     console.print("[bold]Configuration Differences[/bold]\n")
 
     found_differences = False
 
-    for agent in selected_agents:
-        agent_has_diff = False
-        agent_diffs: list[tuple[Path, Path, str, str, str | None]] = []
+    for target in selected_targets:
+        target_has_diff = False
+        target_diffs: list[tuple[Path, Path, str, str, str | None]] = []
 
-        for target, source in agent.get_filtered_symlinks():
-            target_path = target.expanduser()
+        for tgt, source in target.get_filtered_symlinks():
+            target_path = tgt.expanduser()
             status_code, message = check_symlink(target_path, source)
 
             if status_code == "missing":
-                agent_diffs.append(
+                target_diffs.append(
                     (target_path, source, "missing", "Not installed", None)
                 )
-                agent_has_diff = True
+                target_has_diff = True
             elif status_code == "broken":
-                agent_diffs.append(
+                target_diffs.append(
                     (target_path, source, "broken", "Broken symlink", None)
                 )
-                agent_has_diff = True
+                target_has_diff = True
             elif status_code == "wrong_target":
                 try:
                     actual = target_path.resolve()
                     diff_output = get_content_diff(actual, source)
-                    agent_diffs.append(
+                    target_diffs.append(
                         (
                             target_path,
                             source,
@@ -2148,18 +2161,18 @@ def diff(agents: str | None) -> None:
                             diff_output,
                         )
                     )
-                    agent_has_diff = True
+                    target_has_diff = True
                 except (OSError, RuntimeError):
-                    agent_diffs.append(
+                    target_diffs.append(
                         (target_path, source, "broken", "Broken symlink", None)
                     )
-                    agent_has_diff = True
+                    target_has_diff = True
             elif status_code == "not_symlink":
                 try:
                     diff_output = get_content_diff(target_path, source)
                 except (OSError, RuntimeError):
                     diff_output = None
-                agent_diffs.append(
+                target_diffs.append(
                     (
                         target_path,
                         source,
@@ -2168,17 +2181,17 @@ def diff(agents: str | None) -> None:
                         diff_output,
                     )
                 )
-                agent_has_diff = True
+                target_has_diff = True
 
         cache_is_stale = False
-        if agent.needs_cache:
-            cache_is_stale = agent.is_cache_stale()
+        if target.needs_cache:
+            cache_is_stale = target.is_cache_stale()
             if cache_is_stale:
-                agent_has_diff = True
+                target_has_diff = True
 
-        if agent_has_diff:
-            console.print(f"[bold]{agent.name}:[/bold]")
-            for path, expected_source, diff_type, desc, content_diff in agent_diffs:
+        if target_has_diff:
+            console.print(f"[bold]{target.name}:[/bold]")
+            for path, expected_source, diff_type, desc, content_diff in target_diffs:
                 if diff_type == "missing":
                     console.print(f"  [red]✗[/red] {path}")
                     console.print(f"    [dim]{desc}[/dim]")
@@ -2201,7 +2214,7 @@ def diff(agents: str | None) -> None:
 
             if cache_is_stale:
                 console.print("  [yellow]⚠[/yellow] Cached settings are stale")
-                diff_output = agent.get_cache_diff()
+                diff_output = target.get_cache_diff()
                 if diff_output:
                     console.print(diff_output)
 
@@ -2639,7 +2652,9 @@ def config_show(merged: bool, agent: str | None) -> None:
     if merged:
         console.print("[bold]Merged Settings:[/bold]\n")
 
-        agents_to_show = [agent] if agent else ["claude", "codex", "gemini", "goose"]
+        from ai_rules.config import AGENT_FORMATS, FORMAT_CONFIG_FILES
+
+        agents_to_show = [agent] if agent else list(AGENT_FORMATS.keys())
 
         for agent_name in agents_to_show:
             has_overrides = agent_name in cfg.settings_overrides
@@ -2655,8 +2670,6 @@ def config_show(merged: bool, agent: str | None) -> None:
                 continue
 
             console.print(f"[bold]{agent_name}:[/bold]")
-
-            from ai_rules.config import AGENT_FORMATS, FORMAT_CONFIG_FILES
 
             agent_format = AGENT_FORMATS.get(agent_name)
             if not agent_format:
@@ -2833,17 +2846,18 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
 
     while True:
         console.print("\nWhich agent's settings do you want to override?")
-        console.print("  1) claude")
-        console.print("  2) codex")
-        console.print("  3) gemini")
-        console.print("  4) goose")
-        console.print("  5) done")
+        from ai_rules.config import AGENT_FORMATS
+
+        agent_keys = list(AGENT_FORMATS.keys())
+        for i, key in enumerate(agent_keys, 1):
+            console.print(f"  {i}) {key}")
+        console.print(f"  {len(agent_keys) + 1}) done")
         agent_choice = console.input("> ").strip()
 
-        if agent_choice == "5" or not agent_choice:
+        if agent_choice == str(len(agent_keys) + 1) or not agent_choice:
             break
 
-        agent_map = {"1": "claude", "2": "codex", "3": "gemini", "4": "goose"}
+        agent_map = {str(i): key for i, key in enumerate(agent_keys, 1)}
         agent = agent_map.get(agent_choice)
 
         if not agent:

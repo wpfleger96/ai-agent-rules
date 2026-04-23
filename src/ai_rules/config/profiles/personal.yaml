@@ -4,5 +4,8 @@ extends: default
 settings_overrides:
   claude:
     model: opusplan
+  statusline:
+    terminal_title:
+      enabled: true
 exclude_symlinks: []
 mcp_overrides: {}

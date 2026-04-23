@@ -12,7 +12,6 @@ from dataclasses import dataclass
 
 from .installer import (
     GITHUB_REPO,
-    STATUSLINE_GITHUB_REPO,
     UV_NOT_FOUND_ERROR,
     ToolSource,
     _validate_package_name,
@@ -387,24 +386,24 @@ def perform_tool_upgrade(tool: ToolSpec) -> tuple[bool, str, bool]:
         return False, f"Unexpected error: {e}", False
 
 
-UPDATABLE_TOOLS: list[ToolSpec] = [
-    ToolSpec(
-        tool_id="ai-agent-rules",
-        package_name="ai-agent-rules",
-        display_name="ai-agent-rules",
-        get_version=lambda: get_tool_version("ai-agent-rules"),
-        is_installed=lambda: True,  # Always installed (it's us)
-        github_repo=GITHUB_REPO,
-    ),
-    ToolSpec(
-        tool_id="statusline",
-        package_name="claude-code-statusline",
-        display_name="statusline",
-        get_version=lambda: get_tool_version("claude-code-statusline"),
-        is_installed=lambda: is_command_available("claude-statusline"),
-        github_repo=STATUSLINE_GITHUB_REPO,
-    ),
-]
+_SELF_SPEC = ToolSpec(
+    tool_id="ai-agent-rules",
+    package_name="ai-agent-rules",
+    display_name="ai-agent-rules",
+    get_version=lambda: get_tool_version("ai-agent-rules"),
+    is_installed=lambda: True,
+    github_repo=GITHUB_REPO,
+)
+
+
+def get_updatable_tools() -> list[ToolSpec]:
+    """Get all updatable tool specs, deriving from registered Tool classes."""
+    from ai_rules.tools.statusline import StatuslineTool
+
+    tools: list[ToolSpec] = [_SELF_SPEC]
+    if StatuslineTool.INSTALL_SPEC is not None:
+        tools.append(StatuslineTool.INSTALL_SPEC)
+    return tools
 
 
 def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:
@@ -449,4 +448,4 @@ def get_tool_by_id(tool_id: str) -> ToolSpec | None:
         ToolSpec if found, None otherwise
     """
     canonical = _TOOL_ID_ALIASES.get(tool_id, tool_id)
-    return next((t for t in UPDATABLE_TOOLS if t.tool_id == canonical), None)
+    return next((t for t in get_updatable_tools() if t.tool_id == canonical), None)

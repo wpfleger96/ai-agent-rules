@@ -80,10 +80,10 @@ class TestConfigInitCommand:
             "n",  # Skip exclusions (Claude, Codex, Gemini settings, Gemini rules, Goose config, Goose hints, Shared)
             "",  # No custom exclusions
             "y",  # Override settings?
-            "1",  # Choose claude
+            "2",  # Choose claude (amp=1, claude=2, codex=3, gemini=4, goose=5, statusline=6, done=7)
             "model=claude-3-5-sonnet-20241022",  # Add override
             "",  # Finish overrides for claude
-            "5",  # Done with agents
+            "7",  # Done with agents
             "y",  # Save configuration?
         ]
 
