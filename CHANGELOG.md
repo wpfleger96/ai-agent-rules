@@ -1,6 +1,32 @@
 # CHANGELOG
 
 
+## v0.40.0 (2026-04-23)
+
+### Chores
+
+- Delete unused script
+  ([`390d1aa`](https://github.com/wpfleger96/ai-agent-rules/commit/390d1aa751e249d6a65eb1dce7d30d08f619c942))
+
+### Features
+
+- Add ConfigTarget hierarchy and StatuslineTool for managed tool configs
+  ([`d40c319`](https://github.com/wpfleger96/ai-agent-rules/commit/d40c319695a0f4206170126d21d8feae9003672d))
+
+The Agent ABC mixed config pipeline concerns (merge, cache, symlink) with agent-specific concerns
+  (MCPs, skills). claude-code-status-line needed both config management and install lifecycle, but
+  these were handled by two disconnected registries.
+
+ConfigTarget is the new base owning the config pipeline. Agent and Tool are siblings: Agent adds
+  MCP/skills, Tool adds optional ToolSpec for install lifecycle. StatuslineTool is the single source
+  of truth for claude-code-status-line — config management, symlink, and upgrade spec.
+  UPDATABLE_TOOLS derives from registered tools rather than a hardcoded list. cli.py uses target_id
+  throughout with isinstance guards at MCP call sites.
+
+Enables terminal_title.enabled: true in personal/work profiles for cross-machine-consistent terminal
+  tab renaming.
+
+
 ## v0.39.0 (2026-04-23)
 
 ### Documentation
