@@ -1,6 +1,34 @@
 # CHANGELOG
 
 
+## v0.41.0 (2026-04-24)
+
+### Chores
+
+- Remove vestigial trigger-keywords and trigger-patterns from skills
+  ([`4cbebea`](https://github.com/wpfleger96/ai-agent-rules/commit/4cbebea961a67149096248e5f13ffd372d620f61))
+
+These custom metadata fields were added to feed a UserPromptSubmit hook (skillRouter.py) that was
+  removed in 8ebee1b. Nothing reads them — skill activation relies on the description field in
+  frontmatter.
+
+### Features
+
+- Add research skill, improve context for code-reviewer and crossfire
+  ([`bc9db66`](https://github.com/wpfleger96/ai-agent-rules/commit/bc9db6654f3babe310885b08226222af0cda8b45))
+
+Multi-agent research orchestrator adapted from Anthropic's deep research architecture. Opus
+  orchestrates (query classification, planning, synthesis), Sonnet subagents execute in parallel
+  with independent contexts. Tiered complexity routing scales from inline answers to 10 parallel
+  agents.
+
+Removed `context: fork` from research and code-reviewer skills so both retain conversation history
+  -- fixes "investigate this" failing in research and reviewer missing design intent context. Added
+  repo exploration instructions to crossfire prompts so external CLI agents (Codex, Gemini) read
+  changed files and dependencies before reviewing, preventing false positives from missing codebase
+  context.
+
+
 ## v0.40.1 (2026-04-23)
 
 ### Bug Fixes
