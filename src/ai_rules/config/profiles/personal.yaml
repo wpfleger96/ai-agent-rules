@@ -8,4 +8,11 @@ settings_overrides:
     terminal_title:
       enabled: true
 exclude_symlinks: []
-mcp_overrides: {}
+mcp_overrides:
+  basic-memory:
+    type: stdio
+    command: /bin/bash
+    args:
+      - ~/.claude/hooks/basic-memory-runner.sh
+    name: basic-memory
+    description: Persistent markdown knowledge base with BM25+vector search and git sync

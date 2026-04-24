@@ -3,6 +3,7 @@
 import subprocess
 import sys
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,6 +11,8 @@ import pytest
 from ai_rules.bootstrap.installer import (
     UV_NOT_FOUND_ERROR,
     ToolSource,
+    _is_basic_memory_configured,
+    ensure_basic_memory_installed,
     get_effective_install_source,
     get_tool_config_dir,
     get_tool_source,
@@ -384,3 +387,126 @@ class TestGetEffectiveInstallSource:
 
         monkeypatch.setattr(Config, "load", _raise)
         assert get_effective_install_source("statusline") is False
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestIsBasicMemoryConfigured:
+    """Tests for _is_basic_memory_configured helper."""
+
+    def test_returns_true_when_in_mcp_overrides(self):
+        config = SimpleNamespace(
+            mcp_overrides={"basic-memory": {"command": "/bin/bash"}}
+        )
+        assert _is_basic_memory_configured(config) is True
+
+    def test_returns_false_when_mcp_overrides_empty(self, monkeypatch):
+        import importlib.resources
+
+        config = SimpleNamespace(mcp_overrides={})
+        monkeypatch.setattr(
+            importlib.resources,
+            "files",
+            lambda pkg: _MockTraversable({}),
+        )
+        assert _is_basic_memory_configured(config) is False
+
+    def test_returns_false_when_no_mcp_overrides_attr(self, monkeypatch):
+        import importlib.resources
+
+        config = SimpleNamespace()
+        monkeypatch.setattr(
+            importlib.resources,
+            "files",
+            lambda pkg: _MockTraversable({}),
+        )
+        assert _is_basic_memory_configured(config) is False
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestEnsureBasicMemoryInstalled:
+    """Tests for ensure_basic_memory_installed function."""
+
+    def test_skips_when_not_configured(self, monkeypatch):
+        config = SimpleNamespace(mcp_overrides={})
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._is_basic_memory_configured",
+            lambda c: False,
+        )
+        status, msg = ensure_basic_memory_installed(config=config)
+        assert status == "skipped"
+        assert msg is None
+
+    def test_returns_already_installed_when_available(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._is_basic_memory_configured",
+            lambda c: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available",
+            lambda cmd: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._run_basic_memory_setup",
+            lambda **kw: None,
+        )
+
+        from ai_rules.bootstrap import updater
+
+        monkeypatch.setattr(
+            updater,
+            "get_tool_by_id",
+            lambda tid: None,
+        )
+        status, msg = ensure_basic_memory_installed(
+            config=SimpleNamespace(mcp_overrides={"basic-memory": {}})
+        )
+        assert status == "already_installed"
+
+    def test_setup_called_on_fresh_install(self, monkeypatch):
+        setup_calls = []
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._is_basic_memory_configured",
+            lambda c: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available",
+            lambda cmd: cmd != "basic-memory",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._run_basic_memory_setup",
+            lambda **kw: setup_calls.append(kw),
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.install_tool",
+            lambda *a, **kw: (True, "ok"),
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.make_github_install_url",
+            lambda repo: f"https://github.com/{repo}",
+        )
+        status, msg = ensure_basic_memory_installed(
+            config=SimpleNamespace(mcp_overrides={"basic-memory": {}})
+        )
+        assert status == "installed"
+        assert len(setup_calls) == 1
+        assert setup_calls[0].get("verbose") is True
+
+
+class _MockTraversable:
+    """Mock for importlib.resources traversable that returns empty mcps.json."""
+
+    def __init__(self, data: dict):
+        self._data = data
+
+    def __truediv__(self, other):
+        return _MockTraversable(self._data)
+
+    def is_file(self):
+        return True
+
+    def read_text(self):
+        import json
+
+        return json.dumps(self._data)

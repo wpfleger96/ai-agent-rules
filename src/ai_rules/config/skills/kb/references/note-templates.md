@@ -20,6 +20,9 @@ tags: [language, framework, block]
 - [tip] Non-obvious gotchas or conventions
 - [fact] Key configuration files to know about
 
+## Common Misconceptions
+- [misconception] Something commonly assumed but false about this repo
+
 ## Relations
 - related_to [[project-name-if-applicable]]
 - related_to [[relevant-pattern]]

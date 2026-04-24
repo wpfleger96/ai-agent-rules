@@ -134,7 +134,14 @@ Three similar lines > premature abstraction | No helpers for one-time ops | Only
 **Why:** LLMs confidently generate plausible-sounding but incorrect assumptions. Explicit verification prevents wasted work and builds trust through transparency.
 
 ### Persistent Knowledge Base (basic-memory)
-A persistent knowledge base exists at `~/basic-memory/`. Use basic-memory MCP tools (`search_notes`, `build_context`) for cross-project context. When learning something worth persisting, invoke the `/kb` skill for formatting conventions before calling `write_note`.
+
+A persistent markdown knowledge base exists at `~/basic-memory/`, powered by the basic-memory MCP server with hybrid BM25+vector search. Knowledge persists across sessions, repos, and machines via git sync.
+
+**Write-back loop:** When you synthesize a useful answer, debug a non-obvious issue, or the user corrects a false assumption, consider persisting it via `write_note`. Search first to avoid duplicates. Invoke the `/kb` skill for formatting conventions.
+
+**Quality conventions:** Use `[GAP: ...]` annotations for unverified claims. Use `[misconception]` tags to document what is NOT true (prevents confident false assertions). Use `[promote]` to flag patterns worth promoting to AGENTS.md rules.
+
+**Key tools:** `search_notes(query)` for hybrid search, `build_context(url)` for graph traversal, `read_note(identifier)` for specific notes, `write_note(title, directory, content)` to persist knowledge.
 
 ---
 

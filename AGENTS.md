@@ -197,7 +197,7 @@ uv run pytest -m state          # State management tests only
 
 ## Skills
 
-**Skills:** Explore `config/skills/*/SKILL.md` for available skills (10 total: agents-md, code-reviewer, continue-crash, crossfire, dev-docs, doc-writer, pr-creator, prompt-critique, prompt-engineer, test-writer).
+**Skills:** Explore `config/skills/*/SKILL.md` for available skills (11 total: agents-md, code-reviewer, continue-crash, crossfire, dev-docs, doc-writer, kb, pr-creator, prompt-critique, prompt-engineer, test-writer).
 - **SHARED across agents** - symlinked to `~/.claude/skills/`, `~/.config/goose/skills/`, `~/.config/agents/skills/` (Amp), `~/.agents/skills/` (Codex)
 - Managed by SharedAgent (displays under "Shared:" in status)
 - To add a skill: Create subdir in `config/skills/` with `SKILL.md`

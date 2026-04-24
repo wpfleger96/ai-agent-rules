@@ -2,6 +2,8 @@
 
 import subprocess
 
+from collections.abc import Callable
+
 import pytest
 
 from ai_rules.bootstrap.installer import UV_NOT_FOUND_ERROR, ToolSource
@@ -313,3 +315,53 @@ class TestPerformToolUpgrade:
 
         assert success is True
         assert was_upgraded is True
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestIsEnabledFiltering:
+    """Tests that is_enabled is respected in upgrade filtering (cli.py pattern)."""
+
+    def _make_tool(
+        self, tool_id: str, is_enabled: Callable[[], bool] | None = None
+    ) -> ToolSpec:
+        return ToolSpec(
+            tool_id=tool_id,
+            package_name=tool_id,
+            display_name=tool_id,
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+            github_repo="org/repo",
+            is_enabled=is_enabled,
+        )
+
+    def test_disabled_tool_excluded_in_default_upgrade(self):
+        tools = [self._make_tool("basic-memory", is_enabled=lambda: False)]
+        tools = [t for t in tools if t.is_installed()]
+        tools = [t for t in tools if t.is_enabled is None or t.is_enabled()]
+        assert len(tools) == 0
+
+    def test_tool_with_no_gate_always_included(self):
+        tools = [self._make_tool("statusline", is_enabled=None)]
+        tools = [t for t in tools if t.is_installed()]
+        tools = [t for t in tools if t.is_enabled is None or t.is_enabled()]
+        assert len(tools) == 1
+
+    def test_enabled_tool_included(self):
+        tools = [self._make_tool("basic-memory", is_enabled=lambda: True)]
+        tools = [t for t in tools if t.is_installed()]
+        tools = [t for t in tools if t.is_enabled is None or t.is_enabled()]
+        assert len(tools) == 1
+
+    def test_disabled_tool_still_included_when_explicitly_targeted(self):
+        """When user passes --only=basic-memory, is_enabled is not checked."""
+        resolved_only = "basic-memory"
+        tools = [self._make_tool("basic-memory", is_enabled=lambda: False)]
+        tools = [
+            t for t in tools if resolved_only is None or t.tool_id == resolved_only
+        ]
+        tools = [t for t in tools if t.is_installed()]
+        # is_enabled check only runs when resolved_only is None
+        if resolved_only is None:
+            tools = [t for t in tools if t.is_enabled is None or t.is_enabled()]
+        assert len(tools) == 1

@@ -33,11 +33,11 @@ done
 
 if [ ! -d "$WIKI_DIR/.git" ]; then
     cd "$WIKI_DIR"
-    if ! git config user.name >/dev/null 2>&1; then
-        git config user.name "AI Agent"
-        git config user.email "agent@local"
-    fi
     git init
+    if ! git config --global user.name >/dev/null 2>&1; then
+        git config --local user.name "AI Agent"
+        git config --local user.email "agent@local"
+    fi
     git add -A
     git commit -m "feat: initialize knowledge base" --allow-empty
 fi
@@ -77,7 +77,7 @@ else
         fi
 
         git remote set-url origin "$EXPECTED_URL"
-        git push -u origin main 2>/dev/null || git push -u origin main --force 2>/dev/null || true
+        git push -u origin main 2>/dev/null || true
 
         OLD_REPO=$(echo "$CURRENT_REMOTE" | sed 's|git@github.com:||;s|\.git$||')
         echo "✓ Migrated knowledge base to $FULL_REPO"

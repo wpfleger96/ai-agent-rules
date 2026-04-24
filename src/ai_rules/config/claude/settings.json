@@ -138,5 +138,18 @@
   "alwaysThinkingEnabled": true,
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
-  "viewMode": "verbose"
+  "viewMode": "verbose",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "mcp__basic-memory__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/basic-memory-post-write.sh"
+          }
+        ]
+      }
+    ]
+  }
 }

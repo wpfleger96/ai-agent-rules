@@ -1695,11 +1695,14 @@ def status(agents: str | None) -> None:
         console.print("  [yellow]○[/yellow] claude-statusline not installed")
         optional_tools_missing = True
 
-    if is_command_available("basic-memory"):
-        console.print("  [green]✓[/green] basic-memory installed")
-    else:
-        console.print("  [yellow]○[/yellow] basic-memory not installed")
-        optional_tools_missing = True
+    from ai_rules.bootstrap.installer import _is_basic_memory_configured
+
+    if _is_basic_memory_configured(config):
+        if is_command_available("basic-memory"):
+            console.print("  [green]✓[/green] basic-memory installed")
+        else:
+            console.print("  [yellow]○[/yellow] basic-memory not installed")
+            optional_tools_missing = True
 
     console.print()
 
@@ -1909,6 +1912,8 @@ def upgrade(
         if resolved_only is None or t.tool_id == resolved_only
     ]
     tools = [t for t in all_tools if t.is_installed()]
+    if resolved_only is None:
+        tools = [t for t in tools if t.is_enabled is None or t.is_enabled()]
     missing_tools = [t for t in all_tools if not t.is_installed()]
 
     for tool in missing_tools:

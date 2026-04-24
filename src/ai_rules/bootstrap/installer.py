@@ -398,7 +398,7 @@ def ensure_statusline_installed(
         return "failed", None
 
 
-def _run_basic_memory_setup() -> None:
+def _run_basic_memory_setup(verbose: bool = False) -> None:
     """Run the idempotent basic-memory setup script (git init, GitHub remote).
 
     Reads basic_memory config from ~/.ai-rules-config.yaml and passes
@@ -434,7 +434,7 @@ def _run_basic_memory_setup() -> None:
         subprocess.run(
             ["bash", str(setup_script)],
             timeout=60,
-            capture_output=True,
+            capture_output=not verbose,
             env=env,
         )
     except (subprocess.TimeoutExpired, Exception):
@@ -507,6 +507,8 @@ def ensure_basic_memory_installed(
                         )
                     success, msg, _ = perform_tool_upgrade(bm_tool)
                     if success:
+                        if not dry_run:
+                            _run_basic_memory_setup()
                         return (
                             "upgraded",
                             f"{update_info.current_version} → {update_info.latest_version}",
@@ -529,7 +531,7 @@ def ensure_basic_memory_installed(
         )
         if success:
             if not dry_run:
-                _run_basic_memory_setup()
+                _run_basic_memory_setup(verbose=True)
             return "installed", message if dry_run else None
         else:
             return "failed", None
