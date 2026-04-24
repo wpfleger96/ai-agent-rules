@@ -1,6 +1,26 @@
 # CHANGELOG
 
 
+## v0.42.0 (2026-04-24)
+
+### Features
+
+- Add per-tool install source configuration (PyPI vs GitHub)
+  ([`1325c12`](https://github.com/wpfleger96/ai-agent-rules/commit/1325c1291e25af9b14490aa094a7812731b08a7d))
+
+The --github flag on `setup` was ineffective for managed tools like statusline — if a tool was ever
+  installed from PyPI, it stayed on PyPI forever regardless of flags or profile config. Three bugs
+  conspired: `ensure_statusline_installed` ignored `from_github` when already installed, `setup`
+  only source-switched ai-rules itself, and `upgrade` had no source override.
+
+Adds profile-based install source config (`managed_tools.install_sources`) following the established
+  pattern where profiles set defaults and user config overrides. Resolution priority: CLI `--github`
+  flag > user config > active profile > default (PyPI). Includes source-switching support in
+  `ensure_statusline_installed`, a new `tool source` subcommand for user config escape hatch, and
+  drift detection in `info` output. Removes redundant `STATUSLINE_GITHUB_REPO` constant and
+  hardcoded fallback in `install_tool()`. Fixes mock type bug in test_bootstrap_updater.
+
+
 ## v0.41.0 (2026-04-24)
 
 ### Chores
