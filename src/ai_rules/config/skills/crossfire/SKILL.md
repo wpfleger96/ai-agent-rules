@@ -79,6 +79,13 @@ Construct a prompt for the external CLI agents. The prompt must include these se
 1. **Preamble:**
 ```
 You are reviewing the following artifact. Analyze it critically from your perspective as an independent reviewer. The primary AI agent has already produced this work — your job is to catch what it missed.
+
+Before evaluating the artifact, explore the repository to understand the surrounding context:
+1. Read the full content of any files that were changed (not just the diff lines)
+2. Identify and read files the changes depend on (imports, parent classes, shared types, interfaces)
+3. Check the project structure to understand where the changes fit architecturally
+
+Review the artifact with this full context in mind. Do not assume that code not shown in the artifact doesn't exist — verify by reading the actual files.
 ```
 
 2. **Review focus** (if one was determined from artifact detection):

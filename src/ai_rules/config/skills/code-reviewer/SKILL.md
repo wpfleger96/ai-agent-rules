@@ -1,7 +1,6 @@
 ---
 name: code-reviewer
 description: Performs thorough code review on local changes or PRs. Use this skill proactively after implementing code changes to catch issues before commit/push. Also use when reviewing PRs from other engineers.
-context: fork
 agent: general-purpose
 allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 model: opus
@@ -92,6 +91,13 @@ Write a prompt file to `{work_dir}/prompt.txt` with these sections in order:
 1. **Preamble:**
 ```
 You are reviewing the following code diff. Analyze it critically as an independent reviewer. Your job is to catch issues the primary reviewer may have missed.
+
+Before evaluating the diff, explore the repository to understand the surrounding context:
+1. Read the full content of any files that were changed (not just the diff lines)
+2. Identify and read files the changes depend on (imports, parent classes, shared types, interfaces)
+3. Check the project structure to understand where the changes fit architecturally
+
+Review the diff with this full context in mind. Do not assume that code not shown in the diff doesn't exist — verify by reading the actual files.
 ```
 
 2. **Review instructions:**
