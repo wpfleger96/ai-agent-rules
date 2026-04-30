@@ -426,6 +426,9 @@ def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:
 
     source = get_tool_source(tool.package_name)
 
+    if source == ToolSource.LOCAL:
+        return None  # Local installs don't have a remote version to check
+
     if source == ToolSource.GITHUB and tool.github_repo:
         return check_github_updates(tool.github_repo, current, timeout)
     else:

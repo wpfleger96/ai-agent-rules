@@ -133,6 +133,80 @@ class TestInstallTool:
         assert success is False
         assert expected_message in message.lower()
 
+    def test_install_from_local_path(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
+        )
+
+        captured = []
+
+        def mock_run(cmd, **kwargs):
+            captured.append(cmd)
+
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+
+            return Result()
+
+        monkeypatch.setattr("subprocess.run", mock_run)
+        success, _ = install_tool("some-package", local_path=str(tmp_path))
+        assert success is True
+        assert str(tmp_path) in captured[0][-1] or str(tmp_path.resolve()) in " ".join(
+            captured[0]
+        )
+
+    def test_local_path_skips_package_name_validation(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
+        )
+
+        captured = []
+
+        def mock_run(cmd, **kwargs):
+            captured.append(cmd)
+
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+
+            return Result()
+
+        monkeypatch.setattr("subprocess.run", mock_run)
+        success, _ = install_tool("this-is-invalid!!!name", local_path=str(tmp_path))
+        assert success is True
+
+    def test_local_path_takes_priority_over_github(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
+        )
+
+        captured = []
+
+        def mock_run(cmd, **kwargs):
+            captured.append(cmd)
+
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+
+            return Result()
+
+        monkeypatch.setattr("subprocess.run", mock_run)
+        success, _ = install_tool(
+            "some-package",
+            from_github=True,
+            github_url="git+ssh://git@github.com/owner/repo.git",
+            local_path=str(tmp_path),
+        )
+        assert success is True
+        cmd_str = " ".join(captured[0])
+        assert str(tmp_path.resolve()) in cmd_str
+        assert "github.com" not in cmd_str
+
 
 @pytest.mark.unit
 @pytest.mark.bootstrap
@@ -284,6 +358,32 @@ class TestGetToolSource:
         result = get_tool_source("nonexistent-package")
         assert result is None
 
+    def test_detects_local_installation(self, tmp_path, monkeypatch):
+        """Test that local path installations are detected."""
+        tools_dir = tmp_path / "uv" / "tools" / "test-package"
+        tools_dir.mkdir(parents=True)
+        receipt = tools_dir / "uv-receipt.toml"
+        receipt.write_text(
+            '[tool]\nrequirements = [{ name = "test-package", path = "/home/user/dev/test-package" }]\n'
+        )
+
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        result = get_tool_source("test-package")
+        assert result == ToolSource.LOCAL
+
+    def test_detects_local_directory_installation(self, tmp_path, monkeypatch):
+        """Test that local directory installations are detected."""
+        tools_dir = tmp_path / "uv" / "tools" / "test-package"
+        tools_dir.mkdir(parents=True)
+        receipt = tools_dir / "uv-receipt.toml"
+        receipt.write_text(
+            '[tool]\nrequirements = [{ name = "test-package", directory = "/home/user/dev/test-package" }]\n'
+        )
+
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        result = get_tool_source("test-package")
+        assert result == ToolSource.LOCAL
+
 
 @pytest.mark.unit
 @pytest.mark.bootstrap
@@ -341,39 +441,61 @@ class TestInstallToolGithub:
 class TestGetEffectiveInstallSource:
     """Tests for get_effective_install_source resolver."""
 
-    def test_cli_flag_always_wins(self, monkeypatch):
-        """CLI --github flag overrides everything — no config lookup needed."""
-        # No mocking needed: cli_github_flag=True returns True immediately
-        assert get_effective_install_source("statusline", cli_github_flag=True) is True
+    def test_cli_flag_returns_github(self, monkeypatch):
+        """CLI --github flag overrides everything."""
+        source, local_path = get_effective_install_source(
+            "statusline", cli_github_flag=True
+        )
+        assert source == ToolSource.GITHUB
+        assert local_path is None
 
-    def test_config_github_wins_without_cli_flag(self, monkeypatch):
-        """Persisted 'github' config wins when CLI flag is False."""
+    def test_config_github_returns_github(self, monkeypatch):
+        """Persisted 'github' config returns GITHUB."""
         from ai_rules.config import Config
 
         mock_config = MagicMock()
         mock_config.get_tool_install_source.return_value = "github"
         monkeypatch.setattr(Config, "load", lambda *a, **kw: mock_config)
-        assert get_effective_install_source("statusline", cli_github_flag=False) is True
+        source, local_path = get_effective_install_source(
+            "statusline", cli_github_flag=False
+        )
+        assert source == ToolSource.GITHUB
+        assert local_path is None
 
-    def test_config_pypi_beats_default(self, monkeypatch):
-        """Persisted 'pypi' config returns False even without CLI flag."""
+    def test_config_pypi_returns_pypi(self, monkeypatch):
+        """Persisted 'pypi' config returns PYPI."""
         from ai_rules.config import Config
 
         mock_config = MagicMock()
         mock_config.get_tool_install_source.return_value = "pypi"
         monkeypatch.setattr(Config, "load", lambda *a, **kw: mock_config)
-        assert (
-            get_effective_install_source("statusline", cli_github_flag=False) is False
+        source, local_path = get_effective_install_source(
+            "statusline", cli_github_flag=False
         )
+        assert source == ToolSource.PYPI
+        assert local_path is None
+
+    def test_config_local_returns_local_with_path(self, monkeypatch):
+        """Persisted 'local:~/path' config returns LOCAL with the path."""
+        from ai_rules.config import Config
+
+        mock_config = MagicMock()
+        mock_config.get_tool_install_source.return_value = "local:~/Development/recall"
+        monkeypatch.setattr(Config, "load", lambda *a, **kw: mock_config)
+        source, local_path = get_effective_install_source("recall")
+        assert source == ToolSource.LOCAL
+        assert local_path == "~/Development/recall"
 
     def test_defaults_to_pypi_when_nothing_configured(self, monkeypatch):
-        """Falls back to False (PyPI) when no config and no CLI flag."""
+        """Falls back to PYPI when no config and no CLI flag."""
         from ai_rules.config import Config
 
         mock_config = MagicMock()
         mock_config.get_tool_install_source.return_value = None
         monkeypatch.setattr(Config, "load", lambda *a, **kw: mock_config)
-        assert get_effective_install_source("statusline") is False
+        source, local_path = get_effective_install_source("statusline")
+        assert source == ToolSource.PYPI
+        assert local_path is None
 
     def test_config_load_failure_falls_back_to_pypi(self, monkeypatch):
         """Config load failure is silently ignored and defaults to PyPI."""
@@ -383,4 +505,6 @@ class TestGetEffectiveInstallSource:
             raise RuntimeError("config broke")
 
         monkeypatch.setattr(Config, "load", _raise)
-        assert get_effective_install_source("statusline") is False
+        source, local_path = get_effective_install_source("statusline")
+        assert source == ToolSource.PYPI
+        assert local_path is None

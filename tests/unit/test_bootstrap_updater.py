@@ -8,6 +8,7 @@ from ai_rules.bootstrap.installer import UV_NOT_FOUND_ERROR, ToolSource
 from ai_rules.bootstrap.updater import (
     ToolSpec,
     check_index_updates,
+    check_tool_updates,
     get_configured_index_url,
     perform_tool_upgrade,
 )
@@ -313,3 +314,26 @@ class TestPerformToolUpgrade:
 
         assert success is True
         assert was_upgraded is True
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestCheckToolUpdatesLocalSource:
+    """Tests that LOCAL-sourced tools are skipped by check_tool_updates."""
+
+    def test_local_source_returns_none(self, monkeypatch):
+        """check_tool_updates returns None for LOCAL installs — no PyPI query."""
+        tool = ToolSpec(
+            tool_id="recall",
+            package_name="recall-mcp-server",
+            display_name="recall",
+            get_version=lambda: "0.1.0",
+            is_installed=lambda: True,
+            github_repo="wpfleger96/recall",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.LOCAL,
+        )
+        result = check_tool_updates(tool)
+        assert result is None
