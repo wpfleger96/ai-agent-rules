@@ -1,6 +1,31 @@
 # CHANGELOG
 
 
+## v0.43.0 (2026-04-30)
+
+### Bug Fixes
+
+- Address review feedback for local install source
+  ([`3bab6bd`](https://github.com/wpfleger96/ai-agent-rules/commit/3bab6bd4fbdb3e115a676407183f5baeaff73d4c))
+
+perform_tool_upgrade() fell through to the PyPI upgrade path for LOCAL-sourced tools, which would
+  silently overwrite the local install. Also fixes relative paths being stored verbatim in config —
+  now resolved to absolute before persisting.
+
+### Features
+
+- Add generic local install source for managed tools
+  ([`5140b3f`](https://github.com/wpfleger96/ai-agent-rules/commit/5140b3f91a40c6575bc5fa97d2f4024fe1c06588))
+
+Adds ToolSource.LOCAL alongside PYPI and GITHUB for all managed tools (ai-agent-rules, statusline,
+  and any future tools like recall).
+
+- install_tool() accepts local_path parameter for local filesystem installs -
+  get_effective_install_source() returns (ToolSource, local_path) tuple - tool source CLI accepts
+  "local:~/path" format with path validation - check_tool_updates() skips LOCAL-sourced tools (no
+  remote to query) - ensure_statusline_installed() handles three-way source switching
+
+
 ## v0.42.0 (2026-04-24)
 
 ### Features
