@@ -1067,22 +1067,6 @@ def install(
 
     console = Console()
 
-    sl_source, sl_local_path = get_effective_install_source("statusline")
-    statusline_result, statusline_message = ensure_statusline_installed(
-        dry_run=dry_run,
-        from_github=sl_source == ToolSource.GITHUB,
-        local_path=sl_local_path,
-    )
-    if statusline_result == "installed":
-        if dry_run and statusline_message:
-            console.print(f"[dim]{statusline_message}[/dim]\n")
-        else:
-            console.print("[green]✓[/green] Installed claude-statusline\n")
-    elif statusline_result == "failed":
-        console.print(
-            "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)\n"
-        )
-
     if config_dir_override:
         config_dir = Path(config_dir_override)
         if not config_dir.exists():
@@ -1122,6 +1106,22 @@ def install(
 
     if profile and profile != "default":
         console.print(f"[dim]Using profile: {profile}[/dim]\n")
+
+    sl_source, sl_local_path = get_effective_install_source("statusline")
+    statusline_result, statusline_message = ensure_statusline_installed(
+        dry_run=dry_run,
+        from_github=sl_source == ToolSource.GITHUB,
+        local_path=sl_local_path,
+    )
+    if statusline_result == "installed":
+        if dry_run and statusline_message:
+            console.print(f"[dim]{statusline_message}[/dim]\n")
+        else:
+            console.print("[green]✓[/green] Installed claude-statusline\n")
+    elif statusline_result == "failed":
+        console.print(
+            "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)\n"
+        )
 
     all_targets = get_targets(config_dir, config)
     selected_targets = select_targets(all_targets, agents)
@@ -1224,13 +1224,13 @@ def install(
                 console.print("[yellow]Skipped MCP installation[/yellow]")
             else:
                 result, message, _ = target.install_mcps(force=True, dry_run=dry_run)
-                console.print(f"[green]✓[/green] {message}")
+                console.print(f"[green]✓[/green] {target.name}: {message}")
         elif result == OperationResult.UPDATED:
-            console.print(f"[green]✓[/green] {message}")
+            console.print(f"[green]✓[/green] {target.name}: {message}")
         elif result == OperationResult.ALREADY_INSTALLED:
-            console.print(f"[dim]○[/dim] {message}")
+            pass
         elif result != OperationResult.NOT_FOUND:
-            console.print(f"[yellow]⚠[/yellow] {message}")
+            console.print(f"[yellow]⚠[/yellow] {target.name}: {message}")
 
     claude_agent = next((a for a in selected_targets if a.target_id == "claude"), None)
     if claude_agent is not None:

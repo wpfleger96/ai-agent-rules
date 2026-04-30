@@ -390,6 +390,127 @@ settings_overrides:
         assert result["model"] == "new"
         assert result["enabledPlugins"] == {"my-plugin@marketplace": True}
 
+    def test_build_merged_settings_includes_managed_mcps(self, tmp_path, monkeypatch):
+        """build_merged_settings merges managed MCPs into the cache for agents that store MCPs in settings."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        config_dir = tmp_path / "config"
+        amp_dir = config_dir / "amp"
+        amp_dir.mkdir(parents=True)
+        (amp_dir / "settings.json").write_text(json.dumps({"amp.showCosts": True}))
+
+        mcps_data = {"test-mcp": {"type": "stdio", "command": "test", "args": []}}
+        (config_dir / "mcps.json").write_text(json.dumps(mcps_data))
+
+        from ai_rules.agents.amp import AmpAgent
+
+        config = Config(
+            mcp_overrides={
+                "my-mcp": {"type": "stdio", "command": "my-cmd", "args": ["--flag"]}
+            }
+        )
+        agent = AmpAgent(config_dir, config)
+
+        cache_path = agent.build_merged_settings(force_rebuild=True)
+        assert cache_path is not None
+
+        with open(cache_path) as f:
+            cached = json.load(f)
+
+        assert "amp.mcpServers" in cached
+        assert "test-mcp" in cached["amp.mcpServers"]
+        assert "my-mcp" in cached["amp.mcpServers"]
+        assert cached["amp.mcpServers"]["test-mcp"]["_managedBy"] == "ai-agent-rules"
+        assert cached["amp.showCosts"] is True
+
+    def test_build_merged_settings_reconciles_stale_mcps(self, tmp_path, monkeypatch):
+        """build_merged_settings removes stale managed MCPs when config changes."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        config_dir = tmp_path / "config"
+        amp_dir = config_dir / "amp"
+        amp_dir.mkdir(parents=True)
+        (amp_dir / "settings.json").write_text(json.dumps({}))
+        (config_dir / "mcps.json").write_text(
+            json.dumps({"keep-mcp": {"type": "stdio", "command": "keep", "args": []}})
+        )
+
+        from ai_rules.agents.amp import AmpAgent
+
+        config = Config()
+        agent = AmpAgent(config_dir, config)
+        cache_path = agent.build_merged_settings(force_rebuild=True)
+        assert cache_path is not None
+
+        with open(cache_path) as f:
+            cached = json.load(f)
+        cached["amp.mcpServers"]["stale-mcp"] = {
+            "command": "old",
+            "args": [],
+            "_managedBy": "ai-agent-rules",
+        }
+        with open(cache_path, "w") as f:
+            json.dump(cached, f)
+
+        cache_path2 = agent.build_merged_settings(force_rebuild=True)
+        assert cache_path2 is not None
+        with open(cache_path2) as f:
+            result = json.load(f)
+
+        assert "keep-mcp" in result["amp.mcpServers"]
+        assert "stale-mcp" not in result["amp.mcpServers"]
+
+    def test_build_merged_settings_removes_stale_codex_mcps_via_tracking_key(
+        self, tmp_path, monkeypatch
+    ):
+        """Codex uses a tracking section instead of inline markers. Stale MCPs must still be removed."""
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        config_dir = tmp_path / "config"
+        codex_dir = config_dir / "codex"
+        codex_dir.mkdir(parents=True)
+
+        import tomli_w
+
+        base_toml = {"model": "o3"}
+        with open(codex_dir / "config.toml", "wb") as f:
+            tomli_w.dump(base_toml, f)
+
+        (config_dir / "mcps.json").write_text("{}")
+
+        config = Config()
+        agent = CodexAgent(config_dir, config)
+
+        cache_path = agent.build_merged_settings(force_rebuild=True)
+        assert cache_path is not None
+
+        import tomllib
+
+        with open(cache_path, "rb") as f:
+            cached = tomllib.load(f)
+        cached["mcp_servers"] = {"stale-mcp": {"command": "old", "args": []}}
+        cached["_ai_agent_rules_managed"] = {"names": ["stale-mcp"]}
+        with open(cache_path, "wb") as f:
+            tomli_w.dump(cached, f)
+
+        cache_path2 = agent.build_merged_settings(force_rebuild=True)
+        assert cache_path2 is not None
+        with open(cache_path2, "rb") as f:
+            result = tomllib.load(f)
+
+        assert "stale-mcp" not in result.get("mcp_servers", {})
+        assert result.get("_ai_agent_rules_managed", {}).get("names", []) == []
+
     def test_get_settings_file_for_symlink_returns_cache_when_exists(
         self, tmp_path, monkeypatch
     ):

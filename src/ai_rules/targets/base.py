@@ -72,6 +72,13 @@ class ConfigTarget(ABC):
         """
         pass
 
+    def _merge_managed_mcps(self, merged: dict[str, Any]) -> None:  # noqa: B027
+        """Hook for subclasses to merge managed MCPs into the settings cache.
+
+        Called during build_merged_settings() after preserved_fields are applied.
+        Override in Agent to reconcile managed MCP entries.
+        """
+
     # --- settings cache methods -------------------------------------------
 
     @property
@@ -145,6 +152,8 @@ class ConfigTarget(ABC):
                             merged[field] = existing[field]
                 except CONFIG_PARSE_ERRORS:
                     pass
+
+            self._merge_managed_mcps(merged)
 
             if tracker and preserved:
                 for field in preserved:

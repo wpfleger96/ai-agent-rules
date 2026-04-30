@@ -269,6 +269,23 @@ def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
     except (OSError, UnicodeDecodeError):
         return None
 
+    if str(actual_path).endswith(".json") and str(expected_path).endswith(".json"):
+        try:
+            import json
+
+            actual_parsed = json.loads("".join(actual_lines))
+            expected_parsed = json.loads("".join(expected_lines))
+            if actual_parsed == expected_parsed:
+                return None
+            actual_lines = (json.dumps(actual_parsed, indent=2) + "\n").splitlines(
+                keepends=True
+            )
+            expected_lines = (json.dumps(expected_parsed, indent=2) + "\n").splitlines(
+                keepends=True
+            )
+        except (json.JSONDecodeError, ValueError):
+            pass
+
     diff = difflib.unified_diff(
         actual_lines,
         expected_lines,

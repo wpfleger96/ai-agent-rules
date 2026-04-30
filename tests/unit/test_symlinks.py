@@ -9,6 +9,7 @@ from ai_rules.symlinks import (
     SymlinkResult,
     check_symlink,
     create_symlink,
+    get_content_diff,
     remove_symlink,
 )
 
@@ -325,3 +326,41 @@ class TestCleanupDeprecatedSymlinks:
 
         assert removed == 1
         assert deprecated_path.exists()
+
+
+class TestGetContentDiffJsonNormalization:
+    """Test JSON normalization in get_content_diff."""
+
+    def test_formatting_only_diff_returns_none(self, tmp_path):
+        """Semantically identical JSON with different formatting returns None."""
+        compact = tmp_path / "compact.json"
+        compact.write_text('{"a": 1, "b": [1, 2]}')
+
+        expanded = tmp_path / "expanded.json"
+        expanded.write_text('{\n  "a": 1,\n  "b": [\n    1,\n    2\n  ]\n}\n')
+
+        assert get_content_diff(compact, expanded) is None
+
+    def test_semantic_diff_still_shown(self, tmp_path):
+        """JSON files with actual content differences produce a diff."""
+        file_a = tmp_path / "a.json"
+        file_a.write_text('{"key": "value1"}')
+
+        file_b = tmp_path / "b.json"
+        file_b.write_text('{"key": "value2"}')
+
+        result = get_content_diff(file_a, file_b)
+        assert result is not None
+        assert "value1" in result
+        assert "value2" in result
+
+    def test_non_json_files_not_normalized(self, tmp_path):
+        """Non-JSON files are compared as raw text."""
+        file_a = tmp_path / "a.yaml"
+        file_a.write_text("key: value\n")
+
+        file_b = tmp_path / "b.yaml"
+        file_b.write_text("key:  value\n")
+
+        result = get_content_diff(file_a, file_b)
+        assert result is not None

@@ -31,7 +31,7 @@ class GeminiAgent(Agent):
 
     @property
     def preserved_fields(self) -> list[str]:
-        return ["ide"]
+        return ["ide", "mcpServers"]
 
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
