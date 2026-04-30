@@ -44,7 +44,7 @@ class AmpAgent(Agent):
         config_file = self.config_dir / "amp" / "settings.json"
         if config_file.exists():
             target_file = self.config.get_settings_file_for_symlink(
-                "amp", config_file, force=bool(self.preserved_fields)
+                "amp", config_file, force=bool(self._effective_preserved_fields)
             )
             result.append((Path("~/.config/amp/settings.json"), target_file))
 

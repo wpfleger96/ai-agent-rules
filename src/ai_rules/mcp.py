@@ -69,6 +69,30 @@ class MCPManager(ABC):
     def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
         """Convert shared MCP format to agent-native format."""
 
+    @property
+    def mcp_settings_key(self) -> str | None:
+        """Key in the settings dict where MCPs are stored.
+
+        Returns None if this manager stores MCPs in a separate file
+        (e.g. Claude stores MCPs in ~/.claude.json, not in settings.json).
+        """
+        return None
+
+    @property
+    def mcp_tracking_key(self) -> str | None:
+        """Key for the managed-names tracking section, if any."""
+        return None
+
+    def get_native_mcps(self, config_dir: Path, config: Config) -> dict[str, Any]:
+        """Load managed MCPs, translate to native format, and stamp marker."""
+        managed = self.load_managed_mcps(config_dir, config)
+        result: dict[str, Any] = {}
+        for name, shared_cfg in managed.items():
+            native = self._translate(shared_cfg)
+            native[self._marker_field] = MANAGED_BY_VALUE
+            result[name] = native
+        return result
+
     # --- shared logic --------------------------------------------------------
 
     def load_managed_mcps(self, config_dir: Path, config: Config) -> dict[str, Any]:
@@ -174,15 +198,10 @@ class MCPManager(ABC):
         dry_run: bool = False,
     ) -> tuple[OperationResult, str, list[str]]:
         """Install managed MCPs into the agent's config file."""
-        managed_mcps = self.load_managed_mcps(config_dir, config)
-
-        native_mcps: dict[str, Any] = {}
-        for name, shared_cfg in managed_mcps.items():
-            translated = self._translate(shared_cfg)
-            translated[self._marker_field] = MANAGED_BY_VALUE
-            native_mcps[name] = translated
+        native_mcps = self.get_native_mcps(config_dir, config)
 
         current_mcps = self._read_installed()
+        original_mcps = copy.deepcopy(current_mcps)
 
         tracked_mcps = {
             name
@@ -211,6 +230,9 @@ class MCPManager(ABC):
             current_mcps.pop(name, None)
 
         current_mcps.update(native_mcps)
+
+        if current_mcps == original_mcps:
+            return (OperationResult.ALREADY_INSTALLED, "MCPs already up to date", [])
 
         self._write_installed(current_mcps)
 
@@ -402,6 +424,10 @@ class GooseMCPManager(MCPManager):
         return "_managed_by"
 
     @property
+    def mcp_settings_key(self) -> str | None:
+        return "extensions"
+
+    @property
     def _config_path(self) -> Path:
         return Path.home() / ".config" / "goose" / "config.yaml"
 
@@ -466,6 +492,14 @@ class CodexMCPManager(MCPManager):
     @property
     def _marker_field(self) -> str:
         return "_ai_agent_rules_managed_entry"
+
+    @property
+    def mcp_settings_key(self) -> str | None:
+        return "mcp_servers"
+
+    @property
+    def mcp_tracking_key(self) -> str | None:
+        return self._MANAGED_SECTION
 
     @property
     def _config_path(self) -> Path:
@@ -586,6 +620,10 @@ class GeminiMCPManager(MCPManager):
         return "_managedBy"
 
     @property
+    def mcp_settings_key(self) -> str | None:
+        return "mcpServers"
+
+    @property
     def _config_path(self) -> Path:
         return Path.home() / ".gemini" / "settings.json"
 
@@ -646,6 +684,10 @@ class AmpMCPManager(MCPManager):
     @property
     def _marker_field(self) -> str:
         return "_managedBy"
+
+    @property
+    def mcp_settings_key(self) -> str | None:
+        return "amp.mcpServers"
 
     @property
     def _config_path(self) -> Path:

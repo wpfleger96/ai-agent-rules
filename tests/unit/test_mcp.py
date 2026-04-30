@@ -677,3 +677,79 @@ def test_amp_preserves_non_mcp_keys(mock_home, test_repo):
     assert data["amp.showCosts"] is True
     assert data["amp.anthropic.thinking.enabled"] is True
     assert "mcp-a" in data["amp.mcpServers"]
+
+
+def test_install_mcps_noop_returns_already_installed(manager, mock_home, test_repo):
+    """install_mcps returns ALREADY_INSTALLED when MCPs haven't changed."""
+    config = Config()
+    result1, _, _ = manager.install_mcps(test_repo, config, force=True)
+    assert result1 == OperationResult.UPDATED
+
+    result2, message2, _ = manager.install_mcps(test_repo, config, force=True)
+    assert result2 == OperationResult.ALREADY_INSTALLED
+    assert "already up to date" in message2
+
+
+def test_get_native_mcps(manager, test_repo):
+    """get_native_mcps returns translated MCPs with managed-by marker."""
+    config = Config()
+    native = manager.get_native_mcps(test_repo, config)
+
+    assert "test-mcp" in native
+    assert native["test-mcp"]["_managedBy"] == "ai-agent-rules"
+    assert native["test-mcp"]["command"] == "test"
+
+
+def test_mcp_settings_key_claude_is_none():
+    """Claude stores MCPs in a separate file, so mcp_settings_key is None."""
+    assert ClaudeMCPManager().mcp_settings_key is None
+
+
+def test_mcp_settings_key_amp():
+    """Amp stores MCPs in the settings file under amp.mcpServers."""
+    assert AmpMCPManager().mcp_settings_key == "amp.mcpServers"
+
+
+def test_mcp_settings_key_gemini():
+    """Gemini stores MCPs in the settings file under mcpServers."""
+    assert GeminiMCPManager().mcp_settings_key == "mcpServers"
+
+
+def test_mcp_settings_key_codex():
+    """Codex stores MCPs in config.toml under mcp_servers."""
+    mgr = CodexMCPManager()
+    assert mgr.mcp_settings_key == "mcp_servers"
+    assert mgr.mcp_tracking_key == "_ai_agent_rules_managed"
+
+
+def test_mcp_settings_key_goose():
+    """Goose stores MCPs in config.yaml under extensions."""
+    assert GooseMCPManager().mcp_settings_key == "extensions"
+
+
+def test_merge_managed_mcps_handles_non_dict_entries(tmp_path, monkeypatch):
+    """_merge_managed_mcps doesn't crash on malformed non-dict MCP entries."""
+    import json
+
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+
+    config_dir = tmp_path / "config"
+    amp_dir = config_dir / "amp"
+    amp_dir.mkdir(parents=True)
+    (amp_dir / "settings.json").write_text(json.dumps({}))
+    (config_dir / "mcps.json").write_text(
+        json.dumps({"good-mcp": {"type": "stdio", "command": "test", "args": []}})
+    )
+
+    from ai_rules.agents.amp import AmpAgent
+
+    config = Config()
+    agent = AmpAgent(config_dir, config)
+
+    merged: dict = {"amp.mcpServers": {"bad-entry": "not-a-dict"}}
+    agent._merge_managed_mcps(merged)
+
+    assert "good-mcp" in merged["amp.mcpServers"]
+    assert "bad-entry" in merged["amp.mcpServers"]

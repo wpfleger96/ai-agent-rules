@@ -48,7 +48,7 @@ class GooseAgent(Agent):
         config_file = self.config_dir / "goose" / "config.yaml"
         if config_file.exists():
             target_file = self.config.get_settings_file_for_symlink(
-                "goose", config_file, force=bool(self.preserved_fields)
+                "goose", config_file, force=bool(self._effective_preserved_fields)
             )
             result.append((Path("~/.config/goose/config.yaml"), target_file))
 

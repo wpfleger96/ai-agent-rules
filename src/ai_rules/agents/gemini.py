@@ -48,7 +48,7 @@ class GeminiAgent(Agent):
         config_file = self.config_dir / "gemini" / "settings.json"
         if config_file.exists():
             target_file = self.config.get_settings_file_for_symlink(
-                "gemini", config_file, force=bool(self.preserved_fields)
+                "gemini", config_file, force=bool(self._effective_preserved_fields)
             )
             result.append((Path("~/.gemini/settings.json"), target_file))
 

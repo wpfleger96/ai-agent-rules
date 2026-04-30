@@ -11,7 +11,7 @@ settings_overrides:
       ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-4-6[1m]"
       CLAUDE_CODE_SUBAGENT_MODEL: "claude-sonnet-4-6[1m]"
       ANTHROPIC_DEFAULT_OPUS_MODEL: "claude-opus-4-6[1m]"
-    model: opus
+    model: "opus[1m]"
   codex:
     service_tier: "fast"
     features:

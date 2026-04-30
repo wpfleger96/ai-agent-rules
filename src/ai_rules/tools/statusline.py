@@ -37,6 +37,6 @@ class StatuslineTool(Tool):
         if not config_file.exists():
             return []
         target_file = self.config.get_settings_file_for_symlink(
-            "statusline", config_file, force=bool(self.preserved_fields)
+            "statusline", config_file, force=bool(self._effective_preserved_fields)
         )
         return [(Path("~/.config/claude-statusline/config.yaml"), target_file)]
