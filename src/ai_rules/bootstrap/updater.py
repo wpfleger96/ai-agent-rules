@@ -317,6 +317,9 @@ def perform_tool_upgrade(tool: ToolSpec) -> tuple[bool, str, bool]:
 
     source = get_tool_source(tool.package_name)
 
+    if source == ToolSource.LOCAL:
+        return True, "Local install — upgrade manually", False
+
     if source == ToolSource.GITHUB and tool.github_install_url:
         cmd = [
             "uv",
@@ -425,6 +428,9 @@ def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:
         return None
 
     source = get_tool_source(tool.package_name)
+
+    if source == ToolSource.LOCAL:
+        return None  # Local installs don't have a remote version to check
 
     if source == ToolSource.GITHUB and tool.github_repo:
         return check_github_updates(tool.github_repo, current, timeout)

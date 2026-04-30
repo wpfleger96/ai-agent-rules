@@ -20,6 +20,7 @@ class ToolSource(Enum):
 
     PYPI = auto()
     GITHUB = auto()
+    LOCAL = auto()
 
 
 def make_github_install_url(repo: str) -> str:
@@ -80,6 +81,7 @@ def get_tool_source(package_name: str) -> ToolSource | None:
     Returns:
         ToolSource.PYPI if installed from PyPI
         ToolSource.GITHUB if installed from GitHub
+        ToolSource.LOCAL if installed from a local path
         None if tool not installed or receipt file not found
     """
     data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
@@ -100,6 +102,8 @@ def get_tool_source(package_name: str) -> ToolSource | None:
         if isinstance(first_req, dict):
             if "git" in first_req and "github.com" in first_req["git"]:
                 return ToolSource.GITHUB
+            if "path" in first_req or "directory" in first_req:
+                return ToolSource.LOCAL
 
         return ToolSource.PYPI
 
@@ -123,28 +127,32 @@ def install_tool(
     package_name: str = "ai-agent-rules",
     from_github: bool = False,
     github_url: str | None = None,
+    local_path: str | None = None,
     force: bool = False,
     dry_run: bool = False,
 ) -> tuple[bool, str]:
     """Install package as a uv tool.
 
     Args:
-        package_name: Name of package to install (ignored if from_github=True)
+        package_name: Name of package to install (ignored if from_github or local_path)
         from_github: Install from GitHub instead of PyPI
         github_url: GitHub URL to install from (only used if from_github=True)
+        local_path: Local filesystem path to install from (takes priority over from_github)
         force: Force reinstall if already installed
         dry_run: Show what would be done without executing
 
     Returns:
         Tuple of (success, message)
     """
-    if not from_github and not _validate_package_name(package_name):
+    if not local_path and not from_github and not _validate_package_name(package_name):
         return False, f"Invalid package name: {package_name}"
 
     if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR
 
-    if from_github:
+    if local_path:
+        source = str(Path(local_path).expanduser().resolve())
+    elif from_github:
         if not github_url:
             raise ValueError("github_url is required when from_github=True")
         source = github_url
@@ -154,7 +162,7 @@ def install_tool(
 
     if force:
         cmd.insert(3, "--force")
-        if from_github:
+        if from_github or local_path:
             cmd.insert(4, "--reinstall")
 
     if dry_run:
@@ -261,44 +269,50 @@ def get_tool_version(tool_name: str) -> str | None:
         return None
 
 
-def get_effective_install_source(tool_id: str, cli_github_flag: bool = False) -> bool:
-    """Resolve whether a tool should use GitHub install.
+def get_effective_install_source(
+    tool_id: str, cli_github_flag: bool = False
+) -> tuple[ToolSource, str | None]:
+    """Resolve the install source for a tool.
 
     Priority (highest first):
     1. cli_github_flag — explicit session override (--github flag)
     2. Merged config (user config > active profile) managed_tools.install_sources
-    3. Default: False (PyPI)
+    3. Default: (ToolSource.PYPI, None)
 
     Args:
         tool_id: Tool identifier (e.g., "statusline", "ai-agent-rules")
         cli_github_flag: True if --github was passed on the CLI
 
     Returns:
-        True for GitHub, False for PyPI
+        Tuple of (ToolSource, local_path). local_path is set only for LOCAL source.
     """
     if cli_github_flag:
-        return True
+        return ToolSource.GITHUB, None
     try:
         from ai_rules.config import Config
 
         config = Config.load()
         source = config.get_tool_install_source(tool_id)
         if source == "github":
-            return True
+            return ToolSource.GITHUB, None
         if source == "pypi":
-            return False
+            return ToolSource.PYPI, None
+        if source and source.startswith("local:"):
+            local_path = source[len("local:") :]
+            return ToolSource.LOCAL, local_path
     except Exception as e:
         import logging
 
         logging.getLogger(__name__).debug(
             f"Config load failed in install source resolver: {e}"
         )
-    return False
+    return ToolSource.PYPI, None
 
 
 def ensure_statusline_installed(
     dry_run: bool = False,
     from_github: bool = False,
+    local_path: str | None = None,
     allow_source_switch: bool = False,
 ) -> tuple[str, str | None]:
     """Install or upgrade claude-code-statusline if needed. Fails open.
@@ -306,6 +320,7 @@ def ensure_statusline_installed(
     Args:
         dry_run: If True, show what would be done without executing
         from_github: Install from GitHub instead of PyPI
+        local_path: Local filesystem path to install from (takes priority)
         allow_source_switch: If True and the installed source differs from desired,
             uninstall and reinstall from the correct source (only setup should pass True)
 
@@ -322,10 +337,16 @@ def ensure_statusline_installed(
     except Exception:
         statusline_spec = None
 
+    if local_path:
+        desired_source = ToolSource.LOCAL
+    elif from_github:
+        desired_source = ToolSource.GITHUB
+    else:
+        desired_source = ToolSource.PYPI
+
     if is_command_available("claude-statusline"):
         if allow_source_switch and statusline_spec:
             current_source = get_tool_source(statusline_spec.package_name)
-            desired_source = ToolSource.GITHUB if from_github else ToolSource.PYPI
             if current_source is not None and current_source != desired_source:
                 if dry_run:
                     return (
@@ -341,6 +362,7 @@ def ensure_statusline_installed(
                         statusline_spec.package_name,
                         from_github=from_github,
                         github_url=github_url,
+                        local_path=local_path,
                         force=True,
                     )
                     if success:
@@ -386,6 +408,7 @@ def ensure_statusline_installed(
             else "claude-code-statusline",
             from_github=from_github,
             github_url=github_url,
+            local_path=local_path,
             force=False,
             dry_run=dry_run,
         )

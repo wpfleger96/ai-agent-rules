@@ -8,6 +8,7 @@ from ai_rules.bootstrap.installer import UV_NOT_FOUND_ERROR, ToolSource
 from ai_rules.bootstrap.updater import (
     ToolSpec,
     check_index_updates,
+    check_tool_updates,
     get_configured_index_url,
     perform_tool_upgrade,
 )
@@ -313,3 +314,64 @@ class TestPerformToolUpgrade:
 
         assert success is True
         assert was_upgraded is True
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestCheckToolUpdatesLocalSource:
+    """Tests that LOCAL-sourced tools are skipped by check_tool_updates."""
+
+    def test_local_source_returns_none(self, monkeypatch):
+        """check_tool_updates returns None for LOCAL installs — no PyPI query."""
+        tool = ToolSpec(
+            tool_id="recall",
+            package_name="recall-mcp-server",
+            display_name="recall",
+            get_version=lambda: "0.1.0",
+            is_installed=lambda: True,
+            github_repo="wpfleger96/recall",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.LOCAL,
+        )
+        result = check_tool_updates(tool)
+        assert result is None
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestPerformToolUpgradeLocalSource:
+    """Tests that LOCAL-sourced tools skip upgrade and return early."""
+
+    def test_local_source_skips_upgrade(self, monkeypatch):
+        """perform_tool_upgrade returns early for LOCAL installs without running subprocess."""
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.LOCAL,
+        )
+
+        subprocess_called = []
+        original_run = subprocess.run
+
+        def spy_run(*args, **kwargs):
+            subprocess_called.append(args)
+            return original_run(*args, **kwargs)
+
+        monkeypatch.setattr("subprocess.run", spy_run)
+
+        tool = ToolSpec(
+            tool_id="recall",
+            package_name="recall-mcp-server",
+            display_name="recall",
+            get_version=lambda: "0.1.0",
+            is_installed=lambda: True,
+            github_repo="wpfleger96/recall",
+        )
+        success, message, was_upgraded = perform_tool_upgrade(tool)
+        assert success is True
+        assert was_upgraded is False
+        assert not subprocess_called

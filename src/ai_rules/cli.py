@@ -742,6 +742,7 @@ def setup(
     from rich.prompt import Confirm
 
     from ai_rules.bootstrap import (
+        ToolSource,
         ensure_statusline_installed,
         get_effective_install_source,
         get_tool_config_dir,
@@ -758,11 +759,14 @@ def setup(
     console.print("[bold cyan]Step 1/3: Install ai-agent-rules system-wide[/bold cyan]")
     console.print("This allows you to run 'ai-agent-rules' from any directory.\n")
 
-    statusline_from_github = get_effective_install_source(
+    statusline_source, statusline_local_path = get_effective_install_source(
         "statusline", cli_github_flag=github
     )
     statusline_result, statusline_message = ensure_statusline_installed(
-        dry_run=dry_run, from_github=statusline_from_github, allow_source_switch=True
+        dry_run=dry_run,
+        from_github=statusline_source == ToolSource.GITHUB,
+        local_path=statusline_local_path,
+        allow_source_switch=True,
     )
     if statusline_result == "installed":
         if dry_run and statusline_message:
@@ -793,15 +797,21 @@ def setup(
     if ai_rules_tool and ai_rules_tool.is_installed():
         from ai_rules.bootstrap import ToolSource, get_tool_source, uninstall_tool
 
-        ai_rules_from_github = get_effective_install_source(
+        ai_rules_source, ai_rules_local_path = get_effective_install_source(
             "ai-agent-rules", cli_github_flag=github
         )
+        ai_rules_from_github = ai_rules_source == ToolSource.GITHUB
         current_source = get_tool_source(ai_rules_tool.package_name)
-        desired_source = ToolSource.GITHUB if ai_rules_from_github else ToolSource.PYPI
+        desired_source = ai_rules_source
         needs_source_switch = current_source != desired_source
 
         if needs_source_switch:
-            source_name = "GitHub" if ai_rules_from_github else "PyPI"
+            if ai_rules_source == ToolSource.LOCAL:
+                source_name = f"local ({ai_rules_local_path})"
+            elif ai_rules_from_github:
+                source_name = "GitHub"
+            else:
+                source_name = "PyPI"
             if dry_run:
                 console.print(
                     f"[dim]Would switch ai-agent-rules from {current_source.name if current_source else 'unknown'} to {source_name}[/dim]"
@@ -825,6 +835,7 @@ def setup(
                             ai_rules_tool.package_name,
                             from_github=ai_rules_from_github,
                             github_url=github_url,
+                            local_path=ai_rules_local_path,
                             force=True,
                         )
                         if success:
@@ -883,9 +894,10 @@ def setup(
                 return
 
         try:
-            ai_rules_from_github = get_effective_install_source(
+            ai_rules_source, ai_rules_local_path = get_effective_install_source(
                 "ai-agent-rules", cli_github_flag=github
             )
+            ai_rules_from_github = ai_rules_source == ToolSource.GITHUB
             ai_rules_tool_spec = get_tool_by_id("ai-agent-rules")
             github_url = (
                 ai_rules_tool_spec.github_install_url
@@ -896,6 +908,7 @@ def setup(
                 "ai-agent-rules",
                 from_github=ai_rules_from_github,
                 github_url=github_url,
+                local_path=ai_rules_local_path,
                 force=yes,
                 dry_run=dry_run,
             )
@@ -1046,6 +1059,7 @@ def install(
     from rich.prompt import Confirm
 
     from ai_rules.bootstrap import (
+        ToolSource,
         ensure_statusline_installed,
         get_effective_install_source,
     )
@@ -1053,9 +1067,11 @@ def install(
 
     console = Console()
 
+    sl_source, sl_local_path = get_effective_install_source("statusline")
     statusline_result, statusline_message = ensure_statusline_installed(
         dry_run=dry_run,
-        from_github=get_effective_install_source("statusline"),
+        from_github=sl_source == ToolSource.GITHUB,
+        local_path=sl_local_path,
     )
     if statusline_result == "installed":
         if dry_run and statusline_message:
@@ -1858,6 +1874,7 @@ def upgrade(
     from rich.prompt import Confirm
 
     from ai_rules.bootstrap import (
+        ToolSource,
         check_tool_updates,
         get_effective_install_source,
         get_updatable_tools,
@@ -1883,13 +1900,15 @@ def upgrade(
     if missing_tools and not check:
         if yes or Confirm.ask("\nReinstall missing tools?", default=True):
             for tool in missing_tools:
-                from_github = get_effective_install_source(tool.tool_id)
+                source, local_path = get_effective_install_source(tool.tool_id)
+                from_github = source == ToolSource.GITHUB
                 github_url = tool.github_install_url if from_github else None
                 with console.status(f"Installing {tool.display_name}..."):
                     success, msg = install_tool(
                         tool.package_name,
                         from_github=from_github,
                         github_url=github_url,
+                        local_path=local_path,
                     )
                 if success:
                     console.print(f"[green]✓[/green] {tool.display_name} reinstalled")
@@ -2098,16 +2117,23 @@ def info() -> None:
 
         if source:
             source_str = source.name.lower()
-            configured_source = (
-                ToolSource.GITHUB
-                if configured == "github"
-                else (ToolSource.PYPI if configured == "pypi" else None)
-            )
+            if configured and configured.startswith("local:"):
+                configured_source = ToolSource.LOCAL
+            elif configured == "github":
+                configured_source = ToolSource.GITHUB
+            elif configured == "pypi":
+                configured_source = ToolSource.PYPI
+            else:
+                configured_source = None
+
             if configured_source is not None and configured_source != source:
-                # Drift: config says one thing, receipt says another
                 source_display = f"{source_str} [yellow](config: {configured} — run 'setup' to switch)[/yellow]"
             elif configured is not None:
-                source_display = f"{source_str} [dim](config)[/dim]"
+                if configured_source == ToolSource.LOCAL:
+                    local_cfg_path = configured[len("local:") :]
+                    source_display = f"{source_str} [dim]({local_cfg_path})[/dim]"
+                else:
+                    source_display = f"{source_str} [dim](config)[/dim]"
             else:
                 source_display = source_str
         else:
@@ -3530,7 +3556,6 @@ def tool() -> None:
 @click.argument(
     "source_value",
     required=False,
-    type=click.Choice(["pypi", "github", "reset"]),
 )
 def tool_source(tool_id: str | None, source_value: str | None) -> None:
     """Get or set the persistent install source for a managed tool.
@@ -3539,11 +3564,12 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
 
     TOOL_ID can be one of: ai-agent-rules, ai-rules, statusline
 
-    SOURCE_VALUE can be: pypi, github, or reset (to clear the preference)
+    SOURCE_VALUE can be: pypi, github, local:<path>, or reset
 
     Examples:
         ai-agent-rules tool source
         ai-agent-rules tool source statusline github
+        ai-agent-rules tool source recall "local:~/Development/Personal/recall"
         ai-agent-rules tool source statusline reset
     """
     from rich.console import Console
@@ -3555,7 +3581,6 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
     console = Console()
 
     if tool_id is None:
-        # List all configured preferences
         tools = get_updatable_tools()
         table = Table(title="Tool Install Source Preferences", show_header=True)
         table.add_column("Tool", style="cyan")
@@ -3579,7 +3604,6 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
         )
         return
 
-    # Normalize alias (ai-rules → ai-agent-rules)
     canonical_id = _TOOL_ID_ALIASES.get(tool_id, tool_id)
     tools = get_updatable_tools()
     valid_ids = {t.tool_id for t in tools}
@@ -3590,7 +3614,6 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
         sys.exit(1)
 
     if source_value is None:
-        # Show current preference for this tool
         user_pref = Config.get_tool_install_source_from_user_config(canonical_id)
         try:
             effective_pref = Config.load().get_tool_install_source(canonical_id)
@@ -3619,7 +3642,7 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
         console.print(
             f"[green]✓[/green] Cleared install source preference for [cyan]{canonical_id}[/cyan]"
         )
-    else:
+    elif source_value in ("pypi", "github"):
         Config.set_tool_install_source(canonical_id, source_value)
         console.print(
             f"[green]✓[/green] Set [cyan]{canonical_id}[/cyan] install source to [bold]{source_value}[/bold]"
@@ -3627,6 +3650,24 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
         console.print(
             "[dim]Run 'ai-agent-rules setup' to switch the installed source if needed.[/dim]"
         )
+    elif source_value and source_value.startswith("local:"):
+        local_path = source_value[len("local:") :]
+        resolved = Path(local_path).expanduser().resolve()
+        if not resolved.exists():
+            console.print(f"[red]Error:[/red] Path does not exist: {resolved}")
+            sys.exit(1)
+        Config.set_tool_install_source(canonical_id, f"local:{resolved}")
+        console.print(
+            f"[green]✓[/green] Set [cyan]{canonical_id}[/cyan] install source to [bold]local: {resolved}[/bold]"
+        )
+        console.print(
+            "[dim]Run 'ai-agent-rules install' to install from local path.[/dim]"
+        )
+    else:
+        console.print(
+            f"[red]Error:[/red] Invalid source value '{source_value}'. Use: pypi, github, local:<path>, or reset"
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":

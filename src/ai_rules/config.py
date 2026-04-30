@@ -685,7 +685,7 @@ class Config:
             tool_id: Tool identifier (e.g., "statusline", "ai-agent-rules")
 
         Returns:
-            'pypi', 'github', or None if not configured
+            'pypi', 'github', 'local:<path>', or None if not configured
         """
         sources: dict[str, Any] = self.managed_tools.get("install_sources", {})
         value = sources.get(tool_id)
@@ -711,7 +711,7 @@ class Config:
 
         Args:
             tool_id: Tool identifier (e.g., "statusline", "ai-agent-rules")
-            source: 'pypi', 'github', or None to clear the preference
+            source: 'pypi', 'github', 'local:<path>', or None to clear the preference
         """
         data = Config.load_user_config()
         managed = data.setdefault("managed_tools", {})
