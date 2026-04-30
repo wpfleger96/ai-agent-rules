@@ -1,6 +1,35 @@
 # CHANGELOG
 
 
+## v0.43.1 (2026-04-30)
+
+### Bug Fixes
+
+- Derive MCP preserved fields dynamically from MCPManager
+  ([`7f06845`](https://github.com/wpfleger96/ai-agent-rules/commit/7f06845ab9c2b4c7e737b22bf89446d85156ba12))
+
+Codex's mcp_settings_key ("mcp_servers") and mcp_tracking_key ("_ai_agent_rules_managed") weren't in
+  preserved_fields, so get_cache_diff still produced false-positive diffs after the MCP/cache
+  unification — the same class of bug fixed for Amp and Gemini.
+
+Rather than manually adding MCP keys to each agent's preserved_fields (which is fragile and caused
+  the Codex omission), adds an _effective_preserved_fields property that dynamically extends the
+  static list with MCP keys from the agent's MCPManager. Also guards _merge_managed_mcps against
+  non-dict MCP entries, and restores dim ALREADY_INSTALLED output with per-agent labels.
+
+- Unify MCP and settings pipelines in cache build
+  ([`d0d48bd`](https://github.com/wpfleger96/ai-agent-rules/commit/d0d48bdf6917383d85be8ba07bd5178bdb7e8074))
+
+Two independent pipelines (build_merged_settings and install_mcps) wrote to the same agent config
+  files without coordination, causing status to show false-positive diffs for amp, codex, and
+  gemini. The cache now represents the complete expected file state by merging managed MCPs during
+  build_merged_settings via a _merge_managed_mcps hook.
+
+Also fixes: MCP install output missing per-agent labels, amp settings.json formatting mismatch, tool
+  install output appearing before profile header, Claude Code UI settings (skipAutoPermissionPrompt)
+  lost on cache rebuild, and work profile model variant (opus vs opus[1m]).
+
+
 ## v0.43.0 (2026-04-30)
 
 ### Bug Fixes
