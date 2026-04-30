@@ -81,6 +81,7 @@ def get_tool_source(package_name: str) -> ToolSource | None:
     Returns:
         ToolSource.PYPI if installed from PyPI
         ToolSource.GITHUB if installed from GitHub
+        ToolSource.LOCAL if installed from a local path
         None if tool not installed or receipt file not found
     """
     data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))

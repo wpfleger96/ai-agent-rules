@@ -2129,7 +2129,11 @@ def info() -> None:
             if configured_source is not None and configured_source != source:
                 source_display = f"{source_str} [yellow](config: {configured} — run 'setup' to switch)[/yellow]"
             elif configured is not None:
-                source_display = f"{source_str} [dim](config)[/dim]"
+                if configured_source == ToolSource.LOCAL:
+                    local_cfg_path = configured[len("local:") :]
+                    source_display = f"{source_str} [dim]({local_cfg_path})[/dim]"
+                else:
+                    source_display = f"{source_str} [dim](config)[/dim]"
             else:
                 source_display = source_str
         else:
@@ -3558,7 +3562,7 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
 
     Without arguments, lists all configured source preferences.
 
-    TOOL_ID can be one of: ai-agent-rules, ai-rules, statusline, recall
+    TOOL_ID can be one of: ai-agent-rules, ai-rules, statusline
 
     SOURCE_VALUE can be: pypi, github, local:<path>, or reset
 
@@ -3577,7 +3581,6 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
     console = Console()
 
     if tool_id is None:
-        # List all configured preferences
         tools = get_updatable_tools()
         table = Table(title="Tool Install Source Preferences", show_header=True)
         table.add_column("Tool", style="cyan")
@@ -3601,7 +3604,6 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
         )
         return
 
-    # Normalize alias (ai-rules → ai-agent-rules)
     canonical_id = _TOOL_ID_ALIASES.get(tool_id, tool_id)
     tools = get_updatable_tools()
     valid_ids = {t.tool_id for t in tools}
@@ -3612,7 +3614,6 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
         sys.exit(1)
 
     if source_value is None:
-        # Show current preference for this tool
         user_pref = Config.get_tool_install_source_from_user_config(canonical_id)
         try:
             effective_pref = Config.load().get_tool_install_source(canonical_id)
@@ -3655,7 +3656,7 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
         if not resolved.exists():
             console.print(f"[red]Error:[/red] Path does not exist: {resolved}")
             sys.exit(1)
-        Config.set_tool_install_source(canonical_id, source_value)
+        Config.set_tool_install_source(canonical_id, f"local:{resolved}")
         console.print(
             f"[green]✓[/green] Set [cyan]{canonical_id}[/cyan] install source to [bold]local: {resolved}[/bold]"
         )

@@ -317,6 +317,9 @@ def perform_tool_upgrade(tool: ToolSpec) -> tuple[bool, str, bool]:
 
     source = get_tool_source(tool.package_name)
 
+    if source == ToolSource.LOCAL:
+        return True, "Local install — upgrade manually", False
+
     if source == ToolSource.GITHUB and tool.github_install_url:
         cmd = [
             "uv",
