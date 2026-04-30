@@ -29,6 +29,17 @@ class Agent(ConfigTarget):
         """Return the agent-specific MCPManager, or None if MCP is unsupported."""
         return None
 
+    @property
+    def _effective_preserved_fields(self) -> list[str]:
+        fields = list(self.preserved_fields)
+        mgr = self.get_mcp_manager()
+        if mgr is not None and mgr.mcp_settings_key is not None:
+            if mgr.mcp_settings_key not in fields:
+                fields.append(mgr.mcp_settings_key)
+            if mgr.mcp_tracking_key and mgr.mcp_tracking_key not in fields:
+                fields.append(mgr.mcp_tracking_key)
+        return fields
+
     def _merge_managed_mcps(self, merged: dict[str, Any]) -> None:
         """Merge managed MCPs into the settings cache.
 
@@ -55,7 +66,7 @@ class Agent(ConfigTarget):
             tracked = {
                 n
                 for n, c in current.items()
-                if is_managed_value(c.get(mgr._marker_field))
+                if isinstance(c, dict) and is_managed_value(c.get(mgr._marker_field))
             }
         for name in tracked - set(native_mcps.keys()):
             current.pop(name, None)

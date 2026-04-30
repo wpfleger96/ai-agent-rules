@@ -29,10 +29,6 @@ class AmpAgent(Agent):
     def config_file_format(self) -> str:
         return "json"
 
-    @property
-    def preserved_fields(self) -> list[str]:
-        return ["amp.mcpServers"]
-
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of all Amp symlinks."""
@@ -48,7 +44,7 @@ class AmpAgent(Agent):
         config_file = self.config_dir / "amp" / "settings.json"
         if config_file.exists():
             target_file = self.config.get_settings_file_for_symlink(
-                "amp", config_file, force=bool(self.preserved_fields)
+                "amp", config_file, force=bool(self._effective_preserved_fields)
             )
             result.append((Path("~/.config/amp/settings.json"), target_file))
 

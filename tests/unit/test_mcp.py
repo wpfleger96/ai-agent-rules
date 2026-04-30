@@ -725,3 +725,31 @@ def test_mcp_settings_key_codex():
 def test_mcp_settings_key_goose():
     """Goose stores MCPs in config.yaml under extensions."""
     assert GooseMCPManager().mcp_settings_key == "extensions"
+
+
+def test_merge_managed_mcps_handles_non_dict_entries(tmp_path, monkeypatch):
+    """_merge_managed_mcps doesn't crash on malformed non-dict MCP entries."""
+    import json
+
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+
+    config_dir = tmp_path / "config"
+    amp_dir = config_dir / "amp"
+    amp_dir.mkdir(parents=True)
+    (amp_dir / "settings.json").write_text(json.dumps({}))
+    (config_dir / "mcps.json").write_text(
+        json.dumps({"good-mcp": {"type": "stdio", "command": "test", "args": []}})
+    )
+
+    from ai_rules.agents.amp import AmpAgent
+
+    config = Config()
+    agent = AmpAgent(config_dir, config)
+
+    merged: dict = {"amp.mcpServers": {"bad-entry": "not-a-dict"}}
+    agent._merge_managed_mcps(merged)
+
+    assert "good-mcp" in merged["amp.mcpServers"]
+    assert "bad-entry" in merged["amp.mcpServers"]

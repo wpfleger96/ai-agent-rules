@@ -54,10 +54,19 @@ class ConfigTarget(ABC):
         return []
 
     @property
+    def _effective_preserved_fields(self) -> list[str]:
+        """All fields that should be preserved across cache rebuilds.
+
+        Includes static preserved_fields plus any dynamically derived fields.
+        Override in subclasses (e.g. Agent) to extend with additional keys.
+        """
+        return self.preserved_fields
+
+    @property
     def needs_cache(self) -> bool:
         """Whether this target needs a cache file (has overrides or preserved fields)."""
         return self.target_id in self.config.settings_overrides or bool(
-            self.preserved_fields
+            self._effective_preserved_fields
         )
 
     @cached_property
@@ -132,7 +141,7 @@ class ConfigTarget(ABC):
         if cache_path:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-            preserved = self.preserved_fields
+            preserved = self._effective_preserved_fields
 
             # JSON targets: use ManagedFieldsTracker for granular cleanup on
             # profile switch (e.g. removing stale hook entries)
@@ -262,7 +271,7 @@ class ConfigTarget(ABC):
 
         current_copy = copy.deepcopy(current_settings)
         expected_copy = copy.deepcopy(expected_settings)
-        for field in self.preserved_fields:
+        for field in self._effective_preserved_fields:
             current_copy.pop(field, None)
             expected_copy.pop(field, None)
 

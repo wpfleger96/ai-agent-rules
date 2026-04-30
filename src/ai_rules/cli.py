@@ -1228,7 +1228,7 @@ def install(
         elif result == OperationResult.UPDATED:
             console.print(f"[green]✓[/green] {target.name}: {message}")
         elif result == OperationResult.ALREADY_INSTALLED:
-            pass
+            console.print(f"[dim]○ {target.name}: {message}[/dim]")
         elif result != OperationResult.NOT_FOUND:
             console.print(f"[yellow]⚠[/yellow] {target.name}: {message}")
 

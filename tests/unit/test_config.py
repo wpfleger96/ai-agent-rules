@@ -511,6 +511,60 @@ settings_overrides:
         assert "stale-mcp" not in result.get("mcp_servers", {})
         assert result.get("_ai_agent_rules_managed", {}).get("names", []) == []
 
+    def test_effective_preserved_fields_includes_mcp_keys(self, tmp_path):
+        """_effective_preserved_fields dynamically includes MCP settings/tracking keys."""
+        from ai_rules.agents.amp import AmpAgent
+        from ai_rules.agents.codex import CodexAgent as CodexAgentLocal
+        from ai_rules.agents.gemini import GeminiAgent
+
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        config = Config()
+
+        amp = AmpAgent(config_dir, config)
+        assert "amp.mcpServers" in amp._effective_preserved_fields
+
+        gemini = GeminiAgent(config_dir, config)
+        assert "ide" in gemini._effective_preserved_fields
+        assert "mcpServers" in gemini._effective_preserved_fields
+
+        codex = CodexAgentLocal(config_dir, config)
+        assert "projects" in codex._effective_preserved_fields
+        assert "mcp_servers" in codex._effective_preserved_fields
+        assert "_ai_agent_rules_managed" in codex._effective_preserved_fields
+
+        claude = ClaudeAgent(config_dir, config)
+        assert "enabledPlugins" in claude._effective_preserved_fields
+        assert claude._effective_preserved_fields == claude.preserved_fields
+
+    def test_codex_cache_diff_none_after_build_with_mcps(self, tmp_path, monkeypatch):
+        """get_cache_diff returns None for Codex after build_merged_settings with MCPs."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        config_dir = tmp_path / "config"
+        codex_dir = config_dir / "codex"
+        codex_dir.mkdir(parents=True)
+
+        import tomli_w
+
+        with open(codex_dir / "config.toml", "wb") as f:
+            tomli_w.dump({"model": "o3"}, f)
+
+        mcps_data = {"test-mcp": {"type": "stdio", "command": "test", "args": []}}
+        (config_dir / "mcps.json").write_text(json.dumps(mcps_data))
+
+        config = Config()
+        agent = CodexAgent(config_dir, config)
+
+        cache_path = agent.build_merged_settings(force_rebuild=True)
+        assert cache_path is not None
+
+        assert agent.get_cache_diff() is None
+
     def test_get_settings_file_for_symlink_returns_cache_when_exists(
         self, tmp_path, monkeypatch
     ):

@@ -48,7 +48,7 @@ class CodexAgent(Agent):
         config_file = self.config_dir / "codex" / "config.toml"
         if config_file.exists():
             target_file = self.config.get_settings_file_for_symlink(
-                "codex", config_file, force=bool(self.preserved_fields)
+                "codex", config_file, force=bool(self._effective_preserved_fields)
             )
             result.append((Path("~/.codex/config.toml"), target_file))
 
