@@ -139,5 +139,6 @@
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
   "skipAutoPermissionPrompt": true,
-  "viewMode": "verbose"
+  "viewMode": "verbose",
+  "hooks": {}
 }

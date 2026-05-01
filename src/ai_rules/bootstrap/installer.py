@@ -36,6 +36,7 @@ def make_github_install_url(repo: str) -> str:
 
 
 UV_NOT_FOUND_ERROR = "uv not found in PATH. Install from https://docs.astral.sh/uv/"
+RECALL_GITHUB_REPO = "wpfleger96/recall"
 
 
 def _validate_package_name(package_name: str) -> bool:
@@ -406,6 +407,141 @@ def ensure_statusline_installed(
             statusline_spec.package_name
             if statusline_spec
             else "claude-code-statusline",
+            from_github=from_github,
+            github_url=github_url,
+            local_path=local_path,
+            force=False,
+            dry_run=dry_run,
+        )
+        if success:
+            return "installed", message if dry_run else None
+        else:
+            return "failed", None
+    except Exception:
+        return "failed", None
+
+
+def _is_recall_configured(config: object) -> bool:
+    """Check if recall is configured in the merged MCP config."""
+    if hasattr(config, "mcp_overrides") and "recall" in config.mcp_overrides:
+        return True
+
+    try:
+        import importlib.resources
+
+        config_pkg = importlib.resources.files("ai_rules") / "config"
+        for mcps_path in [
+            config_pkg / "mcps.json",
+            config_pkg / "claude" / "mcps.json",
+        ]:
+            traversable = mcps_path
+            if hasattr(traversable, "is_file") and traversable.is_file():
+                import json
+
+                data = json.loads(traversable.read_text())
+                if "recall" in data:
+                    return True
+    except Exception:
+        pass
+
+    return False
+
+
+def ensure_recall_installed(
+    dry_run: bool = False,
+    config: object | None = None,
+) -> tuple[str, str | None]:
+    """Install or upgrade recall if needed. Fails open.
+
+    Args:
+        dry_run: If True, show what would be done without executing
+        config: Config object; if provided and recall is not configured, skip
+
+    Returns:
+        Tuple of (status, message) where status is:
+        "already_installed", "installed", "upgraded", "upgrade_available",
+        "source_switched", "source_switch_needed", "failed", or "skipped"
+    """
+    if config is not None and not _is_recall_configured(config):
+        return "skipped", None
+
+    source, local_path = get_effective_install_source("recall")
+    from_github = source == ToolSource.GITHUB
+
+    if is_command_available("recall"):
+        if source != ToolSource.LOCAL:
+            try:
+                from ai_rules.bootstrap.updater import (
+                    check_tool_updates,
+                    get_tool_by_id,
+                    perform_tool_upgrade,
+                )
+
+                recall_tool = get_tool_by_id("recall")
+                if recall_tool:
+                    current_source = get_tool_source(recall_tool.package_name)
+                    if current_source is not None and current_source != source:
+                        if dry_run:
+                            return (
+                                "source_switch_needed",
+                                f"Would switch recall from {current_source.name} to {source.name}",
+                            )
+                        uninstall_success, _ = uninstall_tool(recall_tool.package_name)
+                        if uninstall_success:
+                            github_url = (
+                                recall_tool.github_install_url if from_github else None
+                            )
+                            success, _ = install_tool(
+                                recall_tool.package_name,
+                                from_github=from_github,
+                                github_url=github_url,
+                                local_path=local_path,
+                                force=True,
+                            )
+                            if success:
+                                return (
+                                    "source_switched",
+                                    f"{current_source.name} → {source.name}",
+                                )
+                        return "failed", None
+
+                    update_info = check_tool_updates(recall_tool, timeout=10)
+                    if update_info and update_info.has_update:
+                        if dry_run:
+                            return (
+                                "upgrade_available",
+                                f"Would upgrade recall {update_info.current_version} → {update_info.latest_version}",
+                            )
+                        success, msg, _ = perform_tool_upgrade(recall_tool)
+                        if success:
+                            return (
+                                "upgraded",
+                                f"{update_info.current_version} → {update_info.latest_version}",
+                            )
+            except Exception:
+                pass
+        else:
+            # LOCAL source: always reinstall to pick up latest local changes
+            success, message = install_tool(
+                "recall-mcp-server",
+                local_path=local_path,
+                force=True,
+                dry_run=dry_run,
+            )
+            if dry_run:
+                return "upgrade_available", message
+            if success:
+                return "upgraded", "reinstalled from local path"
+            return "failed", None
+
+        return "already_installed", None
+
+    try:
+        github_url = (
+            make_github_install_url(RECALL_GITHUB_REPO) if from_github else None
+        )
+        success, message = install_tool(
+            "recall-mcp-server",
             from_github=from_github,
             github_url=github_url,
             local_path=local_path,

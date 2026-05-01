@@ -458,6 +458,18 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
         logger.debug(f"Failed to get statusline version: {e}")
 
     try:
+        from ai_rules.bootstrap import get_tool_version, is_command_available
+
+        if is_command_available("recall"):
+            bm_version = get_tool_version("recall-mcp-server")
+            if bm_version:
+                console.print(f"recall, version {bm_version}")
+            else:
+                console.print("recall, version [dim](installed, version unknown)[/dim]")
+    except Exception as e:
+        logger.debug(f"Failed to get recall version: {e}")
+
+    try:
         from ai_rules.bootstrap import check_tool_updates, get_tool_by_id
 
         tool = get_tool_by_id("ai-agent-rules")
@@ -1061,6 +1073,7 @@ def install(
 
     from ai_rules.bootstrap import (
         ToolSource,
+        ensure_recall_installed,
         ensure_statusline_installed,
         get_effective_install_source,
     )
@@ -1101,6 +1114,27 @@ def install(
     except ProfileNotFoundError as e:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
+
+    recall_result, recall_message = ensure_recall_installed(
+        dry_run=dry_run, config=config
+    )
+    if recall_result == "installed":
+        if dry_run and recall_message:
+            console.print(f"[dim]{recall_message}[/dim]\n")
+        else:
+            console.print("[green]✓[/green] Installed recall\n")
+    elif recall_result in ("upgraded", "source_switched"):
+        console.print(
+            f"[green]✓[/green] Updated recall ({recall_message})\n"
+            if recall_message
+            else "[green]✓[/green] Updated recall\n"
+        )
+    elif recall_result == "upgrade_available" and dry_run and recall_message:
+        console.print(f"[dim]{recall_message}[/dim]\n")
+    elif recall_result == "failed":
+        console.print(
+            "[yellow]⚠[/yellow] Failed to install recall (continuing anyway)\n"
+        )
 
     if not dry_run:
         set_active_profile(profile)
@@ -1683,6 +1717,15 @@ def status(agents: str | None) -> None:
     else:
         console.print("  [yellow]○[/yellow] claude-statusline not installed")
         statusline_missing = True
+
+    from ai_rules.bootstrap.installer import _is_recall_configured
+
+    if _is_recall_configured(config):
+        if is_command_available("recall"):
+            console.print("  [green]✓[/green] recall installed")
+        else:
+            console.print("  [yellow]○[/yellow] recall not installed")
+            statusline_missing = True
 
     console.print()
 
