@@ -2,7 +2,7 @@
 name: code-reviewer
 description: Performs thorough code review on local changes or PRs. Use this skill proactively after implementing code changes to catch issues before commit/push. Also use when reviewing PRs from other engineers.
 agent: general-purpose
-allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
+allowed-tools: Agent, AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 model: opus
 ---
 
@@ -33,7 +33,7 @@ This skill supports two modes. Both use the same analysis workflow—only the di
 ### Mode Detection
 
 Parse `${ARGS}` for the `crossfire` keyword and any PR number/URL:
-- If args contain `crossfire`, enable crossfire review (Phase 5) and strip it from remaining args
+- If args contain `crossfire`, enable crossfire review (Phase 2B external models) and strip it from remaining args
 - **PR number or URL in remaining args** → PR Mode
 - **No remaining args** → Local Mode
 
@@ -64,142 +64,26 @@ Review a pull request opened by another engineer.
 
 ---
 
-After gathering changes:
-- **If crossfire was NOT requested:** proceed directly to Phase 1.
-- **If crossfire WAS requested:** execute Phase 0 first, then proceed to Phase 1.
+After gathering changes, classify the review complexity:
+
+### Complexity Classification
+
+Compute from the gathered diff:
+- **Line count**: total added + removed lines across all files
+- **File count**: number of distinct files changed
+
+| Complexity | Criteria | Execution Path |
+|------------|----------|---------------|
+| Small | <50 lines AND ≤2 files | Single-agent inline review (Phase 2A) |
+| Medium | 50-300 lines OR 3-10 files | Multi-agent orchestrated review (Phase 2B) |
+| Large | >300 lines OR >10 files | Multi-agent orchestrated review (Phase 2B) |
+
+Crossfire (external model perspectives) is only available for Medium/Large diffs when `crossfire` keyword is in args.
 
 ## Review Methodology
 
-Follow this structured approach for thorough analysis:
-
-### Phase 0: Launch Crossfire
-
-**Only execute this phase if `crossfire` was in `${ARGS}`.** Otherwise skip to Phase 1.
-
-Launch the external CLI reviews immediately so they run in parallel with your own analysis (Phases 1-4). The external models review the diff independently — without your findings — ensuring unbiased perspectives.
-
-#### Step 1: Create Work Directory and Save the Diff
-
-Create a unique work directory for this crossfire session by running `mktemp -d /tmp/crossfire-review-XXXXXX`. Note the returned path — use it for all file operations in Phase 0 and Phase 5.
-
-Write the gathered diff to `{work_dir}/review.diff`.
-
-#### Step 2: Build and Write the Review Prompt
-
-Write a prompt file to `{work_dir}/prompt.txt` with these sections in order:
-
-1. **Preamble:**
-```
-You are reviewing the following code diff. Analyze it critically as an independent reviewer. Your job is to catch issues the primary reviewer may have missed.
-
-Before evaluating the diff, explore the repository to understand the surrounding context:
-1. Read the full content of any files that were changed (not just the diff lines)
-2. Identify and read files the changes depend on (imports, parent classes, shared types, interfaces)
-3. Check the project structure to understand where the changes fit architecturally
-
-Review the diff with this full context in mind. Do not assume that code not shown in the diff doesn't exist — verify by reading the actual files.
-```
-
-2. **Review instructions:**
-```
-For each concern you identify, categorize it as:
-- CRITICAL: Fundamental flaw, security risk, data loss potential, or incorrect approach
-- IMPORTANT: Significant gap, missing consideration, or maintainability concern
-- MINOR: Nice-to-have improvement, style issue, or alternative worth considering
-
-Structure your response as:
-
-## Concerns
-
-### [CRITICAL/IMPORTANT/MINOR]: <title>
-<explanation of the concern and why it matters>
-
-## What's Done Well
-<acknowledge strengths — what should NOT be changed>
-
-## Alternative Approaches
-<if you would have taken a fundamentally different approach, describe it briefly>
-```
-
-3. **Artifact:** Append the diff after a `--- ARTIFACT ---` separator. Read it from `{work_dir}/review.diff`.
-
-#### Step 3: Launch CLIs in Background
-
-Use a **single Bash call with `run_in_background=true`**. Substitute the work directory path from Step 1 for `$WORK_DIR` in the command (use the literal path, not a variable reference). This fires the command and returns immediately so you can continue to Phase 1 while the CLIs execute. When the background task completes, the inline delimited output arrives via the background notification — Phase 5 parses it from there. The prompt is written to a temp file — do NOT pass via stdin (causes Codex to echo the full prompt to stderr) or as a CLI argument (exceeds `ARG_MAX`). Instead, close stdin with `< /dev/null` (prevents non-TTY hang) and instruct Codex to `cat` the file.
-
-```bash
-WORK_DIR="<path from Step 1>"
-[ -d "$WORK_DIR" ] || { echo "ERROR: WORK_DIR does not exist: $WORK_DIR"; exit 1; }
-
-# Check CLI availability
-CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
-GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -f ~/.env/gemini_cli.key ] && echo "yes" || echo "no")
-
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-# Gemini's ImportProcessor resolves @-refs relative to cwd — ENOENT errors from subdirs
-cd "$REPO_ROOT"
-
-CODEX_OUT=$(mktemp)
-CODEX_ERR=$(mktemp)
-GEMINI_OUT=$(mktemp)
-
-# Clean up all temp files when shell exits (normal or interrupt)
-trap 'rm -rf "$WORK_DIR" "$CODEX_OUT" "$CODEX_ERR" "$GEMINI_OUT"' EXIT INT TERM
-
-CODEX_RAN="no"; GEMINI_RAN="no"
-CODEX_EXIT="-1"; GEMINI_EXIT="-1"
-
-# Launch Codex (background)
-if [ "$CODEX_AVAILABLE" = "yes" ]; then
-  CODEX_RAN="yes"
-  timeout 300 codex exec -C "$REPO_ROOT" \
-    --dangerously-bypass-approvals-and-sandbox \
-    "Run cat \"$WORK_DIR/prompt.txt\" and follow the instructions in the output." \
-    < /dev/null \
-    > "$CODEX_OUT" 2>"$CODEX_ERR" &
-  CODEX_PID=$!
-fi
-
-# Launch Gemini (background)
-if [ "$GEMINI_AVAILABLE" = "yes" ]; then
-  GEMINI_RAN="yes"
-  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) timeout 300 gemini --yolo \
-    --include-directories "$WORK_DIR" \
-    -p "Read the file at $WORK_DIR/prompt.txt and follow the review instructions inside it." \
-    > "$GEMINI_OUT" 2>&1 &
-  GEMINI_PID=$!
-fi
-
-# Wait for both
-[ -n "$CODEX_PID" ] && { wait $CODEX_PID; CODEX_EXIT=$?; }
-[ -n "$GEMINI_PID" ] && { wait $GEMINI_PID; GEMINI_EXIT=$?; }
-
-# Output results inline (parsed by Phase 5 — no temp files need to persist)
-echo "===CROSSFIRE_RESULTS==="
-echo "CODEX_RAN=$CODEX_RAN"
-echo "CODEX_EXIT=$CODEX_EXIT"
-echo "GEMINI_RAN=$GEMINI_RAN"
-echo "GEMINI_EXIT=$GEMINI_EXIT"
-echo "===CODEX_OUTPUT_START==="
-cat "$CODEX_OUT" 2>/dev/null || true
-echo ""
-echo "===CODEX_OUTPUT_END==="
-echo "===CODEX_STDERR_START==="
-cat "$CODEX_ERR" 2>/dev/null || true
-echo ""
-echo "===CODEX_STDERR_END==="
-echo "===GEMINI_OUTPUT_START==="
-cat "$GEMINI_OUT" 2>/dev/null || true
-echo ""
-echo "===GEMINI_OUTPUT_END==="
-echo "===CROSSFIRE_RESULTS_END==="
-```
-
-If neither CLI is available, the inline output will show both as not run — Phase 5 will note "Crossfire unavailable."
-
-**Proceed immediately to Phase 1 without waiting for the background notification.**
-
 ### Phase 1: Context Gathering
+
 Before reviewing code, establish understanding:
 - What is the scope of changes? (Use diff from Review Modes section above)
 - What files were modified and why?
@@ -207,9 +91,9 @@ Before reviewing code, establish understanding:
 - What existing patterns or conventions should be followed?
 - **Review in context**: Read the entire modified files, not just the diff. Understanding surrounding code is essential.
 
-### Phase 2: Multi-Lens Analysis
+### Phase 2A: Inline Review (Small Diffs Only)
 
-Apply four review perspectives in parallel. For each, document your observations:
+For Small complexity diffs, execute the review inline using all four lenses sequentially:
 
 **Lens 0: Design & Integration**
 - Does the change integrate well with existing architecture?
@@ -239,9 +123,150 @@ Apply four review perspectives in parallel. For each, document your observations
 - Is coverage sufficient for the risk level?
 - Are tests focused on what matters, not trivial cases?
 
-### Phase 3: Prioritized Findings
+After applying all lenses, proceed directly to Phase 3.
 
-Categorize issues using this decision framework:
+### Phase 2B: Orchestrated Review (Medium/Large Diffs)
+
+For Medium and Large complexity diffs, spawn parallel Claude subagents — each with a fresh context window focused on a single review lens. This produces higher quality findings because each agent dedicates its full context to one concern without cross-lens contamination.
+
+#### Step 1: Prepare review context
+
+Gather for subagent briefings:
+- The full diff text
+- The list of modified files (full paths)
+- PR context if in PR Mode (title, body, author)
+
+#### Step 2: Launch ALL agents in a SINGLE response
+
+Load the briefing template from `references/subagent-template.md` and construct one briefing per specialist. Launch all agents in parallel — this is critical for speed.
+
+**Claude subagents (always, for Medium/Large):**
+
+| Agent | Model | Lens Focus | Scope Boundaries |
+|-------|-------|------------|-----------------|
+| Security & Reliability | `sonnet` | Injection, auth, data exposure, error handling, edge cases | Do NOT review for design fit, over-engineering, or test coverage |
+| Design & Simplicity | `sonnet` | Architecture fit, abstraction level, over-engineering, duplication, maintainability | Do NOT review for security vulnerabilities or test coverage |
+| Functionality & Testing | `sonnet` | Correctness, intended behavior, test coverage, test quality, user-facing edge cases | Do NOT review for security vulnerabilities or design patterns |
+
+Each subagent receives: the full diff, instruction to read modified files in full (not just diff hunks), its assigned lens with key questions from the template, explicit scope boundaries, and the severity framework (🔴 MUST FIX / 🟡 SHOULD FIX / 🟢 CONSIDER).
+
+**External model agents (only if `crossfire` keyword present):**
+
+In the SAME parallel dispatch as the Claude subagents, launch a single Bash call with `run_in_background=true` that spawns Codex and Gemini CLI reviews:
+
+1. Create work directory: `mktemp -d /tmp/crossfire-review-XXXXXX`
+2. Write the diff to `{work_dir}/review.diff`
+3. Write a review prompt to `{work_dir}/prompt.txt` with these sections in order:
+
+   **Preamble:**
+   ```
+   You are reviewing the following code diff. Analyze it critically as an independent reviewer. Your job is to catch issues the primary reviewer may have missed.
+
+   Before evaluating the diff, explore the repository to understand the surrounding context:
+   1. Read the full content of any files that were changed (not just the diff lines)
+   2. Identify and read files the changes depend on (imports, parent classes, shared types, interfaces)
+   3. Check the project structure to understand where the changes fit architecturally
+
+   Review the diff with this full context in mind. Do not assume that code not shown in the diff doesn't exist — verify by reading the actual files.
+   ```
+
+   **Review instructions:**
+   ```
+   For each concern you identify, categorize it as:
+   - CRITICAL: Fundamental flaw, security risk, data loss potential, or incorrect approach
+   - IMPORTANT: Significant gap, missing consideration, or maintainability concern
+   - MINOR: Nice-to-have improvement, style issue, or alternative worth considering
+
+   Structure your response as:
+
+   ## Concerns
+
+   ### [CRITICAL/IMPORTANT/MINOR]: <title>
+   <explanation of the concern and why it matters>
+
+   ## What's Done Well
+   <acknowledge strengths — what should NOT be changed>
+
+   ## Alternative Approaches
+   <if you would have taken a fundamentally different approach, describe it briefly>
+   ```
+
+   **Artifact:** Append the diff after a `--- ARTIFACT ---` separator. Read it from `{work_dir}/review.diff`.
+
+4. Launch both CLIs in the background script:
+
+```bash
+WORK_DIR="<path from step 1>"
+[ -d "$WORK_DIR" ] || { echo "ERROR: WORK_DIR does not exist: $WORK_DIR"; exit 1; }
+
+CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
+GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -f ~/.env/gemini_cli.key ] && echo "yes" || echo "no")
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$REPO_ROOT"  # Gemini's ImportProcessor resolves @-refs relative to cwd — ENOENT from subdirs
+
+CODEX_OUT=$(mktemp)
+CODEX_ERR=$(mktemp)
+GEMINI_OUT=$(mktemp)
+
+trap 'rm -rf "$WORK_DIR" "$CODEX_OUT" "$CODEX_ERR" "$GEMINI_OUT"' EXIT INT TERM
+
+CODEX_RAN="no"; GEMINI_RAN="no"
+CODEX_EXIT="-1"; GEMINI_EXIT="-1"
+
+if [ "$CODEX_AVAILABLE" = "yes" ]; then
+  CODEX_RAN="yes"
+  timeout 300 codex exec -C "$REPO_ROOT" \
+    --dangerously-bypass-approvals-and-sandbox \
+    "Run cat \"$WORK_DIR/prompt.txt\" and follow the instructions in the output." \
+    < /dev/null \
+    > "$CODEX_OUT" 2>"$CODEX_ERR" &
+  CODEX_PID=$!
+fi
+
+if [ "$GEMINI_AVAILABLE" = "yes" ]; then
+  GEMINI_RAN="yes"
+  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) timeout 300 gemini --yolo \
+    --include-directories "$WORK_DIR" \
+    -p "Read the file at $WORK_DIR/prompt.txt and follow the review instructions inside it." \
+    > "$GEMINI_OUT" 2>&1 &
+  GEMINI_PID=$!
+fi
+
+[ -n "$CODEX_PID" ] && { wait $CODEX_PID; CODEX_EXIT=$?; }
+[ -n "$GEMINI_PID" ] && { wait $GEMINI_PID; GEMINI_EXIT=$?; }
+
+echo "===CROSSFIRE_RESULTS==="
+echo "CODEX_RAN=$CODEX_RAN"
+echo "CODEX_EXIT=$CODEX_EXIT"
+echo "GEMINI_RAN=$GEMINI_RAN"
+echo "GEMINI_EXIT=$GEMINI_EXIT"
+echo "===CODEX_OUTPUT_START==="
+cat "$CODEX_OUT" 2>/dev/null || true
+echo ""
+echo "===CODEX_OUTPUT_END==="
+echo "===CODEX_STDERR_START==="
+cat "$CODEX_ERR" 2>/dev/null || true
+echo ""
+echo "===CODEX_STDERR_END==="
+echo "===GEMINI_OUTPUT_START==="
+cat "$GEMINI_OUT" 2>/dev/null || true
+echo ""
+echo "===GEMINI_OUTPUT_END==="
+echo "===CROSSFIRE_RESULTS_END==="
+```
+
+Do NOT pass the prompt via stdin (causes Codex to echo it to stderr) or as a CLI argument (exceeds `ARG_MAX`). Close stdin with `< /dev/null` for Codex.
+
+#### Step 3: Collect all results
+
+Wait for all Claude subagents to return and (if launched) the crossfire background notification. Then proceed to Phase 3.
+
+### Phase 3: Synthesis
+
+#### Small Diff Synthesis (from Phase 2A)
+
+Categorize your inline findings using this decision framework:
 
 **🔴 MUST FIX (Blocking Issues)**
 - Security vulnerabilities
@@ -263,92 +288,37 @@ Categorize issues using this decision framework:
 - Non-critical performance optimizations
 - Style inconsistencies (only if egregious)
 
-### Phase 4: Solution Proposals
-
 For each issue identified:
 1. Cite specific file and line number
 2. Explain the problem clearly
 3. Show why it matters (security risk, maintenance burden, etc.)
 4. Propose concrete fix with code example where helpful
 
-### Phase 5: Read Crossfire Results
+#### Orchestrated Synthesis (from Phase 2B)
 
-**Only execute this phase if `crossfire` was in `${ARGS}`.** If crossfire was not requested, skip directly to the Output Format section.
+Synthesize findings from ALL sources (Claude subagents + optional crossfire):
 
-The crossfire CLIs were launched in Phase 0 and have been running in parallel with your analysis. By now they should be complete (you'll have received a background notification). If you have not yet received the notification, wait for it before proceeding.
+**Step 1: Collect and parse**
+- Read each Claude subagent's structured findings (Issues, Strengths, Open Questions, Confidence)
+- If crossfire ran: parse delimited output using `===...===` markers. Validate each model's output:
+  - `..._RAN=no` → "Crossfire unavailable: CLI not found"
+  - Empty output → "Unavailable: no output produced"
+  - Non-empty output with non-zero exit → use output with warning "(CLI exited with code N)"
+  - ≤10 lines with non-zero exit → "Unavailable: CLI exited with error"
+  - Codex stderr with only shell-init warnings (nvm, rvm) + substantive stdout → treat as successful
 
-#### Step 1: Retrieve Results
+**Step 2: De-duplicate and score confidence**
+- Finding flagged by 2+ independent sources (Claude agents, Codex, Gemini) = **HIGH confidence** — merge at the highest severity reported
+- Finding flagged by only 1 source = noted with attribution ("potential blind spot from [source]")
+- Identical findings from multiple agents: keep the one with the most specific file:line citation
+- Map crossfire severities: CRITICAL → 🔴, IMPORTANT → 🟡, MINOR → 🟢
 
-Parse the output from the Phase 0 background task. The results are delimited with `===...===` markers. Extract:
-- `CODEX_RAN` and `GEMINI_RAN` from the metadata section
-- Each model's output from the `===..._OUTPUT_START===` / `===..._OUTPUT_END===` markers
-- Each model's exit code from the metadata
-- Codex stderr from the `===CODEX_STDERR_START===` / `===CODEX_STDERR_END===` markers
+**Step 3: Produce unified output**
+Organize findings by severity tier (🔴 then 🟡 then 🟢), NOT by which agent found them. For each finding, note if it was confirmed by multiple sources. Include a methodology note (e.g., "Reviewed via 3 parallel Claude specialists" or "Reviewed via 3 Claude specialists + Codex + Gemini").
 
-Validate each model's output:
-- If model didn't run (`..._RAN=no`) → note "Crossfire unavailable: `codex`/`gemini` CLI not found"
-- If neither model ran → note "Crossfire unavailable: neither `codex` nor `gemini` CLI found"
-- Empty output (0 lines between markers) → mark as "Unavailable: no output produced"
-- Non-empty output (>10 lines) with non-zero exit code → use the output and prepend a warning: "(Warning: CLI exited with code N — output may be partial. Stderr: [content from CODEX_STDERR section if applicable])"
-- Non-zero exit code AND output is ≤10 lines → mark as "Unavailable: CLI exited with error (exit code N)"
-- If Codex stderr contains only shell-init warnings (nvm, rvm, etc.) and stdout has substantive content, treat as a successful run with a warning note
-
-Temp files are cleaned up automatically by the EXIT trap in Phase 0 Step 3. No manual cleanup is needed.
-
-#### Step 2: Produce Crossfire Report
-
-Synthesize the raw outputs into a structured crossfire report:
-
-**Cross-model consensus:**
-- Concern flagged by both Codex and Gemini = **agreed** (high confidence)
-- Concern flagged by only one model = **potential blind spot** (note which model)
-
-**Severity resolution:**
-- If models disagree on severity, use the highest (CRITICAL > IMPORTANT > MINOR)
-
-Format the report as:
-```
-## Crossfire Review
-
-### Codex (GPT)
-[Paste Codex output, or "Unavailable: [reason]"]
-
-### Gemini
-[Paste Gemini output, or "Unavailable: [reason]"]
-
-### Cross-Model Consensus
-
-**Agreed concerns (2+ models flagged):**
-- [SEVERITY] [Concern]: flagged by [which models]
-
-**Single-model concerns (potential blind spots):**
-- [SEVERITY] [Concern]: only [model] flagged this
-
-### Strengths Confirmed
-[Items multiple models agreed are done well]
-
-### Summary
-[2-3 sentence synthesis]
-```
-
-Then proceed to Phase 6.
-
-### Phase 6: Synthesis
-
-Integrate the crossfire report's findings with your own review into the final output (see Output Format below). Apply these rules:
-
-**Map crossfire severities to code review categories:**
-- CRITICAL → 🔴 MUST FIX
-- IMPORTANT → 🟡 SHOULD FIX
-- MINOR → 🟢 CONSIDER
-
-**Cross-model consensus (from crossfire report):**
-- **Agreed concerns** (2+ models flagged) = high confidence — merge into your findings at the mapped severity level
-- **Single-model concerns** (potential blind spots) = note in the Crossfire Summary section but do NOT auto-promote to your findings
-
-**Net verdict:**
-- REQUEST_CHANGES if any agreed concern maps to MUST FIX
-- APPROVE otherwise, even if single-model findings exist
+**Net verdict (PR Mode only):**
+- REQUEST_CHANGES if any HIGH-confidence 🔴 MUST FIX exists
+- APPROVE otherwise, even if single-source findings exist
 
 ## Review Principles
 
@@ -406,7 +376,7 @@ Structure your review in two parts:
 
 ### Part 2: Crossfire Summary
 
-Paste the Phase 5 crossfire report below (Codex/Gemini outputs, cross-model consensus, and summary). If crossfire was not requested or no CLIs were available, note "Crossfire unavailable" and skip.
+If crossfire was used (Phase 2B external models), include Codex/Gemini outputs and cross-model consensus below. If crossfire was not requested or no CLIs were available, note "Crossfire unavailable" and skip.
 
 ## Key Requirements
 

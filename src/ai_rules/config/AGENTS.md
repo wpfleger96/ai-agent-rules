@@ -30,7 +30,7 @@
 | 1. Implement | Write/modify code to meet requirements | Code written |
 | 2. Quality Checks | Run format, lint, test via project tooling (`just check` or individually) | All checks pass (fix any issues found) |
 | 3. Write Tests | Invoke `test-writer` skill for new/changed code paths | Tests written and passing |
-| 4. Review | Invoke `code-reviewer` skill (runs in isolated subagent) | Review findings returned |
+| 4. Review | Invoke `code-reviewer` skill via Agent tool (isolated subagent with fresh context — see Delegation & Multi-Agent Orchestration) | Review findings returned |
 | 5. Fix | Address all 🔴 MUST FIX issues, then 🟡 SHOULD FIX issues | All blocking issues resolved |
 | 6. Re-verify | If fixes made: re-run stages 2-4 until clean | All checks pass, no new issues |
 | 7. Draft Commit | Generate conventional commit message for the changes | Message ready for user review |
@@ -42,6 +42,48 @@
 **Project tooling priority:** Always check for Justfile/Makefile first. Use `just <task>` or `make <task>` when available. See "Project Tooling" section for fallback commands.
 
 **Why this workflow:** Catches 40%+ of bugs and security issues before they reach production. The isolated review subagent prevents context pollution while enabling deep codebase analysis.
+
+### Delegation & Multi-Agent Orchestration
+
+**Rule:** For non-trivial tasks, proactively delegate to parallel subagents with fresh context windows rather than handling everything in a single conversation. Context contamination is a measured degradation — all frontier models lose quality as context grows, even with irrelevant content.
+
+**When to delegate (spawn subagents):**
+- Task spans 3+ files AND involves cross-cutting concerns (security + performance + correctness)
+- Task requires synthesizing multiple independent perspectives for quality
+- Accumulated context would exceed ~50% of effective window with all relevant code loaded
+- Task has clearly independent subtasks that can run in parallel (research, review lenses, test generation)
+
+**When NOT to delegate (handle inline):**
+- Single-file, single-concern change
+- Highly sequential tasks where each step requires the previous step's actual output (not just a summary)
+- Ambiguously specified tasks — clarify scope first, then decide (ambiguity amplifies across N agents)
+- Task is simpler than the orchestration overhead justifies
+
+**How to brief subagents (self-containment protocol):**
+Subagents have ZERO access to the parent conversation. Every briefing must include:
+1. **One atomic objective** — a single question to answer or task to complete (never multiple)
+2. **Output format** — the expected structure of the result
+3. **Tool guidance** — which tools and sources to prioritize
+4. **Scope boundaries** — explicit "do NOT research/review/implement X — another agent handles that"
+5. **Key questions** — 3-5 specific, answerable questions that serve as success criteria
+
+For implementation tasks: assign explicit file ownership per agent to prevent merge conflicts. For analysis tasks: use `model: sonnet` for execution-heavy subagents; reserve `opus` for judgment-heavy orchestration.
+
+**How to synthesize subagent results:**
+- Organize output by theme, not by which agent produced it
+- Surface conflicts explicitly — never silently pick one side
+- Weight by confidence: convergent findings from multiple independent agents = strong evidence
+- Write the summary/bottom-line last, after completing full synthesis
+- Check saturation: if agents returned overlapping findings, note that further passes on this angle are unlikely to yield new insight
+
+**Anti-patterns (avoid):**
+- **Bag of agents**: Flat topology with no scope boundaries — produces 17x error amplification vs centralized orchestration
+- **Over-delegation**: Spawning agents for tasks simpler than the coordination overhead justifies
+- **Under-briefing**: Vague objectives or missing scope boundaries cause agents to drift into each other's territory
+- **Open-loop execution**: No verification gate after synthesis — always validate before presenting results
+- **Echo chamber**: Same model for all perspectives — add diversity via external model perspectives when available
+
+**Why:** Anthropic's production multi-agent system outperformed single-agent by 90.2%. Context isolation eliminates the "lost in the middle" phenomenon (30%+ accuracy drop for mid-context information) and multi-turn degradation (39% average performance loss). The MAST failure taxonomy (1,600+ traces) shows 41.77% of multi-agent failures stem from specification ambiguity — these explicit heuristics directly address that.
 
 ### Documentation First
 **Rule:** Read README.md, CONTRIBUTING.md, docs/, .github/, Makefile/Justfile before actions.
