@@ -1,6 +1,36 @@
 # CHANGELOG
 
 
+## v0.44.0 (2026-05-04)
+
+### Features
+
+- Add multi-agent orchestration to AGENTS.md and code-reviewer
+  ([`b727399`](https://github.com/wpfleger96/ai-agent-rules/commit/b727399ea57867188581930e26c0c089f6e02bd3))
+
+Single-agent code reviews accumulate context contamination across lenses — Anthropic's production
+  data shows 90.2% quality improvement with multi-agent delegation. The code-reviewer applied all
+  four lenses sequentially in one context window with crossfire awkwardly bolted on as a separate
+  Phase 0/5 wrapper duplicating ~100 lines of bash.
+
+AGENTS.md gains a Delegation & Multi-Agent Orchestration section with quantitative triggers,
+  self-containment briefing protocol, synthesis discipline, and anti-patterns. Code-reviewer gains
+  complexity-based routing: small diffs stay inline, medium/large diffs spawn 3 parallel Claude
+  subagents (Security, Design, Functionality) with optional crossfire dispatched in the same
+  parallel batch — replacing the old 6-phase structure with a cleaner 3-phase flow.
+
+- Add skill browsing/sharing CLI and standardize tool subcommands
+  ([`d99267e`](https://github.com/wpfleger96/ai-agent-rules/commit/d99267e85613144b3d0927ebcfd856afcf3a5a6a))
+
+Skills buried at src/ai_rules/config/skills/ were hard to discover and share. New `skill list` and
+  `skill show` commands let users browse skills from the terminal and generate GitHub URLs for
+  sharing.
+
+Also consolidates tool management: `info` replaced by `tool list`, `tool source` refactored from
+  positional dispatch to named subcommands (list/get/set) matching the pattern used by other CLI
+  groups.
+
+
 ## v0.43.1 (2026-04-30)
 
 ### Bug Fixes
