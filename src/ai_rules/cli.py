@@ -16,6 +16,7 @@ import click
 if TYPE_CHECKING:
     from click.shell_completion import CompletionItem
 
+    from ai_rules.bootstrap.installer import ToolSource
     from ai_rules.config import Config
     from ai_rules.profiles import Profile
     from ai_rules.targets.base import ConfigTarget
@@ -2073,93 +2074,6 @@ def upgrade(
 
 
 @main.command()
-def info() -> None:
-    """Show installation method and version info for ai-agent-rules tools.
-
-    Displays how each tool was installed (PyPI or GitHub)
-    along with current versions and update availability.
-    """
-    from rich.console import Console
-    from rich.table import Table
-
-    from ai_rules.bootstrap import (
-        ToolSource,
-        check_tool_updates,
-        get_tool_source,
-        get_updatable_tools,
-    )
-    from ai_rules.config import Config
-
-    console = Console()
-
-    try:
-        config = Config.load()
-    except Exception:
-        config = None
-
-    table = Table(title="AI Rules Installation Info", show_header=True)
-    table.add_column("Tool", style="cyan")
-    table.add_column("Source", style="bold")
-    table.add_column("Version")
-    table.add_column("Update")
-
-    has_updates = False
-
-    for tool in get_updatable_tools():
-        tool_name = tool.display_name
-
-        if not tool.is_installed():
-            table.add_row(tool_name, "-", "-", "[dim](not installed)[/dim]")
-            continue
-
-        source = get_tool_source(tool.package_name)
-        configured = config.get_tool_install_source(tool.tool_id) if config else None
-
-        if source:
-            source_str = source.name.lower()
-            if configured and configured.startswith("local:"):
-                configured_source = ToolSource.LOCAL
-            elif configured == "github":
-                configured_source = ToolSource.GITHUB
-            elif configured == "pypi":
-                configured_source = ToolSource.PYPI
-            else:
-                configured_source = None
-
-            if configured_source is not None and configured_source != source:
-                source_display = f"{source_str} [yellow](config: {configured} — run 'setup' to switch)[/yellow]"
-            elif configured is not None:
-                if configured_source == ToolSource.LOCAL:
-                    local_cfg_path = configured[len("local:") :]
-                    source_display = f"{source_str} [dim]({local_cfg_path})[/dim]"
-                else:
-                    source_display = f"{source_str} [dim](config)[/dim]"
-            else:
-                source_display = source_str
-        else:
-            source_display = "[dim]unknown[/dim]"
-
-        version = tool.get_version()
-        version_display = version if version else "[dim]unknown[/dim]"
-
-        update_display = "-"
-        try:
-            update_info = check_tool_updates(tool, timeout=5)
-            if update_info and update_info.has_update:
-                update_display = f"[cyan]{update_info.latest_version} available[/cyan]"
-                has_updates = True
-        except Exception:
-            update_display = "[dim](check failed)[/dim]"
-
-        table.add_row(tool_name, source_display, version_display, update_display)
-
-    console.print(table)
-
-    if has_updates:
-        console.print("\n[dim]Run 'ai-agent-rules upgrade' to install updates.[/dim]")
-
-
-@main.command()
 @click.option(
     "--agents",
     help="Comma-separated list of agents to validate (default: all)",
@@ -3546,96 +3460,405 @@ def completions_status() -> None:
 
 
 @main.group()
-def tool() -> None:
-    """Manage tool install source preferences."""
+def skill() -> None:
+    """Browse and share bundled skills."""
     pass
 
 
-@tool.command("source")
-@click.argument("tool_id", required=False)
-@click.argument(
-    "source_value",
-    required=False,
-)
-def tool_source(tool_id: str | None, source_value: str | None) -> None:
-    """Get or set the persistent install source for a managed tool.
+def complete_skills(
+    ctx: click.Context, param: click.Parameter, incomplete: str
+) -> list["CompletionItem"]:
+    """Complete skill names for skill subcommands."""
+    from click.shell_completion import CompletionItem
 
-    Without arguments, lists all configured source preferences.
+    from ai_rules.skills import SkillManager
+
+    config_dir = get_config_dir()
+    manager = SkillManager(config_dir=config_dir, agent_id="")
+    skills = manager.list_bundled_skills()
+    return [
+        CompletionItem(s.name, help=s.description[:60])
+        for s in skills
+        if s.name.startswith(incomplete)
+    ]
+
+
+@skill.command("list")
+def skill_list() -> None:
+    """List all bundled skills."""
+    from rich.console import Console
+    from rich.table import Table
+
+    from ai_rules.skills import SkillManager
+
+    console = Console()
+    config_dir = get_config_dir()
+    manager = SkillManager(config_dir=config_dir, agent_id="")
+    skills = manager.list_bundled_skills()
+
+    table = Table(title="Bundled Skills", show_header=True)
+    table.add_column("Name", style="cyan")
+    table.add_column("Description")
+
+    for s in skills:
+        table.add_row(s.name, s.description)
+
+    console.print(table)
+
+
+@skill.command("show")
+@click.argument("name", shell_complete=complete_skills)
+@click.option("--url", is_flag=True, help="Print the GitHub URL instead of content")
+@click.option("--raw", is_flag=True, help="Print raw markdown without formatting")
+def skill_show(name: str, url: bool, raw: bool) -> None:
+    """Show a bundled skill's content.
+
+    NAME is the skill directory name (e.g., research, code-reviewer).
+
+    Examples:
+        ai-agent-rules skill show research
+        ai-agent-rules skill show research --url
+        ai-agent-rules skill show code-reviewer --raw
+    """
+    from rich.console import Console
+    from rich.markdown import Markdown
+
+    from ai_rules.skills import SkillManager
+
+    console = Console()
+    config_dir = get_config_dir()
+    manager = SkillManager(config_dir=config_dir, agent_id="")
+
+    if url:
+        managed = manager._get_managed_skills()
+        if name not in managed:
+            available = ", ".join(sorted(managed.keys()))
+            console.print(
+                f"[red]Error:[/red] Unknown skill '{name}'. Available: {available}"
+            )
+            sys.exit(1)
+        skill_url = SkillManager.get_skill_url(name)
+        if skill_url is None:
+            console.print(
+                "[red]Error:[/red] Could not determine GitHub URL. "
+                "Package metadata may be unavailable."
+            )
+            sys.exit(1)
+        click.echo(skill_url)
+        return
+
+    content = manager.get_skill_content(name)
+    if content is None:
+        managed = manager._get_managed_skills()
+        available = ", ".join(sorted(managed.keys()))
+        console.print(
+            f"[red]Error:[/red] Unknown skill '{name}'. Available: {available}"
+        )
+        sys.exit(1)
+
+    if raw:
+        click.echo(content)
+    else:
+        console.print(Markdown(content))
+
+
+def _resolve_configured_source(configured: str | None) -> "ToolSource | None":
+    """Resolve a configured source string to a ToolSource enum value."""
+    from ai_rules.bootstrap import ToolSource
+
+    if configured and configured.startswith("local:"):
+        return ToolSource.LOCAL
+    if configured == "github":
+        return ToolSource.GITHUB
+    if configured == "pypi":
+        return ToolSource.PYPI
+    return None
+
+
+def _format_source_display(source: "ToolSource | None", configured: str | None) -> str:
+    """Format combined source+config info for table display."""
+    if not source:
+        return "[dim]unknown[/dim]"
+
+    source_str = source.name.lower()
+    configured_source = _resolve_configured_source(configured)
+
+    if configured_source is not None and configured_source != source:
+        return f"{source_str} [yellow](config: {configured} — run 'setup' to switch)[/yellow]"
+    if configured is not None:
+        if configured and configured.startswith("local:"):
+            local_cfg_path = configured[len("local:") :]
+            return f"{source_str} [dim]({local_cfg_path})[/dim]"
+        return f"{source_str} [dim](config)[/dim]"
+    return source_str
+
+
+def _format_config_display(source: "ToolSource | None", configured: str) -> str:
+    """Format config preference for detail display (tool show)."""
+    configured_source = _resolve_configured_source(configured)
+    if configured_source is not None and source and configured_source != source:
+        return f"[yellow]{configured} (run 'setup' to switch)[/yellow]"
+    return configured
+
+
+@main.group()
+def tool() -> None:
+    """Manage tools and install source preferences."""
+    pass
+
+
+@tool.command("list")
+def tool_list() -> None:
+    """List managed tools with version and update info."""
+    from rich.console import Console
+    from rich.table import Table
+
+    from ai_rules.bootstrap import (
+        check_tool_updates,
+        get_tool_source,
+        get_updatable_tools,
+    )
+    from ai_rules.config import Config
+
+    console = Console()
+
+    try:
+        config = Config.load()
+    except Exception:
+        config = None
+
+    table = Table(title="Managed Tools", show_header=True)
+    table.add_column("Tool", style="cyan")
+    table.add_column("Source", style="bold")
+    table.add_column("Version")
+    table.add_column("Update")
+
+    has_updates = False
+
+    for spec in get_updatable_tools():
+        if not spec.is_installed():
+            table.add_row(spec.display_name, "-", "-", "[dim](not installed)[/dim]")
+            continue
+
+        source = get_tool_source(spec.package_name)
+        configured = config.get_tool_install_source(spec.tool_id) if config else None
+        source_display = _format_source_display(source, configured)
+
+        version = spec.get_version()
+        version_display = version if version else "[dim]unknown[/dim]"
+
+        update_display = "-"
+        try:
+            update_info = check_tool_updates(spec, timeout=5)
+            if update_info and update_info.has_update:
+                update_display = f"[cyan]{update_info.latest_version} available[/cyan]"
+                has_updates = True
+        except Exception:
+            update_display = "[dim](check failed)[/dim]"
+
+        table.add_row(
+            spec.display_name, source_display, version_display, update_display
+        )
+
+    console.print(table)
+
+    if has_updates:
+        console.print("\n[dim]Run 'ai-agent-rules upgrade' to install updates.[/dim]")
+
+
+@tool.command("show")
+@click.argument("tool_id")
+def tool_show(tool_id: str) -> None:
+    """Show detailed info for a managed tool.
+
+    TOOL_ID can be one of: ai-agent-rules, ai-rules, statusline
+
+    Examples:
+        ai-agent-rules tool show statusline
+        ai-agent-rules tool show ai-agent-rules
+    """
+    from rich.console import Console
+
+    from ai_rules.bootstrap import (
+        check_tool_updates,
+        get_tool_source,
+    )
+    from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES, get_tool_by_id
+    from ai_rules.config import Config
+
+    console = Console()
+
+    canonical_id = _TOOL_ID_ALIASES.get(tool_id, tool_id)
+    spec = get_tool_by_id(canonical_id)
+    if spec is None:
+        from ai_rules.bootstrap import get_updatable_tools
+
+        valid_ids = ", ".join(sorted(t.tool_id for t in get_updatable_tools()))
+        console.print(
+            f"[red]Error:[/red] Unknown tool '{tool_id}'. Valid tools: {valid_ids}"
+        )
+        sys.exit(1)
+
+    console.print(f"[bold]{spec.display_name}[/bold]\n")
+
+    if not spec.is_installed():
+        console.print("  Status: [dim]not installed[/dim]")
+        return
+
+    version = spec.get_version()
+    console.print(f"  Version:  {version or '[dim]unknown[/dim]'}")
+
+    source = get_tool_source(spec.package_name)
+    console.print(
+        f"  Source:   {source.name.lower() if source else '[dim]unknown[/dim]'}"
+    )
+
+    try:
+        config = Config.load()
+        configured = config.get_tool_install_source(spec.tool_id)
+    except Exception:
+        configured = None
+    if configured:
+        config_display = _format_config_display(source, configured)
+        console.print(f"  Config:   {config_display}")
+    else:
+        console.print("  Config:   [dim](not set — default: pypi)[/dim]")
+
+    if spec.github_repo:
+        console.print(f"  Repo:     https://github.com/{spec.github_repo}")
+
+    try:
+        update_info = check_tool_updates(spec, timeout=5)
+        if update_info and update_info.has_update:
+            console.print(
+                f"  Update:   [cyan]{update_info.latest_version} available[/cyan]"
+            )
+        elif update_info:
+            console.print("  Update:   [green]up to date[/green]")
+    except Exception:
+        console.print("  Update:   [dim](check failed)[/dim]")
+
+
+@tool.group()
+def source() -> None:
+    """Manage install source preferences."""
+    pass
+
+
+@source.command("list")
+def source_list() -> None:
+    """List install source preferences for all tools.
+
+    Examples:
+        ai-agent-rules tool source list
+    """
+    from rich.console import Console
+    from rich.table import Table
+
+    from ai_rules.bootstrap.updater import get_updatable_tools
+    from ai_rules.config import Config
+
+    console = Console()
+
+    tools = get_updatable_tools()
+    table = Table(title="Tool Install Source Preferences", show_header=True)
+    table.add_column("Tool", style="cyan")
+    table.add_column("User Config")
+    table.add_column("Effective (from profile/config)")
+
+    for spec in tools:
+        user_pref = Config.get_tool_install_source_from_user_config(spec.tool_id)
+        try:
+            effective_pref = Config.load().get_tool_install_source(spec.tool_id)
+        except Exception:
+            effective_pref = None
+        table.add_row(
+            spec.tool_id,
+            user_pref or "[dim](not set)[/dim]",
+            effective_pref or "[dim](default: pypi)[/dim]",
+        )
+    console.print(table)
+    console.print(
+        "\n[dim]Run 'ai-agent-rules setup' after changing to switch the installed source.[/dim]"
+    )
+
+
+def _resolve_tool_id(tool_id: str) -> str:
+    """Resolve a tool ID alias to canonical form, or exit with an error."""
+    from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES, get_updatable_tools
+
+    canonical_id = _TOOL_ID_ALIASES.get(tool_id, tool_id)
+    valid_ids = {t.tool_id for t in get_updatable_tools()}
+    if canonical_id not in valid_ids:
+        from rich.console import Console
+
+        Console().print(
+            f"[red]Error:[/red] Unknown tool '{tool_id}'. Valid tools: {', '.join(sorted(valid_ids))}"
+        )
+        sys.exit(1)
+    return canonical_id
+
+
+@source.command("get")
+@click.argument("tool_id")
+def source_get(tool_id: str) -> None:
+    """Show the install source preference for a tool.
+
+    TOOL_ID can be one of: ai-agent-rules, ai-rules, statusline
+
+    Examples:
+        ai-agent-rules tool source get statusline
+    """
+    from rich.console import Console
+
+    from ai_rules.config import Config
+
+    console = Console()
+    canonical_id = _resolve_tool_id(tool_id)
+
+    user_pref = Config.get_tool_install_source_from_user_config(canonical_id)
+    try:
+        effective_pref = Config.load().get_tool_install_source(canonical_id)
+    except Exception:
+        effective_pref = None
+
+    if user_pref:
+        console.print(
+            f"[cyan]{canonical_id}[/cyan] user config: [bold]{user_pref}[/bold]"
+        )
+    else:
+        console.print(f"[cyan]{canonical_id}[/cyan] user config: [dim](not set)[/dim]")
+    if effective_pref:
+        console.print(
+            f"[cyan]{canonical_id}[/cyan] effective (profile/config): [bold]{effective_pref}[/bold]"
+        )
+    else:
+        console.print(
+            f"[cyan]{canonical_id}[/cyan] effective: [dim](default: pypi)[/dim]"
+        )
+
+
+@source.command("set")
+@click.argument("tool_id")
+@click.argument("source_value")
+def source_set(tool_id: str, source_value: str) -> None:
+    """Set the install source preference for a tool.
 
     TOOL_ID can be one of: ai-agent-rules, ai-rules, statusline
 
     SOURCE_VALUE can be: pypi, github, local:<path>, or reset
 
     Examples:
-        ai-agent-rules tool source
-        ai-agent-rules tool source statusline github
-        ai-agent-rules tool source recall "local:~/Development/Personal/recall"
-        ai-agent-rules tool source statusline reset
+        ai-agent-rules tool source set statusline github
+        ai-agent-rules tool source set ai-agent-rules "local:~/Development/Personal/ai-rules"
+        ai-agent-rules tool source set statusline reset
     """
     from rich.console import Console
-    from rich.table import Table
 
-    from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES, get_updatable_tools
     from ai_rules.config import Config
 
     console = Console()
-
-    if tool_id is None:
-        tools = get_updatable_tools()
-        table = Table(title="Tool Install Source Preferences", show_header=True)
-        table.add_column("Tool", style="cyan")
-        table.add_column("User Config")
-        table.add_column("Effective (from profile/config)")
-
-        for spec in tools:
-            user_pref = Config.get_tool_install_source_from_user_config(spec.tool_id)
-            try:
-                effective_pref = Config.load().get_tool_install_source(spec.tool_id)
-            except Exception:
-                effective_pref = None
-            table.add_row(
-                spec.tool_id,
-                user_pref or "[dim](not set)[/dim]",
-                effective_pref or "[dim](default: pypi)[/dim]",
-            )
-        console.print(table)
-        console.print(
-            "\n[dim]Run 'ai-agent-rules setup' after changing to switch the installed source.[/dim]"
-        )
-        return
-
-    canonical_id = _TOOL_ID_ALIASES.get(tool_id, tool_id)
-    tools = get_updatable_tools()
-    valid_ids = {t.tool_id for t in tools}
-    if canonical_id not in valid_ids:
-        console.print(
-            f"[red]Error:[/red] Unknown tool '{tool_id}'. Valid tools: {', '.join(sorted(valid_ids))}"
-        )
-        sys.exit(1)
-
-    if source_value is None:
-        user_pref = Config.get_tool_install_source_from_user_config(canonical_id)
-        try:
-            effective_pref = Config.load().get_tool_install_source(canonical_id)
-        except Exception:
-            effective_pref = None
-        if user_pref:
-            console.print(
-                f"[cyan]{canonical_id}[/cyan] user config: [bold]{user_pref}[/bold]"
-            )
-        else:
-            console.print(
-                f"[cyan]{canonical_id}[/cyan] user config: [dim](not set)[/dim]"
-            )
-        if effective_pref:
-            console.print(
-                f"[cyan]{canonical_id}[/cyan] effective (profile/config): [bold]{effective_pref}[/bold]"
-            )
-        else:
-            console.print(
-                f"[cyan]{canonical_id}[/cyan] effective: [dim](default: pypi)[/dim]"
-            )
-        return
+    canonical_id = _resolve_tool_id(tool_id)
 
     if source_value == "reset":
         Config.set_tool_install_source(canonical_id, None)
@@ -3650,7 +3873,7 @@ def tool_source(tool_id: str | None, source_value: str | None) -> None:
         console.print(
             "[dim]Run 'ai-agent-rules setup' to switch the installed source if needed.[/dim]"
         )
-    elif source_value and source_value.startswith("local:"):
+    elif source_value.startswith("local:"):
         local_path = source_value[len("local:") :]
         resolved = Path(local_path).expanduser().resolve()
         if not resolved.exists():

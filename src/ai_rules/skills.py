@@ -1,5 +1,9 @@
 """Shared skills management for AI agents."""
 
+from __future__ import annotations
+
+import importlib.metadata
+
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -281,3 +285,52 @@ class SkillManager:
                 )
 
         return status
+
+    def list_bundled_skills(self) -> list[SkillMetadata]:
+        """List all bundled skills with their metadata."""
+        managed = self._get_managed_skills()
+        results = []
+        for name, source_path in managed.items():
+            metadata = self.parse_skill_md(source_path)
+            if metadata is None:
+                metadata = SkillMetadata(name=name, description="")
+            results.append(metadata)
+        return results
+
+    def get_skill_content(self, name: str) -> str | None:
+        """Get the raw SKILL.md content for a bundled skill.
+
+        Returns:
+            Raw file content, or None if skill doesn't exist.
+        """
+        managed = self._get_managed_skills()
+        if name not in managed:
+            return None
+        skill_file = managed[name] / "SKILL.md"
+        if not skill_file.exists():
+            return None
+        return skill_file.read_text()
+
+    @staticmethod
+    def get_skill_url(name: str) -> str | None:
+        """Construct a versioned GitHub URL for a bundled skill.
+
+        Returns:
+            GitHub blob URL, or None if repo URL can't be determined.
+        """
+        try:
+            dist = importlib.metadata.distribution("ai-agent-rules")
+        except importlib.metadata.PackageNotFoundError:
+            return None
+
+        repo_url = None
+        for url_entry in dist.metadata.get_all("Project-URL") or []:
+            label, url = url_entry.split(",", 1)
+            if label.strip().lower() == "repository":
+                repo_url = url.strip()
+                break
+
+        if not repo_url:
+            return None
+
+        return f"{repo_url}/blob/main/src/ai_rules/config/skills/{name}/SKILL.md"

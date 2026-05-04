@@ -117,7 +117,6 @@ ai-agent-rules status                     # Check symlink status + optional tool
 ai-agent-rules diff                       # Show config differences
 ai-agent-rules validate                   # Verify source files exist
 ai-agent-rules list-agents                # Show available agents
-ai-agent-rules info                       # Show install source, versions, and update availability for all tools
 ai-agent-rules uninstall                  # Remove all symlinks
 ```
 
@@ -144,6 +143,25 @@ ai-agent-rules override unset claude.model                          # Remove ove
 ai-agent-rules override list                                        # List all overrides
 ```
 
+### Skills
+
+```bash
+ai-agent-rules skill list                 # List all bundled skills
+ai-agent-rules skill show research        # Render skill content in terminal
+ai-agent-rules skill show research --url  # Print versioned GitHub URL for sharing
+ai-agent-rules skill show research --raw  # Print raw markdown (for piping)
+```
+
+### Tools
+
+```bash
+ai-agent-rules tool list                              # Show managed tools with version and update info
+ai-agent-rules tool show statusline                   # Detailed info for a specific tool
+ai-agent-rules tool source list                       # List install source preferences
+ai-agent-rules tool source get statusline             # Show source preference for a tool
+ai-agent-rules tool source set statusline github      # Set install source (pypi, github, local:<path>, reset)
+```
+
 ### Shell Completions
 
 ```bash
@@ -151,6 +169,8 @@ ai-agent-rules completions install [--shell bash|zsh]   # Install shell completi
 ai-agent-rules completions uninstall [--shell bash|zsh] # Remove completions
 ai-agent-rules completions update [--shell bash|zsh]    # Update completion script
 ai-agent-rules completions status                       # Check if installed
+ai-agent-rules completions bash                         # Print raw bash completion script
+ai-agent-rules completions zsh                          # Print raw zsh completion script
 ```
 
 ## Configuration
@@ -404,7 +424,7 @@ metadata:
 **Add new AI tool:**
 1. Add configs to `src/ai_rules/config/<tool>/`
 2. Implement `src/ai_rules/agents/<tool>.py`
-3. Register in `src/ai_rules/cli.py::get_agents()`
+3. Register in `src/ai_rules/cli.py::get_targets()`
 
 ## Safety
 
