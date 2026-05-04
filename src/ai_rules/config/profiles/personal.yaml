@@ -4,6 +4,8 @@ extends: default
 settings_overrides:
   claude:
     model: opusplan
+    env:
+      DISABLE_COMPACT: "1"
   statusline:
     terminal_title:
       enabled: true
