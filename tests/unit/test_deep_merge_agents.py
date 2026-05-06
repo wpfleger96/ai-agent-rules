@@ -93,7 +93,7 @@ class TestClaudeDeepMerge:
 @pytest.mark.unit
 class TestCodexDeepMerge:
     BASE = {
-        "model": "gpt-5.4",
+        "model": "gpt-5.5",
         "approval_policy": "on-request",
     }
 
@@ -109,7 +109,7 @@ class TestCodexDeepMerge:
         result = deep_merge(self.BASE, override)
 
         assert result["full_auto"] is True
-        assert result["model"] == "gpt-5.4"
+        assert result["model"] == "gpt-5.5"
         assert result["approval_policy"] == "on-request"
 
     def test_unrelated_keys_survive_merge(self):

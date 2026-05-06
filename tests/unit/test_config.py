@@ -1151,7 +1151,7 @@ class TestTomlSupport:
         config_dir = tmp_path / "config"
         codex_dir = config_dir / "codex"
         codex_dir.mkdir(parents=True)
-        (codex_dir / "config.toml").write_text('model = "gpt-5.4"\n')
+        (codex_dir / "config.toml").write_text('model = "gpt-5.5"\n')
 
         config = Config()
         agent = CodexAgent(config_dir, config)
@@ -1307,7 +1307,7 @@ class TestMergeSettingsAgentShapes:
     def test_codex_flat_override_preserves_siblings(self):
         config = Config(settings_overrides={"codex": {"model": "gpt-5.2"}})
         base = {
-            "model": "gpt-5.4",
+            "model": "gpt-5.5",
             "approval_policy": "on-request",
         }
         result = config.merge_settings("codex", base)
@@ -1329,7 +1329,7 @@ class TestMergeSettingsAgentShapes:
             }
         )
         base = {
-            "model": "gpt-5.4",
+            "model": "gpt-5.5",
             "approval_policy": "on-request",
             "tui": {
                 "status_line": [

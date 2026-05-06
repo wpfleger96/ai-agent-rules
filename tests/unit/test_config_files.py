@@ -129,6 +129,9 @@ class TestConfigFileStructuralInvariants:
         assert "model" in codex_config
         assert "approval_policy" in codex_config
 
+    def test_codex_default_model_is_gpt_5_5(self, codex_config):
+        assert codex_config["model"] == "gpt-5.5"
+
     def test_codex_approval_policy_is_untrusted(self, codex_config):
         assert codex_config["approval_policy"] == "untrusted"
 

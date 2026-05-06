@@ -303,7 +303,7 @@ class TestOverrideInstallValidation:
         config_dir = tmp_path / "config"
         codex_dir = config_dir / "codex"
         codex_dir.mkdir(parents=True)
-        (codex_dir / "config.toml").write_text('model = "gpt-5.4"\n')
+        (codex_dir / "config.toml").write_text('model = "gpt-5.5"\n')
 
         monkeypatch.setattr("ai_rules.cli.get_config_dir", lambda: config_dir)
 
