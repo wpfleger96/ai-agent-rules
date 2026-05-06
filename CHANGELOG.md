@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.45.1 (2026-05-06)
+
+### Bug Fixes
+
+- Codex config drift
+  ([`b8df839`](https://github.com/wpfleger96/ai-agent-rules/commit/b8df8397547172ad25108a12fbd6c3079f7a2257))
+
+
 ## v0.45.0 (2026-05-06)
 
 ### Features
