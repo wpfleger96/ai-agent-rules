@@ -395,7 +395,7 @@ These tools are installed automatically during `setup` and `install`. Check inst
 
 ```bash
 ai-agent-rules status  # Shows Optional Tools section
-ai-agent-rules info    # Shows install source, versions, update availability
+ai-agent-rules tool list  # Shows install source, versions, update availability
 ```
 
 If a tool fails to install, ai-agent-rules continues normally (fail-open behavior).
