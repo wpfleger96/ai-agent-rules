@@ -9,7 +9,7 @@ commit_attribution = ""
 # Native Codex footer items that most closely match our Claude status line.
 status_line = [
   "model-with-reasoning",
-  "current-dir",
+  "project-name",
   "git-branch",
   "context-used",
   "used-tokens",
@@ -21,3 +21,6 @@ persistence = "save-all"
 
 [analytics]
 enabled = false
+
+[tui.model_availability_nux]
+"gpt-5.5" = 1

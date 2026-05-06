@@ -156,7 +156,7 @@ class TestConfigFileStructuralInvariants:
     def test_codex_has_status_line_defaults(self, codex_config):
         assert codex_config["tui"]["status_line"] == [
             "model-with-reasoning",
-            "current-dir",
+            "project-name",
             "git-branch",
             "context-used",
             "used-tokens",
