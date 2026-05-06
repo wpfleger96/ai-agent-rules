@@ -1115,6 +1115,12 @@ def install(
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
 
+    if not dry_run:
+        set_active_profile(profile)
+
+    if profile and profile != "default":
+        console.print(f"[dim]Using profile: {profile}[/dim]\n")
+
     recall_result, recall_message = ensure_recall_installed(
         dry_run=dry_run, config=config
     )
@@ -1136,13 +1142,7 @@ def install(
             "[yellow]⚠[/yellow] Failed to install recall (continuing anyway)\n"
         )
 
-    if not dry_run:
-        set_active_profile(profile)
-
-    if profile and profile != "default":
-        console.print(f"[dim]Using profile: {profile}[/dim]\n")
-
-    sl_source, sl_local_path = get_effective_install_source("statusline")
+    sl_source, sl_local_path = get_effective_install_source("statusline", config=config)
     statusline_result, statusline_message = ensure_statusline_installed(
         dry_run=dry_run,
         from_github=sl_source == ToolSource.GITHUB,

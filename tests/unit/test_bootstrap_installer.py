@@ -489,6 +489,22 @@ class TestGetEffectiveInstallSource:
         assert source == ToolSource.LOCAL
         assert local_path == "~/Development/recall"
 
+    def test_passed_config_is_used_without_loading_active_profile(self, monkeypatch):
+        """An explicit config avoids active-profile source lookups."""
+        from ai_rules.config import Config
+
+        def _raise(*args, **kwargs):
+            raise RuntimeError("should not load active profile")
+
+        mock_config = MagicMock()
+        mock_config.get_tool_install_source.return_value = "local:~/Development/recall"
+        monkeypatch.setattr(Config, "load", _raise)
+
+        source, local_path = get_effective_install_source("recall", config=mock_config)
+
+        assert source == ToolSource.LOCAL
+        assert local_path == "~/Development/recall"
+
     def test_defaults_to_pypi_when_nothing_configured(self, monkeypatch):
         """Falls back to PYPI when no config and no CLI flag."""
         from ai_rules.config import Config
@@ -571,7 +587,7 @@ class TestEnsureRecallInstalled:
         )
         monkeypatch.setattr(
             "ai_rules.bootstrap.installer.get_effective_install_source",
-            lambda tid: (ToolSource.PYPI, None),
+            lambda *args, **kwargs: (ToolSource.PYPI, None),
         )
 
         from ai_rules.bootstrap import updater
@@ -597,7 +613,7 @@ class TestEnsureRecallInstalled:
         )
         monkeypatch.setattr(
             "ai_rules.bootstrap.installer.get_effective_install_source",
-            lambda tid: (ToolSource.PYPI, None),
+            lambda *args, **kwargs: (ToolSource.PYPI, None),
         )
         monkeypatch.setattr(
             "ai_rules.bootstrap.installer.install_tool",
@@ -620,7 +636,7 @@ class TestEnsureRecallInstalled:
         )
         monkeypatch.setattr(
             "ai_rules.bootstrap.installer.get_effective_install_source",
-            lambda tid: (ToolSource.LOCAL, "~/dev/recall"),
+            lambda *args, **kwargs: (ToolSource.LOCAL, "~/dev/recall"),
         )
         monkeypatch.setattr(
             "ai_rules.bootstrap.installer.install_tool",
@@ -643,7 +659,7 @@ class TestEnsureRecallInstalled:
         )
         monkeypatch.setattr(
             "ai_rules.bootstrap.installer.get_effective_install_source",
-            lambda tid: (ToolSource.LOCAL, "~/dev/recall"),
+            lambda *args, **kwargs: (ToolSource.LOCAL, "~/dev/recall"),
         )
         monkeypatch.setattr(
             "ai_rules.bootstrap.installer.install_tool",
@@ -653,6 +669,39 @@ class TestEnsureRecallInstalled:
             config=SimpleNamespace(mcp_overrides={"recall": {}})
         )
         assert status == "upgraded"
+
+    def test_uses_passed_config_for_local_source(self, monkeypatch):
+        captured = {}
+
+        class ConfigWithRecallSource:
+            mcp_overrides = {"recall": {"command": "recall"}}
+
+            def get_tool_install_source(self, tool_id):
+                return "local:/tmp/recall"
+
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._is_recall_configured",
+            lambda c: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available",
+            lambda cmd: True,
+        )
+
+        def install_spy(*args, **kwargs):
+            captured.update(kwargs)
+            return True, "ok"
+
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.install_tool",
+            install_spy,
+        )
+
+        status, msg = ensure_recall_installed(config=ConfigWithRecallSource())
+
+        assert status == "upgraded"
+        assert msg == "reinstalled from local path"
+        assert captured["local_path"] == "/tmp/recall"
 
 
 class _MockTraversable:

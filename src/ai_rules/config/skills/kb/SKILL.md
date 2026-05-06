@@ -1,16 +1,16 @@
 ---
 name: kb
 description: >-
-  This skill should be used when the user asks to "save to knowledge base",
-  "write a note", "persist this", "remember this pattern", "update the KB",
-  or when the Stop hook instructs the agent to persist session knowledge.
-  Also use when asking "search knowledge base", "what do we know about",
-  or needing cross-project context from recall.
+  This skill should be used when recall MCP tools are available and the user
+  asks to "save to knowledge base", "write a note", "persist this", "remember
+  this pattern", "update the KB", or when the Stop hook instructs the agent to
+  persist session knowledge. Also use when asking "search knowledge base",
+  "what do we know about", or needing cross-project context from recall.
 ---
 
 # Knowledge Base (recall)
 
-A persistent markdown knowledge base at `~/.recall/` powered by the recall MCP server. Knowledge persists across sessions, repos, and machines via git sync. Searchable with FTS5 full-text search with BM25 ranking.
+When configured, recall provides a persistent markdown knowledge base at `~/.recall/`. Knowledge persists across sessions, repos, and machines via git sync. Searchable with FTS5 full-text search with BM25 ranking.
 
 ## Workflow
 

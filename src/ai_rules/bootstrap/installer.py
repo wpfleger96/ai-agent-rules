@@ -271,18 +271,19 @@ def get_tool_version(tool_name: str) -> str | None:
 
 
 def get_effective_install_source(
-    tool_id: str, cli_github_flag: bool = False
+    tool_id: str, cli_github_flag: bool = False, config: object | None = None
 ) -> tuple[ToolSource, str | None]:
     """Resolve the install source for a tool.
 
     Priority (highest first):
     1. cli_github_flag — explicit session override (--github flag)
-    2. Merged config (user config > active profile) managed_tools.install_sources
+    2. Provided config or merged active config managed_tools.install_sources
     3. Default: (ToolSource.PYPI, None)
 
     Args:
         tool_id: Tool identifier (e.g., "statusline", "ai-agent-rules")
         cli_github_flag: True if --github was passed on the CLI
+        config: Optional already-loaded Config to avoid active-profile lookups
 
     Returns:
         Tuple of (ToolSource, local_path). local_path is set only for LOCAL source.
@@ -290,10 +291,16 @@ def get_effective_install_source(
     if cli_github_flag:
         return ToolSource.GITHUB, None
     try:
-        from ai_rules.config import Config
+        if config is None:
+            from ai_rules.config import Config
 
-        config = Config.load()
-        source = config.get_tool_install_source(tool_id)
+            config = Config.load()
+
+        source_getter = getattr(config, "get_tool_install_source", None)
+        if not callable(source_getter):
+            return ToolSource.PYPI, None
+
+        source = source_getter(tool_id)
         if source == "github":
             return ToolSource.GITHUB, None
         if source == "pypi":
@@ -465,7 +472,7 @@ def ensure_recall_installed(
     if config is not None and not _is_recall_configured(config):
         return "skipped", None
 
-    source, local_path = get_effective_install_source("recall")
+    source, local_path = get_effective_install_source("recall", config=config)
     from_github = source == ToolSource.GITHUB
 
     if is_command_available("recall"):
