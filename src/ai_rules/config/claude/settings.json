@@ -135,9 +135,10 @@
     "type": "command",
     "command": "claude-statusline"
   },
+  "viewMode": "verbose",
   "alwaysThinkingEnabled": true,
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
   "skipAutoPermissionPrompt": true,
-  "viewMode": "verbose"
+  "hooks": {}
 }

@@ -26,4 +26,12 @@ settings_overrides:
       useFullWidth: true
 exclude_symlinks:
   - ~/.config/goose/config.yaml
-mcp_overrides: {}
+mcp_overrides:
+  recall:
+    type: stdio
+    command: recall
+    args:
+      - mcp
+      - stdio
+    name: recall
+    description: Persistent markdown knowledge base with FTS5 search and git sync

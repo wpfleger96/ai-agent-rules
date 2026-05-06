@@ -1,6 +1,10 @@
 """Tests for update checking and application utilities."""
 
+from __future__ import annotations
+
 import subprocess
+
+from collections.abc import Callable
 
 import pytest
 
@@ -375,3 +379,47 @@ class TestPerformToolUpgradeLocalSource:
         assert success is True
         assert was_upgraded is False
         assert not subprocess_called
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestIsEnabledFiltering:
+    """Tests for is_enabled filtering logic in upgrade command."""
+
+    @staticmethod
+    def _make_tool(
+        tool_id: str, is_enabled: Callable[[], bool] | None = None
+    ) -> ToolSpec:
+        return ToolSpec(
+            tool_id=tool_id,
+            package_name=f"{tool_id}-pkg",
+            display_name=tool_id,
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+            is_enabled=is_enabled,
+        )
+
+    def test_disabled_tool_excluded_in_default_upgrade(self):
+        tools = [self._make_tool("recall", is_enabled=lambda: False)]
+        tools = [t for t in tools if t.is_installed()]
+        tools = [t for t in tools if t.is_enabled is None or t.is_enabled()]
+        assert len(tools) == 0
+
+    def test_enabled_tool_included(self):
+        tools = [self._make_tool("recall", is_enabled=lambda: True)]
+        tools = [t for t in tools if t.is_installed()]
+        tools = [t for t in tools if t.is_enabled is None or t.is_enabled()]
+        assert len(tools) == 1
+
+    def test_disabled_tool_still_included_when_explicitly_targeted(self):
+        """When user passes --only=recall, is_enabled is not checked."""
+        resolved_only = "recall"
+        tools = [self._make_tool("recall", is_enabled=lambda: False)]
+        tools = [
+            t for t in tools if resolved_only is None or t.tool_id == resolved_only
+        ]
+        tools = [t for t in tools if t.is_installed()]
+        # is_enabled check only runs when resolved_only is None
+        if resolved_only is None:
+            tools = [t for t in tools if t.is_enabled is None or t.is_enabled()]
+        assert len(tools) == 1

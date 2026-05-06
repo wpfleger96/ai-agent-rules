@@ -8,4 +8,12 @@ settings_overrides:
     terminal_title:
       enabled: true
 exclude_symlinks: []
-mcp_overrides: {}
+mcp_overrides:
+  recall:
+    type: stdio
+    command: recall
+    args:
+      - mcp
+      - stdio
+    name: recall
+    description: Persistent markdown knowledge base with FTS5 search and git sync

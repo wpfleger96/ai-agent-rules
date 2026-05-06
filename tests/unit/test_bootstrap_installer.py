@@ -3,6 +3,7 @@
 import subprocess
 import sys
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,6 +11,8 @@ import pytest
 from ai_rules.bootstrap.installer import (
     UV_NOT_FOUND_ERROR,
     ToolSource,
+    _is_recall_configured,
+    ensure_recall_installed,
     get_effective_install_source,
     get_tool_config_dir,
     get_tool_source,
@@ -486,6 +489,22 @@ class TestGetEffectiveInstallSource:
         assert source == ToolSource.LOCAL
         assert local_path == "~/Development/recall"
 
+    def test_passed_config_is_used_without_loading_active_profile(self, monkeypatch):
+        """An explicit config avoids active-profile source lookups."""
+        from ai_rules.config import Config
+
+        def _raise(*args, **kwargs):
+            raise RuntimeError("should not load active profile")
+
+        mock_config = MagicMock()
+        mock_config.get_tool_install_source.return_value = "local:~/Development/recall"
+        monkeypatch.setattr(Config, "load", _raise)
+
+        source, local_path = get_effective_install_source("recall", config=mock_config)
+
+        assert source == ToolSource.LOCAL
+        assert local_path == "~/Development/recall"
+
     def test_defaults_to_pypi_when_nothing_configured(self, monkeypatch):
         """Falls back to PYPI when no config and no CLI flag."""
         from ai_rules.config import Config
@@ -508,3 +527,196 @@ class TestGetEffectiveInstallSource:
         source, local_path = get_effective_install_source("statusline")
         assert source == ToolSource.PYPI
         assert local_path is None
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestIsRecallConfigured:
+    """Tests for _is_recall_configured helper."""
+
+    def test_returns_true_when_in_mcp_overrides(self):
+        config = SimpleNamespace(mcp_overrides={"recall": {"command": "recall"}})
+        assert _is_recall_configured(config) is True
+
+    def test_returns_false_when_mcp_overrides_empty(self, monkeypatch):
+        import importlib.resources
+
+        config = SimpleNamespace(mcp_overrides={})
+        monkeypatch.setattr(
+            importlib.resources,
+            "files",
+            lambda pkg: _MockTraversable({}),
+        )
+        assert _is_recall_configured(config) is False
+
+    def test_returns_false_when_no_mcp_overrides_attr(self, monkeypatch):
+        import importlib.resources
+
+        config = SimpleNamespace()
+        monkeypatch.setattr(
+            importlib.resources,
+            "files",
+            lambda pkg: _MockTraversable({}),
+        )
+        assert _is_recall_configured(config) is False
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestEnsureRecallInstalled:
+    """Tests for ensure_recall_installed function."""
+
+    def test_skips_when_not_configured(self, monkeypatch):
+        config = SimpleNamespace(mcp_overrides={})
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._is_recall_configured",
+            lambda c: False,
+        )
+        status, msg = ensure_recall_installed(config=config)
+        assert status == "skipped"
+        assert msg is None
+
+    def test_returns_already_installed_when_available(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._is_recall_configured",
+            lambda c: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available",
+            lambda cmd: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.get_effective_install_source",
+            lambda *args, **kwargs: (ToolSource.PYPI, None),
+        )
+
+        from ai_rules.bootstrap import updater
+
+        monkeypatch.setattr(
+            updater,
+            "get_tool_by_id",
+            lambda tid: None,
+        )
+        status, msg = ensure_recall_installed(
+            config=SimpleNamespace(mcp_overrides={"recall": {}})
+        )
+        assert status == "already_installed"
+
+    def test_installs_on_fresh_install(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._is_recall_configured",
+            lambda c: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available",
+            lambda cmd: cmd != "recall",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.get_effective_install_source",
+            lambda *args, **kwargs: (ToolSource.PYPI, None),
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.install_tool",
+            lambda *a, **kw: (True, "ok"),
+        )
+        status, msg = ensure_recall_installed(
+            config=SimpleNamespace(mcp_overrides={"recall": {}})
+        )
+        assert status == "installed"
+
+    def test_local_install_failure_returns_failed(self, monkeypatch):
+        """LOCAL install failure must return 'failed', not fall through to 'already_installed'."""
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._is_recall_configured",
+            lambda c: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available",
+            lambda cmd: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.get_effective_install_source",
+            lambda *args, **kwargs: (ToolSource.LOCAL, "~/dev/recall"),
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.install_tool",
+            lambda *a, **kw: (False, "install failed"),
+        )
+        status, msg = ensure_recall_installed(
+            config=SimpleNamespace(mcp_overrides={"recall": {}})
+        )
+        assert status == "failed"
+
+    def test_local_install_success_returns_upgraded(self, monkeypatch):
+        """Successful LOCAL reinstall returns 'upgraded'."""
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._is_recall_configured",
+            lambda c: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available",
+            lambda cmd: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.get_effective_install_source",
+            lambda *args, **kwargs: (ToolSource.LOCAL, "~/dev/recall"),
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.install_tool",
+            lambda *a, **kw: (True, "ok"),
+        )
+        status, msg = ensure_recall_installed(
+            config=SimpleNamespace(mcp_overrides={"recall": {}})
+        )
+        assert status == "upgraded"
+
+    def test_uses_passed_config_for_local_source(self, monkeypatch):
+        captured = {}
+
+        class ConfigWithRecallSource:
+            mcp_overrides = {"recall": {"command": "recall"}}
+
+            def get_tool_install_source(self, tool_id):
+                return "local:/tmp/recall"
+
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer._is_recall_configured",
+            lambda c: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available",
+            lambda cmd: True,
+        )
+
+        def install_spy(*args, **kwargs):
+            captured.update(kwargs)
+            return True, "ok"
+
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.install_tool",
+            install_spy,
+        )
+
+        status, msg = ensure_recall_installed(config=ConfigWithRecallSource())
+
+        assert status == "upgraded"
+        assert msg == "reinstalled from local path"
+        assert captured["local_path"] == "/tmp/recall"
+
+
+class _MockTraversable:
+    """Mock for importlib.resources traversable that returns empty mcps.json."""
+
+    def __init__(self, data: dict):
+        self._data = data
+
+    def __truediv__(self, other):
+        return _MockTraversable(self._data)
+
+    def is_file(self):
+        return True
+
+    def read_text(self):
+        import json
+
+        return json.dumps(self._data)
