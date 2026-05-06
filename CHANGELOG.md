@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.46.0 (2026-05-06)
+
+### Features
+
+- Release recall MCP
+  ([`07b4e38`](https://github.com/wpfleger96/ai-agent-rules/commit/07b4e38c5f5830b601484f903c2e53cd47a413fb))
+
+
 ## v0.45.1 (2026-05-06)
 
 ### Bug Fixes
