@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.45.0 (2026-05-06)
+
+### Features
+
+- **codex**: Switch managed Codex default to gpt-5.5
+  ([`2caad8e`](https://github.com/wpfleger96/ai-agent-rules/commit/2caad8ecc2f5698ff4928a5bacbdb2048d1164ae))
+
+OpenAI now recommends gpt-5.5 for Codex when it is available, and our managed Codex setups use
+  ChatGPT sign-in where that model is supported. This keeps the bundled default aligned with current
+  Codex guidance while preserving the existing reasoning defaults until we benchmark a separate
+  retune.
+
+
 ## v0.44.0 (2026-05-04)
 
 ### Features
