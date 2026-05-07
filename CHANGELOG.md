@@ -1,6 +1,18 @@
 # CHANGELOG
 
 
+## v0.47.0 (2026-05-07)
+
+### Features
+
+- Re-enable clear context option on plan accept
+  ([`84334ce`](https://github.com/wpfleger96/ai-agent-rules/commit/84334ce8a7bf4a5aaa3b3b30b86e1c52845444a5))
+
+showClearContextOnPlanAccept defaulted to false as of Claude Code v2.1.81, hiding the "clear
+  context" choice from the plan approval dialog. Explicitly set to true so the option is available
+  again.
+
+
 ## v0.46.0 (2026-05-06)
 
 ### Features
