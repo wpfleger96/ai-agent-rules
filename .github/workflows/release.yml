@@ -44,7 +44,7 @@ jobs:
           version: "latest"
 
       - name: Install just
-        uses: extractions/setup-just@v2
+        uses: extractions/setup-just@v4
 
       - name: Install dependencies
         run: just sync
