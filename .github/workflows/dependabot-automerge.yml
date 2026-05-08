@@ -7,6 +7,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
   auto-merge:
@@ -14,6 +15,11 @@ jobs:
     if: github.actor == 'dependabot[bot]'
 
     steps:
+      - name: Ensure dependencies label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh label create dependencies --description "Dependency updates" --color 0075ca 2>/dev/null || true
+
       - name: Fetch Dependabot metadata
         id: meta
         uses: dependabot/fetch-metadata@v2
