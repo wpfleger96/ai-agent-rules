@@ -1,19 +1,21 @@
-"""Settings cache lifecycle component."""
+"""Settings lifecycle component."""
 
 from __future__ import annotations
 
 from ai_rules.cli.context import CliContext, Component, ComponentResult
 
 
-class SettingsCacheComponent(Component):
-    label = "Settings Cache"
+class SettingsComponent(Component):
+    label = "Settings"
+    component_id = "settings"
+    filterable = False
 
     def install(self, ctx: CliContext) -> ComponentResult:
         if ctx.dry_run:
             return ComponentResult()
 
         built = 0
-        for target in ctx.all_targets:
+        for target in ctx.selected_targets:
             base_path = target._base_settings_path
             if not base_path.exists():
                 continue
@@ -26,7 +28,36 @@ class SettingsCacheComponent(Component):
                 )
                 return ComponentResult(ok=False, abort=True, counts={"errors": 1})
 
-        return ComponentResult(changed=bool(built), counts={"cache_updated": built})
+        for target in ctx.all_targets:
+            if not target.is_settings_file_excluded:
+                continue
+            symlink_target = target.settings_symlink_target
+            if symlink_target is None:
+                continue
+            expanded = symlink_target.expanduser()
+            if expanded.is_symlink():
+                link_dest = expanded.resolve()
+                cache_dir = ctx.config.get_cache_dir()
+                if cache_dir:
+                    try:
+                        link_dest.relative_to(cache_dir)
+                    except ValueError:
+                        continue
+                    expanded.unlink()
+
+        targets_needing_cache = {
+            target.target_id for target in ctx.all_targets if target.needs_cache
+        }
+        orphaned = ctx.config.cleanup_orphaned_cache(targets_needing_cache)
+        if orphaned:
+            ctx.console.print(
+                f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
+            )
+
+        return ComponentResult(
+            changed=bool(built or orphaned),
+            counts={"cache_updated": built, "cache_removed": len(orphaned)},
+        )
 
     def status(self, ctx: CliContext) -> ComponentResult:
         stale_targets = []
@@ -54,25 +85,3 @@ class SettingsCacheComponent(Component):
 
     def diff(self, ctx: CliContext) -> ComponentResult:
         return self.status(ctx)
-
-
-class CacheCleanupComponent(Component):
-    label = "Settings Cache Cleanup"
-
-    def install(self, ctx: CliContext) -> ComponentResult:
-        if ctx.dry_run:
-            return ComponentResult()
-
-        targets_needing_cache = {
-            target.target_id for target in ctx.all_targets if target.needs_cache
-        }
-        orphaned = ctx.config.cleanup_orphaned_cache(targets_needing_cache)
-        if orphaned:
-            ctx.console.print(
-                f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
-            )
-
-        return ComponentResult(
-            changed=bool(orphaned),
-            counts={"cache_removed": len(orphaned)},
-        )

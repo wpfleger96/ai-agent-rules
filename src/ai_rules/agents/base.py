@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from ai_rules.targets.base import ConfigTarget
@@ -18,6 +19,10 @@ class Agent(ConfigTarget):
     @property
     def target_id(self) -> str:
         return self.agent_id
+
+    @property
+    def settings_symlink_target(self) -> Path | None:
+        return None
 
     @property
     @abstractmethod

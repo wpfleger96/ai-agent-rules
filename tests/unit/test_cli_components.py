@@ -12,15 +12,13 @@ from ai_rules.cli.components import (
 @pytest.mark.unit
 def test_install_components_run_in_expected_order():
     assert [component.label for component in INSTALL_COMPONENTS] == [
+        "Settings",
         "Optional Tools",
-        "Settings Cache",
-        "Legacy Migration",
-        "Install Confirmation",
-        "Settings Cache Cleanup",
-        "User-Level Configuration",
+        "Config Files",
+        "Skills",
+        "Claude Extensions",
         "MCPs",
         "Claude Plugins",
-        "Cleanup",
         "Shell Completions",
     ]
 
@@ -28,8 +26,8 @@ def test_install_components_run_in_expected_order():
 @pytest.mark.unit
 def test_status_components_cover_managed_lifecycle_surfaces():
     assert [component.label for component in STATUS_COMPONENTS] == [
-        "User-Level Configuration",
-        "Settings Cache",
+        "Config Files",
+        "Settings",
         "MCPs",
         "Claude Plugins",
         "Claude Extensions",
@@ -42,8 +40,8 @@ def test_status_components_cover_managed_lifecycle_surfaces():
 @pytest.mark.unit
 def test_diff_components_include_drift_sources():
     assert [component.label for component in DIFF_COMPONENTS] == [
-        "User-Level Configuration",
-        "Settings Cache",
+        "Config Files",
+        "Settings",
         "MCPs",
         "Claude Plugins",
         "Claude Extensions",
@@ -59,6 +57,8 @@ def test_validate_components_check_source_files():
 @pytest.mark.unit
 def test_uninstall_components_only_remove_symlinks_and_mcps():
     assert [component.label for component in UNINSTALL_COMPONENTS] == [
-        "User-Level Configuration",
+        "Config Files",
+        "Skills",
+        "Claude Extensions",
         "MCPs",
     ]

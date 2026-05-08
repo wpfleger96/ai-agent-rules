@@ -29,6 +29,10 @@ class AmpAgent(Agent):
     def config_file_format(self) -> str:
         return "json"
 
+    @property
+    def settings_symlink_target(self) -> Path:
+        return Path("~/.config/amp/settings.json")
+
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of all Amp symlinks."""

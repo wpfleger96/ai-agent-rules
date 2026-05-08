@@ -7,6 +7,7 @@ from ai_rules.cli.context import CliContext, Component, ComponentResult
 
 class CompletionsComponent(Component):
     label = "Shell Completions"
+    component_id = "completions"
 
     def install(self, ctx: CliContext) -> ComponentResult:
         if ctx.skip_completions:

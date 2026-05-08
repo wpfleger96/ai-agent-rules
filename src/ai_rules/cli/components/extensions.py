@@ -9,6 +9,118 @@ from ai_rules.cli.context import CliContext, Component, ComponentResult
 
 class ClaudeExtensionsComponent(Component):
     label = "Claude Extensions"
+    component_id = "extensions"
+
+    def install(self, ctx: CliContext) -> ComponentResult:
+        target = ctx.selected_target("claude")
+        if target is None:
+            return ComponentResult()
+
+        from ai_rules.claude_extensions import ClaudeExtensionManager
+        from ai_rules.symlinks import SymlinkResult, create_symlink
+
+        ext_manager = ClaudeExtensionManager(ctx.config_dir)
+        created = updated = skipped = errors = 0
+
+        ctx.console.print("\n[bold cyan]Claude Extensions[/bold cyan]")
+        for ext_type in ClaudeExtensionManager.USER_DIRS:
+            managed = ext_manager._get_managed_extensions(ext_type)
+            if not managed:
+                continue
+
+            ctx.console.print(f"\n[bold]{ext_type.capitalize()}:[/bold]")
+            user_dir = ClaudeExtensionManager.USER_DIRS[ext_type].expanduser()
+            pattern = ClaudeExtensionManager.PATTERNS[ext_type]
+            suffix = pattern.lstrip("*")
+
+            for name, source_path in managed.items():
+                filename = f"{name}{suffix}"
+                target_path = user_dir / filename
+                result, message = create_symlink(
+                    target_path,
+                    source_path,
+                    force=ctx.yes or not ctx.dry_run,
+                    dry_run=ctx.dry_run,
+                )
+
+                if result == SymlinkResult.CREATED:
+                    ctx.console.print(
+                        f"  [green]✓[/green] {target_path} → {source_path}"
+                    )
+                    created += 1
+                elif result == SymlinkResult.ALREADY_CORRECT:
+                    ctx.console.print(
+                        f"  [dim]•[/dim] {target_path} [dim](already correct)[/dim]"
+                    )
+                elif result == SymlinkResult.UPDATED:
+                    ctx.console.print(
+                        f"  [yellow]↻[/yellow] {target_path} → {source_path}"
+                    )
+                    updated += 1
+                elif result == SymlinkResult.SKIPPED:
+                    ctx.console.print(
+                        f"  [yellow]○[/yellow] {target_path} [dim](skipped)[/dim]"
+                    )
+                    skipped += 1
+                elif result == SymlinkResult.ERROR:
+                    ctx.console.print(f"  [red]✗[/red] {target_path}: {message}")
+                    errors += 1
+
+        return ComponentResult(
+            ok=errors == 0,
+            changed=bool(created or updated),
+            counts={
+                "created": created,
+                "updated": updated,
+                "skipped": skipped,
+                "errors": errors,
+            },
+        )
+
+    def uninstall(self, ctx: CliContext) -> ComponentResult:
+        target = ctx.selected_target("claude")
+        if target is None:
+            return ComponentResult()
+
+        from ai_rules.claude_extensions import ClaudeExtensionManager
+        from ai_rules.symlinks import remove_symlink
+
+        ext_manager = ClaudeExtensionManager(ctx.config_dir)
+        removed = skipped = 0
+
+        ctx.console.print("\n[bold cyan]Claude Extensions[/bold cyan]")
+        for ext_type in ClaudeExtensionManager.USER_DIRS:
+            managed = ext_manager._get_managed_extensions(ext_type)
+            if not managed:
+                continue
+
+            ctx.console.print(f"\n[bold]{ext_type.capitalize()}:[/bold]")
+            user_dir = ClaudeExtensionManager.USER_DIRS[ext_type].expanduser()
+            pattern = ClaudeExtensionManager.PATTERNS[ext_type]
+            suffix = pattern.lstrip("*")
+
+            for name in managed:
+                filename = f"{name}{suffix}"
+                target_path = user_dir / filename
+                success, message = remove_symlink(target_path, force=ctx.yes)
+
+                if success:
+                    ctx.console.print(f"  [green]✓[/green] {target_path} removed")
+                    removed += 1
+                elif "Does not exist" in message:
+                    ctx.console.print(
+                        f"  [dim]•[/dim] {target_path} [dim](not installed)[/dim]"
+                    )
+                else:
+                    ctx.console.print(
+                        f"  [yellow]○[/yellow] {target_path} [dim]({message})[/dim]"
+                    )
+                    skipped += 1
+
+        return ComponentResult(
+            changed=removed > 0,
+            counts={"removed": removed, "skipped": skipped},
+        )
 
     def status(self, ctx: CliContext) -> ComponentResult:
         target = ctx.selected_target("claude")

@@ -7,6 +7,7 @@ from ai_rules.cli.context import CliContext, Component, ComponentResult
 
 class OptionalToolsComponent(Component):
     label = "Optional Tools"
+    component_id = "tools"
 
     def install(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.bootstrap import (

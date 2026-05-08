@@ -1,4 +1,4 @@
-"""Symlink lifecycle component."""
+"""Config files lifecycle component."""
 
 from __future__ import annotations
 
@@ -6,7 +6,12 @@ from pathlib import Path
 
 from ai_rules.cli.context import CliContext, Component, ComponentResult
 
-SPECIALIZED_STATUS_PATH_PARTS = ("/agents/", "/commands/", "/skills/", "/hooks/")
+SPECIALIZED_PATH_PARTS = ("/agents/", "/commands/", "/skills/", "/hooks/")
+
+
+def _is_specialized_path(target: Path) -> bool:
+    target_str = str(target)
+    return any(part in target_str for part in SPECIALIZED_PATH_PARTS)
 
 
 def _display_symlink_status(
@@ -64,25 +69,81 @@ def _display_symlink_status(
     return True
 
 
-class SymlinkComponent(Component):
-    label = "User-Level Configuration"
+class ConfigComponent(Component):
+    label = "Config Files"
+    component_id = "config"
 
     def install(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.cli import install_user_symlinks
+        from ai_rules.cli import cleanup_deprecated_symlinks
+        from ai_rules.symlinks import SymlinkResult, create_symlink
 
-        results = install_user_symlinks(
-            list(ctx.selected_targets), ctx.yes, ctx.dry_run
+        created = updated = skipped = excluded = errors = 0
+        effective_force = ctx.yes or not ctx.dry_run
+
+        for agent in ctx.selected_targets:
+            ctx.console.print(f"\n[bold]{agent.name}[/bold]")
+
+            filtered_symlinks = agent.get_filtered_symlinks()
+            excluded_count = len(agent.symlinks) - len(filtered_symlinks)
+
+            config_symlinks = [
+                (tgt, src)
+                for tgt, src in filtered_symlinks
+                if not _is_specialized_path(tgt)
+            ]
+            excluded_count += len(filtered_symlinks) - len(config_symlinks)
+
+            if excluded_count > 0:
+                ctx.console.print(
+                    f"  [dim]({excluded_count} symlink(s) excluded)[/dim]"
+                )
+                excluded += excluded_count
+
+            for target, source in config_symlinks:
+                result, message = create_symlink(
+                    target, source, effective_force, ctx.dry_run
+                )
+
+                if result == SymlinkResult.CREATED:
+                    ctx.console.print(f"  [green]✓[/green] {target} → {source}")
+                    created += 1
+                elif result == SymlinkResult.ALREADY_CORRECT:
+                    ctx.console.print(
+                        f"  [dim]•[/dim] {target} [dim](already correct)[/dim]"
+                    )
+                elif result == SymlinkResult.UPDATED:
+                    ctx.console.print(f"  [yellow]↻[/yellow] {target} → {source}")
+                    updated += 1
+                elif result == SymlinkResult.SKIPPED:
+                    ctx.console.print(
+                        f"  [yellow]○[/yellow] {target} [dim](skipped)[/dim]"
+                    )
+                    skipped += 1
+                elif result == SymlinkResult.ERROR:
+                    ctx.console.print(f"  [red]✗[/red] {target}: {message}")
+                    errors += 1
+
+        cleanup_deprecated_symlinks(
+            list(ctx.selected_targets), ctx.config_dir, ctx.yes, ctx.dry_run
         )
+
+        results = {
+            "created": created,
+            "updated": updated,
+            "skipped": skipped,
+            "excluded": excluded,
+            "errors": errors,
+        }
         return ComponentResult(
-            ok=results["errors"] == 0,
-            changed=bool(results["created"] or results["updated"]),
+            ok=errors == 0,
+            changed=bool(created or updated),
             counts=results,
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.symlinks import check_symlink
 
-        ctx.console.print("[bold cyan]User-Level Configuration[/bold cyan]\n")
+        ctx.console.print("[bold cyan]Config Files[/bold cyan]\n")
         all_correct = True
 
         for target in ctx.selected_targets:
@@ -96,8 +157,7 @@ class SymlinkComponent(Component):
             ]
 
             for tgt, source in filtered_symlinks:
-                target_str = str(tgt)
-                if any(part in target_str for part in SPECIALIZED_STATUS_PATH_PARTS):
+                if _is_specialized_path(tgt):
                     continue
 
                 status_code, message = check_symlink(tgt, source)
@@ -123,6 +183,8 @@ class SymlinkComponent(Component):
             target_diffs: list[tuple[Path, Path, str, str, str | None]] = []
 
             for tgt, source in target.get_filtered_symlinks():
+                if _is_specialized_path(tgt):
+                    continue
                 target_path = tgt.expanduser()
                 status_code, message = check_symlink(target_path, source)
 
@@ -217,11 +279,13 @@ class SymlinkComponent(Component):
         total_removed = 0
         total_skipped = 0
 
-        ctx.console.print("\n[bold cyan]User-Level Configuration[/bold cyan]")
+        ctx.console.print("\n[bold cyan]Config Files[/bold cyan]")
         for target in ctx.selected_targets:
             ctx.console.print(f"\n[bold]{target.name}[/bold]")
 
             for tgt, _source in target.get_filtered_symlinks():
+                if _is_specialized_path(tgt):
+                    continue
                 success, message = remove_symlink(tgt, ctx.yes)
 
                 if success:

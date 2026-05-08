@@ -34,6 +34,13 @@ uv run ai-agent-rules upgrade        # Upgrade to latest (shows changelogs)
 uv run ai-agent-rules validate       # Validate config files
 uv run ai-agent-rules diff           # Show diffs between repo and installed
 
+# Filtering flags (apply to install, status, diff, uninstall)
+#   --agents <list>  Comma-separated agent IDs to target (default: all)
+#   --only <list>    Comma-separated component types to target (default: all)
+#                    Valid values: config, skills, settings, mcps, plugins,
+#                    extensions, completions, tools, source-files
+#                    Composes with --agents as an intersection
+
 # Subcommands
 uv run ai-agent-rules config show    # Show current config
 uv run ai-agent-rules config edit    # Edit user config in $EDITOR
@@ -212,6 +219,8 @@ uv run pytest -m state          # State management tests only
 | Profile management | `profiles.py`, `state.py`, `cli.py::profile()` |
 | State management | `state.py` (ProfileState class) |
 | Symlink behavior | `symlinks.py` (create_symlink, remove_symlink) |
+| Config files component | `cli/components/config.py` (ConfigComponent — install/status/diff for symlinked config files) |
+| Settings cache component | `cli/components/settings.py` (SettingsComponent — build/rebuild merged settings cache) |
 | Shell completions | `completions.py`, `cli.py::completions()` |
 | New agent | `agents/base.py`, `agents/<new>.py`, `cli.py::get_agents()` |
 | Plugin management | `plugins.py`, each `agents/*.py` defines `preserved_fields` |

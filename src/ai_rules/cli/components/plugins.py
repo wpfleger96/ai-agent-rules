@@ -7,6 +7,7 @@ from ai_rules.cli.context import CliContext, Component, ComponentResult
 
 class ClaudePluginComponent(Component):
     label = "Claude Plugins"
+    component_id = "plugins"
 
     def _claude_selected(self, ctx: CliContext) -> bool:
         return ctx.selected_target("claude") is not None

@@ -10,6 +10,7 @@ from ai_rules.cli.context import CliContext, Component, ComponentResult
 
 class MCPComponent(Component):
     label = "MCPs"
+    component_id = "mcps"
 
     def install(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.mcp import OperationResult
@@ -20,6 +21,8 @@ class MCPComponent(Component):
 
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
+                continue
+            if target.is_settings_file_excluded:
                 continue
             mgr = target.get_mcp_manager()
             if mgr is None:
@@ -78,6 +81,8 @@ class MCPComponent(Component):
 
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
+                continue
+            if target.is_settings_file_excluded:
                 continue
 
             mcp_status = target.get_mcp_status()
@@ -151,7 +156,11 @@ class MCPComponent(Component):
 
         removed = 0
         for target in ctx.selected_targets:
-            if not isinstance(target, Agent) or target.get_mcp_manager() is None:
+            if not isinstance(target, Agent):
+                continue
+            if target.is_settings_file_excluded:
+                continue
+            if target.get_mcp_manager() is None:
                 continue
 
             result, message = target.uninstall_mcps(force=ctx.yes, dry_run=False)
