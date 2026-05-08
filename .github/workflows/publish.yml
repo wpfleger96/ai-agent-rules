@@ -1,12 +1,8 @@
 name: Publish to PyPI
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Git tag to publish (e.g., v0.4.1)'
-        required: true
-        type: string
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -16,73 +12,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.inputs.tag }}
-        fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
 
-    - name: Fetch all tags from remote
-      run: |
-        echo "Fetching all tags from remote..."
-        git fetch --tags --force
-        echo "Recent tags:"
-        git tag -l | tail -10
-        echo "Current commit: $(git rev-parse HEAD)"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
 
-    - name: Check if release tag exists
-      id: check_tag
-      run: |
-        echo "Checking for release tag on commit $(git rev-parse HEAD)"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
 
-        if TAG=$(git describe --exact-match HEAD 2>/dev/null); then
-          echo "Found tag: $TAG"
+      - name: Install dependencies and build
+        run: |
+          uv sync
+          uv build
 
-          if echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
-            echo "has_tag=true" >> $GITHUB_OUTPUT
-            echo "tag=$TAG" >> $GITHUB_OUTPUT
-            echo "✓ Release tag found: $TAG"
-          else
-            echo "has_tag=false" >> $GITHUB_OUTPUT
-            echo "✗ Tag exists but doesn't match version pattern: $TAG"
-          fi
-        else
-          echo "has_tag=false" >> $GITHUB_OUTPUT
-          echo "✗ No tag found on current commit"
-          echo "Available tags on recent commits:"
-          git log --oneline --decorate -5
-        fi
-
-    - name: Set up Python
-      if: steps.check_tag.outputs.has_tag == 'true'
-      uses: actions/setup-python@v5
-      with:
-        python-version-file: .python-version
-
-    - name: Install uv
-      if: steps.check_tag.outputs.has_tag == 'true'
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-
-    - name: Install dependencies and build
-      if: steps.check_tag.outputs.has_tag == 'true'
-      run: |
-        uv sync
-        uv build
-
-    - name: Publish to PyPI
-      if: steps.check_tag.outputs.has_tag == 'true'
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
-        verify-metadata: true
-
-    - name: Publish summary
-      if: always()
-      run: |
-        if [ "${{ steps.check_tag.outputs.has_tag }}" == "true" ]; then
-          echo "Published version ${{ steps.check_tag.outputs.tag }} to PyPI"
-        else
-          echo "Skipped - no new release tag found"
-        fi
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          verify-metadata: true
