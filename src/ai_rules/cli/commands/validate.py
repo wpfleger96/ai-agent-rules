@@ -2,9 +2,23 @@ from __future__ import annotations
 
 import sys
 
+from typing import TYPE_CHECKING
+
 import click
 
 import ai_rules.cli as cli_facade
+
+if TYPE_CHECKING:
+    from click.shell_completion import CompletionItem
+
+
+def _complete_components(
+    ctx: click.Context, param: click.Parameter, incomplete: str
+) -> list[CompletionItem]:
+    from ai_rules.cli.components import VALIDATE_COMPONENTS
+
+    ids = tuple(c.component_id for c in VALIDATE_COMPONENTS)
+    return cli_facade.complete_components(ctx, param, incomplete, component_ids=ids)
 
 
 @click.command()
@@ -13,7 +27,13 @@ import ai_rules.cli as cli_facade
     help="Comma-separated list of agents to validate (default: all)",
     shell_complete=cli_facade.complete_targets,
 )
-def validate(agents: str | None) -> None:
+@click.option(
+    "--only",
+    "component_filter",
+    help="Comma-separated list of components to target (default: all)",
+    shell_complete=_complete_components,
+)
+def validate(agents: str | None, component_filter: str | None) -> None:
     """Validate configuration and source files."""
     from rich.console import Console
 
@@ -29,6 +49,8 @@ def validate(agents: str | None) -> None:
     all_targets = cli_facade.get_targets(config_dir, config)
     selected_targets = cli_facade.select_targets(all_targets, agents)
 
+    parsed_filter = cli_facade.select_components(VALIDATE_COMPONENTS, component_filter)
+
     console.print("[bold]Validating AI Rules Configuration[/bold]\n")
 
     cli_ctx = CliContext(
@@ -39,6 +61,7 @@ def validate(agents: str | None) -> None:
         all_targets=tuple(all_targets),
         selected_targets=tuple(selected_targets),
         target_filter=agents,
+        component_filter=parsed_filter,
     )
     result = run_components(VALIDATE_COMPONENTS, "validate", cli_ctx)
     total_checked = result.counts.get("checked", 0)

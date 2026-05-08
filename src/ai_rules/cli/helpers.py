@@ -14,10 +14,23 @@ import click
 if TYPE_CHECKING:
     from click.shell_completion import CompletionItem
 
+    from ai_rules.cli.context import Component
     from ai_rules.config import Config
     from ai_rules.targets.base import ConfigTarget
 
 GIT_SUBPROCESS_TIMEOUT = 5
+
+KNOWN_COMPONENT_IDS: tuple[str, ...] = (
+    "config",
+    "skills",
+    "settings",
+    "mcps",
+    "plugins",
+    "extensions",
+    "completions",
+    "tools",
+    "source-files",
+)
 
 
 def get_user_config_path() -> Path:
@@ -125,6 +138,48 @@ def select_targets(
         sys.exit(1)
 
     return selected
+
+
+def select_components(
+    components: tuple[Component, ...], filter_string: str | None
+) -> tuple[str, ...] | None:
+    """Parse --only filter string into validated component IDs.
+
+    Returns None if no filter, or a tuple of valid component_id strings.
+    """
+    if not filter_string:
+        return None
+
+    requested_ids = [cid.strip() for cid in filter_string.split(",") if cid.strip()]
+    known_ids = {component.component_id for component in components}
+
+    invalid_ids = [cid for cid in requested_ids if cid not in known_ids]
+    if invalid_ids:
+        click.echo(
+            f"Error: Invalid component ID(s): {', '.join(sorted(invalid_ids))}\n"
+            f"Available components: {', '.join(sorted(known_ids))}"
+        )
+        sys.exit(1)
+
+    return tuple(requested_ids)
+
+
+def complete_components(
+    ctx: click.Context,
+    param: click.Parameter,
+    incomplete: str,
+    *,
+    component_ids: tuple[str, ...] | None = None,
+) -> list[CompletionItem]:
+    """Shell completion callback for --only flag."""
+    from click.shell_completion import CompletionItem
+
+    ids = component_ids if component_ids is not None else KNOWN_COMPONENT_IDS
+    return [
+        CompletionItem(component_id)
+        for component_id in ids
+        if component_id.startswith(incomplete)
+    ]
 
 
 def format_summary(

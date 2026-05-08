@@ -11,6 +11,9 @@ from typing import TYPE_CHECKING, Any
 import click
 
 from ai_rules.cli.helpers import (
+    complete_components as complete_components,
+)
+from ai_rules.cli.helpers import (
     complete_profiles as complete_profiles,
 )
 from ai_rules.cli.helpers import (
@@ -32,10 +35,14 @@ from ai_rules.cli.helpers import (
     get_user_config_path as get_user_config_path,
 )
 from ai_rules.cli.helpers import (
+    select_components as select_components,
+)
+from ai_rules.cli.helpers import (
     select_targets as select_targets,
 )
 
 if TYPE_CHECKING:
+    from ai_rules.cli.context import CliContext
     from ai_rules.config import Config
     from ai_rules.targets.base import ConfigTarget
 
@@ -211,6 +218,13 @@ def _display_pending_plugin_changes(config: "Config") -> bool:
             console.print(f"  [dim]○[/dim] {name} (Unmanaged)")
 
     return found_changes
+
+
+def _display_pending_changes(ctx: "CliContext") -> bool:
+    """Display pending changes across all component types. Returns True if any changes found."""
+    has_symlink_changes = _display_pending_symlink_changes(list(ctx.selected_targets))
+    has_plugin_changes = _display_pending_plugin_changes(ctx.config)
+    return has_symlink_changes or has_plugin_changes
 
 
 def check_first_run(targets: list["ConfigTarget"], force: bool) -> bool:

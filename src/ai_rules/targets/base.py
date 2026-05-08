@@ -63,8 +63,27 @@ class ConfigTarget(ABC):
         return self.preserved_fields
 
     @property
+    def settings_symlink_target(self) -> Path | None:
+        """Deterministic path where the settings symlink would be created.
+
+        Agents override this with their concrete settings file location.
+        Returns None for targets with no settings file symlink.
+        """
+        return None
+
+    @property
+    def is_settings_file_excluded(self) -> bool:
+        """Whether the settings symlink target is excluded by config."""
+        target = self.settings_symlink_target
+        if target is None:
+            return False
+        return self.config.is_excluded(str(target))
+
+    @property
     def needs_cache(self) -> bool:
         """Whether this target needs a cache file (has overrides or preserved fields)."""
+        if self.is_settings_file_excluded:
+            return False
         return self.target_id in self.config.settings_overrides or bool(
             self._effective_preserved_fields
         )

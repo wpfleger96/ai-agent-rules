@@ -8,10 +8,7 @@ from rich.console import Console
 
 from ai_rules.cli.components.completions import CompletionsComponent
 from ai_rules.cli.components.plugins import ClaudePluginComponent
-from ai_rules.cli.components.settings_cache import (
-    CacheCleanupComponent,
-    SettingsCacheComponent,
-)
+from ai_rules.cli.components.settings import SettingsComponent
 from ai_rules.cli.context import CliContext, Component, ComponentResult
 from ai_rules.cli.runner import run_components
 from ai_rules.config import Config
@@ -19,15 +16,18 @@ from ai_rules.config import Config
 
 class CacheTarget:
     needs_cache = True
+    is_settings_file_excluded = False
 
     def __init__(self, target_id: str):
         self.target_id = target_id
+        self._base_settings_path = Path("/nonexistent/settings.json")
 
 
 class FailingCacheTarget:
     target_id = "failing"
     name = "Failing"
     needs_cache = True
+    is_settings_file_excluded = False
 
     def __init__(self, base_settings_path: Path):
         self._base_settings_path = base_settings_path
@@ -51,6 +51,7 @@ class UnavailablePluginManager:
 
 class FailIfRunComponent(Component):
     label = "Must Not Run"
+    component_id = "fail-if-run"
 
     def install(self, ctx: CliContext) -> ComponentResult:
         raise AssertionError("install pipeline should stop after cache build failure")
@@ -92,9 +93,9 @@ def test_cache_cleanup_uses_all_targets_not_selected_subset(
         selected_targets=(CacheTarget("claude"),),
     )
 
-    result = CacheCleanupComponent().install(ctx)
+    result = SettingsComponent().install(ctx)
 
-    assert result.counts == {"cache_removed": 1}
+    assert result.counts.get("cache_removed") == 1
     assert claude_cache.exists()
     assert codex_cache.exists()
     assert not old_cache.exists()
@@ -104,13 +105,15 @@ def test_cache_cleanup_uses_all_targets_not_selected_subset(
 def test_settings_cache_failure_aborts_install_components(tmp_path: Path) -> None:
     base_settings_path = tmp_path / "settings.json"
     base_settings_path.write_text("{}")
+    failing_target = FailingCacheTarget(base_settings_path)
     ctx = make_context(
         tmp_path,
-        all_targets=(FailingCacheTarget(base_settings_path),),
+        all_targets=(failing_target,),
+        selected_targets=(failing_target,),
     )
 
     result = run_components(
-        (SettingsCacheComponent(), FailIfRunComponent()),
+        (SettingsComponent(), FailIfRunComponent()),
         "install",
         ctx,
     )
@@ -134,6 +137,44 @@ def test_completions_component_honors_skip_completions(
     )
 
     assert result.changed is False
+
+
+@pytest.mark.unit
+def test_settings_component_removes_dangling_symlink_when_excluded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache_dir = tmp_path / "cache" / "goose"
+    cache_dir.mkdir(parents=True)
+    cached_config = cache_dir / "config.yaml"
+    cached_config.write_text("cached")
+
+    settings_dir = tmp_path / "settings"
+    settings_dir.mkdir()
+    settings_symlink = settings_dir / "config.yaml"
+    settings_symlink.symlink_to(cached_config)
+
+    assert settings_symlink.is_symlink()
+
+    class ExcludedTarget:
+        target_id = "goose"
+        name = "Goose"
+        needs_cache = False
+        is_settings_file_excluded = True
+        settings_symlink_target = settings_symlink
+        _base_settings_path = Path("/nonexistent/settings.yaml")
+
+    monkeypatch.setattr(Config, "get_cache_dir", lambda self: tmp_path / "cache")
+    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
+
+    ctx = make_context(
+        tmp_path,
+        all_targets=(ExcludedTarget(),),
+        selected_targets=(ExcludedTarget(),),
+    )
+    SettingsComponent().install(ctx)
+
+    assert not settings_symlink.exists()
+    assert not settings_symlink.is_symlink()
 
 
 @pytest.mark.unit

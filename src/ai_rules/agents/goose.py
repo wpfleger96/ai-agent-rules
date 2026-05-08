@@ -33,6 +33,10 @@ class GooseAgent(Agent):
     def preserved_fields(self) -> list[str]:
         return ["extensions"]
 
+    @property
+    def settings_symlink_target(self) -> Path:
+        return Path("~/.config/goose/config.yaml")
+
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of all Goose symlinks."""

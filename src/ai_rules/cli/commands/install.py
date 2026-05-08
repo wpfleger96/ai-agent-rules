@@ -3,15 +3,28 @@ from __future__ import annotations
 import sys
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
 import ai_rules.cli as cli_facade
 
+if TYPE_CHECKING:
+    from click.shell_completion import CompletionItem
+
 from ai_rules.cli.groups.profile import (
     _detect_profile_override_conflicts,
     _handle_profile_conflicts,
 )
+
+
+def _complete_components(
+    ctx: click.Context, param: click.Parameter, incomplete: str
+) -> list[CompletionItem]:
+    from ai_rules.cli.components import INSTALL_COMPONENTS
+
+    ids = tuple(c.component_id for c in INSTALL_COMPONENTS if c.filterable)
+    return cli_facade.complete_components(ctx, param, incomplete, component_ids=ids)
 
 
 @click.command()
@@ -26,6 +39,12 @@ from ai_rules.cli.groups.profile import (
     "--agents",
     help="Comma-separated list of agents to install (default: all)",
     shell_complete=cli_facade.complete_targets,
+)
+@click.option(
+    "--only",
+    "component_filter",
+    help="Comma-separated list of components to target (default: all)",
+    shell_complete=_complete_components,
 )
 @click.option(
     "--skip-completions",
@@ -49,6 +68,7 @@ def install(
     dry_run: bool,
     rebuild_cache: bool,
     agents: str | None,
+    component_filter: str | None,
     skip_completions: bool,
     profile: str | None,
     config_dir_override: str | None = None,
@@ -58,7 +78,7 @@ def install(
 
     from ai_rules.cli.components import INSTALL_COMPONENTS
     from ai_rules.cli.context import CliContext
-    from ai_rules.cli.runner import run_components
+    from ai_rules.cli.runner import run_install
     from ai_rules.config import Config
 
     console = Console()
@@ -106,6 +126,12 @@ def install(
     all_targets = cli_facade.get_targets(config_dir, config)
     selected_targets = cli_facade.select_targets(all_targets, agents)
 
+    # Split INSTALL_COMPONENTS into infrastructure (unfilterable) and semantic (filterable)
+    infrastructure = tuple(c for c in INSTALL_COMPONENTS if not c.filterable)
+    semantic = tuple(c for c in INSTALL_COMPONENTS if c.filterable)
+
+    parsed_filter = cli_facade.select_components(semantic, component_filter)
+
     cli_ctx = CliContext(
         console=console,
         config_dir=config_dir,
@@ -114,6 +140,7 @@ def install(
         all_targets=tuple(all_targets),
         selected_targets=tuple(selected_targets),
         target_filter=agents,
+        component_filter=parsed_filter,
         yes=yes,
         dry_run=dry_run,
         rebuild_cache=rebuild_cache,
@@ -123,7 +150,7 @@ def install(
     if dry_run:
         console.print("[bold]Dry run mode - no changes will be made[/bold]\n")
 
-    install_components_result = run_components(INSTALL_COMPONENTS, "install", cli_ctx)
+    install_components_result = run_install(infrastructure, semantic, cli_ctx)
     if install_components_result.aborted:
         if not install_components_result.ok:
             sys.exit(1)

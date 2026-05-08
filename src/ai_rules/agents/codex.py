@@ -33,6 +33,10 @@ class CodexAgent(Agent):
     def preserved_fields(self) -> list[str]:
         return ["projects"]
 
+    @property
+    def settings_symlink_target(self) -> Path:
+        return Path("~/.codex/config.toml")
+
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of all Codex CLI symlinks."""
