@@ -8,6 +8,10 @@ on:
     types:
       - completed
 
+permissions:
+  contents: write
+  actions: write
+
 jobs:
   release:
     name: Release
