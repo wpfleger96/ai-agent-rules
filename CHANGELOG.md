@@ -1,6 +1,69 @@
 # CHANGELOG
 
 
+## v0.47.2 (2026-05-08)
+
+### Bug Fixes
+
+- Auto-create dependencies label in automerge workflow
+  ([#21](https://github.com/wpfleger96/ai-agent-rules/pull/21),
+  [`2d9aece`](https://github.com/wpfleger96/ai-agent-rules/commit/2d9aece4ec2a6d168ddd8d776cac239ae87dfee5))
+
+Dependabot doesn't auto-create labels referenced in dependabot.yml — it skips labeling and leaves a
+  comment asking you to create it manually. Adding a self-healing step that creates the label if
+  missing so the golden path works on new repos without manual setup.
+
+- Prevent cascading CI/release runs on version commits
+  ([#20](https://github.com/wpfleger96/ai-agent-rules/pull/20),
+  [`6dbea90`](https://github.com/wpfleger96/ai-agent-rules/commit/6dbea90509cd430f7d9611af66a9b6694fca0cd4))
+
+PSR pushes a release commit to main, which triggers CI, which triggers another Automated Release run
+  (no-op but wasteful). Adding [skip ci] to the release commit message prevents the cascade at the
+  source.
+
+### Chores
+
+- **deps)(deps**: Bump actions/setup-python from 5 to 6
+  ([#14](https://github.com/wpfleger96/ai-agent-rules/pull/14),
+  [`08ff390`](https://github.com/wpfleger96/ai-agent-rules/commit/08ff3904aa441d04c92dd5f58b701bcaa318262c))
+
+Bumps [actions/setup-python](https://github.com/actions/setup-python) from 5 to 6. - [Release
+  notes](https://github.com/actions/setup-python/releases) -
+  [Commits](https://github.com/actions/setup-python/compare/v5...v6)
+
+--- updated-dependencies: - dependency-name: actions/setup-python dependency-version: '6'
+
+dependency-type: direct:production
+
+update-type: version-update:semver-major ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+Co-authored-by: Will Pfleger <pfleger.will@gmail.com>
+
+- **deps)(deps**: Bump extractions/setup-just from 2 to 4
+  ([#13](https://github.com/wpfleger96/ai-agent-rules/pull/13),
+  [`bcbc517`](https://github.com/wpfleger96/ai-agent-rules/commit/bcbc51753b5ba9dd1f99259aae33354362a34f59))
+
+Bumps [extractions/setup-just](https://github.com/extractions/setup-just) from 2 to 4. - [Release
+  notes](https://github.com/extractions/setup-just/releases) -
+  [Commits](https://github.com/extractions/setup-just/compare/v2...v4)
+
+--- updated-dependencies: - dependency-name: extractions/setup-just dependency-version: '4'
+
+dependency-type: direct:production
+
+update-type: version-update:semver-major ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+Co-authored-by: Will Pfleger <pfleger.will@gmail.com>
+
+
 ## v0.47.1 (2026-05-08)
 
 ### Bug Fixes
@@ -52,6 +115,9 @@ Also simplifies publish workflow: replaces workflow_dispatch trigger (workaround
   API. This removes the tag validation boilerplate since the release event guarantees a valid tag
   exists.
 
+- **release**: 0.47.1
+  ([`c35b94f`](https://github.com/wpfleger96/ai-agent-rules/commit/c35b94f32cc19e5d2b3aef60c61d4601b623d3d5))
+
 ### Refactoring
 
 - Split CLI around static component registries
@@ -65,6 +131,11 @@ The CLI had become the integration point for every managed lifecycle concern, wh
 
 ## v0.47.0 (2026-05-07)
 
+### Chores
+
+- **release**: 0.47.0
+  ([`a87ca3c`](https://github.com/wpfleger96/ai-agent-rules/commit/a87ca3c12b3c32ae96eadba49d41028f1f88c9c6))
+
 ### Features
 
 - Re-enable clear context option on plan accept
@@ -76,6 +147,11 @@ showClearContextOnPlanAccept defaulted to false as of Claude Code v2.1.81, hidin
 
 
 ## v0.46.0 (2026-05-06)
+
+### Chores
+
+- **release**: 0.46.0
+  ([`d438582`](https://github.com/wpfleger96/ai-agent-rules/commit/d43858237db10dc96344aa2ec5280ead05166dc0))
 
 ### Features
 
@@ -90,8 +166,18 @@ showClearContextOnPlanAccept defaulted to false as of Claude Code v2.1.81, hidin
 - Codex config drift
   ([`b8df839`](https://github.com/wpfleger96/ai-agent-rules/commit/b8df8397547172ad25108a12fbd6c3079f7a2257))
 
+### Chores
+
+- **release**: 0.45.1
+  ([`fe5c0d1`](https://github.com/wpfleger96/ai-agent-rules/commit/fe5c0d1ea2af6fdddaf2186c0f8bcd895a3e47e9))
+
 
 ## v0.45.0 (2026-05-06)
+
+### Chores
+
+- **release**: 0.45.0
+  ([`0129036`](https://github.com/wpfleger96/ai-agent-rules/commit/0129036465eedd2e2dea42b187874e5e31308eb2))
 
 ### Features
 
@@ -105,6 +191,11 @@ OpenAI now recommends gpt-5.5 for Codex when it is available, and our managed Co
 
 
 ## v0.44.0 (2026-05-04)
+
+### Chores
+
+- **release**: 0.44.0
+  ([`485e9f8`](https://github.com/wpfleger96/ai-agent-rules/commit/485e9f81658fea4b4df56150e4e5716dbbed0ee8))
 
 ### Features
 
@@ -162,6 +253,11 @@ Also fixes: MCP install output missing per-agent labels, amp settings.json forma
   install output appearing before profile header, Claude Code UI settings (skipAutoPermissionPrompt)
   lost on cache rebuild, and work profile model variant (opus vs opus[1m]).
 
+### Chores
+
+- **release**: 0.43.1
+  ([`6a17987`](https://github.com/wpfleger96/ai-agent-rules/commit/6a17987223d564c7c9cd61a34f11063360f70984))
+
 
 ## v0.43.0 (2026-04-30)
 
@@ -173,6 +269,11 @@ Also fixes: MCP install output missing per-agent labels, amp settings.json forma
 perform_tool_upgrade() fell through to the PyPI upgrade path for LOCAL-sourced tools, which would
   silently overwrite the local install. Also fixes relative paths being stored verbatim in config —
   now resolved to absolute before persisting.
+
+### Chores
+
+- **release**: 0.43.0
+  ([`7596f22`](https://github.com/wpfleger96/ai-agent-rules/commit/7596f2219e8f5e33b599bf4dce747203de4f4103))
 
 ### Features
 
@@ -189,6 +290,11 @@ Adds ToolSource.LOCAL alongside PYPI and GITHUB for all managed tools (ai-agent-
 
 
 ## v0.42.0 (2026-04-24)
+
+### Chores
+
+- **release**: 0.42.0
+  ([`fd508ea`](https://github.com/wpfleger96/ai-agent-rules/commit/fd508ea1504f136e818b50b83809ff40988371f6))
 
 ### Features
 
@@ -219,6 +325,9 @@ These custom metadata fields were added to feed a UserPromptSubmit hook (skillRo
   removed in 8ebee1b. Nothing reads them — skill activation relies on the description field in
   frontmatter.
 
+- **release**: 0.41.0
+  ([`efdf274`](https://github.com/wpfleger96/ai-agent-rules/commit/efdf274012bc8477cf781b4fc12743ad854d2f84))
+
 ### Features
 
 - Add research skill, improve context for code-reviewer and crossfire
@@ -247,6 +356,11 @@ Removed `context: fork` from research and code-reviewer skills so both retain co
   uninstall`) because the is_installed() filter dropped them with no warning. Since ai-agent-rules
   itself always passes is_installed(), the empty-list guard never fired.
 
+### Chores
+
+- **release**: 0.40.1
+  ([`5b1a030`](https://github.com/wpfleger96/ai-agent-rules/commit/5b1a03056d2c781883d5840c80e2d5fd3aebe1ea))
+
 
 ## v0.40.0 (2026-04-23)
 
@@ -254,6 +368,9 @@ Removed `context: fork` from research and code-reviewer skills so both retain co
 
 - Delete unused script
   ([`390d1aa`](https://github.com/wpfleger96/ai-agent-rules/commit/390d1aa751e249d6a65eb1dce7d30d08f619c942))
+
+- **release**: 0.40.0
+  ([`554ae01`](https://github.com/wpfleger96/ai-agent-rules/commit/554ae01a567c87e4c1e19a12a737adb93d9e45ea))
 
 ### Features
 
@@ -275,6 +392,11 @@ Enables terminal_title.enabled: true in personal/work profiles for cross-machine
 
 
 ## v0.39.0 (2026-04-23)
+
+### Chores
+
+- **release**: 0.39.0
+  ([`e7de8f3`](https://github.com/wpfleger96/ai-agent-rules/commit/e7de8f33a5b901d0dc8bcbb49153afb52ec8506f))
 
 ### Documentation
 
@@ -314,6 +436,11 @@ Override values were never validated for format compatibility — None from any 
 Codex treats plan mode reasoning effort separately from the default model reasoning effort. Add the
   missing managed config key so Plan mode uses the same xhigh default shipped by ai-agent-rules.
 
+### Chores
+
+- **release**: 0.38.0
+  ([`1c4de13`](https://github.com/wpfleger96/ai-agent-rules/commit/1c4de13ff68e44b2a1017504912817449c7f7aa4))
+
 ### Features
 
 - **codex**: Add managed status line with correct list override semantics
@@ -329,6 +456,11 @@ Fixed deep_merge to replace lists wholesale instead of merging element-by-elemen
 
 
 ## v0.37.0 (2026-04-22)
+
+### Chores
+
+- **release**: 0.37.0
+  ([`06ea290`](https://github.com/wpfleger96/ai-agent-rules/commit/06ea290b30c0b64d80c3db6e74d73c954edd7364))
 
 ### Features
 
@@ -364,6 +496,11 @@ Split deterministic schema fetcher coverage from integration-style config compat
 
 ## v0.36.0 (2026-04-21)
 
+### Chores
+
+- **release**: 0.36.0
+  ([`2252a01`](https://github.com/wpfleger96/ai-agent-rules/commit/2252a0182b86d96756d2f00546df00277a0923fe))
+
 ### Features
 
 - Standardize on ai-agent-rules as canonical name, fix shell completions PATH shadowing
@@ -389,6 +526,11 @@ Broader naming standardization: `ai-agent-rules` is now the canonical name in al
 
 ## v0.35.0 (2026-04-21)
 
+### Chores
+
+- **release**: 0.35.0
+  ([`0064c7b`](https://github.com/wpfleger96/ai-agent-rules/commit/0064c7b42162c03afb7661713b51eb9468d3a46e))
+
 ### Features
 
 - Enable thinking summaries and tighten schema validation
@@ -407,6 +549,11 @@ Upstream: https://github.com/SchemaStore/schemastore/issues/5598
 
 ## v0.34.0 (2026-04-21)
 
+### Chores
+
+- **release**: 0.34.0
+  ([`abdb655`](https://github.com/wpfleger96/ai-agent-rules/commit/abdb655d25bf530df30982849e0ee49c471677ea))
+
 ### Features
 
 - Ban test plan sections from PR descriptions
@@ -418,6 +565,11 @@ Claude Code's system prompt now injects a `## Test plan` template into PR descri
 
 
 ## v0.33.0 (2026-04-21)
+
+### Chores
+
+- **release**: 0.33.0
+  ([`8f8216f`](https://github.com/wpfleger96/ai-agent-rules/commit/8f8216f48ea5ffe6cc5532920bba25bd25a16c5c))
 
 ### Features
 
@@ -479,6 +631,11 @@ Claude settings.json had `Search(*)` in permissions.allow — `Search` is not a 
 Also excludes network-dependent schema tests from `just test` default run to prevent external schema
   drift from blocking local development.
 
+### Chores
+
+- **release**: 0.32.0
+  ([`2f8dd93`](https://github.com/wpfleger96/ai-agent-rules/commit/2f8dd931ec6e3d31bddc9ee9f44645aab89afc73))
+
 ### Features
 
 - Add personal profile and three-tier profile hierarchy
@@ -534,6 +691,11 @@ Hook script deployment only symlinked .py files matching a regex. Shell scripts 
 
 Also adds is_enabled callback to ToolSpec for profile-conditional tools.
 
+### Chores
+
+- **release**: 0.31.5
+  ([`98a4a0b`](https://github.com/wpfleger96/ai-agent-rules/commit/98a4a0b2244ffb14edc5d68ebf6a72bc7e479fb1))
+
 ### Refactoring
 
 - Move settings cache logic to Agent, make preserved fields agent-owned
@@ -561,6 +723,11 @@ Deleted AGENT_CONFIG_METADATA and PRESERVED_FIELDS. Added AGENT_FORMATS and FORM
 - Restore codex model config
   ([`cc9aac9`](https://github.com/wpfleger96/ai-agent-rules/commit/cc9aac94111d8ba74c8fe47563f6a2ee033e7319))
 
+### Chores
+
+- **release**: 0.31.4
+  ([`bad8484`](https://github.com/wpfleger96/ai-agent-rules/commit/bad848442ab40be4c002df073961716ef1961c5f))
+
 ### Refactoring
 
 - Extract multi-agent MCPManager from Claude-only implementation
@@ -584,6 +751,11 @@ In monorepos the agent's CWD is <monorepo>/<app>/ but PLAN__ files were written 
   --git-common-dir (worktree-safe repo root) with --show-toplevel (working tree root) to compute the
   correct target for all four scenarios: standard repo, worktree, monorepo, and worktree+monorepo.
 
+### Chores
+
+- **release**: 0.31.3
+  ([`76ff1dc`](https://github.com/wpfleger96/ai-agent-rules/commit/76ff1dc75ee8b35c5dca98322c402ef6576d938f))
+
 
 ## v0.31.2 (2026-04-14)
 
@@ -598,6 +770,11 @@ Gemini crashed scanning all of /tmp when given --include-directories /tmp, Codex
   stderr, adding timeout 300, and switching from temp-file-based result passing to inline delimited
   output with trap EXIT cleanup.
 
+### Chores
+
+- **release**: 0.31.2
+  ([`ae9d72d`](https://github.com/wpfleger96/ai-agent-rules/commit/ae9d72d33e9b5dc40289034fd54abe0e786dc9e9))
+
 
 ## v0.31.1 (2026-04-13)
 
@@ -606,8 +783,18 @@ Gemini crashed scanning all of /tmp when given --include-directories /tmp, Codex
 - Gemini can't access files outside its CWD
   ([`3a45cc2`](https://github.com/wpfleger96/ai-agent-rules/commit/3a45cc2b5b6991e58fc15742bf50331fc111f6d0))
 
+### Chores
+
+- **release**: 0.31.1
+  ([`8248f7a`](https://github.com/wpfleger96/ai-agent-rules/commit/8248f7a4aa0ba6a3dfe1d38908ef6766e649fe81))
+
 
 ## v0.31.0 (2026-04-08)
+
+### Chores
+
+- **release**: 0.31.0
+  ([`79442b4`](https://github.com/wpfleger96/ai-agent-rules/commit/79442b4e92461eee000d8e291240343927b996ae))
 
 ### Features
 
@@ -636,8 +823,18 @@ Forces fixed thinking budget and max effort via env vars in base settings.json, 
   inherit via deep merge. Intended as a temporary measure until Anthropic resolves the adaptive
   thinking under-allocation bug.
 
+### Chores
+
+- **release**: 0.30.1
+  ([`ce738c7`](https://github.com/wpfleger96/ai-agent-rules/commit/ce738c722f6d69499df4314a9995454abdfb4796))
+
 
 ## v0.30.0 (2026-04-03)
+
+### Chores
+
+- **release**: 0.30.0
+  ([`c103f6c`](https://github.com/wpfleger96/ai-agent-rules/commit/c103f6c2bb46b6326c0745427bb721d8f8ebd613))
 
 ### Features
 
@@ -654,6 +851,11 @@ Also drops "Primary reviewer findings" from the crossfire prompt -- external mod
 
 
 ## v0.29.0 (2026-04-01)
+
+### Chores
+
+- **release**: 0.29.0
+  ([`4e86caf`](https://github.com/wpfleger96/ai-agent-rules/commit/4e86caf828a1622155e1d9412d475e965bc8415a))
 
 ### Features
 
@@ -678,6 +880,11 @@ Merged the agent's orchestration (CLI availability checks, temp file handling, p
 - Plan file handling in git worktrees
   ([`2c6e4cb`](https://github.com/wpfleger96/ai-agent-rules/commit/2c6e4cbdb02effd86f2b50ec1c878eaf6ee89377))
 
+### Chores
+
+- **release**: 0.28.2
+  ([`8e13250`](https://github.com/wpfleger96/ai-agent-rules/commit/8e13250d201bebd3aa34431b401f191cb62f6f62))
+
 
 ## v0.28.1 (2026-03-25)
 
@@ -686,8 +893,18 @@ Merged the agent's orchestration (CLI availability checks, temp file handling, p
 - Stupid LLM responses
   ([`e2988c5`](https://github.com/wpfleger96/ai-agent-rules/commit/e2988c5c037c334f9c6db369e3acc0637dbd408a))
 
+### Chores
+
+- **release**: 0.28.1
+  ([`9a814bb`](https://github.com/wpfleger96/ai-agent-rules/commit/9a814bb35b19628e17918c7685b86c16806edfe6))
+
 
 ## v0.28.0 (2026-03-17)
+
+### Chores
+
+- **release**: 0.28.0
+  ([`0f3b1f6`](https://github.com/wpfleger96/ai-agent-rules/commit/0f3b1f6b36ea7d2c90138c469a824506d5cdd400))
 
 ### Features
 
@@ -702,8 +919,18 @@ Merged the agent's orchestration (CLI availability checks, temp file handling, p
 - Ai writing style
   ([`8561198`](https://github.com/wpfleger96/ai-agent-rules/commit/8561198dda703163c92883baf7a0fd0ddef737ba))
 
+### Chores
+
+- **release**: 0.27.1
+  ([`eada89a`](https://github.com/wpfleger96/ai-agent-rules/commit/eada89a5db8a0a01fa4608dd742e6705d374556b))
+
 
 ## v0.27.0 (2026-03-13)
+
+### Chores
+
+- **release**: 0.27.0
+  ([`909bade`](https://github.com/wpfleger96/ai-agent-rules/commit/909badef1394225fef7875a05d0c00080827e511))
 
 ### Features
 
@@ -713,6 +940,11 @@ Merged the agent's orchestration (CLI availability checks, temp file handling, p
 
 ## v0.26.0 (2026-03-06)
 
+### Chores
+
+- **release**: 0.26.0
+  ([`666d65a`](https://github.com/wpfleger96/ai-agent-rules/commit/666d65a1f1395dcd6103bd1b2a27ac9b2d20965e))
+
 ### Features
 
 - Try out new codex model
@@ -721,6 +953,11 @@ Merged the agent's orchestration (CLI availability checks, temp file handling, p
 
 ## v0.25.0 (2026-03-03)
 
+### Chores
+
+- **release**: 0.25.0
+  ([`c89891a`](https://github.com/wpfleger96/ai-agent-rules/commit/c89891a8be7a7c3bedb27664635f48595086e37e))
+
 ### Features
 
 - **pr-creator**: Add formatting rules for code identifiers, links, and line wrapping
@@ -728,6 +965,11 @@ Merged the agent's orchestration (CLI availability checks, temp file handling, p
 
 
 ## v0.24.0 (2026-02-27)
+
+### Chores
+
+- **release**: 0.24.0
+  ([`799871f`](https://github.com/wpfleger96/ai-agent-rules/commit/799871fe7da85a8a102f5cc5e0bf91b3b5bab5cf))
 
 ### Features
 
@@ -742,6 +984,11 @@ Merged the agent's orchestration (CLI availability checks, temp file handling, p
 - Fuck it
   ([`0168bbc`](https://github.com/wpfleger96/ai-agent-rules/commit/0168bbc5ef745d5f0690c553a2d394e2cb3ccc46))
 
+### Chores
+
+- **release**: 0.23.2
+  ([`0c8fe88`](https://github.com/wpfleger96/ai-agent-rules/commit/0c8fe88655ae7a64a300a6dca67dc0735d5c3c67))
+
 
 ## v0.23.1 (2026-02-23)
 
@@ -750,8 +997,18 @@ Merged the agent's orchestration (CLI availability checks, temp file handling, p
 - Prefer local code exploration
   ([`0256efd`](https://github.com/wpfleger96/ai-agent-rules/commit/0256efdcdbbbd6f3c5e0781392c6d9b4f0435ffb))
 
+### Chores
+
+- **release**: 0.23.1
+  ([`fe6948a`](https://github.com/wpfleger96/ai-agent-rules/commit/fe6948a4c6d9b6c52ee8b15c7c74fa1c7000e07c))
+
 
 ## v0.23.0 (2026-02-18)
+
+### Chores
+
+- **release**: 0.23.0
+  ([`9f30cf0`](https://github.com/wpfleger96/ai-agent-rules/commit/9f30cf09c79f912b40535e2ada654ad5c55872ec))
 
 ### Features
 
@@ -776,6 +1033,9 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
   (removed nonexistent commands/hooks dirs, added all 9 skills), removed stale Quick Commands.
   Updated README.md to remove references to deleted Justfile targets.
 
+- **release**: 0.22.5
+  ([`0279ec3`](https://github.com/wpfleger96/ai-agent-rules/commit/0279ec3d4a56e3fd011ba11964631dfef045cc98))
+
 
 ## v0.22.4 (2026-02-14)
 
@@ -787,6 +1047,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 - Validate command bug
   ([`8eb0684`](https://github.com/wpfleger96/ai-agent-rules/commit/8eb0684a9c7ab1ddc7a793743cc5d399c0e71c2f))
 
+### Chores
+
+- **release**: 0.22.4
+  ([`0c6c07d`](https://github.com/wpfleger96/ai-agent-rules/commit/0c6c07d8836df84dd5d7aab5e6536e82fa069ee2))
+
 
 ## v0.22.3 (2026-02-14)
 
@@ -794,6 +1059,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 
 - Background update causing bugs
   ([`3f6b3ec`](https://github.com/wpfleger96/ai-agent-rules/commit/3f6b3ecdfc5870e9e12bec86537001d1a3378d39))
+
+### Chores
+
+- **release**: 0.22.3
+  ([`75fa96f`](https://github.com/wpfleger96/ai-agent-rules/commit/75fa96f0f4ae9821ad62c1f24b5363ff5c6d638c))
 
 
 ## v0.22.2 (2026-02-12)
@@ -803,6 +1073,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 - Improve dev-docs quality
   ([`6a8fc6f`](https://github.com/wpfleger96/ai-agent-rules/commit/6a8fc6f3d6c79f0091a833686079a725c2f74023))
 
+### Chores
+
+- **release**: 0.22.2
+  ([`9546d2e`](https://github.com/wpfleger96/ai-agent-rules/commit/9546d2e80b7e77ebfea91ecc59edfcc5634e5171))
+
 
 ## v0.22.1 (2026-02-09)
 
@@ -810,6 +1085,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 
 - Cc perm
   ([`66c0c8d`](https://github.com/wpfleger96/ai-agent-rules/commit/66c0c8de39b9a4534845ff840febdaf8bc0b9afb))
+
+### Chores
+
+- **release**: 0.22.1
+  ([`63cc37f`](https://github.com/wpfleger96/ai-agent-rules/commit/63cc37f5af380cd1a9add7738e115d75ac25a170))
 
 
 ## v0.22.0 (2026-02-09)
@@ -821,6 +1101,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 
 - Skill model configs
   ([`8485d41`](https://github.com/wpfleger96/ai-agent-rules/commit/8485d41586a429dadf22dfa0bcbaba4de95ab823))
+
+### Chores
+
+- **release**: 0.22.0
+  ([`fa1dfd0`](https://github.com/wpfleger96/ai-agent-rules/commit/fa1dfd04d7cb5e6fb495a5c539e7caa121fd1795))
 
 ### Features
 
@@ -840,6 +1125,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 - Nerfed
   ([`4d8f17b`](https://github.com/wpfleger96/ai-agent-rules/commit/4d8f17bd4b338ef04e62de41fbfbc9e80fed0757))
 
+### Chores
+
+- **release**: 0.21.8
+  ([`9ae345c`](https://github.com/wpfleger96/ai-agent-rules/commit/9ae345c40cde8b20e861a5cc800191d661489c19))
+
 
 ## v0.21.7 (2026-02-05)
 
@@ -847,6 +1137,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 
 - Cc perm
   ([`bdb454a`](https://github.com/wpfleger96/ai-agent-rules/commit/bdb454ae98b2d451bc3002e5b3c356398d46d6bf))
+
+### Chores
+
+- **release**: 0.21.7
+  ([`2a47730`](https://github.com/wpfleger96/ai-agent-rules/commit/2a477304ca652e0fab072b0f6279ea95d84dcf25))
 
 
 ## v0.21.6 (2026-02-05)
@@ -856,6 +1151,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 - Gas up work profile
   ([`ad93453`](https://github.com/wpfleger96/ai-agent-rules/commit/ad93453a80127ae9baf7a3c50940a661c14209d7))
 
+### Chores
+
+- **release**: 0.21.6
+  ([`e79d8b8`](https://github.com/wpfleger96/ai-agent-rules/commit/e79d8b82d604ed2558b5c95694a5fe828354d768))
+
 
 ## v0.21.5 (2026-02-05)
 
@@ -863,6 +1163,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 
 - Opus 4.6 just dropped
   ([`d3868ca`](https://github.com/wpfleger96/ai-agent-rules/commit/d3868caa9db4e6e3dc60cb5452f8f00e519a6e3a))
+
+### Chores
+
+- **release**: 0.21.5
+  ([`102fae1`](https://github.com/wpfleger96/ai-agent-rules/commit/102fae1f81e1476c8838910a8d8b83718cbe5dee))
 
 
 ## v0.21.4 (2026-02-04)
@@ -875,6 +1180,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 - Improve top-level AGENTS.md instructions
   ([`e548a5b`](https://github.com/wpfleger96/ai-agent-rules/commit/e548a5b378f965523fb45067069a07f62e2a496b))
 
+### Chores
+
+- **release**: 0.21.4
+  ([`6b1f67e`](https://github.com/wpfleger96/ai-agent-rules/commit/6b1f67e9b5dde8fc455b17ee304f23f59ff1a57f))
+
 
 ## v0.21.3 (2026-02-04)
 
@@ -883,6 +1193,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 - Cc perm
   ([`4881d81`](https://github.com/wpfleger96/ai-agent-rules/commit/4881d810dad44f646b6df100e3f7cf37f94e7954))
 
+### Chores
+
+- **release**: 0.21.3
+  ([`bad20c7`](https://github.com/wpfleger96/ai-agent-rules/commit/bad20c7f10c27dec9b39a2f37ddefcf2249fab6d))
+
 
 ## v0.21.2 (2026-02-03)
 
@@ -890,6 +1205,11 @@ Removed empty performance/benchmark infrastructure (tests/performance/, .benchma
 
 - Cc perm
   ([`fbf64ad`](https://github.com/wpfleger96/ai-agent-rules/commit/fbf64adf814df8406637f4e940504a3ca3b159b6))
+
+### Chores
+
+- **release**: 0.21.2
+  ([`854a8a9`](https://github.com/wpfleger96/ai-agent-rules/commit/854a8a992495f85550b1a941de66d7d2a94c8715))
 
 
 ## v0.21.1 (2026-01-28)
@@ -904,8 +1224,18 @@ migrate to skill to align with the rest of the repo, aupport both local and PR r
   https://google.github.io/eng-practices/review/reviewer/standard.html 2.
   https://google.github.io/eng-practices/review/reviewer/looking-for.html
 
+### Chores
+
+- **release**: 0.21.1
+  ([`0a3a67e`](https://github.com/wpfleger96/ai-agent-rules/commit/0a3a67ec1c25552f0852042fd1c845d16a79e9af))
+
 
 ## v0.21.0 (2026-01-28)
+
+### Chores
+
+- **release**: 0.21.0
+  ([`70a63f2`](https://github.com/wpfleger96/ai-agent-rules/commit/70a63f2d52e04dbc524885bc989d08f2e66ce299))
 
 ### Documentation
 
@@ -930,6 +1260,11 @@ migrate to skill to align with the rest of the repo, aupport both local and PR r
 - Cc perm
   ([`de4759d`](https://github.com/wpfleger96/ai-agent-rules/commit/de4759d517e358a859f1ec2f52ff49bdb8c46160))
 
+### Chores
+
+- **release**: 0.20.10
+  ([`8e51bbd`](https://github.com/wpfleger96/ai-agent-rules/commit/8e51bbd73d60ce3f1b5f2fdda63087dbb389dcae))
+
 
 ## v0.20.9 (2026-01-23)
 
@@ -937,6 +1272,11 @@ migrate to skill to align with the rest of the repo, aupport both local and PR r
 
 - Unnecessary output
   ([`765f530`](https://github.com/wpfleger96/ai-agent-rules/commit/765f5307f6ed407253a503eca8d3e827337bb72a))
+
+### Chores
+
+- **release**: 0.20.9
+  ([`5bf5775`](https://github.com/wpfleger96/ai-agent-rules/commit/5bf57750f2aa98504b3696b5263ff5a80d95d5b3))
 
 
 ## v0.20.8 (2026-01-23)
@@ -946,6 +1286,11 @@ migrate to skill to align with the rest of the repo, aupport both local and PR r
 - Standardize wording
   ([`4def6ae`](https://github.com/wpfleger96/ai-agent-rules/commit/4def6ae022165cad20d7b8cd1b73aca7c04e2a53))
 
+### Chores
+
+- **release**: 0.20.8
+  ([`6da61bf`](https://github.com/wpfleger96/ai-agent-rules/commit/6da61bfb6c5a5e093445ff5bc192e3b4d43afe55))
+
 
 ## v0.20.7 (2026-01-23)
 
@@ -953,6 +1298,11 @@ migrate to skill to align with the rest of the repo, aupport both local and PR r
 
 - Goose config
   ([`9c1717f`](https://github.com/wpfleger96/ai-agent-rules/commit/9c1717fade8d6de2d3537b7c194b429e70be7feb))
+
+### Chores
+
+- **release**: 0.20.7
+  ([`5e723ea`](https://github.com/wpfleger96/ai-agent-rules/commit/5e723eaabb6201191772b6f9874252b0f1aa8ca5))
 
 
 ## v0.20.6 (2026-01-22)
@@ -965,6 +1315,11 @@ migrate to skill to align with the rest of the repo, aupport both local and PR r
 - Cleanup vestigial post-merge hook code
   ([`064a766`](https://github.com/wpfleger96/ai-agent-rules/commit/064a7661377a5ff3facbdafb2025ee71b757f2a9))
 
+### Chores
+
+- **release**: 0.20.6
+  ([`616c755`](https://github.com/wpfleger96/ai-agent-rules/commit/616c755ad0f069bcdcbc4e23b5b8fad1fa05d466))
+
 
 ## v0.20.5 (2026-01-22)
 
@@ -972,6 +1327,11 @@ migrate to skill to align with the rest of the repo, aupport both local and PR r
 
 - Show unified diffs for all config drift detection types
   ([`98952cf`](https://github.com/wpfleger96/ai-agent-rules/commit/98952cfeb4e75c38ee8af295a283d353b9697490))
+
+### Chores
+
+- **release**: 0.20.5
+  ([`4a8f6ea`](https://github.com/wpfleger96/ai-agent-rules/commit/4a8f6ea515fe6f32d2b6bd0c23b5f5d7a47d8d05))
 
 
 ## v0.20.4 (2026-01-22)
@@ -981,6 +1341,11 @@ migrate to skill to align with the rest of the repo, aupport both local and PR r
 - Cc perm
   ([`016e409`](https://github.com/wpfleger96/ai-agent-rules/commit/016e4097de5194f9b09220d04213e0e3a5c00662))
 
+### Chores
+
+- **release**: 0.20.4
+  ([`f97f19e`](https://github.com/wpfleger96/ai-agent-rules/commit/f97f19e8f855bfb07d60ff5109a9c5d0ccd128fe))
+
 
 ## v0.20.3 (2026-01-22)
 
@@ -988,6 +1353,11 @@ migrate to skill to align with the rest of the repo, aupport both local and PR r
 
 - Forgot to cleanup a few
   ([`7eca265`](https://github.com/wpfleger96/ai-agent-rules/commit/7eca265e3854e8a7c60cff8a53b663466d5501d5))
+
+### Chores
+
+- **release**: 0.20.3
+  ([`81339d4`](https://github.com/wpfleger96/ai-agent-rules/commit/81339d489f5709cefa570cb7a4587ce1bf26b707))
 
 
 ## v0.20.2 (2026-01-22)
@@ -1001,6 +1371,9 @@ migrate to skill to align with the rest of the repo, aupport both local and PR r
 
 - Docs
   ([`8b10c99`](https://github.com/wpfleger96/ai-agent-rules/commit/8b10c99c3baa0f65e73b8384fbb71c616d66e3e1))
+
+- **release**: 0.20.2
+  ([`90eb47a`](https://github.com/wpfleger96/ai-agent-rules/commit/90eb47a5132a054c0adeec02eead3f7866f1b928))
 
 
 ## v0.20.1 (2026-01-21)
@@ -1020,6 +1393,11 @@ or any other configs either, intelligently merge and note local overrides as unm
 - Standardize output
   ([`b16d53e`](https://github.com/wpfleger96/ai-agent-rules/commit/b16d53ee7b1a44ed2e74c0b987c9b6b687022484))
 
+### Chores
+
+- **release**: 0.20.1
+  ([`dd3c21d`](https://github.com/wpfleger96/ai-agent-rules/commit/dd3c21de1210dd0a67724101cf69b5517bc2f0a6))
+
 
 ## v0.20.0 (2026-01-21)
 
@@ -1027,6 +1405,11 @@ or any other configs either, intelligently merge and note local overrides as unm
 
 - Cc perm
   ([`9747329`](https://github.com/wpfleger96/ai-agent-rules/commit/97473292a4465c0b21fe37d8d47b2eec903c6eeb))
+
+### Chores
+
+- **release**: 0.20.0
+  ([`6a01965`](https://github.com/wpfleger96/ai-agent-rules/commit/6a01965dc55e826c7bdb2aaabfbe75cfc29a6dfe))
 
 ### Features
 
@@ -1043,6 +1426,11 @@ also disabling skill router hook temporarily
 - Cc perm
   ([`514a67c`](https://github.com/wpfleger96/ai-agent-rules/commit/514a67caa05bcee3ef4eca802142415e4a35e0d5))
 
+### Chores
+
+- **release**: 0.19.9
+  ([`0cc4e6c`](https://github.com/wpfleger96/ai-agent-rules/commit/0cc4e6c0e1a1bc924525e6bb709591fe759536de))
+
 
 ## v0.19.8 (2026-01-21)
 
@@ -1053,6 +1441,11 @@ also disabling skill router hook temporarily
 
 - Tweak agents-md slash command prompts
   ([`c9414c1`](https://github.com/wpfleger96/ai-agent-rules/commit/c9414c1134b991935ce622ba306eb8885fa14a4c))
+
+### Chores
+
+- **release**: 0.19.8
+  ([`b6c571e`](https://github.com/wpfleger96/ai-agent-rules/commit/b6c571e25b75178409c46cdd6c40484c8509ac6e))
 
 
 ## v0.19.7 (2026-01-20)
@@ -1075,6 +1468,9 @@ otherwise this would cause confusing double-prompting
 - Docs
   ([`6f496f4`](https://github.com/wpfleger96/ai-agent-rules/commit/6f496f49864f8b8de36c0e259d6e30b4bd626a9a))
 
+- **release**: 0.19.7
+  ([`f43c7b1`](https://github.com/wpfleger96/ai-agent-rules/commit/f43c7b1aa222c3951f005c4f9df0bff03e063965))
+
 
 ## v0.19.6 (2026-01-19)
 
@@ -1089,6 +1485,11 @@ otherwise this would cause confusing double-prompting
 - Llms love dumb comments
   ([`32e059d`](https://github.com/wpfleger96/ai-agent-rules/commit/32e059d3e9bd85cff204a560e64ba91f3bd24723))
 
+### Chores
+
+- **release**: 0.19.6
+  ([`b765c06`](https://github.com/wpfleger96/ai-agent-rules/commit/b765c064634e55f1d311a25ec0a1eff93c34dccf))
+
 
 ## v0.19.5 (2026-01-18)
 
@@ -1100,6 +1501,11 @@ otherwise this would cause confusing double-prompting
 - Show unified diffs instead of just file path diffs
   ([`2202516`](https://github.com/wpfleger96/ai-agent-rules/commit/2202516e92d4d5af95416c9d82033817cef3f1ee))
 
+### Chores
+
+- **release**: 0.19.5
+  ([`a1e5ba6`](https://github.com/wpfleger96/ai-agent-rules/commit/a1e5ba6c1e2f02c867c2669eef94cb53204a6f68))
+
 
 ## v0.19.4 (2026-01-18)
 
@@ -1107,6 +1513,11 @@ otherwise this would cause confusing double-prompting
 
 - Lazyify imports for completion performance
   ([`4df5109`](https://github.com/wpfleger96/ai-agent-rules/commit/4df5109516e7668b619fc6b22627b767704ad89a))
+
+### Chores
+
+- **release**: 0.19.4
+  ([`5c8e465`](https://github.com/wpfleger96/ai-agent-rules/commit/5c8e465cc654092b21ea96e6a81051457ffd8fa8))
 
 
 ## v0.19.3 (2026-01-18)
@@ -1116,6 +1527,11 @@ otherwise this would cause confusing double-prompting
 - Cc perm
   ([`6441d43`](https://github.com/wpfleger96/ai-agent-rules/commit/6441d439828379a35df928a2dcad3c493d17a3a3))
 
+### Chores
+
+- **release**: 0.19.3
+  ([`fae64ee`](https://github.com/wpfleger96/ai-agent-rules/commit/fae64ee67a48f3a97bd07e3ec94015500632c5a8))
+
 
 ## v0.19.2 (2026-01-13)
 
@@ -1123,6 +1539,11 @@ otherwise this would cause confusing double-prompting
 
 - Dont prompt for reinstall when unmanaged plugins/skills detected
   ([`146da20`](https://github.com/wpfleger96/ai-agent-rules/commit/146da206c92c19f33a85b66fad9e46b485ae4d33))
+
+### Chores
+
+- **release**: 0.19.2
+  ([`ea8d9dc`](https://github.com/wpfleger96/ai-agent-rules/commit/ea8d9dcd0fe8a31bc9634045067ad58fa0170f2d))
 
 
 ## v0.19.1 (2026-01-12)
@@ -1132,8 +1553,18 @@ otherwise this would cause confusing double-prompting
 - Cc perm
   ([`21513a6`](https://github.com/wpfleger96/ai-agent-rules/commit/21513a6c40224278bd7a2a3f2033681a5be43a77))
 
+### Chores
+
+- **release**: 0.19.1
+  ([`4d6b8d1`](https://github.com/wpfleger96/ai-agent-rules/commit/4d6b8d10e967cdfe07d7ff4534d049c01d4c6233))
+
 
 ## v0.19.0 (2026-01-09)
+
+### Chores
+
+- **release**: 0.19.0
+  ([`bb97b84`](https://github.com/wpfleger96/ai-agent-rules/commit/bb97b843dfb675aa26a1433dd60d88dec36beb0b))
 
 ### Features
 
@@ -1151,6 +1582,11 @@ otherwise this would cause confusing double-prompting
 - Cc perm
   ([`bbf729b`](https://github.com/wpfleger96/ai-agent-rules/commit/bbf729bf48b379cbc03dde7f1b512e451df2d4d8))
 
+### Chores
+
+- **release**: 0.18.5
+  ([`aa882f3`](https://github.com/wpfleger96/ai-agent-rules/commit/aa882f3d8263c3a8b6c1d896385533f59624a672))
+
 
 ## v0.18.4 (2026-01-09)
 
@@ -1164,6 +1600,9 @@ otherwise this would cause confusing double-prompting
 - Docs
   ([`0d6b540`](https://github.com/wpfleger96/ai-agent-rules/commit/0d6b540817c8b8303f5a1ac71df12f72014630e5))
 
+- **release**: 0.18.4
+  ([`d38b2e9`](https://github.com/wpfleger96/ai-agent-rules/commit/d38b2e953e2f19f09c96f459d6ca7b8b034499ea))
+
 
 ## v0.18.3 (2026-01-09)
 
@@ -1171,6 +1610,11 @@ otherwise this would cause confusing double-prompting
 
 - Auto enable plugins
   ([`f4dafb7`](https://github.com/wpfleger96/ai-agent-rules/commit/f4dafb74cd02464ef96bbeb669d6c790514668b8))
+
+### Chores
+
+- **release**: 0.18.3
+  ([`251afc3`](https://github.com/wpfleger96/ai-agent-rules/commit/251afc3c4c25e17a6d4578c0ab25807fd58c6670))
 
 
 ## v0.18.2 (2026-01-09)
@@ -1180,6 +1624,11 @@ otherwise this would cause confusing double-prompting
 - Plugin
   ([`c695c3d`](https://github.com/wpfleger96/ai-agent-rules/commit/c695c3dc0d4334284a2403077de2aee11bae3e93))
 
+### Chores
+
+- **release**: 0.18.2
+  ([`d87d845`](https://github.com/wpfleger96/ai-agent-rules/commit/d87d8457ed3a9787a980772868f93ce60a42b8f1))
+
 
 ## v0.18.1 (2026-01-08)
 
@@ -1187,6 +1636,11 @@ otherwise this would cause confusing double-prompting
 
 - Wordy PR descriptions
   ([`1a9fc3a`](https://github.com/wpfleger96/ai-agent-rules/commit/1a9fc3a66bc4a72aaa5b17a2620a15ab69394d1a))
+
+### Chores
+
+- **release**: 0.18.1
+  ([`85a9083`](https://github.com/wpfleger96/ai-agent-rules/commit/85a908385159eb76520c1d575d141608be397365))
 
 
 ## v0.18.0 (2026-01-08)
@@ -1199,6 +1653,9 @@ otherwise this would cause confusing double-prompting
 - Docs
   ([`41ff2bb`](https://github.com/wpfleger96/ai-agent-rules/commit/41ff2bba0e5256160fe4e08fbc48e00d39afb8f0))
 
+- **release**: 0.18.0
+  ([`ee6e393`](https://github.com/wpfleger96/ai-agent-rules/commit/ee6e393b195d570ea9f6db1c07ffd09523296f5a))
+
 ### Features
 
 - Add claude code plugin support
@@ -1206,6 +1663,11 @@ otherwise this would cause confusing double-prompting
 
 
 ## v0.17.0 (2025-12-20)
+
+### Chores
+
+- **release**: 0.17.0
+  ([`661b09f`](https://github.com/wpfleger96/ai-agent-rules/commit/661b09fbb6e5a5e66cfe5b270e1e3cf3bf4806cf))
 
 ### Features
 
@@ -1225,6 +1687,9 @@ otherwise this would cause confusing double-prompting
 - Docs
   ([`78ee562`](https://github.com/wpfleger96/ai-agent-rules/commit/78ee56246d8639ed7492b3605126ae6c573f85e8))
 
+- **release**: 0.16.1
+  ([`44e2cbc`](https://github.com/wpfleger96/ai-agent-rules/commit/44e2cbc34e54568637b3f59cb29e6310278036ef))
+
 
 ## v0.16.0 (2025-12-19)
 
@@ -1232,6 +1697,11 @@ otherwise this would cause confusing double-prompting
 
 - /update-docs should auto invoke doc-writer skill, and remove unnecessary update command
   ([`93c8f72`](https://github.com/wpfleger96/ai-agent-rules/commit/93c8f72589f17e08363a76e74ec4f0222493435b))
+
+### Chores
+
+- **release**: 0.16.0
+  ([`3cb2dc0`](https://github.com/wpfleger96/ai-agent-rules/commit/3cb2dc0b82f5017fcde930809fa7d68c91b79112))
 
 ### Features
 
@@ -1247,6 +1717,11 @@ otherwise this would cause confusing double-prompting
 - Clarify between user/manual vs. profile overrides
   ([`975694e`](https://github.com/wpfleger96/ai-agent-rules/commit/975694e54e734e6dd68477921f91ff42dbcd2537))
 
+### Chores
+
+- **release**: 0.15.15
+  ([`8ce174e`](https://github.com/wpfleger96/ai-agent-rules/commit/8ce174e21924597a8fda651d793eb5534996b509))
+
 
 ## v0.15.14 (2025-12-18)
 
@@ -1255,6 +1730,11 @@ otherwise this would cause confusing double-prompting
 - All commands should respect current profile if set
   ([`2a7cdd9`](https://github.com/wpfleger96/ai-agent-rules/commit/2a7cdd90f2ba8fe9c8dda127bd8109caa44d36a6))
 
+### Chores
+
+- **release**: 0.15.14
+  ([`e992f1f`](https://github.com/wpfleger96/ai-agent-rules/commit/e992f1f801db7ce2419c1c4b1a71d5575d645ced))
+
 
 ## v0.15.13 (2025-12-18)
 
@@ -1262,6 +1742,11 @@ otherwise this would cause confusing double-prompting
 
 - Add completions status command
   ([`5fbe247`](https://github.com/wpfleger96/ai-agent-rules/commit/5fbe2472ebd08262767ab9c4fb0162e58a6ef939))
+
+### Chores
+
+- **release**: 0.15.13
+  ([`134448d`](https://github.com/wpfleger96/ai-agent-rules/commit/134448dad4996a45bb9fd2b03d9770c21c4dcb83))
 
 
 ## v0.15.12 (2025-12-18)
@@ -1276,6 +1761,9 @@ otherwise this would cause confusing double-prompting
 - Cleanup dead code
   ([`b98d4d7`](https://github.com/wpfleger96/ai-agent-rules/commit/b98d4d7f5fad5eb40eb1ebde6ef8518ea8305c58))
 
+- **release**: 0.15.12
+  ([`eca9942`](https://github.com/wpfleger96/ai-agent-rules/commit/eca99424d412421e7c4f1fe83cadee8c29d4413d))
+
 
 ## v0.15.11 (2025-12-18)
 
@@ -1283,6 +1771,11 @@ otherwise this would cause confusing double-prompting
 
 - Switching profiles should gracefully handle conflicting overrides
   ([`7080a3d`](https://github.com/wpfleger96/ai-agent-rules/commit/7080a3df51608381be23805080765622828a6125))
+
+### Chores
+
+- **release**: 0.15.11
+  ([`2a8fd99`](https://github.com/wpfleger96/ai-agent-rules/commit/2a8fd9924221da0255fa33ca0721e24b657b8cfb))
 
 
 ## v0.15.10 (2025-12-17)
@@ -1292,6 +1785,11 @@ otherwise this would cause confusing double-prompting
 - Remove useless hook
   ([`ad4d540`](https://github.com/wpfleger96/ai-agent-rules/commit/ad4d5403a12ca7f8a5f64041da1c43c513117038))
 
+### Chores
+
+- **release**: 0.15.10
+  ([`2f75f03`](https://github.com/wpfleger96/ai-agent-rules/commit/2f75f03bc54780b7077feab60d1458f91a487b37))
+
 
 ## v0.15.9 (2025-12-17)
 
@@ -1300,6 +1798,11 @@ otherwise this would cause confusing double-prompting
 - Intelligent uninstall+reinstall logic
   ([`09274c4`](https://github.com/wpfleger96/ai-agent-rules/commit/09274c43a3856850e6f33908e971cc39a3737101))
 
+### Chores
+
+- **release**: 0.15.9
+  ([`191f45d`](https://github.com/wpfleger96/ai-agent-rules/commit/191f45dffcd02076d3a781a9499d3df9a4a5842b))
+
 
 ## v0.15.8 (2025-12-17)
 
@@ -1307,6 +1810,11 @@ otherwise this would cause confusing double-prompting
 
 - Remove local install option expose info command for troubleshooting
   ([`b998e5d`](https://github.com/wpfleger96/ai-agent-rules/commit/b998e5d0d2e638e117f6b06f1950c963f9c7e68f))
+
+### Chores
+
+- **release**: 0.15.8
+  ([`a9bfdbd`](https://github.com/wpfleger96/ai-agent-rules/commit/a9bfdbda5706509b85c3e10907aff9db2418c706))
 
 
 ## v0.15.7 (2025-12-17)
@@ -1319,6 +1827,11 @@ otherwise this would cause confusing double-prompting
 - Setup commmand should also upgrade if already installed
   ([`f381cef`](https://github.com/wpfleger96/ai-agent-rules/commit/f381cef83c2bfeb6aed9006660d44da10b574139))
 
+### Chores
+
+- **release**: 0.15.7
+  ([`0715996`](https://github.com/wpfleger96/ai-agent-rules/commit/0715996d934021669a9017e0b5e31a6a63fb5ad6))
+
 
 ## v0.15.6 (2025-12-17)
 
@@ -1326,6 +1839,11 @@ otherwise this would cause confusing double-prompting
 
 - **upgrade**: Flaky upgrade for GitHub-based installs
   ([`a8ed872`](https://github.com/wpfleger96/ai-agent-rules/commit/a8ed872c20b0a0cae6cd2c17de6b7c45d0b720ac))
+
+### Chores
+
+- **release**: 0.15.6
+  ([`92e6d50`](https://github.com/wpfleger96/ai-agent-rules/commit/92e6d50fdc26657d371faba6c3b93f53820b9954))
 
 
 ## v0.15.5 (2025-12-11)
@@ -1340,6 +1858,9 @@ otherwise this would cause confusing double-prompting
 - Docs
   ([`9a2dbdc`](https://github.com/wpfleger96/ai-agent-rules/commit/9a2dbdc01e36a8eab3303bb75cc1a3371ca743a1))
 
+- **release**: 0.15.5
+  ([`185642d`](https://github.com/wpfleger96/ai-agent-rules/commit/185642d4fdeec16c712f83530c1ae243b4dbfc32))
+
 
 ## v0.15.4 (2025-12-11)
 
@@ -1347,6 +1868,11 @@ otherwise this would cause confusing double-prompting
 
 - Profile should show current and let you switch
   ([`7133c0e`](https://github.com/wpfleger96/ai-agent-rules/commit/7133c0e4e480f4f23c4b0b5ab1de64dceaf13c77))
+
+### Chores
+
+- **release**: 0.15.4
+  ([`c3f0942`](https://github.com/wpfleger96/ai-agent-rules/commit/c3f09427effafdcc334e0b471d6a656456cdaa75))
 
 
 ## v0.15.3 (2025-12-11)
@@ -1361,6 +1887,9 @@ otherwise this would cause confusing double-prompting
 - Docs
   ([`859d3b4`](https://github.com/wpfleger96/ai-agent-rules/commit/859d3b4c3c448e591b0fd4a80065616ecc5dfc7a))
 
+- **release**: 0.15.3
+  ([`c4faf24`](https://github.com/wpfleger96/ai-agent-rules/commit/c4faf246b8739b0ce13633411c0892b3ec01fa72))
+
 
 ## v0.15.2 (2025-12-11)
 
@@ -1368,6 +1897,11 @@ otherwise this would cause confusing double-prompting
 
 - Goosehints not getting built in wheel
   ([`c0c4b8b`](https://github.com/wpfleger96/ai-agent-rules/commit/c0c4b8be353b0f66cf38655398e42eeba847435b))
+
+### Chores
+
+- **release**: 0.15.2
+  ([`fc59a9a`](https://github.com/wpfleger96/ai-agent-rules/commit/fc59a9abc0363ed75915b533a8e550687263326c))
 
 
 ## v0.15.1 (2025-12-11)
@@ -1377,8 +1911,18 @@ otherwise this would cause confusing double-prompting
 - Statusline install should respect install source
   ([`8b0bada`](https://github.com/wpfleger96/ai-agent-rules/commit/8b0bada7a725ddc74ac4aa25b5e4fd45164bc9b2))
 
+### Chores
+
+- **release**: 0.15.1
+  ([`88f081f`](https://github.com/wpfleger96/ai-agent-rules/commit/88f081f3e4ea6c40ef98f72beba7110a68e5a81c))
+
 
 ## v0.15.0 (2025-12-10)
+
+### Chores
+
+- **release**: 0.15.0
+  ([`86a13da`](https://github.com/wpfleger96/ai-agent-rules/commit/86a13da49b66651f2f8d8a81205c998cb46ef1e8))
 
 ### Features
 
@@ -1392,6 +1936,9 @@ otherwise this would cause confusing double-prompting
 
 - Update AGENTS.md
   ([`1f3e7fd`](https://github.com/wpfleger96/ai-agent-rules/commit/1f3e7fd7dc33b928f6ff3e03397abb7cf6152e0a))
+
+- **release**: 0.14.0
+  ([`f3a891d`](https://github.com/wpfleger96/ai-agent-rules/commit/f3a891d26a660262fef42221e0425a4fc84807d1))
 
 ### Features
 
@@ -1409,6 +1956,11 @@ otherwise this would cause confusing double-prompting
 - Dont waste tokens, other hints files should @mention the main AGENTS.md
   ([`fab89e7`](https://github.com/wpfleger96/ai-agent-rules/commit/fab89e721a851472d37f0af4cb7519c3c2501b0b))
 
+### Chores
+
+- **release**: 0.13.0
+  ([`25505d1`](https://github.com/wpfleger96/ai-agent-rules/commit/25505d192760085af336084a56d6f492d871b01e))
+
 ### Features
 
 - Add supported CursorAgent
@@ -1422,6 +1974,11 @@ otherwise this would cause confusing double-prompting
 - Cc perm
   ([`f895aa0`](https://github.com/wpfleger96/ai-agent-rules/commit/f895aa0fc6aeb8f9921b9ddcb98dc38b28eede60))
 
+### Chores
+
+- **release**: 0.12.4
+  ([`4220c33`](https://github.com/wpfleger96/ai-agent-rules/commit/4220c3390a94ce6f3718a7ca670cf5981a604dbb))
+
 
 ## v0.12.3 (2025-12-08)
 
@@ -1429,6 +1986,11 @@ otherwise this would cause confusing double-prompting
 
 - Uvx pip still uses pip config not uv
   ([`1593f0d`](https://github.com/wpfleger96/ai-agent-rules/commit/1593f0d38f1781473a89ddec46d84fefe5ecff4e))
+
+### Chores
+
+- **release**: 0.12.3
+  ([`57beaab`](https://github.com/wpfleger96/ai-agent-rules/commit/57beaabc98a271c75ff93b33d27936291efe2e09))
 
 
 ## v0.12.2 (2025-12-08)
@@ -1443,6 +2005,9 @@ otherwise this would cause confusing double-prompting
 - Update AGENTS.md
   ([`86956f0`](https://github.com/wpfleger96/ai-agent-rules/commit/86956f0121d8d2ba9e6d6cfb55e8bee1740c3fd0))
 
+- **release**: 0.12.2
+  ([`137426c`](https://github.com/wpfleger96/ai-agent-rules/commit/137426cf817ad0c60e054f17461393a6e06dc1cb))
+
 
 ## v0.12.1 (2025-12-08)
 
@@ -1451,8 +2016,18 @@ otherwise this would cause confusing double-prompting
 - Respect global package index settings
   ([`beb0fd4`](https://github.com/wpfleger96/ai-agent-rules/commit/beb0fd4814007ca8d4df10c327c7a6c2059038a8))
 
+### Chores
+
+- **release**: 0.12.1
+  ([`c1968ce`](https://github.com/wpfleger96/ai-agent-rules/commit/c1968ce7bd895baaf17e4e2a35f47f130ff98e46))
+
 
 ## v0.12.0 (2025-12-08)
+
+### Chores
+
+- **release**: 0.12.0
+  ([`e5bb559`](https://github.com/wpfleger96/ai-agent-rules/commit/e5bb5595c9ccfca7ec56c718e1f0f88027d70be9))
 
 ### Features
 
@@ -1461,6 +2036,11 @@ otherwise this would cause confusing double-prompting
 
 
 ## v0.11.0 (2025-12-08)
+
+### Chores
+
+- **release**: 0.11.0
+  ([`c1a398c`](https://github.com/wpfleger96/ai-agent-rules/commit/c1a398c4e69f8923f3ea3cca713a3aa4564aefce))
 
 ### Features
 
@@ -1475,6 +2055,11 @@ otherwise this would cause confusing double-prompting
 - Cc perms
   ([`9dd366c`](https://github.com/wpfleger96/ai-agent-rules/commit/9dd366cd171480976fd25cc840256bf224453fe3))
 
+### Chores
+
+- **release**: 0.10.3
+  ([`6de150c`](https://github.com/wpfleger96/ai-agent-rules/commit/6de150c0d59360cb17a81618e04bc0eb4a8462ff))
+
 
 ## v0.10.2 (2025-12-07)
 
@@ -1482,6 +2067,11 @@ otherwise this would cause confusing double-prompting
 
 - Still flaky
   ([`3a6a1ce`](https://github.com/wpfleger96/ai-agent-rules/commit/3a6a1ce4b4b70e49cf0968b42ca78c90c2109ef5))
+
+### Chores
+
+- **release**: 0.10.2
+  ([`1dde679`](https://github.com/wpfleger96/ai-agent-rules/commit/1dde6791718f76f24803dc3c73e190593d70535c))
 
 
 ## v0.10.1 (2025-12-07)
@@ -1496,6 +2086,9 @@ otherwise this would cause confusing double-prompting
 - Update script
   ([`8ae0008`](https://github.com/wpfleger96/ai-agent-rules/commit/8ae00088ee8e4db9f07c7f4f101c214f425c79e1))
 
+- **release**: 0.10.1
+  ([`942265e`](https://github.com/wpfleger96/ai-agent-rules/commit/942265ec3289bf617387186167587e48ed3c1828))
+
 
 ## v0.10.0 (2025-12-06)
 
@@ -1503,6 +2096,9 @@ otherwise this would cause confusing double-prompting
 
 - More code quality
   ([`f639929`](https://github.com/wpfleger96/ai-agent-rules/commit/f639929156d919ea582140e151ee6114002d485a))
+
+- **release**: 0.10.0
+  ([`8dbf6cf`](https://github.com/wpfleger96/ai-agent-rules/commit/8dbf6cf5d9abe5314841abb7847ef992105d51d3))
 
 ### Features
 
@@ -1517,6 +2113,9 @@ otherwise this would cause confusing double-prompting
 - Code quality
   ([`9793b0e`](https://github.com/wpfleger96/ai-agent-rules/commit/9793b0e22ab752bdf4deddfe9e2f083aff63d13a))
 
+- **release**: 0.9.5
+  ([`7d7bb88`](https://github.com/wpfleger96/ai-agent-rules/commit/7d7bb8877211a4a8a7436245c9a87baf93ea37f5))
+
 
 ## v0.9.4 (2025-12-05)
 
@@ -1524,6 +2123,11 @@ otherwise this would cause confusing double-prompting
 
 - Show diff during install
   ([`ea63ecc`](https://github.com/wpfleger96/ai-agent-rules/commit/ea63ecc5996a2994325c3cdc6cc741441c4421ec))
+
+### Chores
+
+- **release**: 0.9.4
+  ([`fd52305`](https://github.com/wpfleger96/ai-agent-rules/commit/fd5230523b5b4a7ccd7233d153b66dccd444d8b2))
 
 
 ## v0.9.3 (2025-12-05)
@@ -1535,6 +2139,11 @@ otherwise this would cause confusing double-prompting
 
 - Llms are dumb
   ([`fd29f5b`](https://github.com/wpfleger96/ai-agent-rules/commit/fd29f5b9e9c62064737853e29da7cb3e4fe63d74))
+
+### Chores
+
+- **release**: 0.9.3
+  ([`1e8f1d7`](https://github.com/wpfleger96/ai-agent-rules/commit/1e8f1d761a1e33be94eed093f3379c41f40b7481))
 
 
 ## v0.9.2 (2025-12-04)
@@ -1549,6 +2158,9 @@ otherwise this would cause confusing double-prompting
 - Add editor config and fix precommit bug
   ([`35693f0`](https://github.com/wpfleger96/ai-agent-rules/commit/35693f0f986bc272ff90875ddf9424ab1c9d820e))
 
+- **release**: 0.9.2
+  ([`5e0389c`](https://github.com/wpfleger96/ai-agent-rules/commit/5e0389c24ee19fdae9893bf25b5881fb8ccef46a))
+
 
 ## v0.9.1 (2025-12-04)
 
@@ -1557,8 +2169,18 @@ otherwise this would cause confusing double-prompting
 - Shell lint cmds
   ([`447463e`](https://github.com/wpfleger96/ai-agent-rules/commit/447463e4da6b35c840e3201ec3c8a3d968e865b3))
 
+### Chores
+
+- **release**: 0.9.1
+  ([`69e2e43`](https://github.com/wpfleger96/ai-agent-rules/commit/69e2e43d04859e201d9c4ec30831853183a2b48a))
+
 
 ## v0.9.0 (2025-12-04)
+
+### Chores
+
+- **release**: 0.9.0
+  ([`c7380c7`](https://github.com/wpfleger96/ai-agent-rules/commit/c7380c79aff008b7c317b74d443805a25a0df67d))
 
 ### Features
 
@@ -1578,6 +2200,9 @@ otherwise this would cause confusing double-prompting
 - Migrate repo to use Just
   ([`b139720`](https://github.com/wpfleger96/ai-agent-rules/commit/b139720729344e12ea1877fdfac4e5b74f5305fa))
 
+- **release**: 0.8.1
+  ([`53f047a`](https://github.com/wpfleger96/ai-agent-rules/commit/53f047a5c80f600944d9de17cf353cb018860474))
+
 ### Continuous Integration
 
 - Prevent race condition in release workflow
@@ -1591,6 +2216,11 @@ otherwise this would cause confusing double-prompting
 - Detect and handle local wheel installations in upgrade command
   ([`41a9797`](https://github.com/wpfleger96/ai-agent-rules/commit/41a97973cd7385c2124e1bffc309e8ec288380ea))
 
+### Chores
+
+- **release**: 0.8.0
+  ([`e095e63`](https://github.com/wpfleger96/ai-agent-rules/commit/e095e636c002989e5e87bc72116fc7b1e6a54820))
+
 ### Features
 
 - Add shell completions support with auto install
@@ -1599,6 +2229,11 @@ otherwise this would cause confusing double-prompting
 
 ## v0.7.0 (2025-12-03)
 
+### Chores
+
+- **release**: 0.7.0
+  ([`5ceddd0`](https://github.com/wpfleger96/ai-agent-rules/commit/5ceddd010d82b432fa9b93007731322331f75b2b))
+
 ### Features
 
 - Auto update statusline script
@@ -1606,6 +2241,11 @@ otherwise this would cause confusing double-prompting
 
 
 ## v0.6.0 (2025-12-03)
+
+### Chores
+
+- **release**: 0.6.0
+  ([`3dc2aae`](https://github.com/wpfleger96/ai-agent-rules/commit/3dc2aae3ea1d2fb7e5bad9d0bc17e3ed0c810428))
 
 ### Documentation
 
@@ -1625,6 +2265,11 @@ otherwise this would cause confusing double-prompting
 - Stop caching wrong symlink path when overrides exist
   ([`8611713`](https://github.com/wpfleger96/ai-agent-rules/commit/86117135c0854acc7b370bc3c1d4325595003845))
 
+### Chores
+
+- **release**: 0.5.4
+  ([`2735230`](https://github.com/wpfleger96/ai-agent-rules/commit/2735230ae1a5f4a06af07b4d1b83b5497b9a757b))
+
 
 ## v0.5.3 (2025-12-02)
 
@@ -1633,6 +2278,11 @@ otherwise this would cause confusing double-prompting
 - Performance improvements during symlink install
   ([`4cc1700`](https://github.com/wpfleger96/ai-agent-rules/commit/4cc170055db596cf067a69d4b56d14f829e6f562))
 
+### Chores
+
+- **release**: 0.5.3
+  ([`89fddd0`](https://github.com/wpfleger96/ai-agent-rules/commit/89fddd08f74d1d76e0bc68d2cb32afab628640d4))
+
 
 ## v0.5.2 (2025-12-02)
 
@@ -1640,6 +2290,11 @@ otherwise this would cause confusing double-prompting
 
 - Symlink to tool install dir instead of uvx cache
   ([`9b9a617`](https://github.com/wpfleger96/ai-agent-rules/commit/9b9a61730912c7378178d6db7c5b338a4481f149))
+
+### Chores
+
+- **release**: 0.5.2
+  ([`5b77284`](https://github.com/wpfleger96/ai-agent-rules/commit/5b77284e49c252807be766618b4ef908d2fb225c))
 
 ### Continuous Integration
 
@@ -1659,6 +2314,9 @@ otherwise this would cause confusing double-prompting
 - Add AGENTS.md for project
   ([`b871ea8`](https://github.com/wpfleger96/ai-agent-rules/commit/b871ea8f52177c2c92adadeec50c39d364826b66))
 
+- **release**: 0.5.1
+  ([`3fca13f`](https://github.com/wpfleger96/ai-agent-rules/commit/3fca13f06fd4213ce468bf638888e72c2ed93232))
+
 
 ## v0.5.0 (2025-12-02)
 
@@ -1666,6 +2324,11 @@ otherwise this would cause confusing double-prompting
 
 - Make sure config files get built into wheel package
   ([`3c92f88`](https://github.com/wpfleger96/ai-agent-rules/commit/3c92f88744705168af7a34ee650cd9be519da430))
+
+### Chores
+
+- **release**: 0.5.0
+  ([`1ed2114`](https://github.com/wpfleger96/ai-agent-rules/commit/1ed2114e824edd90927c9920fd3d1d1d37927d10))
 
 ### Continuous Integration
 
@@ -1696,6 +2359,9 @@ otherwise this would cause confusing double-prompting
 - Readme badges
   ([`274b949`](https://github.com/wpfleger96/ai-agent-rules/commit/274b949ce9d91a39bc23b861a6aa879be0c2bb3e))
 
+- **release**: 0.4.1
+  ([`89d7ece`](https://github.com/wpfleger96/ai-agent-rules/commit/89d7ece8fa914438f258877c68b03b5f26467424))
+
 
 ## v0.4.0 (2025-12-02)
 
@@ -1706,6 +2372,9 @@ otherwise this would cause confusing double-prompting
 
 - Cleanup and another CI test fix
   ([`7acadcf`](https://github.com/wpfleger96/ai-agent-rules/commit/7acadcf9b757f211d1fd306cace79e3932f6f131))
+
+- **release**: 0.4.0
+  ([`ab20f3e`](https://github.com/wpfleger96/ai-agent-rules/commit/ab20f3e97a88f2c0970153a3243e2e956f25a19e))
 
 ### Features
 
@@ -1754,6 +2423,9 @@ Performance Impact: - Status/diff commands no longer rebuild cache unnecessarily
 - Tweak AGENTS file
   ([`8b02b94`](https://github.com/wpfleger96/ai-agent-rules/commit/8b02b94197dc50cd86cc8b69586bd1f45133a57f))
 
+- **release**: 0.3.0
+  ([`ee6dbeb`](https://github.com/wpfleger96/ai-agent-rules/commit/ee6dbeb0d47932a12d1867a7b756b2b0c0938073))
+
 ### Features
 
 - Improve exclusion config UX and add settings merge functionality
@@ -1800,6 +2472,15 @@ Fixes #[issue-number]
 
 - Update README and readd MIT license
   ([`9bd4e65`](https://github.com/wpfleger96/ai-agent-rules/commit/9bd4e65c4e790e15c5457d33f00db4a2e342ad57))
+
+- **release**: 0.1.0
+  ([`639ccc0`](https://github.com/wpfleger96/ai-agent-rules/commit/639ccc0352ae7c99601e01464a2a8e9e8fa33984))
+
+- **release**: 0.1.1
+  ([`383ac20`](https://github.com/wpfleger96/ai-agent-rules/commit/383ac203f815e1e305976cc87d6945332e8f2b8f))
+
+- **release**: 0.2.0
+  ([`288f289`](https://github.com/wpfleger96/ai-agent-rules/commit/288f289105c45c180ebbfbe34b39c6bf14619b43))
 
 ### Features
 
