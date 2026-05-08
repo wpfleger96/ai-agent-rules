@@ -1,6 +1,68 @@
 # CHANGELOG
 
 
+## v0.47.1 (2026-05-08)
+
+### Bug Fixes
+
+- Increase crossfire review agent timeout threshold
+  ([`9d2408f`](https://github.com/wpfleger96/ai-agent-rules/commit/9d2408fbeef0da02d92828af841d7e6de95bd7d3))
+
+Seeing this regularly get exceeded for medium/large complexity reviews
+
+### Chores
+
+- Enhance dependabot automation and workflow hygiene
+  ([#12](https://github.com/wpfleger96/ai-agent-rules/pull/12),
+  [`58d4fe7`](https://github.com/wpfleger96/ai-agent-rules/commit/58d4fe74cf5c46c8f2b04cb33248517a6612dc1a))
+
+* chore: enhance dependabot config and add auto-merge workflow
+
+Default dependabot config only covered uv with no customizations — GitHub Actions versions were
+  never updated, every minor/patch bump created its own PR, and commit messages didn't follow
+  conventional commit format. For a solo-maintained project, grouped updates with auto-merge
+  eliminates the most manual toil.
+
+Renames CI job from test→ci to better reflect its scope.
+
+* chore: add least-privilege permissions to all workflows
+
+CodeQL flags workflows without explicit permissions blocks since they inherit the default token
+  scope (overly broad). CI and publish only need read access; release needs write for GitHub
+  releases and workflow dispatch.
+
+* chore: standardize workflow check names for cleaner GitHub UI
+
+Redundant job `name:` fields and mismatched job IDs made GitHub checks read awkwardly (`CI / CI`,
+  `Automated Release / Release`). Convention: workflow `name:` is the category, job ID describes the
+  action.
+
+Post-merge: update branch protection required check from `CI` to `checks`.
+
+- Migrate release workflow to GitHub App token auth
+  ([#19](https://github.com/wpfleger96/ai-agent-rules/pull/19),
+  [`193133c`](https://github.com/wpfleger96/ai-agent-rules/commit/193133c5e68d0f5861a0a8da6040897e206614dd))
+
+python-semantic-release couldn't push version commits to main because classic branch protection
+  doesn't support bypass actors on personal repos. Switched to a GitHub App (wpfleger-release-bot)
+  with repository rulesets bypass, replacing the SSH deploy key + GITHUB_TOKEN pattern.
+
+Also simplifies publish workflow: replaces workflow_dispatch trigger (workaround for unreliable
+  on:workflow_run) with on:release which fires reliably when PSR creates a GitHub Release via the
+  API. This removes the tag validation boilerplate since the release event guarantees a valid tag
+  exists.
+
+### Refactoring
+
+- Split CLI around static component registries
+  ([#11](https://github.com/wpfleger96/ai-agent-rules/pull/11),
+  [`e0925ba`](https://github.com/wpfleger96/ai-agent-rules/commit/e0925ba56a926b201db0ed41ea792c56e7d5eb27))
+
+The CLI had become the integration point for every managed lifecycle concern, which made omissions
+  across install, status, diff, and uninstall easy. This keeps the existing target abstractions
+  while moving lifecycle behavior behind ordered registries and explicit command registration.
+
+
 ## v0.47.0 (2026-05-07)
 
 ### Features
