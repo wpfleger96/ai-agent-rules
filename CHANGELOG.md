@@ -1,6 +1,99 @@
 # CHANGELOG
 
 
+## v0.47.6 (2026-05-11)
+
+### Bug Fixes
+
+- Bash tab completion broken for ai-rules alias
+  ([#28](https://github.com/wpfleger96/ai-agent-rules/pull/28),
+  [`b2f78b9`](https://github.com/wpfleger96/ai-agent-rules/commit/b2f78b96061787b8d95977c3e806ffb737696cf5))
+
+Click derives the completion env var from prog_name, which defaults to sys.argv[0]. The completion
+  function re-invokes the CLI with $1 set to the command being completed — when that's "ai-rules",
+  Click looks for _AI_RULES_COMPLETE instead of _AI_AGENT_RULES_COMPLETE, never enters completion
+  mode, and dumps the help text. Fix by adding an entrypoint wrapper that passes complete_var
+  explicitly. Also commits uv.lock for CI parity and adds a completion regression test.
+
+
+## v0.47.5 (2026-05-11)
+
+### Bug Fixes
+
+- Enable recall KB write-back with Stop hook and imperative AGENTS.md
+  ([#27](https://github.com/wpfleger96/ai-agent-rules/pull/27),
+  [`ff78283`](https://github.com/wpfleger96/ai-agent-rules/commit/ff78283f7de0b31e57d6363806d7d15ab2e7d767))
+
+Recall MCP had zero new notes written despite working correctly — the AGENTS.md instruction used
+  advisory language that the agent deprioritized. Strengthened write-back language to mandatory with
+  explicit triggers, added a conservative Stop hook as safety net, and fixed preserved_fields cache
+  bug where dict fields like hooks were unconditionally overwritten.
+
+### Chores
+
+- **deps**: Bump actions/create-github-app-token from 2 to 3
+  ([#24](https://github.com/wpfleger96/ai-agent-rules/pull/24),
+  [`2c25163`](https://github.com/wpfleger96/ai-agent-rules/commit/2c251637cfda0406bef876a2485932ead2451153))
+
+- **deps**: Bump astral-sh/setup-uv from 3 to 7
+  ([#23](https://github.com/wpfleger96/ai-agent-rules/pull/23),
+  [`58bff4b`](https://github.com/wpfleger96/ai-agent-rules/commit/58bff4bedd20395b20a88aec10853b2125d49d7b))
+
+
+## v0.47.4 (2026-05-08)
+
+### Refactoring
+
+- Semantic component categories and --only filtering
+  ([#18](https://github.com/wpfleger96/ai-agent-rules/pull/18),
+  [`8761ba1`](https://github.com/wpfleger96/ai-agent-rules/commit/8761ba108da0b8dd54199b94233ba102436d662e))
+
+Components were organized by mechanism (SymlinkComponent handled all symlinks) rather than by what
+  users care about (config files, skills, settings, MCPs). Reorganized into semantic categories with
+  --only filtering support, two-phase install runner, and extensions component for agents/commands/hooks.
+
+### Bug Fixes
+
+- Remove [skip ci] from release commit template
+  ([#25](https://github.com/wpfleger96/ai-agent-rules/pull/25),
+  [`58278e4`](https://github.com/wpfleger96/ai-agent-rules/commit/58278e4d9d2a07a29151959369846a0ab9dd8910))
+
+[skip ci] in release commits poisons CI for any PR that updates from main — GitHub skips
+  pull_request workflows when any commit in the push range contains [skip ci].
+
+
+## v0.47.3 (2026-05-08)
+
+### Bug Fixes
+
+- Use correct dependabot commit-message prefix
+  ([#22](https://github.com/wpfleger96/ai-agent-rules/pull/22),
+  [`c4fdd13`](https://github.com/wpfleger96/ai-agent-rules/commit/c4fdd13265c8dfcda910c29887a656038b9cc611))
+
+prefix: "chore(deps)" combined with include: "scope" produced chore(deps)(deps): — Dependabot
+  appends (scope) to the prefix. Using prefix: "chore" lets include: "scope" add (deps) naturally.
+
+- Add allow_zero_version and remove bogus commit_type_map
+  ([`4e22412`](https://github.com/wpfleger96/ai-agent-rules/commit/4e22412f71c338a37e512b9f9682811f2efd4d41))
+
+PSR v10 changed the default for allow_zero_version from true to false, causing the 0.47.2 → 1.0.0
+  bump. commit_type_map was never a valid PSR config key — silently ignored in both v9 and v10.
+
+### Chores
+
+- **deps**: Bump dependabot/fetch-metadata from 2 to 3
+  ([#17](https://github.com/wpfleger96/ai-agent-rules/pull/17),
+  [`2848352`](https://github.com/wpfleger96/ai-agent-rules/commit/2848352db6427b0a6371867854661326bb157690))
+
+- **deps**: Bump python-semantic-release/python-semantic-release
+  ([#16](https://github.com/wpfleger96/ai-agent-rules/pull/16),
+  [`3ca3c0f`](https://github.com/wpfleger96/ai-agent-rules/commit/3ca3c0f14f35aebdd8a4f727158956e1b0c626df))
+
+- **deps**: Bump actions/checkout from 4 to 6
+  ([#15](https://github.com/wpfleger96/ai-agent-rules/pull/15),
+  [`c139207`](https://github.com/wpfleger96/ai-agent-rules/commit/c1392075859f3b16769065e482e2568ada081e65))
+
+
 ## v0.47.2 (2026-05-08)
 
 ### Bug Fixes
