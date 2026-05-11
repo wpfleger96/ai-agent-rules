@@ -8,7 +8,7 @@ evaluation and writing.
 
 Signals checked:
   - User explicitly asked to remember/save/persist something
-  - User corrected the agent and the correction wasn't persisted
+  - User corrected the agent (directed at the agent, not third-party systems)
 
 Everything else is left to inline agent judgment via AGENTS.md instructions.
 This hook is a safety net, not the primary write-back mechanism.
@@ -30,21 +30,26 @@ PERSIST_PATTERNS = re.compile(
 )
 
 CORRECTION_PATTERNS = re.compile(
-    r"\b(that'?s\s+(wrong|incorrect|not\s+right|not\s+true|inaccurate)|"
-    r"no[,.]?\s+(that'?s|it'?s|actually)|"
-    r"you'?re\s+wrong|"
-    r"incorrect[,.]|"
-    r"actually[,.]?\s+(it|that|the)\s+(is|was|should))\b",
+    r"\b(you'?re\s+(wrong|incorrect|mistaken)|"
+    r"you\s+(got|have)\s+(that|it|this)\s+wrong|"
+    r"that'?s\s+not\s+(right|correct|true|accurate)|"
+    r"no[,.]?\s+that'?s\s+(wrong|incorrect|not\s+right))\b",
     re.IGNORECASE,
 )
 
 RECALL_WRITE_TOOLS = {"mcp__recall__write_note", "mcp__recall__edit_note"}
+RECALL_MCP_TOOLS = {"mcp__recall__search_notes", "mcp__recall__recall_status"}
 
-BLOCK_REASON = (
-    "The session contains knowledge that should be persisted to the recall KB "
-    "but wasn't written yet. Evaluate what's worth persisting: search recall "
-    "first to avoid duplicates, then call write_note or edit_note. "
-    "Invoke /kb for formatting conventions."
+BLOCK_REASON_PERSIST = (
+    "The user asked to persist knowledge to the recall KB but no write happened. "
+    "Evaluate what they wanted saved: search recall first to avoid duplicates, "
+    "then call write_note or edit_note. Invoke /kb for formatting conventions."
+)
+
+BLOCK_REASON_CORRECTION = (
+    "The user corrected an error but the correction wasn't persisted to recall. "
+    "Write the correction as a note with a [misconception] tag. Search recall "
+    "first to avoid duplicates. Invoke /kb for formatting conventions."
 )
 
 
@@ -61,50 +66,69 @@ def parse_transcript(path: str) -> list[dict[str, Any]]:
                 continue
             try:
                 record = json.loads(line)
+                if not isinstance(record, dict):
+                    continue
                 if "message" in record:
                     record = record["message"]
-                messages.append(record)
+                if isinstance(record, dict):
+                    messages.append(record)
             except json.JSONDecodeError:
                 continue
     return messages
 
 
-def recall_already_wrote(messages: list[dict[str, Any]]) -> bool:
-    """Check if recall write tools were called in recent messages."""
+def has_recall_mcp(messages: list[dict[str, Any]]) -> bool:
+    """Check if recall MCP tools were used, indicating recall is available."""
+    all_tools = RECALL_WRITE_TOOLS | RECALL_MCP_TOOLS
     for msg in messages:
         content = msg.get("content", [])
         if isinstance(content, list):
             for block in content:
                 if isinstance(block, dict) and block.get("type") == "tool_use":
-                    if block.get("name") in RECALL_WRITE_TOOLS:
+                    if block.get("name") in all_tools:
                         return True
     return False
 
 
-def extract_user_text(messages: list[dict[str, Any]]) -> list[str]:
-    """Extract text from user messages."""
-    texts = []
-    for msg in messages:
+def has_unaddressed_signal(messages: list[dict[str, Any]]) -> str | None:
+    """Scan transcript backward for signals not followed by a recall write.
+
+    Returns the block reason if an unaddressed signal is found, None otherwise.
+    Each turn gets independent evaluation — a write at turn 1 doesn't satisfy
+    a "remember this" at turn 10.
+    """
+    latest_signal: str | None = None
+
+    for msg in reversed(messages):
+        content = msg.get("content", [])
+        if isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "tool_use":
+                    if block.get("name") in RECALL_WRITE_TOOLS:
+                        return None
+
         if msg.get("role") != "user":
             continue
-        content = msg.get("content", "")
-        if isinstance(content, str):
-            texts.append(content)
-        elif isinstance(content, list):
-            for block in content:
+
+        text_parts: list[str] = []
+        raw = msg.get("content", "")
+        if isinstance(raw, str):
+            text_parts.append(raw)
+        elif isinstance(raw, list):
+            for block in raw:
                 if isinstance(block, dict) and block.get("type") == "text":
-                    texts.append(block.get("text", ""))
-    return texts
+                    text_parts.append(block.get("text", ""))
 
+        for text in text_parts:
+            if PERSIST_PATTERNS.search(text):
+                latest_signal = BLOCK_REASON_PERSIST
+            elif CORRECTION_PATTERNS.search(text):
+                latest_signal = BLOCK_REASON_CORRECTION
 
-def has_persist_signal(user_texts: list[str]) -> bool:
-    """Check if user explicitly asked to persist knowledge."""
-    return any(PERSIST_PATTERNS.search(text) for text in user_texts)
+        if latest_signal:
+            return latest_signal
 
-
-def has_correction_signal(user_texts: list[str]) -> bool:
-    """Check if user corrected the agent."""
-    return any(CORRECTION_PATTERNS.search(text) for text in user_texts)
+    return None
 
 
 def main() -> None:
@@ -124,13 +148,12 @@ def main() -> None:
     if not messages:
         sys.exit(0)
 
-    if recall_already_wrote(messages):
+    if not has_recall_mcp(messages):
         sys.exit(0)
 
-    user_texts = extract_user_text(messages)
-
-    if has_persist_signal(user_texts) or has_correction_signal(user_texts):
-        sys.stderr.write(BLOCK_REASON)
+    block_reason = has_unaddressed_signal(messages)
+    if block_reason:
+        sys.stderr.write(block_reason)
         sys.exit(2)
 
     sys.exit(0)
