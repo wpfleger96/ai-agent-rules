@@ -8,6 +8,7 @@ import sys
 
 from enum import Enum, auto
 from pathlib import Path
+from urllib.parse import urlparse
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -42,6 +43,20 @@ RECALL_GITHUB_REPO = "wpfleger96/recall"
 def _validate_package_name(package_name: str) -> bool:
     """Validate package name matches PyPI naming convention (PEP 508)."""
     return bool(re.match(r"^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$", package_name))
+
+
+def _is_github_git_reference(git_ref: str) -> bool:
+    """Return True if git_ref points to github.com using supported git URL formats."""
+    parsed = urlparse(git_ref)
+    if parsed.hostname:
+        return parsed.hostname.lower() == "github.com"
+
+    # Handle SCP-like SSH syntax, e.g. git@github.com:owner/repo.git
+    if "@" in git_ref and ":" in git_ref:
+        host_part = git_ref.split("@", 1)[1].split(":", 1)[0]
+        return host_part.lower() == "github.com"
+
+    return False
 
 
 def get_tool_config_dir(package_name: str = "ai-agent-rules") -> Path:
@@ -101,7 +116,7 @@ def get_tool_source(package_name: str) -> ToolSource | None:
 
         first_req = requirements[0]
         if isinstance(first_req, dict):
-            if "git" in first_req and "github.com" in first_req["git"]:
+            if "git" in first_req and _is_github_git_reference(str(first_req["git"])):
                 return ToolSource.GITHUB
             if "path" in first_req or "directory" in first_req:
                 return ToolSource.LOCAL
