@@ -19,6 +19,7 @@ import re
 import sys
 
 from pathlib import Path
+from typing import Any
 
 PERSIST_PATTERNS = re.compile(
     r"\b(remember\s+this|save\s+this|persist\s+this|"
@@ -47,9 +48,9 @@ BLOCK_REASON = (
 )
 
 
-def parse_transcript(path: str) -> list[dict]:
+def parse_transcript(path: str) -> list[dict[str, Any]]:
     """Parse transcript JSONL into a list of message records."""
-    messages = []
+    messages: list[dict[str, Any]] = []
     transcript = Path(path)
     if not transcript.exists():
         return messages
@@ -68,7 +69,7 @@ def parse_transcript(path: str) -> list[dict]:
     return messages
 
 
-def recall_already_wrote(messages: list[dict]) -> bool:
+def recall_already_wrote(messages: list[dict[str, Any]]) -> bool:
     """Check if recall write tools were called in recent messages."""
     for msg in messages:
         content = msg.get("content", [])
@@ -80,7 +81,7 @@ def recall_already_wrote(messages: list[dict]) -> bool:
     return False
 
 
-def extract_user_text(messages: list[dict]) -> list[str]:
+def extract_user_text(messages: list[dict[str, Any]]) -> list[str]:
     """Extract text from user messages."""
     texts = []
     for msg in messages:
