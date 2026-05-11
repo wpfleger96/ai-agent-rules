@@ -339,6 +339,10 @@ def main() -> None:
     pass
 
 
+def entrypoint() -> None:
+    main(complete_var="_AI_AGENT_RULES_COMPLETE")
+
+
 def cleanup_orphaned_symlinks(
     selected_targets: list["ConfigTarget"],
     config_dir: Path,

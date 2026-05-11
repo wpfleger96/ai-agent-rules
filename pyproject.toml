@@ -37,8 +37,8 @@ Repository = "https://github.com/wpfleger96/ai-agent-rules"
 Issues = "https://github.com/wpfleger96/ai-agent-rules/issues"
 
 [project.scripts]
-ai-rules = "ai_rules.cli:main"
-ai-agent-rules = "ai_rules.cli:main"
+ai-rules = "ai_rules.cli:entrypoint"
+ai-agent-rules = "ai_rules.cli:entrypoint"
 
 [build-system]
 requires = ["setuptools", "wheel"]
