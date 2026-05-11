@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ai_rules.config import Config
+from ai_rules.utils import deep_merge
 
 
 class ConfigTarget(ABC):
@@ -177,7 +178,14 @@ class ConfigTarget(ABC):
 
                     for field in preserved:
                         if field in existing:
-                            merged[field] = existing[field]
+                            if isinstance(merged.get(field), dict) and isinstance(
+                                existing[field], dict
+                            ):
+                                merged[field] = deep_merge(
+                                    merged[field], existing[field]
+                                )
+                            else:
+                                merged[field] = existing[field]
                 except CONFIG_PARSE_ERRORS:
                     pass
 
@@ -290,9 +298,30 @@ class ConfigTarget(ABC):
 
         current_copy = copy.deepcopy(current_settings)
         expected_copy = copy.deepcopy(expected_settings)
-        for field in self._effective_preserved_fields:
+
+        static_preserved = set(self.preserved_fields)
+        effective_preserved = set(self._effective_preserved_fields)
+        mcp_preserved = effective_preserved - static_preserved
+
+        for field in mcp_preserved:
             current_copy.pop(field, None)
             expected_copy.pop(field, None)
+
+        for field in static_preserved:
+            profile_value = expected_copy.get(field)
+            cache_value = current_copy.get(field)
+
+            if isinstance(profile_value, dict) and isinstance(cache_value, dict):
+                current_copy[field] = {
+                    k: cache_value[k] for k in profile_value if k in cache_value
+                }
+                expected_copy[field] = profile_value
+                if current_copy[field] == expected_copy[field]:
+                    current_copy.pop(field, None)
+                    expected_copy.pop(field, None)
+            else:
+                current_copy.pop(field, None)
+                expected_copy.pop(field, None)
 
         if current_copy == expected_copy:
             return None

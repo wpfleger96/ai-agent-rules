@@ -472,10 +472,10 @@ def test_codex_install_and_uninstall(mock_home, test_repo):
     with open(config_path) as f:
         doc = tomlkit.load(f)
 
-    mcp_servers = dict(doc["mcp_servers"])  # type: ignore[arg-type]
+    mcp_servers = dict(doc["mcp_servers"])
     assert "recall" in mcp_servers
     managed_section = doc["_ai_agent_rules_managed"]
-    managed_names = list(managed_section["names"])  # type: ignore[index,arg-type]
+    managed_names = list(managed_section["names"])
     assert "recall" in managed_names
 
     result, message = mgr.uninstall_mcps()
@@ -508,7 +508,7 @@ def test_codex_preserves_non_mcp_keys(mock_home, test_repo):
 
     assert doc["model"] == "gpt-5.2-codex"
     assert doc["approval_policy"] == "on-request"
-    assert "mcp-a" in dict(doc["mcp_servers"])  # type: ignore[arg-type]
+    assert "mcp-a" in dict(doc["mcp_servers"])
 
 
 # ---------------------------------------------------------------------------

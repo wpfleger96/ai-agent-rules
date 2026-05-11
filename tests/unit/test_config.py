@@ -390,6 +390,273 @@ settings_overrides:
         assert result["model"] == "new"
         assert result["enabledPlugins"] == {"my-plugin@marketplace": True}
 
+    def test_build_merged_settings_preserves_profile_hooks_over_empty_cache(
+        self, tmp_path, monkeypatch
+    ):
+        """Profile-contributed hooks survive when existing cache has empty hooks."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(json.dumps({"model": "old", "hooks": {}}))
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        stop_hook = [{"hooks": [{"type": "command", "command": "python3 test.py"}]}]
+        config = Config(settings_overrides={"claude": {"hooks": {"Stop": stop_hook}}})
+        agent = ClaudeAgent(config_dir, config)
+        result_path = agent.build_merged_settings(force_rebuild=True)
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert "Stop" in result["hooks"]
+        assert result["hooks"]["Stop"] == stop_hook
+
+    def test_build_merged_settings_merges_profile_and_user_hooks(
+        self, tmp_path, monkeypatch
+    ):
+        """Profile hooks and user-added hooks coexist in merged output."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        user_hook = [{"hooks": [{"type": "command", "command": "user_hook.sh"}]}]
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(
+            json.dumps({"model": "old", "hooks": {"PreCompact": user_hook}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        profile_hook = [{"hooks": [{"type": "command", "command": "profile_hook.py"}]}]
+        config = Config(
+            settings_overrides={"claude": {"hooks": {"Stop": profile_hook}}}
+        )
+        agent = ClaudeAgent(config_dir, config)
+        result_path = agent.build_merged_settings(force_rebuild=True)
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert "Stop" in result["hooks"]
+        assert "PreCompact" in result["hooks"]
+        assert result["hooks"]["Stop"] == profile_hook
+        assert result["hooks"]["PreCompact"] == user_hook
+
+    def test_get_cache_diff_shows_profile_hooks_missing_from_cache(
+        self, tmp_path, monkeypatch
+    ):
+        """get_cache_diff shows diff when profile contributes hooks not in cache."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        stop_hook = [{"hooks": [{"type": "command", "command": "python3 test.py"}]}]
+        config = Config(settings_overrides={"claude": {"hooks": {"Stop": stop_hook}}})
+        agent = ClaudeAgent(config_dir, config)
+        diff = agent.get_cache_diff()
+
+        assert diff is not None
+        assert "Stop" in diff
+
+    def test_get_cache_diff_none_when_cache_has_profile_hooks(
+        self, tmp_path, monkeypatch
+    ):
+        """get_cache_diff returns None when cache already has matching profile hooks."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        stop_hook = [{"hooks": [{"type": "command", "command": "python3 test.py"}]}]
+        user_hook = [{"hooks": [{"type": "command", "command": "user_hook.sh"}]}]
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "settings.json").write_text(
+            json.dumps(
+                {
+                    "model": "base",
+                    "hooks": {"Stop": stop_hook, "PreCompact": user_hook},
+                }
+            )
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"hooks": {"Stop": stop_hook}}})
+        agent = ClaudeAgent(config_dir, config)
+        diff = agent.get_cache_diff()
+
+        assert diff is None
+
+    def test_get_cache_diff_shows_changed_profile_hook(self, tmp_path, monkeypatch):
+        """get_cache_diff shows diff when profile hook changed but cache has old value."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        old_hook = [{"hooks": [{"type": "command", "command": "old_script.py"}]}]
+        new_hook = [{"hooks": [{"type": "command", "command": "new_script.py"}]}]
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {"Stop": old_hook}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"hooks": {"Stop": new_hook}}})
+        agent = ClaudeAgent(config_dir, config)
+        diff = agent.get_cache_diff()
+
+        assert diff is not None
+        assert "old_script.py" in diff
+        assert "new_script.py" in diff
+
+    def test_get_cache_diff_ignores_user_only_hooks(self, tmp_path, monkeypatch):
+        """User-added hooks not in profile don't appear as changes in diff."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        user_hook = [{"hooks": [{"type": "command", "command": "user_hook.sh"}]}]
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {"PreCompact": user_hook}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"model": "base"}})
+        agent = ClaudeAgent(config_dir, config)
+        diff = agent.get_cache_diff()
+
+        assert diff is None
+
+    def test_is_cache_stale_via_preserved_field_diff(self, tmp_path, monkeypatch):
+        """is_cache_stale returns True when profile hooks differ from cache content."""
+        import json
+        import os
+        import time
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(json.dumps({"model": "base", "hooks": {}}))
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        base = claude_dir / "settings.json"
+        base.write_text(json.dumps({"model": "base", "hooks": {}}))
+
+        # Make cache newer than all sources so mtime checks don't trigger
+        time.sleep(0.02)
+        future = time.time() + 100
+        os.utime(str(cache_file), (future, future))
+
+        stop_hook = [{"hooks": [{"type": "command", "command": "python3 test.py"}]}]
+        config = Config(settings_overrides={"claude": {"hooks": {"Stop": stop_hook}}})
+        agent = ClaudeAgent(config_dir, config)
+
+        assert agent.is_cache_stale() is True
+
+    def test_get_cache_diff_none_after_force_rebuild(self, tmp_path, monkeypatch):
+        """After force_rebuild with profile hooks, get_cache_diff returns None."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        user_hook = [{"hooks": [{"type": "command", "command": "user_hook.sh"}]}]
+        (cache_dir / "settings.json").write_text(
+            json.dumps({"model": "old", "hooks": {"PreCompact": user_hook}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        stop_hook = [{"hooks": [{"type": "command", "command": "python3 test.py"}]}]
+        config = Config(
+            settings_overrides={
+                "claude": {"model": "base", "hooks": {"Stop": stop_hook}}
+            }
+        )
+        agent = ClaudeAgent(config_dir, config)
+
+        agent.build_merged_settings(force_rebuild=True)
+        diff = agent.get_cache_diff()
+
+        assert diff is None
+
     def test_build_merged_settings_includes_managed_mcps(self, tmp_path, monkeypatch):
         """build_merged_settings merges managed MCPs into the cache for agents that store MCPs in settings."""
         import json

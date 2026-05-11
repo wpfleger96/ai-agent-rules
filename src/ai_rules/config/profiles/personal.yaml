@@ -4,6 +4,12 @@ extends: default
 settings_overrides:
   claude:
     model: opusplan
+    hooks:
+      Stop:
+        - hooks:
+            - type: command
+              command: "python3 ~/.claude/hooks/recall_stop.py"
+              timeout: 30
   statusline:
     terminal_title:
       enabled: true

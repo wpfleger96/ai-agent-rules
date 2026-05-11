@@ -179,7 +179,13 @@ Three similar lines > premature abstraction | No helpers for one-time ops | Only
 
 When the recall MCP is configured, it provides a persistent markdown knowledge base at `~/.recall/` with FTS5 full-text search and BM25 ranking. Knowledge persists across sessions, repos, and machines via git sync.
 
-**Write-back loop:** When recall tools are available and you synthesize a useful answer, debug a non-obvious issue, or the user corrects a false assumption, consider persisting it via `write_note`. Search first to avoid duplicates. Invoke the `/kb` skill for formatting conventions.
+**Write-back (mandatory when recall tools are available):** Persist to the KB when any of these occur:
+- You debugged a non-obvious issue or discovered a workaround not in the codebase docs
+- The user corrected a false assumption you made (write with `[misconception]` tag)
+- You synthesized a useful answer combining knowledge from multiple sources
+- The user says "remember this" or "save this"
+
+Search first (`search_notes`) to avoid duplicates. If a related note exists, `edit_note` to add the insight rather than rewriting the whole note. Invoke the `/kb` skill for formatting conventions.
 
 **Quality conventions:** Use `[GAP: ...]` annotations for unverified claims. Use `[misconception]` tags to document what is NOT true (prevents confident false assertions). Use `[promote]` to flag patterns worth promoting to AGENTS.md rules.
 
