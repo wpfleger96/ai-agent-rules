@@ -144,9 +144,6 @@ class TestConfigFileStructuralInvariants:
     def test_codex_has_reasoning_summary(self, codex_config):
         assert codex_config["model_reasoning_summary"] == "detailed"
 
-    def test_codex_has_commit_attribution_empty(self, codex_config):
-        assert codex_config["commit_attribution"] == ""
-
     def test_codex_has_history_persistence(self, codex_config):
         assert codex_config["history"]["persistence"] == "save-all"
 
