@@ -745,9 +745,7 @@ class Config:
         """Get the cache directory for merged settings."""
         from ai_rules.state import get_state_dir
 
-        cache_dir = get_state_dir() / "cache"
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        return cache_dir
+        return get_state_dir() / "cache"
 
     def merge_settings(
         self, agent: str, base_settings: dict[str, Any]
@@ -784,9 +782,7 @@ class Config:
         if not force and agent not in self.settings_overrides:
             return None
 
-        cache_dir = self.get_cache_dir() / agent
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        return cache_dir / config_file_name
+        return self.get_cache_dir() / agent / config_file_name
 
     def get_settings_file_for_symlink(
         self, agent: str, base_settings_path: Path, *, force: bool = False

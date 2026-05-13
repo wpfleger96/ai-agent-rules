@@ -72,3 +72,15 @@ def test_shared_agent_settings_symlink_target_is_none(test_repo):
     agent = SharedAgent(test_repo, config)
 
     assert agent.settings_symlink_target is None
+
+
+@pytest.mark.unit
+def test_excluded_agent_symlinks_do_not_create_cache_dir(test_repo, mock_home):
+    """Accessing symlinks on an excluded agent must not create a cache directory."""
+    config = Config(exclude_symlinks=["~/.config/goose/config.yaml"])
+    agent = GooseAgent(test_repo, config)
+
+    _ = agent.symlinks
+
+    cache_dir = config.get_cache_dir() / "goose"
+    assert not cache_dir.exists()
