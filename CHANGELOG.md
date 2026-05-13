@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.47.10 (2026-05-13)
+
+### Bug Fixes
+
+- Add PSR v10 changelog insertion flag and backfill missing entries
+  ([#31](https://github.com/wpfleger96/ai-agent-rules/pull/31),
+  [`3df0522`](https://github.com/wpfleger96/ai-agent-rules/commit/3df052208f38c438bd8a974414283b2438aed441))
+
 
 ## v0.47.9 (2026-05-13)
 
