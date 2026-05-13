@@ -64,7 +64,7 @@ uv run ai-agent-rules profile switch <name>  # Switch to different profile
 
 ```
 src/ai_rules/
-├── cli.py              # Click CLI commands (main, install, status, upgrade, etc.)
+├── cli/                # Click CLI package (commands, groups, components, helpers)
 ├── config.py           # Config loading, path parsing, merging, preserved fields
 ├── profiles.py         # Profile loading and inheritance resolution
 ├── state.py            # State management (active profile tracking)
@@ -114,7 +114,7 @@ tests/
 All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
 1. Create `agents/<tool>.py` inheriting from `Agent`
 2. Implement: `name`, `agent_id`, `get_symlinks()`
-3. Register in `cli.py::get_agents()`
+3. Register in `targets/registry.py::TARGET_CLASSES`
 
 ### Config System
 - User config: `~/.ai-agent-rules-config.yaml`
@@ -213,16 +213,16 @@ uv run pytest -m state          # State management tests only
 
 | Task | Files |
 |------|-------|
-| Add CLI command | `cli.py` (main function, command decorators) |
+| Add CLI command | `cli/commands/` (one module per command) or `cli/groups/` (subcommand groups), then register in `cli/__init__.py::_register_commands` |
 | Add skill | Create subdir in `config/skills/` with `SKILL.md` (shared) |
 | Config loading | `config.py` (Config class, load_config) |
-| Profile management | `profiles.py`, `state.py`, `cli.py::profile()` |
+| Profile management | `profiles.py`, `state.py`, `cli/groups/profile.py` |
 | State management | `state.py` (ProfileState class) |
 | Symlink behavior | `symlinks.py` (create_symlink, remove_symlink) |
 | Config files component | `cli/components/config.py` (ConfigComponent — install/status/diff for symlinked config files) |
 | Settings cache component | `cli/components/settings.py` (SettingsComponent — build/rebuild merged settings cache) |
-| Shell completions | `completions.py`, `cli.py::completions()` |
-| New agent | `agents/base.py`, `agents/<new>.py`, `cli.py::get_agents()` |
+| Shell completions | `completions.py`, `cli/groups/completions.py` |
+| New agent | `agents/base.py`, `agents/<new>.py`, `targets/registry.py::TARGET_CLASSES` |
 | Plugin management | `plugins.py`, each `agents/*.py` defines `preserved_fields` |
 | MCP management | `mcp.py` (MCPManager base + subclasses: Claude, Goose, Codex, Gemini, Amp) |
 | Skills management | `skills.py` (SkillManager), `agents/shared.py` |

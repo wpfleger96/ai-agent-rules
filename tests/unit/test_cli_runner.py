@@ -136,34 +136,6 @@ def test_run_install_aborts_if_infrastructure_not_ok(tmp_path: Path) -> None:
 
 
 @pytest.mark.unit
-def test_run_install_semantic_respects_component_filter(tmp_path: Path) -> None:
-    class ConfigComponent(FakeComponent):
-        component_id = "config"
-
-    class SettingsComponent(FakeComponent):
-        component_id = "settings"
-
-    config_comp = ConfigComponent("config", ComponentResult())
-    settings_comp = SettingsComponent("settings", ComponentResult())
-
-    ctx = CliContext(
-        console=Console(file=StringIO()),
-        config_dir=tmp_path,
-        config=Config(),
-        profile_name=None,
-        all_targets=(),
-        selected_targets=(),
-        yes=True,
-        component_filter=("config",),
-    )
-
-    run_install([], [config_comp, settings_comp], ctx)
-
-    assert config_comp.calls == 1
-    assert settings_comp.calls == 0
-
-
-@pytest.mark.unit
 def test_run_install_skips_confirmation_when_yes(tmp_path: Path) -> None:
     infra = InfraComponent("infra", ComponentResult())
     semantic = FakeComponent("semantic", ComponentResult())

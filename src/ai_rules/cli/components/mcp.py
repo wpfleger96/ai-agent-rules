@@ -163,7 +163,7 @@ class MCPComponent(Component):
             if target.get_mcp_manager() is None:
                 continue
 
-            result, message = target.uninstall_mcps(force=ctx.yes, dry_run=False)
+            result, message = target.uninstall_mcps()
             if result == OperationResult.REMOVED:
                 ctx.console.print(f"  [green]✓[/green] {message}")
                 removed += 1

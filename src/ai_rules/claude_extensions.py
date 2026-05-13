@@ -11,13 +11,8 @@ from ai_rules.utils import is_managed_target
 class ExtensionItem:
     """Status of a single Claude extension (agent, command, skill, or hook)."""
 
-    name: str
-    target_path: Path
     actual_source: Path | None
     expected_source: Path | None
-    is_symlink: bool
-    is_managed: bool
-    is_installed: bool
     is_broken: bool
 
 
@@ -104,7 +99,6 @@ class ClaudeExtensionManager:
         self,
         user_dir: Path,
         pattern: str,
-        is_directory: bool = False,
     ) -> dict[str, Path]:
         """Get symlinks that point to ai-rules but source no longer exists.
 
@@ -112,8 +106,7 @@ class ClaudeExtensionManager:
 
         Args:
             user_dir: Directory containing user symlinks (e.g., ~/.claude/commands)
-            pattern: Glob pattern (e.g., "*.md", "*" for directories)
-            is_directory: True if expecting directory symlinks (skills)
+            pattern: Glob pattern (e.g., "*.md")
 
         Returns:
             dict mapping name -> symlink path for orphaned items
@@ -127,15 +120,13 @@ class ClaudeExtensionManager:
             if not item.is_symlink():
                 continue
 
-            if is_directory and not item.is_dir():
-                continue
-            if not is_directory and item.is_dir():
+            if item.is_dir():
                 continue
 
             try:
                 target = item.resolve()
                 if is_managed_target(target, self.config_dir) and not target.exists():
-                    orphaned[item.stem if not is_directory else item.name] = item
+                    orphaned[item.stem] = item
             except (OSError, RuntimeError):
                 try:
                     raw_target = str(item.readlink())
@@ -144,7 +135,7 @@ class ClaudeExtensionManager:
                         or "ai-agent-rules" in raw_target
                         or "ai-rules" in raw_target
                     ):
-                        orphaned[item.stem if not is_directory else item.name] = item
+                        orphaned[item.stem] = item
                 except (OSError, RuntimeError):
                     pass
 
@@ -226,69 +217,38 @@ class ClaudeExtensionManager:
 
             for name, expected_source in managed_sources.items():
                 if name in installed:
-                    target_path, actual_source, is_broken = installed[name]
+                    _, actual_source, is_broken = installed[name]
 
                     if is_broken:
                         type_status.managed_wrong_target[name] = ExtensionItem(
-                            name=name,
-                            target_path=target_path,
                             actual_source=None,
                             expected_source=expected_source,
-                            is_symlink=True,
-                            is_managed=True,
-                            is_installed=False,
                             is_broken=True,
                         )
                     elif actual_source and actual_source == expected_source.resolve():
                         type_status.managed_installed[name] = ExtensionItem(
-                            name=name,
-                            target_path=target_path,
                             actual_source=actual_source,
                             expected_source=expected_source,
-                            is_symlink=True,
-                            is_managed=True,
-                            is_installed=True,
                             is_broken=False,
                         )
                     else:
                         type_status.managed_wrong_target[name] = ExtensionItem(
-                            name=name,
-                            target_path=target_path,
                             actual_source=actual_source,
                             expected_source=expected_source,
-                            is_symlink=actual_source is not None,
-                            is_managed=True,
-                            is_installed=False,
                             is_broken=False,
                         )
                 else:
-                    if ext_type == "hooks":
-                        filename = f"{name}.py"
-                    else:
-                        filename = f"{name}.md"
-
-                    user_path = self.USER_DIRS[ext_type].expanduser() / filename
                     type_status.managed_pending[name] = ExtensionItem(
-                        name=name,
-                        target_path=user_path,
                         actual_source=None,
                         expected_source=expected_source,
-                        is_symlink=False,
-                        is_managed=True,
-                        is_installed=False,
                         is_broken=False,
                     )
 
-            for name, (target_path, actual_source, is_broken) in installed.items():
+            for name, (_, actual_source, is_broken) in installed.items():
                 if name not in managed_sources:
                     type_status.unmanaged[name] = ExtensionItem(
-                        name=name,
-                        target_path=target_path,
                         actual_source=actual_source,
                         expected_source=None,
-                        is_symlink=actual_source is not None,
-                        is_managed=False,
-                        is_installed=False,
                         is_broken=is_broken,
                     )
 

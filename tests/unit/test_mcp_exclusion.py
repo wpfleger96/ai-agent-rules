@@ -2,34 +2,30 @@
 
 from io import StringIO
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from rich.console import Console
 
+from ai_rules.agents.base import Agent
 from ai_rules.cli.components.mcp import MCPComponent
 from ai_rules.cli.context import CliContext
 from ai_rules.config import Config
 from ai_rules.mcp import OperationResult
 
 
-def _make_agent(is_excluded: bool, has_mcp_manager: bool = True) -> MagicMock:
-    agent = MagicMock()
+def _make_agent(is_excluded: bool) -> MagicMock:
+    agent = MagicMock(spec=Agent)
     agent.is_settings_file_excluded = is_excluded
-
-    if has_mcp_manager:
-        mgr = MagicMock()
-        agent.get_mcp_manager.return_value = mgr
-        agent.install_mcps.return_value = (
-            OperationResult.ALREADY_INSTALLED,
-            "already up to date",
-            [],
-        )
-        agent.get_mcp_status.return_value = None
-    else:
-        agent.get_mcp_manager.return_value = None
-
+    mgr = MagicMock()
+    agent.get_mcp_manager.return_value = mgr
+    agent.install_mcps.return_value = (
+        OperationResult.ALREADY_INSTALLED,
+        "already up to date",
+        [],
+    )
+    agent.get_mcp_status.return_value = None
     return agent
 
 
@@ -50,8 +46,7 @@ def test_mcp_install_skips_excluded_target(tmp_path: Path) -> None:
     excluded_agent = _make_agent(is_excluded=True)
     ctx = make_context(tmp_path, (excluded_agent,))
 
-    with patch("ai_rules.cli.components.mcp.isinstance", return_value=True):
-        MCPComponent().install(ctx)
+    MCPComponent().install(ctx)
 
     excluded_agent.install_mcps.assert_not_called()
 
@@ -61,8 +56,7 @@ def test_mcp_status_skips_excluded_target(tmp_path: Path) -> None:
     excluded_agent = _make_agent(is_excluded=True)
     ctx = make_context(tmp_path, (excluded_agent,))
 
-    with patch("ai_rules.cli.components.mcp.isinstance", return_value=True):
-        MCPComponent().status(ctx)
+    MCPComponent().status(ctx)
 
     excluded_agent.get_mcp_status.assert_not_called()
 
@@ -72,7 +66,6 @@ def test_mcp_install_processes_non_excluded_target(tmp_path: Path) -> None:
     normal_agent = _make_agent(is_excluded=False)
     ctx = make_context(tmp_path, (normal_agent,))
 
-    with patch("ai_rules.cli.components.mcp.isinstance", return_value=True):
-        MCPComponent().install(ctx)
+    MCPComponent().install(ctx)
 
     normal_agent.install_mcps.assert_called_once()

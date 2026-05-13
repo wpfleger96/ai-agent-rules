@@ -169,7 +169,6 @@ def completions_status() -> None:
     from ai_rules.completions import (
         detect_shell,
         find_config_file,
-        get_supported_shells,
         is_completion_installed,
     )
 

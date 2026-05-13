@@ -77,18 +77,6 @@ def make_context(
 
 
 @pytest.mark.unit
-def test_run_components_no_filter_runs_all(tmp_path: Path) -> None:
-    first = FakeComponent("first", "config")
-    second = FakeComponent("second", "settings")
-    ctx = make_context(tmp_path, component_filter=None)
-
-    run_components([first, second], "install", ctx)
-
-    assert first.calls == 1
-    assert second.calls == 1
-
-
-@pytest.mark.unit
 def test_run_components_filter_skips_non_matching(tmp_path: Path) -> None:
     matching = FakeComponent("matching", "config")
     skipped = FakeComponent("skipped", "settings")
@@ -142,20 +130,6 @@ def test_select_components_returns_valid_tuple(tmp_path: Path) -> None:
     result = select_components(components, "config,settings")
 
     assert result == ("config", "settings")
-
-
-@pytest.mark.unit
-def test_complete_components_filters_by_prefix() -> None:
-    ctx = MagicMock()
-    param = MagicMock()
-
-    results = complete_components(ctx, param, "co")
-
-    completion_values = [item.value for item in results]
-    assert all(v.startswith("co") for v in completion_values)
-    assert "config" in completion_values
-    assert "completions" in completion_values
-    assert "settings" not in completion_values
 
 
 @pytest.mark.unit

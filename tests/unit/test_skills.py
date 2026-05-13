@@ -94,7 +94,6 @@ class TestParseSkillMd:
         assert result is not None
         assert result.name == "my-skill"
         assert result.description == "A test skill"
-        assert result.body == "Body content"
 
     def test_handles_no_frontmatter(self, tmp_path):
         d = tmp_path / "plain"
@@ -105,7 +104,6 @@ class TestParseSkillMd:
 
         assert result is not None
         assert result.name == "plain"
-        assert result.body == "Just markdown"
 
     def test_returns_none_for_missing_file(self, tmp_path):
         d = tmp_path / "empty"

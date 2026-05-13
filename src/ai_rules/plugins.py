@@ -25,7 +25,6 @@ class PluginStatus:
     pending: list[dict[str, str]] = field(default_factory=list)
     extra: list[str] = field(default_factory=list)
     marketplaces_missing: list[dict[str, str]] = field(default_factory=list)
-    marketplaces_present: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -282,7 +281,6 @@ class PluginManager:
         installed_plugins = installed_data.get("plugins", {})
 
         known_marketplaces = self.load_known_marketplaces()
-        status.marketplaces_present = known_marketplaces
 
         for marketplace in desired_marketplaces:
             if marketplace.name not in known_marketplaces:

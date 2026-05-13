@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 import sys
 
 from importlib.resources import files as resource_files
@@ -18,20 +17,6 @@ if TYPE_CHECKING:
     from ai_rules.config import Config
     from ai_rules.targets.base import ConfigTarget
 
-GIT_SUBPROCESS_TIMEOUT = 5
-
-KNOWN_COMPONENT_IDS: tuple[str, ...] = (
-    "config",
-    "skills",
-    "settings",
-    "mcps",
-    "plugins",
-    "extensions",
-    "completions",
-    "tools",
-    "source-files",
-)
-
 
 def get_user_config_path() -> Path:
     from ai_rules.config import get_user_config_path as _get_user_config_path
@@ -46,26 +31,6 @@ def get_config_dir() -> Path:
         return Path(str(config_resource))
     except Exception:
         return Path(__file__).parents[1] / "config"
-
-
-def get_git_repo_root() -> Path:
-    """Get the git repository root directory for development-mode operations."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=GIT_SUBPROCESS_TIMEOUT,
-        )
-        if result.returncode == 0:
-            return Path(result.stdout.strip())
-    except Exception:
-        pass
-
-    raise RuntimeError(
-        "Not in a git repository. For config access, use get_config_dir() instead."
-    )
 
 
 def get_targets(config_dir: Path, config: Config) -> list[ConfigTarget]:
@@ -169,15 +134,14 @@ def complete_components(
     param: click.Parameter,
     incomplete: str,
     *,
-    component_ids: tuple[str, ...] | None = None,
+    component_ids: tuple[str, ...],
 ) -> list[CompletionItem]:
     """Shell completion callback for --only flag."""
     from click.shell_completion import CompletionItem
 
-    ids = component_ids if component_ids is not None else KNOWN_COMPONENT_IDS
     return [
         CompletionItem(component_id)
-        for component_id in ids
+        for component_id in component_ids
         if component_id.startswith(incomplete)
     ]
 

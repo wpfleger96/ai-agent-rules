@@ -399,27 +399,34 @@ class TestIsEnabledFiltering:
             is_enabled=is_enabled,
         )
 
-    def test_disabled_tool_excluded_in_default_upgrade(self):
+    def test_disabled_tool_excluded(self):
+        from ai_rules.cli.commands.upgrade import _filter_enabled
+
         tools = [self._make_tool("recall", is_enabled=lambda: False)]
-        tools = [t for t in tools if t.is_installed()]
-        tools = [t for t in tools if t.is_enabled is None or t.is_enabled()]
-        assert len(tools) == 0
+        assert _filter_enabled(tools) == []
 
     def test_enabled_tool_included(self):
-        tools = [self._make_tool("recall", is_enabled=lambda: True)]
-        tools = [t for t in tools if t.is_installed()]
-        tools = [t for t in tools if t.is_enabled is None or t.is_enabled()]
-        assert len(tools) == 1
+        from ai_rules.cli.commands.upgrade import _filter_enabled
 
-    def test_disabled_tool_still_included_when_explicitly_targeted(self):
-        """When user passes --only=recall, is_enabled is not checked."""
+        tools = [self._make_tool("recall", is_enabled=lambda: True)]
+        assert len(_filter_enabled(tools)) == 1
+
+    def test_tool_without_is_enabled_included(self):
+        from ai_rules.cli.commands.upgrade import _filter_enabled
+
+        tools = [self._make_tool("statusline", is_enabled=None)]
+        assert len(_filter_enabled(tools)) == 1
+
+    def test_disabled_tool_included_when_explicitly_targeted(self):
+        """--only=<tool> bypasses the is_enabled check."""
         resolved_only = "recall"
         tools = [self._make_tool("recall", is_enabled=lambda: False)]
         tools = [
             t for t in tools if resolved_only is None or t.tool_id == resolved_only
         ]
         tools = [t for t in tools if t.is_installed()]
-        # is_enabled check only runs when resolved_only is None
         if resolved_only is None:
-            tools = [t for t in tools if t.is_enabled is None or t.is_enabled()]
+            from ai_rules.cli.commands.upgrade import _filter_enabled
+
+            tools = _filter_enabled(tools)
         assert len(tools) == 1

@@ -18,22 +18,15 @@ class SkillMetadata:
 
     name: str
     description: str
-    body: str = ""
 
 
 @dataclass
 class SkillItem:
     """Status of a single skill."""
 
-    name: str
-    target_path: Path
     actual_source: Path | None
     expected_source: Path | None
-    is_symlink: bool
-    is_managed: bool
-    is_installed: bool
     is_broken: bool
-    metadata: SkillMetadata | None = None
 
 
 @dataclass
@@ -53,7 +46,6 @@ class SkillManager:
         self,
         config_dir: Path,
         agent_id: str,
-        user_skills_dir: Path | None = None,
         user_skills_dirs: list[Path] | None = None,
     ):
         """Initialize skill manager.
@@ -61,15 +53,12 @@ class SkillManager:
         Args:
             config_dir: ai-rules config directory
             agent_id: Agent identifier (e.g., 'claude', 'goose', '' for shared)
-            user_skills_dir: Where skills are installed (e.g., ~/.claude/skills/)
-            user_skills_dirs: Multiple directories for shared skills
+            user_skills_dirs: Directories where skills are installed
         """
         self.config_dir = config_dir
         self.agent_id = agent_id
         if user_skills_dirs:
             self.user_skills_dirs = [p.expanduser() for p in user_skills_dirs]
-        elif user_skills_dir:
-            self.user_skills_dirs = [user_skills_dir.expanduser()]
         else:
             self.user_skills_dirs = []
 
@@ -94,16 +83,14 @@ class SkillManager:
             if len(parts) >= 3:
                 try:
                     frontmatter = yaml.safe_load(parts[1])
-                    body = parts[2].strip()
                     return SkillMetadata(
                         name=frontmatter.get("name", skill_dir.name),
                         description=frontmatter.get("description", ""),
-                        body=body,
                     )
                 except yaml.YAMLError:
                     pass
 
-        return SkillMetadata(name=skill_dir.name, description="", body=content)
+        return SkillMetadata(name=skill_dir.name, description="")
 
     def _get_managed_skills(self) -> dict[str, Path]:
         """Get all managed skills from config_dir."""
@@ -200,8 +187,6 @@ class SkillManager:
         installed = self._scan_installed_skills()
 
         for name, expected_source in managed_sources.items():
-            metadata = self.parse_skill_md(expected_source)
-
             if name in installed:
                 installations = installed[name]
                 expected_count = len(self.user_skills_dirs)
@@ -222,66 +207,33 @@ class SkillManager:
                 )
 
                 if synced_count == expected_count and not has_issues:
-                    target_path, actual_source, _ = installations[0]
+                    _, actual_source, _ = installations[0]
                     status.managed_installed[name] = SkillItem(
-                        name=name,
-                        target_path=target_path,
                         actual_source=actual_source,
                         expected_source=expected_source,
-                        is_symlink=True,
-                        is_managed=True,
-                        is_installed=True,
                         is_broken=False,
-                        metadata=metadata,
                     )
                 elif has_issues or actual_count < expected_count:
-                    target_path, actual_source, is_broken = installations[0]
+                    _, actual_source, _ = installations[0]
                     status.managed_wrong_target[name] = SkillItem(
-                        name=name,
-                        target_path=target_path,
                         actual_source=actual_source,
                         expected_source=expected_source,
-                        is_symlink=actual_source is not None,
-                        is_managed=True,
-                        is_installed=False,
                         is_broken=any(ib for _, _, ib in installations),
-                        metadata=metadata,
                     )
             else:
-                user_path = (
-                    self.user_skills_dirs[0] / name
-                    if self.user_skills_dirs
-                    else Path(f"~/.skills/{name}")
-                )
                 status.managed_pending[name] = SkillItem(
-                    name=name,
-                    target_path=user_path,
                     actual_source=None,
                     expected_source=expected_source,
-                    is_symlink=False,
-                    is_managed=True,
-                    is_installed=False,
                     is_broken=False,
-                    metadata=metadata,
                 )
 
         for name, installations in installed.items():
             if name not in managed_sources:
-                target_path, actual_source, is_broken = installations[0]
-                metadata = None
-                if target_path.is_dir():
-                    metadata = self.parse_skill_md(target_path)
-
+                _, actual_source, is_broken = installations[0]
                 status.unmanaged[name] = SkillItem(
-                    name=name,
-                    target_path=target_path,
                     actual_source=actual_source,
                     expected_source=None,
-                    is_symlink=actual_source is not None,
-                    is_managed=False,
-                    is_installed=False,
                     is_broken=is_broken,
-                    metadata=metadata,
                 )
 
         return status

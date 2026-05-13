@@ -97,7 +97,6 @@ disable_error_code = ["var-annotated", "type-arg"]
 
 [dependency-groups]
 dev = [
-    "hatch>=1.15.1",
     "jsonschema>=4.23.0",
     "mypy>=1.18.2",
     "pytest>=8.4.2",

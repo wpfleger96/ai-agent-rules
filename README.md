@@ -85,8 +85,6 @@ ai-agent-rules upgrade --only statusline  # Upgrade only a specific tool (ai-age
 
 ## Usage
 
-Generate the full CLI reference with `just docs`.
-
 ### Setup and Upgrade
 
 ```bash
@@ -424,7 +422,7 @@ metadata:
 **Add new AI tool:**
 1. Add configs to `src/ai_rules/config/<tool>/`
 2. Implement `src/ai_rules/agents/<tool>.py`
-3. Register in `src/ai_rules/cli.py::get_targets()`
+3. Register in `src/ai_rules/targets/registry.py::TARGET_CLASSES`
 
 ## Safety
 

@@ -124,7 +124,7 @@ def test_uninstall_mcps(manager, mock_home, test_repo):
     config = Config()
     manager.install_mcps(test_repo, config, force=True)
 
-    result, message = manager.uninstall_mcps(force=True)
+    result, message = manager.uninstall_mcps()
     assert result == OperationResult.REMOVED
     assert "Removed" in message
 
@@ -148,7 +148,7 @@ def test_uninstall_preserves_user_mcps(manager, mock_home, test_repo):
     with open(manager.CLAUDE_JSON, "w") as f:
         json.dump(data, f)
 
-    manager.uninstall_mcps(force=True)
+    manager.uninstall_mcps()
 
     with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)

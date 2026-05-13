@@ -93,30 +93,17 @@ class Agent(ConfigTarget):
         self, force: bool = False, dry_run: bool = False
     ) -> tuple[OperationResult, str, list[str]]:
         """Install MCPs by delegating to the agent's MCPManager."""
-        from ai_rules.mcp import OperationResult
-
         mgr = self.get_mcp_manager()
         if mgr is None:
-            return (
-                OperationResult.NOT_FOUND,
-                "MCP management not supported for this agent",
-                [],
-            )
+            raise RuntimeError(f"{type(self).__name__} does not support MCP management")
         return mgr.install_mcps(self.config_dir, self.config, force, dry_run)
 
-    def uninstall_mcps(
-        self, force: bool = False, dry_run: bool = False
-    ) -> tuple[OperationResult, str]:
+    def uninstall_mcps(self) -> tuple[OperationResult, str]:
         """Uninstall MCPs by delegating to the agent's MCPManager."""
-        from ai_rules.mcp import OperationResult
-
         mgr = self.get_mcp_manager()
         if mgr is None:
-            return (
-                OperationResult.NOT_FOUND,
-                "MCP management not supported for this agent",
-            )
-        return mgr.uninstall_mcps(force, dry_run)
+            raise RuntimeError(f"{type(self).__name__} does not support MCP management")
+        return mgr.uninstall_mcps()
 
     def get_mcp_status(self) -> MCPStatus | None:
         """Return MCP status, or None if MCP is unsupported for this agent."""

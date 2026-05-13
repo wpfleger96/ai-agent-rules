@@ -135,7 +135,7 @@ class TestStatusCacheValidation:
     def test_status_detects_stale_cache_when_base_settings_newer(
         self, test_repo, mock_home, runner, monkeypatch
     ):
-        """Test that status detects stale cache when base settings are modified."""
+        """Test that status detects stale cache and suggests --rebuild-cache."""
         import ai_rules.cli
 
         monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
@@ -165,6 +165,7 @@ class TestStatusCacheValidation:
         result = runner.invoke(main, ["status"], catch_exceptions=False)
         assert result.exit_code == 1
         assert "Cached settings are stale" in result.output
+        assert "--rebuild-cache" in result.output
 
     def test_status_detects_stale_cache_when_user_config_newer(
         self, test_repo, mock_home, runner, monkeypatch
@@ -202,34 +203,6 @@ class TestStatusCacheValidation:
         assert result.exit_code == 1
         assert "Cached settings are stale" in result.output
 
-    def test_status_suggests_rebuild_cache_when_cache_stale(
-        self, test_repo, mock_home, runner, monkeypatch
-    ):
-        """Test that status suggests --rebuild-cache flag when cache is stale."""
-        import ai_rules.cli
-
-        monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
-
-        user_config_path = mock_home / ".ai-agent-rules-config.yaml"
-        user_config = {
-            "version": 1,
-            "settings_overrides": {"claude": {"test_override": "value"}},
-        }
-        with open(user_config_path, "w") as f:
-            yaml.dump(user_config, f)
-
-        config = Config.load()
-        ClaudeAgent(test_repo, config).build_merged_settings()
-
-        time.sleep(0.01)
-
-        base_settings_path = test_repo / "claude" / "settings.json"
-        base_settings_path.write_text('{"test": "updated"}')
-
-        result = runner.invoke(main, ["status"], catch_exceptions=False)
-        assert result.exit_code == 1
-        assert "--rebuild-cache" in result.output
-
     def test_status_passes_when_cache_fresh(
         self, test_repo, mock_home, runner, monkeypatch
     ):
@@ -237,11 +210,6 @@ class TestStatusCacheValidation:
         import ai_rules.cli
 
         monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
-        monkeypatch.setattr(
-            ai_rules.cli,
-            "get_git_repo_root",
-            lambda: (_ for _ in ()).throw(RuntimeError("Not in git repo")),
-        )
 
         user_config_path = mock_home / ".ai-agent-rules-config.yaml"
         user_config = {
@@ -282,11 +250,6 @@ class TestStatusCacheValidation:
         import ai_rules.cli
 
         monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
-        monkeypatch.setattr(
-            ai_rules.cli,
-            "get_git_repo_root",
-            lambda: (_ for _ in ()).throw(RuntimeError("Not in git repo")),
-        )
 
         config = Config.load()
         config.plugins = []

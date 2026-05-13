@@ -19,7 +19,6 @@ def _display_symlink_status(
     target: Path,
     source: Path,
     message: str,
-    agent_label: str | None = None,
 ) -> bool:
     from rich.console import Console
 
@@ -30,7 +29,7 @@ def _display_symlink_status(
     target_str = str(target)
     if source.is_dir():
         target_str = target_str.rstrip("/") + "/"
-    target_display = f"{agent_label} {target.name}" if agent_label else target_str
+    target_display = target_str
 
     if status_code == "correct":
         console.print(f"  [green]✓[/green] {target_display}")
@@ -124,7 +123,7 @@ class ConfigComponent(Component):
                     errors += 1
 
         cleanup_deprecated_symlinks(
-            list(ctx.selected_targets), ctx.config_dir, ctx.yes, ctx.dry_run
+            list(ctx.selected_targets), ctx.config_dir, ctx.dry_run
         )
 
         results = {

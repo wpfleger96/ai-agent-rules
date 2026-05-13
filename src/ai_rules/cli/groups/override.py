@@ -20,7 +20,6 @@ def _override_set_scalar(
     path_components: list[str | int],
     parsed_value: Any,
     data: dict[str, Any],
-    console: Any,
 ) -> None:
     """Set an override value at a path with no array indices."""
     current = data["settings_overrides"][agent]
@@ -39,7 +38,6 @@ def _override_set_scalar(
 
 def _override_set_with_array_index(
     agent: str,
-    setting: str,
     path_components: list[str | int],
     parsed_value: Any,
     data: dict[str, Any],
@@ -207,10 +205,10 @@ def override_set(key: str, value: str) -> None:
 
     if has_array_index:
         _override_set_with_array_index(
-            agent, setting, path_components, parsed_value, data, console
+            agent, path_components, parsed_value, data, console
         )
     else:
-        _override_set_scalar(agent, path_components, parsed_value, data, console)
+        _override_set_scalar(agent, path_components, parsed_value, data)
 
     Config.save_user_config(data)
 

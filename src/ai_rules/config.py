@@ -77,8 +77,6 @@ _LEGACY_MANAGED_FIELDS_FILE = "ai-rules-managed-fields.json"
 
 def get_user_config_path() -> Path:
     """Get the user config file path, migrating from legacy path if needed."""
-    import sys
-
     home = Path.home()
     new_path = home / _CONFIG_FILE_NAME
     old_path = home / _LEGACY_CONFIG_FILE_NAME

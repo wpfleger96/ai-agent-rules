@@ -186,10 +186,6 @@ class MCPManager(ABC):
         shutil.copy2(target, backup_path)
         return backup_path
 
-    def _target_path(self) -> Path:
-        """Return the agent config file path (used for backups by subclasses)."""
-        raise NotImplementedError
-
     def install_mcps(
         self,
         config_dir: Path,
@@ -245,9 +241,7 @@ class MCPManager(ABC):
 
         return (OperationResult.UPDATED, msg, [])
 
-    def uninstall_mcps(
-        self, force: bool = False, dry_run: bool = False
-    ) -> tuple[OperationResult, str]:
+    def uninstall_mcps(self) -> tuple[OperationResult, str]:
         """Uninstall managed MCPs from the agent's config file."""
         current_mcps = self._read_installed()
 
@@ -259,12 +253,6 @@ class MCPManager(ABC):
 
         if not tracked_mcps:
             return (OperationResult.NOT_FOUND, "No tracked MCPs found")
-
-        if dry_run:
-            return (
-                OperationResult.REMOVED,
-                f"Would remove {len(tracked_mcps)} MCPs (dry run)",
-            )
 
         for name in tracked_mcps:
             current_mcps.pop(name, None)
@@ -329,9 +317,6 @@ class ClaudeMCPManager(MCPManager):
     def _claude_json_path(self) -> Path:
         return Path.home() / ".claude.json"
 
-    def _target_path(self) -> Path:
-        return self._claude_json_path
-
     def _read_installed(self) -> dict[str, Any]:
         if not self._claude_json_path.exists():
             return {}
@@ -371,15 +356,6 @@ class ClaudeMCPManager(MCPManager):
                 Path(temp_path).unlink()
             raise
 
-    # Preserve the claude_json cached-property interface used in cli.py
-    @property
-    def claude_json(self) -> dict[str, Any]:
-        if not self._claude_json_path.exists():
-            return {}
-        with open(self._claude_json_path) as f:
-            return cast(dict[str, Any], json.load(f))
-
-    # Backward-compat alias so existing cli.py code still works
     @property
     def CLAUDE_JSON(self) -> Path:
         return self._claude_json_path
@@ -399,16 +375,15 @@ class ClaudeMCPManager(MCPManager):
         )
         return result, msg, conflicts
 
-    def uninstall_mcps(
-        self, force: bool = False, dry_run: bool = False
-    ) -> tuple[OperationResult, str]:
-        if not dry_run:
+    def uninstall_mcps(self) -> tuple[OperationResult, str]:
+        if self._claude_json_path.exists():
             backup = self._create_backup(self._claude_json_path)
-            result, msg = super().uninstall_mcps(force, dry_run)
-            if backup:
-                msg += f" (backup: {backup})"
-            return result, msg
-        return super().uninstall_mcps(force, dry_run)
+        else:
+            backup = None
+        result, msg = super().uninstall_mcps()
+        if backup:
+            msg += f" (backup: {backup})"
+        return result, msg
 
 
 # ---------------------------------------------------------------------------
@@ -430,9 +405,6 @@ class GooseMCPManager(MCPManager):
     @property
     def _config_path(self) -> Path:
         return Path.home() / ".config" / "goose" / "config.yaml"
-
-    def _target_path(self) -> Path:
-        return self._config_path
 
     def _load_full_config(self) -> dict[str, Any]:
         if not self._config_path.exists():
@@ -504,9 +476,6 @@ class CodexMCPManager(MCPManager):
     @property
     def _config_path(self) -> Path:
         return Path.home() / ".codex" / "config.toml"
-
-    def _target_path(self) -> Path:
-        return self._config_path
 
     def _load_doc(self) -> Any:
         import tomlkit
@@ -627,9 +596,6 @@ class GeminiMCPManager(MCPManager):
     def _config_path(self) -> Path:
         return Path.home() / ".gemini" / "settings.json"
 
-    def _target_path(self) -> Path:
-        return self._config_path
-
     def _load_full_config(self) -> dict[str, Any]:
         if not self._config_path.exists():
             return {}
@@ -692,9 +658,6 @@ class AmpMCPManager(MCPManager):
     @property
     def _config_path(self) -> Path:
         return Path.home() / ".config" / "amp" / "settings.json"
-
-    def _target_path(self) -> Path:
-        return self._config_path
 
     def _load_full_config(self) -> dict[str, Any]:
         if not self._config_path.exists():

@@ -3,12 +3,8 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING
 
 from ai_rules.targets.base import ConfigTarget
-
-if TYPE_CHECKING:
-    from ai_rules.bootstrap.updater import ToolSpec
 
 
 class Tool(ConfigTarget):
@@ -27,8 +23,3 @@ class Tool(ConfigTarget):
     @property
     def target_id(self) -> str:
         return self.tool_id
-
-    @property
-    def install_spec(self) -> ToolSpec | None:
-        """ToolSpec for install/upgrade lifecycle, or None if not managed."""
-        return None

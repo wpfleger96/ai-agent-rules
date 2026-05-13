@@ -1,7 +1,6 @@
 """Command-line interface for ai-agent-rules."""
 
 import logging
-import os
 
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as get_version
@@ -24,9 +23,6 @@ from ai_rules.cli.helpers import (
 )
 from ai_rules.cli.helpers import (
     get_config_dir as get_config_dir,
-)
-from ai_rules.cli.helpers import (
-    get_git_repo_root as get_git_repo_root,
 )
 from ai_rules.cli.helpers import (
     get_targets as get_targets,
@@ -70,60 +66,6 @@ def _get_plugin_status(config: "Config") -> tuple[Any, Any] | None:
     plugin_status = plugin_manager.get_status(desired_plugins, desired_marketplaces)
 
     return (plugin_manager, plugin_status)
-
-
-def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
-    """Detect symlinks pointing to old config/ location."""
-    from packaging.version import Version
-
-    old_patterns = [
-        "/config/AGENTS.md",
-        "/config/claude/",
-        "/config/codex/",
-        "/config/goose/",
-        "/config/chat_agent_hints.md",
-    ]
-
-    broken_symlinks = []
-
-    check_paths = [
-        Path.home() / ".claude",
-        Path.home() / ".codex",
-        Path.home() / ".config" / "amp",
-        Path.home() / ".config" / "goose",
-        Path.home() / "AGENTS.md",
-    ]
-
-    try:
-        use_fast_check = Version(__version__) >= Version("0.5.0")
-    except Exception:
-        use_fast_check = False
-
-    for base_path in check_paths:
-        if not base_path.exists():
-            continue
-
-        if base_path.is_symlink():
-            try:
-                target = os.readlink(str(base_path))
-                if any(pattern in str(target) for pattern in old_patterns):
-                    if not base_path.resolve().exists():
-                        broken_symlinks.append((base_path, Path(target)))
-            except (OSError, ValueError):
-                pass
-
-        if base_path.is_dir() and not use_fast_check:
-            for item in base_path.rglob("*"):
-                if item.is_symlink():
-                    try:
-                        target = os.readlink(str(item))
-                        if any(pattern in str(target) for pattern in old_patterns):
-                            if not item.resolve().exists():
-                                broken_symlinks.append((item, Path(target)))
-                    except (OSError, ValueError):
-                        pass
-
-    return broken_symlinks
 
 
 def _display_pending_symlink_changes(targets: list["ConfigTarget"]) -> bool:
@@ -343,128 +285,14 @@ def cli_entrypoint() -> None:
     main(complete_var="_AI_AGENT_RULES_COMPLETE")
 
 
-def cleanup_orphaned_symlinks(
-    selected_targets: list["ConfigTarget"],
-    config_dir: Path,
-    config: "Config",
-    force: bool,
-    dry_run: bool,
-) -> int:
-    """Cleanup all orphaned symlinks across all config types.
-
-    Args:
-        selected_targets: List of targets to check
-        config_dir: Path to the config directory
-        config: Config object
-        force: Skip confirmation prompts
-        dry_run: Don't actually remove symlinks
-
-    Returns:
-        Count of removed symlinks
-    """
-    import json
-
-    from rich.console import Console
-    from rich.prompt import Confirm
-
-    from ai_rules.claude_extensions import ClaudeExtensionManager
-    from ai_rules.skills import SkillManager
-
-    console = Console()
-    removed = 0
-
-    ext_manager = ClaudeExtensionManager(config_dir)
-    all_orphaned = ext_manager.get_all_orphaned()
-
-    for ext_type, orphaned in all_orphaned.items():
-        if orphaned:
-            console.print(f"\n[bold yellow]Orphaned {ext_type}:[/bold yellow]")
-            for name, path in sorted(orphaned.items()):
-                console.print(f"  {name} -> {path}")
-
-            if not dry_run:
-                if force or Confirm.ask(f"Remove orphaned {ext_type} symlinks?"):
-                    for _name, path in orphaned.items():
-                        try:
-                            path.unlink()
-                            console.print(f"  [green]✓[/green] Removed {path}")
-                            removed += 1
-                        except OSError as e:
-                            console.print(
-                                f"  [yellow]⚠[/yellow] Could not remove {path}: {e}"
-                            )
-
-    claude_agent = next((a for a in selected_targets if a.target_id == "claude"), None)
-    if claude_agent:
-        base_settings_path = config_dir / "claude" / "settings.json"
-        if base_settings_path.exists():
-            try:
-                with open(base_settings_path) as f:
-                    base_settings = json.load(f)
-                merged_settings = config.merge_settings("claude", base_settings)
-
-                orphaned_hooks = ext_manager.get_orphaned_hooks(merged_settings)
-                if orphaned_hooks:
-                    console.print("\n[bold yellow]Orphaned hooks:[/bold yellow]")
-                    for name, path in sorted(orphaned_hooks.items()):
-                        console.print(f"  {name} -> {path}")
-
-                    if not dry_run:
-                        if force or Confirm.ask("Remove orphaned hook symlinks?"):
-                            for _name, path in orphaned_hooks.items():
-                                try:
-                                    path.unlink()
-                                    console.print(f"  [green]✓[/green] Removed {path}")
-                                    removed += 1
-                                except OSError as e:
-                                    console.print(
-                                        f"  [yellow]⚠[/yellow] Could not remove {path}: {e}"
-                                    )
-            except (json.JSONDecodeError, OSError) as e:
-                console.print(f"[dim]Could not check for orphaned hooks: {e}[/dim]")
-
-    shared_agent = next((a for a in selected_targets if a.target_id == "shared"), None)
-    if shared_agent:
-        from ai_rules.config import AGENT_SKILLS_DIRS
-
-        skill_manager = SkillManager(
-            config_dir=config_dir,
-            agent_id="",
-            user_skills_dirs=list(AGENT_SKILLS_DIRS.values()),
-        )
-        orphaned_skills = skill_manager.get_orphaned_skills()
-
-        if orphaned_skills:
-            console.print("\n[bold yellow]Orphaned skills:[/bold yellow]")
-            for name, paths in sorted(orphaned_skills.items()):
-                for path in paths:
-                    console.print(f"  {name} -> {path}")
-
-            if not dry_run:
-                if force or Confirm.ask("Remove orphaned skill symlinks?"):
-                    for _name, paths in orphaned_skills.items():
-                        for path in paths:
-                            try:
-                                path.unlink()
-                                console.print(f"  [green]✓[/green] Removed {path}")
-                                removed += 1
-                            except OSError as e:
-                                console.print(
-                                    f"  [yellow]⚠[/yellow] Could not remove {path}: {e}"
-                                )
-
-    return removed
-
-
 def cleanup_deprecated_symlinks(
-    selected_targets: list["ConfigTarget"], config_dir: Path, force: bool, dry_run: bool
+    selected_targets: list["ConfigTarget"], config_dir: Path, dry_run: bool
 ) -> int:
     """Remove deprecated symlinks that point to our config files.
 
     Args:
         selected_targets: List of targets to check for deprecated symlinks
         config_dir: Path to the config directory (repo/config)
-        force: Skip confirmation prompts
         dry_run: Don't actually remove symlinks
 
     Returns:
@@ -503,66 +331,6 @@ def cleanup_deprecated_symlinks(
                     removed_count += 1
 
     return removed_count
-
-
-def install_user_symlinks(
-    selected_targets: list["ConfigTarget"], force: bool, dry_run: bool
-) -> dict[str, int]:
-    """Install user-level symlinks for all selected targets.
-
-    Returns dict with keys: created, updated, skipped, excluded, errors
-    """
-    from rich.console import Console
-
-    from ai_rules.symlinks import SymlinkResult, create_symlink
-
-    console = Console()
-    console.print("[bold cyan]User-Level Configuration[/bold cyan]")
-
-    if selected_targets:
-        config_dir = selected_targets[0].config_dir
-        cleanup_deprecated_symlinks(selected_targets, config_dir, force, dry_run)
-
-    created = updated = skipped = excluded = errors = 0
-
-    for agent in selected_targets:
-        console.print(f"\n[bold]{agent.name}[/bold]")
-
-        filtered_symlinks = agent.get_filtered_symlinks()
-        excluded_count = len(agent.symlinks) - len(filtered_symlinks)
-
-        if excluded_count > 0:
-            console.print(
-                f"  [dim]({excluded_count} symlink(s) excluded by config)[/dim]"
-            )
-            excluded += excluded_count
-
-        for target, source in filtered_symlinks:
-            effective_force = force or not dry_run
-            result, message = create_symlink(target, source, effective_force, dry_run)
-
-            if result == SymlinkResult.CREATED:
-                console.print(f"  [green]✓[/green] {target} → {source}")
-                created += 1
-            elif result == SymlinkResult.ALREADY_CORRECT:
-                console.print(f"  [dim]•[/dim] {target} [dim](already correct)[/dim]")
-            elif result == SymlinkResult.UPDATED:
-                console.print(f"  [yellow]↻[/yellow] {target} → {source}")
-                updated += 1
-            elif result == SymlinkResult.SKIPPED:
-                console.print(f"  [yellow]○[/yellow] {target} [dim](skipped)[/dim]")
-                skipped += 1
-            elif result == SymlinkResult.ERROR:
-                console.print(f"  [red]✗[/red] {target}: {message}")
-                errors += 1
-
-    return {
-        "created": created,
-        "updated": updated,
-        "skipped": skipped,
-        "excluded": excluded,
-        "errors": errors,
-    }
 
 
 def _register_commands() -> None:

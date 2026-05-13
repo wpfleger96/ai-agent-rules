@@ -430,10 +430,7 @@ def get_updatable_tools() -> list[ToolSpec]:
     """Get all updatable tool specs, deriving from registered Tool classes."""
     from ai_rules.tools.statusline import StatuslineTool
 
-    tools: list[ToolSpec] = [_SELF_SPEC]
-    if StatuslineTool.INSTALL_SPEC is not None:
-        tools.append(StatuslineTool.INSTALL_SPEC)
-    tools.append(_RECALL_SPEC)
+    tools: list[ToolSpec] = [_SELF_SPEC, StatuslineTool.INSTALL_SPEC, _RECALL_SPEC]
     return tools
 
 

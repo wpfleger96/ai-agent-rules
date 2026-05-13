@@ -2,7 +2,17 @@ from __future__ import annotations
 
 import sys
 
+from typing import TYPE_CHECKING
+
 import click
+
+if TYPE_CHECKING:
+    from ai_rules.bootstrap.updater import ToolSpec
+
+
+def _filter_enabled(tools: list[ToolSpec]) -> list[ToolSpec]:
+    """Drop tools whose ``is_enabled`` callable returns False."""
+    return [t for t in tools if t.is_enabled is None or t.is_enabled()]
 
 
 @click.command()
@@ -56,6 +66,8 @@ def upgrade(
         if resolved_only is None or t.tool_id == resolved_only
     ]
     tools = [t for t in all_tools if t.is_installed()]
+    if resolved_only is None:
+        tools = _filter_enabled(tools)
     missing_tools = [t for t in all_tools if not t.is_installed()]
 
     for tool in missing_tools:

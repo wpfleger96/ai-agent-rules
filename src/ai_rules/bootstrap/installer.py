@@ -353,12 +353,9 @@ def ensure_statusline_installed(
         "source_switched", "source_switch_needed", "failed"
         Message is only provided in dry_run mode or when upgraded/switched
     """
-    try:
-        from ai_rules.tools.statusline import StatuslineTool
+    from ai_rules.tools.statusline import StatuslineTool
 
-        statusline_spec = StatuslineTool.INSTALL_SPEC
-    except Exception:
-        statusline_spec = None
+    statusline_spec = StatuslineTool.INSTALL_SPEC
 
     if local_path:
         desired_source = ToolSource.LOCAL
@@ -368,7 +365,7 @@ def ensure_statusline_installed(
         desired_source = ToolSource.PYPI
 
     if is_command_available("claude-statusline"):
-        if allow_source_switch and statusline_spec:
+        if allow_source_switch:
             current_source = get_tool_source(statusline_spec.package_name)
             if current_source is not None and current_source != desired_source:
                 if dry_run:
@@ -401,34 +398,27 @@ def ensure_statusline_installed(
                 perform_tool_upgrade,
             )
 
-            if statusline_spec:
-                update_info = check_tool_updates(statusline_spec, timeout=10)
-                if update_info and update_info.has_update:
-                    if dry_run:
-                        return (
-                            "upgrade_available",
-                            f"Would upgrade statusline {update_info.current_version} → {update_info.latest_version}",
-                        )
-                    success, msg, _ = perform_tool_upgrade(statusline_spec)
-                    if success:
-                        return (
-                            "upgraded",
-                            f"{update_info.current_version} → {update_info.latest_version}",
-                        )
+            update_info = check_tool_updates(statusline_spec, timeout=10)
+            if update_info and update_info.has_update:
+                if dry_run:
+                    return (
+                        "upgrade_available",
+                        f"Would upgrade statusline {update_info.current_version} → {update_info.latest_version}",
+                    )
+                success, msg, _ = perform_tool_upgrade(statusline_spec)
+                if success:
+                    return (
+                        "upgraded",
+                        f"{update_info.current_version} → {update_info.latest_version}",
+                    )
         except Exception:
             pass
         return "already_installed", None
 
     try:
-        github_url = (
-            statusline_spec.github_install_url
-            if (from_github and statusline_spec)
-            else None
-        )
+        github_url = statusline_spec.github_install_url if from_github else None
         success, message = install_tool(
-            statusline_spec.package_name
-            if statusline_spec
-            else "claude-code-statusline",
+            statusline_spec.package_name,
             from_github=from_github,
             github_url=github_url,
             local_path=local_path,

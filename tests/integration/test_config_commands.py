@@ -13,11 +13,13 @@ class TestConfigInitCommand:
         monkeypatch.setenv("HOME", str(tmp_path))
 
         inputs = [
+            "n",  # Exclude Amp settings?
             "n",  # Exclude Claude Code settings?
-            "n",  # Exclude Codex CLI config?
+            "n",  # Exclude Codex CLI settings?
             "n",  # Exclude Gemini CLI settings?
+            "n",  # Exclude Goose settings?
+            "n",  # Exclude Statusline settings?
             "n",  # Exclude Gemini rules?
-            "n",  # Exclude Goose config?
             "n",  # Exclude Goose hints?
             "n",  # Exclude Shared agents file?
             "",  # Custom exclusions (empty to finish)
@@ -41,11 +43,13 @@ class TestConfigInitCommand:
         monkeypatch.setenv("HOME", str(tmp_path))
 
         inputs = [
+            "n",  # Exclude Amp settings?
             "y",  # Exclude Claude Code settings?
-            "n",  # Exclude Codex CLI config?
+            "n",  # Exclude Codex CLI settings?
             "n",  # Exclude Gemini CLI settings?
+            "n",  # Exclude Goose settings?
+            "n",  # Exclude Statusline settings?
             "n",  # Exclude Gemini rules?
-            "n",  # Exclude Goose config?
             "y",  # Exclude Goose hints?
             "n",  # Exclude Shared agents file?
             "~/.custom/pattern.txt",  # Custom exclusion
@@ -77,7 +81,9 @@ class TestConfigInitCommand:
             "n",
             "n",
             "n",
-            "n",  # Skip exclusions (Claude, Codex, Gemini settings, Gemini rules, Goose config, Goose hints, Shared)
+            "n",
+            "n",
+            "n",  # Skip 9 exclusions (Amp, Claude, Codex, Gemini, Goose, Statusline settings; Gemini rules, Goose hints, Shared)
             "",  # No custom exclusions
             "y",  # Override settings?
             "2",  # Choose claude (amp=1, claude=2, codex=3, gemini=4, goose=5, statusline=6, done=7)
@@ -134,7 +140,9 @@ class TestConfigInitCommand:
             "n",
             "n",
             "n",
-            "n",  # Skip exclusions (Claude, Codex, Gemini settings, Gemini rules, Goose config, Goose hints, Shared)
+            "n",
+            "n",
+            "n",  # Skip 9 exclusions
             "",  # No custom exclusions
             "n",  # Override settings?
             "y",  # Save configuration?
@@ -161,7 +169,9 @@ class TestConfigInitCommand:
             "n",
             "n",
             "n",
-            "n",  # Skip exclusions (Claude, Codex, Gemini settings, Gemini rules, Goose config, Goose hints, Shared)
+            "n",
+            "n",
+            "n",  # Skip 9 exclusions
             "",  # No custom exclusions
             "n",  # Override settings?
             "n",  # Configure projects?

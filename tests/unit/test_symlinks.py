@@ -238,7 +238,7 @@ class TestCleanupDeprecatedSymlinks:
         config = Config(exclude_symlinks=[])
         agent = ClaudeAgent(test_repo, config)
         removed = cleanup_deprecated_symlinks(
-            [agent], test_repo / "config", force=True, dry_run=False
+            [agent], test_repo / "config", dry_run=False
         )
 
         assert removed == 1
@@ -265,7 +265,7 @@ class TestCleanupDeprecatedSymlinks:
         config = Config(exclude_symlinks=[])
         agent = ClaudeAgent(test_repo, config)
         removed = cleanup_deprecated_symlinks(
-            [agent], test_repo / "config", force=True, dry_run=False
+            [agent], test_repo / "config", dry_run=False
         )
 
         assert removed == 0
@@ -295,7 +295,7 @@ class TestCleanupDeprecatedSymlinks:
         config = Config(exclude_symlinks=[])
         agent = ClaudeAgent(test_repo, config)
         removed = cleanup_deprecated_symlinks(
-            [agent], test_repo / "config", force=True, dry_run=False
+            [agent], test_repo / "config", dry_run=False
         )
 
         assert removed == 0
@@ -321,7 +321,7 @@ class TestCleanupDeprecatedSymlinks:
         config = Config(exclude_symlinks=[])
         agent = ClaudeAgent(test_repo, config)
         removed = cleanup_deprecated_symlinks(
-            [agent], test_repo / "config", force=True, dry_run=True
+            [agent], test_repo / "config", dry_run=True
         )
 
         assert removed == 1

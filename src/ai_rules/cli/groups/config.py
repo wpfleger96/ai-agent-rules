@@ -143,21 +143,38 @@ def config_edit() -> None:
         sys.exit(1)
 
 
+_COMMON_RULES_EXCLUSIONS: list[tuple[str, str, bool]] = [
+    ("~/.gemini/GEMINI.md", "Gemini rules", True),
+    ("~/.config/goose/.goosehints", "Goose hints", True),
+    ("~/AGENTS.md", "Shared agents file", False),
+]
+
+
 def _get_common_exclusions() -> list[tuple[str, str, bool]]:
     """Get list of common exclusion patterns.
+
+    Settings-file entries are derived from the registered ConfigTargets so
+    they stay in sync with each agent's ``settings_symlink_target``.  Adding
+    a target to ``TARGET_CLASSES`` automatically adds its settings file here.
+    A small static list of rules/hints files (which aren't settings files)
+    is appended.
 
     Returns:
         List of (pattern, description, default) tuples
     """
-    return [
-        ("~/.claude/settings.json", "Claude Code settings", False),
-        ("~/.codex/config.toml", "Codex CLI config", False),
-        ("~/.gemini/settings.json", "Gemini CLI settings", False),
-        ("~/.gemini/GEMINI.md", "Gemini rules", True),
-        ("~/.config/goose/config.yaml", "Goose config", False),
-        ("~/.config/goose/.goosehints", "Goose hints", True),
-        ("~/AGENTS.md", "Shared agents file", False),
-    ]
+    from ai_rules.config import Config
+
+    settings_entries: list[tuple[str, str, bool]] = []
+    config = Config.load()
+    for target in cli_facade.get_targets(cli_facade.get_config_dir(), config):
+        settings_target = target.settings_symlink_target
+        if settings_target is None:
+            continue
+        settings_entries.append(
+            (str(settings_target), f"{target.name} settings", False)
+        )
+
+    return settings_entries + _COMMON_RULES_EXCLUSIONS
 
 
 def _collect_exclusion_patterns() -> list[str]:

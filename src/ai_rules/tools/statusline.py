@@ -28,10 +28,6 @@ class StatuslineTool(Tool):
     )
 
     @property
-    def install_spec(self) -> ToolSpec:
-        return self.INSTALL_SPEC
-
-    @property
     def settings_symlink_target(self) -> Path:
         return Path("~/.config/claude-statusline/config.yaml")
 
