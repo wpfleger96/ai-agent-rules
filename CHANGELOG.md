@@ -1,5 +1,49 @@
 # CHANGELOG
 
+<!-- version list -->
+
+
+## v0.47.9 (2026-05-13)
+
+### Bug Fixes
+
+- Remove mkdir side effects from cache path getters
+  ([`2a00cc9`](https://github.com/wpfleger96/ai-agent-rules/commit/2a00cc92c8c31ccca9637bc6713e5bd8b51a2816))
+
+get_merged_settings_path() and get_cache_dir() created directories as a side effect of being
+  called. When goose's settings file was excluded, SettingsComponent would clean up the orphaned
+  cache/goose/ dir, then ConfigComponent would recreate it by accessing GooseAgent.symlinks (which
+  calls get_settings_file_for_symlink → get_merged_settings_path).
+
+The only caller that writes to the cache (build_merged_settings) already creates the directory
+  independently.
+
+
+## v0.47.8 (2026-05-13)
+
+### Refactoring
+
+- Remove dead code and wire up ToolSpec.is_enabled filtering
+  ([#30](https://github.com/wpfleger96/ai-agent-rules/pull/30),
+  [`3622e06`](https://github.com/wpfleger96/ai-agent-rules/commit/3622e06b5b78e018c05f5de61fc431a238d6c641))
+
+Drop zero-caller helpers/exports, unused kwargs, and dead guards. Filter ToolSpec.is_enabled in
+  upgrade.py when no --only is set; extract _filter_enabled helper and rewrite
+  TestIsEnabledFiltering to exercise it.
+
+
+## v0.47.7 (2026-05-11)
+
+### Bug Fixes
+
+- Re-enable automatic CHANGELOG generation
+  ([#29](https://github.com/wpfleger96/ai-agent-rules/pull/29),
+  [`8a8a65e`](https://github.com/wpfleger96/ai-agent-rules/commit/8a8a65e3e44ba92ec183bd233beba0145afbb2d3))
+
+PSR v10 requires an explicit [tool.semantic_release.changelog] section — v9 generated changelogs
+  by default. The dependabot-driven v9→v10 upgrade (3ca3c0f) silently dropped CHANGELOG updates for
+  v0.47.3 through v0.47.6. Backfills all four missing versions.
+
 
 ## v0.47.6 (2026-05-11)
 
