@@ -417,18 +417,23 @@ def test_run_components_parallel_plan_fallback_on_error(tmp_path: Path) -> None:
     assert results[succeeding].has_changes is True
 
 
+class _IncludedComponent(PlanApplyComponent):
+    component_id = "plannable"
+
+
+class _ExcludedComponent(PlanApplyComponent):
+    component_id = "other"
+
+
 @pytest.mark.unit
 def test_run_components_parallel_respects_component_filter(tmp_path: Path) -> None:
-    included = PlanApplyComponent("included")
-    excluded = PlanApplyComponent("excluded")
+    included = _IncludedComponent("included")
+    excluded = _ExcludedComponent("excluded")
 
     from dataclasses import replace
 
     ctx = make_context(tmp_path, yes=True)
     ctx_filtered = replace(ctx, component_filter=("plannable",))
-
-    included.component_id = "plannable"
-    excluded.component_id = "other"
 
     results = run_components_parallel([included, excluded], "plan", ctx_filtered)
 
