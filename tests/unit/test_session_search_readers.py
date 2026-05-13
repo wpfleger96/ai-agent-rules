@@ -6,24 +6,33 @@ import argparse
 import json
 import sqlite3
 import sys
+
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(
     0,
-    str(Path(__file__).resolve().parents[2] / "src" / "ai_rules" / "config" / "skills" / "session-search" / "scripts"),
+    str(
+        Path(__file__).resolve().parents[2]
+        / "src"
+        / "ai_rules"
+        / "config"
+        / "skills"
+        / "session-search"
+        / "scripts"
+    ),
 )
 
 import pytest
 
 from session_search.readers import amp, claude, codex, gemini, goose
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
 
-def _args(**kwargs) -> argparse.Namespace:
+def _args(**kwargs: Any) -> argparse.Namespace:
     defaults = {
         "cwd": None,
         "repo": None,
@@ -51,13 +60,17 @@ class TestCodexReader:
 
         assert codex.detect() is False
 
-    def test_codex_detect_returns_true_when_sessions_dir_exists(self, tmp_path, monkeypatch):
+    def test_codex_detect_returns_true_when_sessions_dir_exists(
+        self, tmp_path, monkeypatch
+    ):
         (tmp_path / "sessions").mkdir()
         monkeypatch.setenv("CODEX_HOME", str(tmp_path))
 
         assert codex.detect() is True
 
-    def test_codex_detect_returns_true_when_archived_sessions_dir_exists(self, tmp_path, monkeypatch):
+    def test_codex_detect_returns_true_when_archived_sessions_dir_exists(
+        self, tmp_path, monkeypatch
+    ):
         (tmp_path / "archived_sessions").mkdir()
         monkeypatch.setenv("CODEX_HOME", str(tmp_path))
 
@@ -90,7 +103,11 @@ class TestCodexReader:
             json.dumps(session_meta) + "\n" + json.dumps(response_item) + "\n"
         )
 
-        index_entry = {"id": "abc123ef", "thread_name": "My Thread", "updated_at": "2026-01-01T10:05:00Z"}
+        index_entry = {
+            "id": "abc123ef",
+            "thread_name": "My Thread",
+            "updated_at": "2026-01-01T10:05:00Z",
+        }
         (tmp_path / "session_index.jsonl").write_text(json.dumps(index_entry) + "\n")
 
         sessions = codex.iter_sessions(_args())
@@ -209,7 +226,9 @@ class TestCodexReader:
 
         assert result == raw
 
-    def test_codex_iter_sessions_empty_dir_returns_no_sessions(self, tmp_path, monkeypatch):
+    def test_codex_iter_sessions_empty_dir_returns_no_sessions(
+        self, tmp_path, monkeypatch
+    ):
         monkeypatch.setenv("CODEX_HOME", str(tmp_path))
         (tmp_path / "sessions").mkdir()
 
@@ -223,7 +242,7 @@ class TestCodexReader:
         sessions_dir.mkdir()
 
         session_file = sessions_dir / "rollout-2026-01-01T10-00-00-aabbccdd.jsonl"
-        session_file.write_text("NOT VALID JSON\n{\"also\": bad}\n")
+        session_file.write_text('NOT VALID JSON\n{"also": bad}\n')
 
         sessions = codex.iter_sessions(_args())
 
@@ -238,12 +257,16 @@ class TestCodexReader:
 
 @pytest.mark.unit
 class TestClaudeReader:
-    def test_claude_detect_returns_false_when_no_projects_dir(self, tmp_path, monkeypatch):
+    def test_claude_detect_returns_false_when_no_projects_dir(
+        self, tmp_path, monkeypatch
+    ):
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "nonexistent"))
 
         assert claude.detect() is False
 
-    def test_claude_detect_returns_true_when_projects_dir_exists(self, tmp_path, monkeypatch):
+    def test_claude_detect_returns_true_when_projects_dir_exists(
+        self, tmp_path, monkeypatch
+    ):
         (tmp_path / "projects").mkdir()
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
 
@@ -275,20 +298,28 @@ class TestClaudeReader:
         assert s.cwd == "/home/user/test-project"
         assert s.title == "My session title"
 
-    def test_claude_iter_sessions_hint_score_for_matching_repo_name(self, tmp_path, monkeypatch):
+    def test_claude_iter_sessions_hint_score_for_matching_repo_name(
+        self, tmp_path, monkeypatch
+    ):
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         project_dir = tmp_path / "projects" / "-home-user-my-repo"
         project_dir.mkdir(parents=True)
 
         session_file = project_dir / "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jsonl"
-        user_record = {"type": "user", "cwd": "/home/user/my-repo", "message": {"content": "hi"}}
+        user_record = {
+            "type": "user",
+            "cwd": "/home/user/my-repo",
+            "message": {"content": "hi"},
+        }
         session_file.write_text(json.dumps(user_record) + "\n")
 
         sessions = claude.iter_sessions(_args(repo="my-repo"))
 
         assert len(sessions) == 1
 
-    def test_claude_iter_sessions_returns_empty_for_empty_projects_dir(self, tmp_path, monkeypatch):
+    def test_claude_iter_sessions_returns_empty_for_empty_projects_dir(
+        self, tmp_path, monkeypatch
+    ):
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         (tmp_path / "projects").mkdir()
 
@@ -319,9 +350,7 @@ class TestClaudeReader:
     def test_claude_iter_search_text_assistant_text_block(self):
         record = {
             "type": "assistant",
-            "message": {
-                "content": [{"type": "text", "text": "assistant reply here"}]
-            },
+            "message": {"content": [{"type": "text", "text": "assistant reply here"}]},
         }
 
         texts = list(claude.iter_search_text(record, ""))
@@ -366,9 +395,7 @@ class TestClaudeReader:
     def test_claude_display_text_assistant_text_block(self):
         record = {
             "type": "assistant",
-            "message": {
-                "content": [{"type": "text", "text": "my answer"}]
-            },
+            "message": {"content": [{"type": "text", "text": "my answer"}]},
         }
 
         result = claude.display_text(record, "")
@@ -381,7 +408,11 @@ class TestClaudeReader:
             "type": "assistant",
             "message": {
                 "content": [
-                    {"type": "tool_use", "name": "read_file", "input": {"path": "/etc/hosts"}}
+                    {
+                        "type": "tool_use",
+                        "name": "read_file",
+                        "input": {"path": "/etc/hosts"},
+                    }
                 ]
             },
         }
@@ -408,10 +439,10 @@ class TestClaudeReader:
 
 @pytest.mark.unit
 class TestGeminiReader:
-    def _gemini_home(self, tmp_path):
+    def _gemini_home(self, tmp_path: Path) -> Path:
         return tmp_path / "gemini_home"
 
-    def _patch_home(self, monkeypatch, tmp_path):
+    def _patch_home(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
         home = self._gemini_home(tmp_path)
         (home / ".gemini" / "tmp").mkdir(parents=True)
         monkeypatch.setenv("HOME", str(home))
@@ -424,7 +455,9 @@ class TestGeminiReader:
 
         assert gemini.detect() is False
 
-    def test_gemini_detect_returns_true_when_tmp_dir_exists(self, tmp_path, monkeypatch):
+    def test_gemini_detect_returns_true_when_tmp_dir_exists(
+        self, tmp_path, monkeypatch
+    ):
         self._patch_home(monkeypatch, tmp_path)
 
         assert gemini.detect() is True
@@ -444,13 +477,18 @@ class TestGeminiReader:
         user_line = {"type": "user", "content": "What is this?"}
         gemini_line = {"type": "gemini", "content": "This is a thing."}
         session_file.write_text(
-            json.dumps(first_line) + "\n"
-            + json.dumps(user_line) + "\n"
-            + json.dumps(gemini_line) + "\n"
+            json.dumps(first_line)
+            + "\n"
+            + json.dumps(user_line)
+            + "\n"
+            + json.dumps(gemini_line)
+            + "\n"
         )
 
         projects_json = home / ".gemini" / "projects.json"
-        projects_json.write_text(json.dumps({"projects": {"/home/user/my-project": slug}}))
+        projects_json.write_text(
+            json.dumps({"projects": {"/home/user/my-project": slug}})
+        )
 
         sessions = gemini.iter_sessions(_args())
 
@@ -460,7 +498,9 @@ class TestGeminiReader:
         assert s.cwd == "/home/user/my-project"
         assert s.agent == "gemini"
 
-    def test_gemini_iter_sessions_finds_legacy_json_session(self, tmp_path, monkeypatch):
+    def test_gemini_iter_sessions_finds_legacy_json_session(
+        self, tmp_path, monkeypatch
+    ):
         home = self._patch_home(monkeypatch, tmp_path)
         slug = "legacy-slug"
         chats_dir = home / ".gemini" / "tmp" / slug / "chats"
@@ -482,7 +522,9 @@ class TestGeminiReader:
         assert s.id == "session-legacy"
         assert s.agent == "gemini"
 
-    def test_gemini_iter_sessions_skips_slug_dir_without_chats(self, tmp_path, monkeypatch):
+    def test_gemini_iter_sessions_skips_slug_dir_without_chats(
+        self, tmp_path, monkeypatch
+    ):
         home = self._patch_home(monkeypatch, tmp_path)
         (home / ".gemini" / "tmp" / "bare-slug").mkdir(parents=True)
 
@@ -574,7 +616,9 @@ class TestGeminiReader:
 
         assert result == raw
 
-    def test_gemini_iter_sessions_empty_chats_dir_returns_no_sessions(self, tmp_path, monkeypatch):
+    def test_gemini_iter_sessions_empty_chats_dir_returns_no_sessions(
+        self, tmp_path, monkeypatch
+    ):
         home = self._patch_home(monkeypatch, tmp_path)
         chats_dir = home / ".gemini" / "tmp" / "some-slug" / "chats"
         chats_dir.mkdir(parents=True)
@@ -617,13 +661,15 @@ def _create_goose_db(db_path: Path) -> None:
 
 @pytest.mark.unit
 class TestGooseReader:
-    def _patch_db(self, monkeypatch, db_path: Path) -> None:
+    def _patch_db(self, monkeypatch: pytest.MonkeyPatch, db_path: Path) -> None:
         monkeypatch.setattr(goose, "_db_path", lambda: db_path)
 
-    def _patch_legacy(self, monkeypatch, legacy_dir: Path) -> None:
+    def _patch_legacy(self, monkeypatch: pytest.MonkeyPatch, legacy_dir: Path) -> None:
         monkeypatch.setattr(goose, "_legacy_dir", lambda: legacy_dir)
 
-    def test_goose_detect_returns_false_when_neither_source_exists(self, tmp_path, monkeypatch):
+    def test_goose_detect_returns_false_when_neither_source_exists(
+        self, tmp_path, monkeypatch
+    ):
         self._patch_db(monkeypatch, tmp_path / "nonexistent.db")
         self._patch_legacy(monkeypatch, tmp_path / "nonexistent_dir")
 
@@ -637,7 +683,9 @@ class TestGooseReader:
 
         assert goose.detect() is True
 
-    def test_goose_detect_returns_true_when_legacy_jsonl_exists(self, tmp_path, monkeypatch):
+    def test_goose_detect_returns_true_when_legacy_jsonl_exists(
+        self, tmp_path, monkeypatch
+    ):
         legacy_dir = tmp_path / "legacy"
         legacy_dir.mkdir()
         (legacy_dir / "session.jsonl").write_text("{}\n")
@@ -653,7 +701,13 @@ class TestGooseReader:
         con.execute(
             "INSERT INTO sessions (id, name, working_dir, created_at, updated_at) "
             "VALUES (?, ?, ?, ?, ?)",
-            ("sess-1", "My Session", "/home/user/project", "2026-01-01T10:00:00", "2026-01-01T11:00:00"),
+            (
+                "sess-1",
+                "My Session",
+                "/home/user/project",
+                "2026-01-01T10:00:00",
+                "2026-01-01T11:00:00",
+            ),
         )
         con.commit()
         con.close()
@@ -671,7 +725,9 @@ class TestGooseReader:
         assert s.title == "My Session"
         assert s.agent == "goose"
 
-    def test_goose_iter_sessions_prefers_sqlite_over_legacy(self, tmp_path, monkeypatch):
+    def test_goose_iter_sessions_prefers_sqlite_over_legacy(
+        self, tmp_path, monkeypatch
+    ):
         db = tmp_path / "sessions.db"
         _create_goose_db(db)
         con = sqlite3.connect(str(db))
@@ -684,7 +740,11 @@ class TestGooseReader:
 
         legacy_dir = tmp_path / "legacy"
         legacy_dir.mkdir()
-        meta = {"id": "legacy-session", "working_dir": "/legacy/path", "description": "Old"}
+        meta = {
+            "id": "legacy-session",
+            "working_dir": "/legacy/path",
+            "description": "Old",
+        }
         (legacy_dir / "old.jsonl").write_text(json.dumps(meta) + "\n")
 
         self._patch_db(monkeypatch, db)
@@ -696,12 +756,18 @@ class TestGooseReader:
         assert "db-session" in ids
         assert "legacy-session" not in ids
 
-    def test_goose_iter_sessions_reads_legacy_when_no_sqlite(self, tmp_path, monkeypatch):
+    def test_goose_iter_sessions_reads_legacy_when_no_sqlite(
+        self, tmp_path, monkeypatch
+    ):
         self._patch_db(monkeypatch, tmp_path / "nonexistent.db")
 
         legacy_dir = tmp_path / "legacy"
         legacy_dir.mkdir()
-        meta = {"id": "legacy-abc", "working_dir": "/some/path", "description": "Legacy title"}
+        meta = {
+            "id": "legacy-abc",
+            "working_dir": "/some/path",
+            "description": "Legacy title",
+        }
         (legacy_dir / "legacy-abc.jsonl").write_text(json.dumps(meta) + "\n")
         self._patch_legacy(monkeypatch, legacy_dir)
 
@@ -746,9 +812,7 @@ class TestGooseReader:
             "content_json_parsed": [
                 {
                     "type": "toolResponse",
-                    "toolResult": {
-                        "Ok": [{"text": "command output here"}]
-                    },
+                    "toolResult": {"Ok": [{"text": "command output here"}]},
                 }
             ],
         }
@@ -831,7 +895,7 @@ class TestGooseReader:
 # ---------------------------------------------------------------------------
 
 
-def _make_amp_thread(tmp_path: Path, thread_id: str, **overrides) -> Path:
+def _make_amp_thread(tmp_path: Path, thread_id: str, **overrides: Any) -> Path:
     threads_dir = tmp_path / ".local" / "share" / "amp" / "threads"
     threads_dir.mkdir(parents=True, exist_ok=True)
 
@@ -841,9 +905,7 @@ def _make_amp_thread(tmp_path: Path, thread_id: str, **overrides) -> Path:
         "title": "Test session",
         "created": 1735689600000,
         "env": {
-            "initial": json.dumps(
-                {"trees": [{"uri": "file:///home/user/test-repo"}]}
-            )
+            "initial": json.dumps({"trees": [{"uri": "file:///home/user/test-repo"}]})
         },
         "messages": [
             {
@@ -862,7 +924,9 @@ def _make_amp_thread(tmp_path: Path, thread_id: str, **overrides) -> Path:
 
 @pytest.mark.unit
 class TestAmpReader:
-    def _patch_threads_dir(self, monkeypatch, tmp_path: Path) -> Path:
+    def _patch_threads_dir(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> Path:
         threads_dir = tmp_path / ".local" / "share" / "amp" / "threads"
         threads_dir.mkdir(parents=True, exist_ok=True)
         monkeypatch.setattr(amp, "_AMP_THREADS", threads_dir)
@@ -873,12 +937,16 @@ class TestAmpReader:
 
         assert amp.detect() is False
 
-    def test_amp_detect_returns_true_when_threads_dir_exists(self, tmp_path, monkeypatch):
-        threads_dir = self._patch_threads_dir(monkeypatch, tmp_path)
+    def test_amp_detect_returns_true_when_threads_dir_exists(
+        self, tmp_path, monkeypatch
+    ):
+        self._patch_threads_dir(monkeypatch, tmp_path)
 
         assert amp.detect() is True
 
-    def test_amp_iter_sessions_extracts_cwd_from_env_initial(self, tmp_path, monkeypatch):
+    def test_amp_iter_sessions_extracts_cwd_from_env_initial(
+        self, tmp_path, monkeypatch
+    ):
         self._patch_threads_dir(monkeypatch, tmp_path)
         _make_amp_thread(tmp_path, "test-uuid-001")
 
@@ -890,7 +958,9 @@ class TestAmpReader:
         assert s.title == "Test session"
         assert s.agent == "amp"
 
-    def test_amp_iter_sessions_graceful_fallback_when_env_missing(self, tmp_path, monkeypatch):
+    def test_amp_iter_sessions_graceful_fallback_when_env_missing(
+        self, tmp_path, monkeypatch
+    ):
         self._patch_threads_dir(monkeypatch, tmp_path)
         path = _make_amp_thread(tmp_path, "no-env-uuid")
 
@@ -903,7 +973,9 @@ class TestAmpReader:
         assert len(sessions) == 1
         assert sessions[0].cwd == ""
 
-    def test_amp_iter_sessions_graceful_fallback_when_title_null(self, tmp_path, monkeypatch):
+    def test_amp_iter_sessions_graceful_fallback_when_title_null(
+        self, tmp_path, monkeypatch
+    ):
         self._patch_threads_dir(monkeypatch, tmp_path)
         path = _make_amp_thread(tmp_path, "null-title-uuid")
 
@@ -916,7 +988,9 @@ class TestAmpReader:
         assert len(sessions) == 1
         assert sessions[0].title == ""
 
-    def test_amp_iter_sessions_graceful_with_empty_messages_array(self, tmp_path, monkeypatch):
+    def test_amp_iter_sessions_graceful_with_empty_messages_array(
+        self, tmp_path, monkeypatch
+    ):
         self._patch_threads_dir(monkeypatch, tmp_path)
         path = _make_amp_thread(tmp_path, "empty-msgs-uuid")
 
@@ -937,7 +1011,9 @@ class TestAmpReader:
 
         assert sessions == []
 
-    def test_amp_iter_sessions_returns_empty_for_empty_threads_dir(self, tmp_path, monkeypatch):
+    def test_amp_iter_sessions_returns_empty_for_empty_threads_dir(
+        self, tmp_path, monkeypatch
+    ):
         self._patch_threads_dir(monkeypatch, tmp_path)
 
         sessions = amp.iter_sessions(_args())

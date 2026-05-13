@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
+
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from session_search.core import (
     Session,
@@ -45,7 +46,9 @@ def _load_slug_map() -> dict[str, str]:
     projects = data.get("projects") if isinstance(data, dict) else None
     if not isinstance(projects, dict):
         return {}
-    return {v: k for k, v in projects.items() if isinstance(k, str) and isinstance(v, str)}
+    return {
+        v: k for k, v in projects.items() if isinstance(k, str) and isinstance(v, str)
+    }
 
 
 def _extract_text_from_content(content: Any) -> str:
@@ -84,7 +87,9 @@ def _read_jsonl_meta(path: Path) -> dict[str, str]:
         return meta
     meta["session_id"] = str(record.get("sessionId") or record.get("session_id") or "")
     meta["start_time"] = str(record.get("startTime") or record.get("start_time") or "")
-    meta["last_updated"] = str(record.get("lastUpdated") or record.get("last_updated") or "")
+    meta["last_updated"] = str(
+        record.get("lastUpdated") or record.get("last_updated") or ""
+    )
     return meta
 
 
@@ -92,7 +97,9 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
     tmp_dir = _gemini_tmp()
     slug_map = _load_slug_map()
 
-    current_cwd = str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
+    current_cwd = (
+        str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
+    )
     current_root = ""
     repo_name = getattr(args, "repo", None) or ""
     if current_cwd:
@@ -127,6 +134,7 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
                 except OSError:
                     mtime = 0.0
                 from datetime import datetime, timezone
+
                 dt = datetime.fromtimestamp(mtime, tz=timezone.utc)
                 timestamp = dt.isoformat()
                 updated_at = ""
@@ -134,8 +142,6 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
                 continue
 
             score, reason = repo_score(cwd, current_cwd, current_root, repo_name)
-            if not getattr(args, "all_repos", False) and current_cwd and score == 0:
-                continue
 
             session = Session(
                 id=session_id,
@@ -238,9 +244,13 @@ def _search_jsonl(
                     if not pattern.search(text):
                         continue
                     if not header_printed:
-                        label = f" [{session.repo_reason}]" if session.repo_reason else ""
+                        label = (
+                            f" [{session.repo_reason}]" if session.repo_reason else ""
+                        )
                         title_part = f" - {session.title}" if session.title else ""
-                        print(f"\n=== [{AGENT_NAME}] {session.id}{label}{title_part} ===")
+                        print(
+                            f"\n=== [{AGENT_NAME}] {session.id}{label}{title_part} ==="
+                        )
                         print(f"    {session.path}")
                         header_printed = True
                     rendered = display_text(record, raw)
@@ -279,7 +289,6 @@ def _search_legacy_json(
     for entry in history:
         if not isinstance(entry, dict):
             continue
-        raw = json.dumps(entry, ensure_ascii=False)
         role = str(entry.get("role") or "")
         parts = entry.get("parts") or []
         texts: list[str] = []

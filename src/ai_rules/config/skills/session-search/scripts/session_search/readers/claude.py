@@ -6,9 +6,11 @@ import argparse
 import json
 import os
 import re
+
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Any
 
 from session_search.core import (
     Session,
@@ -43,9 +45,9 @@ def _dir_contains_repo(dir_name: str, repo_name: str) -> bool:
     return repo_name.lower() in dir_name.lower()
 
 
-def _parse_tail_records(tail_bytes: bytes) -> dict:
+def _parse_tail_records(tail_bytes: bytes) -> dict[str, Any]:
     text = tail_bytes.decode("utf-8", errors="replace")
-    result: dict = {}
+    result: dict[str, Any] = {}
     for line in text.split("\n"):
         line = line.strip()
         if not line:
@@ -66,7 +68,7 @@ def _parse_tail_records(tail_bytes: bytes) -> dict:
     return result
 
 
-def _read_head_record(path: Path) -> dict:
+def _read_head_record(path: Path) -> dict[str, Any]:
     try:
         with open(path, encoding="utf-8", errors="replace") as fh:
             for raw in fh:
@@ -74,8 +76,10 @@ def _read_head_record(path: Path) -> dict:
                 if not raw:
                     continue
                 try:
-                    record = json.loads(raw)
-                except json.JSONDecodeError:
+                    record: dict[str, Any] = json.loads(raw)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if not isinstance(record, dict):
                     continue
                 rtype = record.get("type")
                 if rtype in ("user", "assistant") and record.get("cwd"):
@@ -91,13 +95,15 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
     if requested_agent and requested_agent != AGENT_NAME:
         return []
 
-    current_cwd_text = os.getcwd()
+    current_cwd_text = getattr(args, "cwd", None) or os.getcwd()
     current_cwd, current_root, repo_name = repo_context(
         current_cwd_text, getattr(args, "repo", None)
     )
 
     # Pass 1: stat-only scan
-    candidates: list[tuple[int, float, Path, str]] = []  # (hint_score, mtime, path, dir_name)
+    candidates: list[
+        tuple[int, float, Path, str]
+    ] = []  # (hint_score, mtime, path, dir_name)
     try:
         project_entries = list(projects.iterdir())
     except OSError as exc:
@@ -126,7 +132,7 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
 
     # Build preliminary Session objects with mtime-derived timestamps
     preliminary: list[Session] = []
-    for hint_score, mtime, path, dir_name in candidates:
+    for hint_score, mtime, path, _ in candidates:
         session_id = path.stem
         updated_at = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
         session = Session(
@@ -145,8 +151,12 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
     # Date filtering on preliminary sessions before Pass 2
     after_date = [s for s in preliminary if in_date_window(s, args)]
 
-    limit = getattr(args, "limit", 0)
-    pass2_count = max(limit, _DEFAULT_PASS2_LIMIT) if limit and limit > 0 else max(len(after_date), _DEFAULT_PASS2_LIMIT)
+    limit = getattr(args, "limit", 0) or getattr(args, "limit_sessions", 0)
+    pass2_count = (
+        max(limit, _DEFAULT_PASS2_LIMIT)
+        if limit > 0
+        else max(len(after_date), _DEFAULT_PASS2_LIMIT)
+    )
 
     refined: list[Session] = []
     for i, session in enumerate(after_date):
@@ -166,10 +176,7 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
             timestamp = head.get("timestamp", session.timestamp)
 
             title = (
-                tail_data.get("customTitle")
-                or tail_data.get("aiTitle")
-                or slug
-                or ""
+                tail_data.get("customTitle") or tail_data.get("aiTitle") or slug or ""
             )
 
             if session_cwd:
@@ -198,7 +205,7 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
     return refined
 
 
-def iter_search_text(record: dict, raw: str) -> Iterable[str]:
+def iter_search_text(record: dict[str, Any], raw: str) -> Iterable[str]:
     rtype = record.get("type")
 
     if rtype == "user":
@@ -215,7 +222,10 @@ def iter_search_text(record: dict, raw: str) -> Iterable[str]:
                     inner = block.get("content", [])
                     if isinstance(inner, list):
                         for inner_block in inner:
-                            if isinstance(inner_block, dict) and inner_block.get("type") == "text":
+                            if (
+                                isinstance(inner_block, dict)
+                                and inner_block.get("type") == "text"
+                            ):
                                 t = inner_block.get("text", "")
                                 if t:
                                     yield t
@@ -244,7 +254,7 @@ def iter_search_text(record: dict, raw: str) -> Iterable[str]:
             yield text
 
 
-def display_text(record: dict, raw: str) -> str:
+def display_text(record: dict[str, Any], raw: str) -> str:
     rtype = record.get("type")
 
     if rtype == "user":
@@ -282,7 +292,7 @@ def display_text(record: dict, raw: str) -> str:
 
 
 def search_session(
-    session: Session, pattern: re.Pattern, args: argparse.Namespace
+    session: Session, pattern: re.Pattern[str], args: argparse.Namespace
 ) -> int:
     max_matches = getattr(args, "max_matches", 0)
     width = getattr(args, "width", 280)

@@ -7,12 +7,13 @@ import json
 import os
 import re
 import shlex
+
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from session_search.core import (
     Session,
-    date_key,
     in_date_window,
     repo_context,
     repo_score,
@@ -90,7 +91,9 @@ def _session_meta(path: Path) -> dict[str, str]:
                 payload = item.get("payload") or {}
                 meta["id"] = str(payload.get("id") or meta["id"])
                 meta["timestamp"] = str(
-                    payload.get("timestamp") or item.get("timestamp") or meta["timestamp"]
+                    payload.get("timestamp")
+                    or item.get("timestamp")
+                    or meta["timestamp"]
                 )
                 meta["cwd"] = str(payload.get("cwd") or "")
                 meta["agent_role"] = str(payload.get("agent_role") or "")
@@ -105,7 +108,9 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
     home = _codex_home()
     index = _read_index(home / "session_index.jsonl")
 
-    current_cwd = str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
+    current_cwd = (
+        str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
+    )
     current_root = ""
     repo_name = getattr(args, "repo", None) or ""
     if current_cwd:
@@ -211,11 +216,24 @@ def display_text(record: dict[str, Any], raw: str) -> str:
     record_type = record.get("type")
 
     if record_type == "session_meta":
-        keep = {k: payload.get(k) for k in ("id", "timestamp", "cwd", "originator", "agent_role", "agent_nickname")}
+        keep = {
+            k: payload.get(k)
+            for k in (
+                "id",
+                "timestamp",
+                "cwd",
+                "originator",
+                "agent_role",
+                "agent_nickname",
+            )
+        }
         return json.dumps(keep, ensure_ascii=False)
 
     if record_type == "turn_context":
-        keep = {k: payload.get(k) for k in ("cwd", "turn_id", "current_date", "timezone", "summary")}
+        keep = {
+            k: payload.get(k)
+            for k in ("cwd", "turn_id", "current_date", "timezone", "summary")
+        }
         return json.dumps(keep, ensure_ascii=False)
 
     if record_type == "event_msg":
@@ -249,10 +267,18 @@ def display_text(record: dict[str, Any], raw: str) -> str:
         role = payload.get("role")
         content = payload.get("content")
         if isinstance(content, list):
-            texts = [str(part.get("text") or "") for part in content if isinstance(part, dict)]
+            texts = [
+                str(part.get("text") or "")
+                for part in content
+                if isinstance(part, dict)
+            ]
             if any(texts):
-                return json.dumps({"role": role, "text": "\n".join(texts)}, ensure_ascii=False)
-        keep = {k: payload.get(k) for k in ("type", "role", "name", "arguments", "output")}
+                return json.dumps(
+                    {"role": role, "text": "\n".join(texts)}, ensure_ascii=False
+                )
+        keep = {
+            k: payload.get(k) for k in ("type", "role", "name", "arguments", "output")
+        }
         return json.dumps({k: v for k, v in keep.items() if v}, ensure_ascii=False)
 
     return raw
@@ -278,9 +304,13 @@ def search_session(
                     if not pattern.search(text):
                         continue
                     if not header_printed:
-                        label = f" [{session.repo_reason}]" if session.repo_reason else ""
+                        label = (
+                            f" [{session.repo_reason}]" if session.repo_reason else ""
+                        )
                         title_part = f" - {session.title}" if session.title else ""
-                        print(f"\n=== [{AGENT_NAME}] {session.id}{label}{title_part} ===")
+                        print(
+                            f"\n=== [{AGENT_NAME}] {session.id}{label}{title_part} ==="
+                        )
                         print(f"    {session.path}")
                         header_printed = True
                     rendered = display_text(record, raw)

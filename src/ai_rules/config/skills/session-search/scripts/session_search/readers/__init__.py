@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 import re
-import sys
-from typing import TYPE_CHECKING
+
+from typing import TYPE_CHECKING, Any
 
 from session_search.core import Session, warn
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 # iter_search_text, display_text
 
 
-def _load_readers() -> list:
+def _load_readers() -> list[Any]:
     from session_search.readers import amp, claude, codex, gemini, goose
 
     return [codex, claude, gemini, goose, amp]
@@ -51,20 +51,27 @@ def search_sessions(
     """Grep across session files/records. Returns match count."""
     from session_search.readers import amp, claude, codex, gemini, goose
 
-    reader_map = {
-        r.AGENT_NAME: r for r in [codex, claude, gemini, goose, amp]
-    }
-    matches = 0
+    reader_map = {r.AGENT_NAME: r for r in [codex, claude, gemini, goose, amp]}
+    total_matches = 0
     for session in sessions:
         reader = reader_map.get(session.agent)
         if reader is None:
             continue
         try:
-            count = reader.search_session(session, pattern, args)
+            if args.max_matches > 0:
+                remaining = args.max_matches - total_matches
+                if remaining <= 0:
+                    break
+                session_args_dict = dict(vars(args))
+                session_args_dict["max_matches"] = remaining
+                session_args = argparse.Namespace(**session_args_dict)
+            else:
+                session_args = args
+            count = reader.search_session(session, pattern, session_args)
         except Exception as exc:
             warn(f"error searching {session.agent} session {session.id}: {exc}")
             continue
-        matches += count
-        if args.max_matches > 0 and matches >= args.max_matches:
+        total_matches += count
+        if args.max_matches > 0 and total_matches >= args.max_matches:
             break
-    return matches
+    return total_matches

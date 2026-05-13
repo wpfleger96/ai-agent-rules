@@ -5,9 +5,11 @@ from __future__ import annotations
 import argparse
 import json
 import re
+
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from session_search.core import (
     Session,
@@ -57,7 +59,7 @@ def _extract_cwd(data: dict[str, Any]) -> str:
         if not isinstance(uri, str) or not uri:
             return ""
         if uri.startswith("file://"):
-            return uri[len("file://"):]
+            return uri[len("file://") :]
         return uri
     except (json.JSONDecodeError, AttributeError, TypeError, KeyError):
         return ""
@@ -66,7 +68,9 @@ def _extract_cwd(data: dict[str, Any]) -> str:
 def iter_sessions(args: argparse.Namespace) -> list[Session]:
     threads_dir = _AMP_THREADS.expanduser()
 
-    current_cwd = str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
+    current_cwd = (
+        str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
+    )
     current_root = ""
     repo_name = getattr(args, "repo", None) or ""
     if current_cwd:
@@ -87,7 +91,9 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
 
         fmt_version = data.get("v")
         if isinstance(fmt_version, int) and fmt_version > _FORMAT_VERSION_MAX:
-            warn(f"{path.name}: format version {fmt_version} exceeds known max {_FORMAT_VERSION_MAX}; format may have changed")
+            warn(
+                f"{path.name}: format version {fmt_version} exceeds known max {_FORMAT_VERSION_MAX}; format may have changed"
+            )
 
         session_id = str(data.get("id") or path.stem)
         created_ms = data.get("created")
@@ -115,8 +121,6 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
         cwd = _extract_cwd(data)
 
         score, reason = repo_score(cwd, current_cwd, current_root, repo_name)
-        if not getattr(args, "all_repos", False) and current_cwd and score == 0:
-            continue
 
         session = Session(
             id=session_id,

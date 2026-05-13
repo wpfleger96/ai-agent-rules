@@ -23,14 +23,14 @@ Searches session transcripts across all detected coding agents: Claude Code, Cod
 Resolve `<skill-dir>` as the directory containing this SKILL.md file.
 
 ```bash
-# Find sessions mentioning a topic
-uv run python <skill-dir>/scripts/session_search find "authentication refactor"
+# Find sessions by title, ID fragment, or cwd (metadata only — use grep for content)
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search find "authentication"
 
 # Search transcript content for a regex pattern
-uv run python <skill-dir>/scripts/session_search grep "BaseModel" --limit-sessions 20
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search grep "authentication refactor" --limit-sessions 20
 
 # List recent sessions for the current repo
-uv run python <skill-dir>/scripts/session_search list --limit 10
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search list --limit 10
 ```
 
 ## Context Hygiene
@@ -43,35 +43,35 @@ When returning results to the user, summarize what was found and offer to retrie
 
 ```bash
 # Look up a session by ID fragment
-uv run python <skill-dir>/scripts/session_search find "3f8a"
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search find "3f8a"
 
-# Search by topic across all repos
-uv run python <skill-dir>/scripts/session_search find "database migration" --all-repos
+# Find by title/cwd keyword across all repos
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search find "database migration" --all-repos
 
 # List sessions for a specific repo
-uv run python <skill-dir>/scripts/session_search list --repo my-service
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search list --repo my-service
 
 # Restrict to one agent
-uv run python <skill-dir>/scripts/session_search find "webhook handler" --agent claude
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search find "webhook handler" --agent claude
 
 # Sessions since a date
-uv run python <skill-dir>/scripts/session_search list --since 2026-04-01
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search list --since 2026-04-01
 ```
 
 ## Grep Sessions
 
 ```bash
 # Regex search across recent sessions (default: current repo)
-uv run python <skill-dir>/scripts/session_search grep "TODO|FIXME" --limit-sessions 25
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search grep "TODO|FIXME" --limit-sessions 25
 
 # Search within a specific session by ID fragment
-uv run python <skill-dir>/scripts/session_search grep "import requests" --id 3f8a
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search grep "import requests" --id 3f8a
 
 # Case-insensitive search, wider output, capped matches
-uv run python <skill-dir>/scripts/session_search grep "config" -i --max-matches 20 --width 200
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search grep "config" -i --max-matches 20 --width 200
 
 # Broader search across all repos
-uv run python <skill-dir>/scripts/session_search grep "pg_dump" --all-repos --limit-sessions 50
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search grep "pg_dump" --all-repos --limit-sessions 50
 ```
 
 `--limit-sessions` controls how many session files are scanned. `--max-matches` controls output volume. Prefer lower values for exploratory searches; increase when a specific pattern is known to be rare.
@@ -82,7 +82,7 @@ If `rg` is needed for low-level transcript inspection, first use `find` or `list
 
 ```bash
 # Step 1: get candidate paths
-uv run python <skill-dir>/scripts/session_search find "auth flow" --json | jq -r '.[].path'
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search find "auth flow" --json | jq -r '.[].path'
 
 # Step 2: grep only those files
 rg "Bearer token" /path/to/session1.jsonl /path/to/session2.jsonl

@@ -6,13 +6,14 @@ import argparse
 import json
 import re
 import sqlite3
+
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from session_search.core import (
     Session,
-    date_key,
     in_date_window,
     repo_context,
     repo_score,
@@ -44,7 +45,9 @@ def _ts_from_unix(unix: int) -> str:
 
 
 def iter_sessions(args: argparse.Namespace) -> list[Session]:
-    current_cwd = str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
+    current_cwd = (
+        str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
+    )
     current_root = ""
     repo_name = getattr(args, "repo", None) or ""
     if current_cwd:
@@ -82,8 +85,6 @@ def _iter_db_sessions(
                 updated = str(updated_at or "")
 
                 score, reason = repo_score(cwd, current_cwd, current_root, repo_name)
-                if not getattr(args, "all_repos", False) and current_cwd and score == 0:
-                    continue
 
                 session = Session(
                     id=str(sid),
@@ -145,8 +146,6 @@ def _iter_legacy_sessions(
                 pass
 
         score, reason = repo_score(cwd, current_cwd, current_root, repo_name)
-        if not getattr(args, "all_repos", False) and current_cwd and score == 0:
-            continue
 
         session = Session(
             id=sid,
@@ -167,7 +166,6 @@ def _iter_legacy_sessions(
 
 
 def iter_search_text(record: dict[str, Any], raw: str) -> Iterable[str]:
-    role = record.get("role", "")
     blocks = record.get("content_json_parsed") or []
 
     for block in blocks:
@@ -219,14 +217,20 @@ def display_text(record: dict[str, Any], raw: str) -> str:
         if btype == "text":
             text = str(block.get("text") or "")
             if text:
-                parts.append(json.dumps({"role": role, "text": text}, ensure_ascii=False))
+                parts.append(
+                    json.dumps({"role": role, "text": text}, ensure_ascii=False)
+                )
 
         elif btype == "toolRequest":
             tool_call = block.get("toolCall") or {}
             ok = tool_call.get("Ok") or {}
             name = str(ok.get("name") or "")
             args = ok.get("arguments")
-            parts.append(json.dumps({"role": role, "tool": name, "args": args}, ensure_ascii=False))
+            parts.append(
+                json.dumps(
+                    {"role": role, "tool": name, "args": args}, ensure_ascii=False
+                )
+            )
 
         elif btype == "toolResponse":
             tool_result = block.get("toolResult") or {}
@@ -238,7 +242,11 @@ def display_text(record: dict[str, Any], raw: str) -> str:
                         text = str(item.get("text") or "")
                         if text:
                             texts.append(text)
-            parts.append(json.dumps({"role": role, "tool_result": " ".join(texts)}, ensure_ascii=False))
+            parts.append(
+                json.dumps(
+                    {"role": role, "tool_result": " ".join(texts)}, ensure_ascii=False
+                )
+            )
 
     if parts:
         return " | ".join(parts)

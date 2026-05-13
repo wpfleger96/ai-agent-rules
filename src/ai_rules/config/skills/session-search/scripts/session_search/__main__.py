@@ -5,10 +5,8 @@ from __future__ import annotations
 import argparse
 import os
 import re
-import sys
 
 from session_search.core import (
-    in_date_window,
     matches_term,
     print_sessions,
     sorted_sessions,
@@ -68,9 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=12,
         help="Number of sessions to print; 0 means all.",
     )
-    list_parser.add_argument(
-        "--json", action="store_true", help="Print JSON."
-    )
+    list_parser.add_argument("--json", action="store_true", help="Print JSON.")
 
     find_parser = subparsers.add_parser(
         "find",
@@ -86,17 +82,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=12,
         help="Number of sessions to print; 0 means all.",
     )
-    find_parser.add_argument(
-        "--json", action="store_true", help="Print JSON."
-    )
+    find_parser.add_argument("--json", action="store_true", help="Print JSON.")
 
     grep_parser = subparsers.add_parser(
         "grep", help="Regex search across session transcripts."
     )
     add_common_flags(grep_parser)
-    grep_parser.add_argument(
-        "pattern", help="Python regular expression to search for."
-    )
+    grep_parser.add_argument("pattern", help="Python regular expression to search for.")
     grep_parser.add_argument(
         "--id",
         help="Restrict search to sessions matching this ID fragment.",
@@ -162,10 +154,7 @@ def cmd_grep(args: argparse.Namespace) -> int:
         if args.limit_sessions > 0:
             fallback = fallback[: args.limit_sessions]
         if fallback:
-            print(
-                "\nNo matches in repo-biased candidates; "
-                "checking remaining recent sessions."
-            )
+            print("\nNo matches in top candidates; checking older sessions.")
             match_count = search_sessions(fallback, pattern, args)
 
     if match_count == 0:
@@ -180,19 +169,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "list":
         sessions = iter_all_sessions(args)
-        print_sessions(
-            sorted_sessions(sessions, args.oldest), args.limit, args.json
-        )
+        print_sessions(sorted_sessions(sessions, args.oldest), args.limit, args.json)
         return 0
 
     if args.command == "find":
         sessions = iter_all_sessions(args)
-        hits = [
-            s for s in sessions if not args.term or matches_term(s, args.term)
-        ]
-        print_sessions(
-            sorted_sessions(hits, args.oldest), args.limit, args.json
-        )
+        hits = [s for s in sessions if not args.term or matches_term(s, args.term)]
+        print_sessions(sorted_sessions(hits, args.oldest), args.limit, args.json)
         return 0 if hits else 1
 
     if args.command == "grep":

@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
+
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -80,9 +81,7 @@ def repo_name_from_path(path_text: str) -> str:
     return Path(path_text).name
 
 
-def repo_context(
-    cwd_text: str, explicit_repo: str | None
-) -> tuple[str, str, str]:
+def repo_context(cwd_text: str, explicit_repo: str | None) -> tuple[str, str, str]:
     cwd = Path(cwd_text).expanduser().resolve()
     root = git_root(cwd)
     root_text = str(root) if root else str(cwd)
@@ -101,9 +100,7 @@ def repo_score(
     session_path = str(Path(session_cwd).expanduser())
     if session_path == current_cwd or session_path == current_root:
         return 3, "exact-cwd"
-    if current_root and session_path.startswith(
-        current_root.rstrip("/") + "/"
-    ):
+    if current_root and session_path.startswith(current_root.rstrip("/") + "/"):
         return 3, "same-root"
     session_repo = repo_name_from_path(session_path)
     if repo_name and session_repo == repo_name:
@@ -131,14 +128,14 @@ def in_date_window(session: Session, args: argparse.Namespace) -> bool:
     return True
 
 
-def sorted_sessions(
-    sessions: Iterable[Session], oldest: bool
-) -> list[Session]:
-    return sorted(
-        sessions,
-        key=lambda s: (s.repo_score, date_key(s.sort_time), s.title, s.id),
-        reverse=not oldest,
-    )
+def sorted_sessions(sessions: Iterable[Session], oldest: bool) -> list[Session]:
+    # Two-pass stable sort: date first (direction from oldest), then repo_score
+    # descending. This keeps high-relevance sessions at the top regardless of
+    # whether --oldest is set.
+    lst = list(sessions)
+    lst.sort(key=lambda s: (date_key(s.sort_time), s.title, s.id), reverse=not oldest)
+    lst.sort(key=lambda s: s.repo_score, reverse=True)
+    return lst
 
 
 def matches_term(session: Session, term: str) -> bool:
@@ -180,9 +177,7 @@ def session_to_json(session: Session) -> dict[str, Any]:
     }
 
 
-def print_sessions(
-    sessions: list[Session], limit: int, json_output: bool
-) -> None:
+def print_sessions(sessions: list[Session], limit: int, json_output: bool) -> None:
     shown = sessions if limit <= 0 else sessions[:limit]
     if json_output:
         print(json.dumps([session_to_json(s) for s in shown], indent=2))

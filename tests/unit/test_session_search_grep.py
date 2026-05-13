@@ -3,9 +3,9 @@ import json
 import re
 import sqlite3
 import sys
-from pathlib import Path
 
-import pytest
+from pathlib import Path
+from typing import Any
 
 sys.path.insert(
     0,
@@ -24,14 +24,13 @@ from session_search import readers  # noqa: E402
 from session_search.core import Session  # noqa: E402
 from session_search.readers import amp, claude, codex, gemini, goose  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
 
-def make_args(**kwargs):
-    defaults = dict(
+def make_args(**kwargs: Any) -> argparse.Namespace:
+    defaults: dict[str, Any] = dict(
         max_matches=40,
         width=280,
         ignore_case=False,
@@ -46,8 +45,8 @@ def make_args(**kwargs):
     return argparse.Namespace(**defaults)
 
 
-def make_session(agent, path, **kwargs):
-    defaults = dict(
+def make_session(agent: str, path: str, **kwargs: Any) -> Session:
+    defaults: dict[str, Any] = dict(
         id="test-session-001",
         timestamp="2026-01-01T10:00:00Z",
         updated_at="2026-01-01T10:00:00Z",
@@ -348,7 +347,9 @@ def test_goose_iter_search_text_tool_request_yields_name_and_arguments():
 def test_goose_iter_search_text_text_block_yields_text():
     record = {
         "role": "assistant",
-        "content_json_parsed": [{"type": "text", "text": "Task completed successfully"}],
+        "content_json_parsed": [
+            {"type": "text", "text": "Task completed successfully"}
+        ],
     }
     results = list(goose.iter_search_text(record, ""))
     assert "Task completed successfully" in results
@@ -511,7 +512,8 @@ def test_codex_search_session_width_truncation(tmp_path, capsys):
 
     captured = capsys.readouterr()
     content_lines = [
-        l for l in captured.out.splitlines()
+        l
+        for l in captured.out.splitlines()
         if l and not l.startswith("===") and not l.startswith("    ")
     ]
     for line in content_lines:
@@ -670,7 +672,13 @@ def _make_goose_db(path: Path, session_id: str, content_json: str) -> None:
         )
         con.execute(
             "INSERT INTO sessions VALUES (?, ?, ?, ?, ?)",
-            (session_id, "test session", "/tmp/project", "2026-01-01T10:00:00", "2026-01-01T10:00:00"),
+            (
+                session_id,
+                "test session",
+                "/tmp/project",
+                "2026-01-01T10:00:00",
+                "2026-01-01T10:00:00",
+            ),
         )
         con.execute(
             "CREATE TABLE IF NOT EXISTS messages "
@@ -703,7 +711,9 @@ def test_goose_search_session_db_finds_text_content(tmp_path, capsys, monkeypatc
     assert "goose-sess-001" in captured.out
 
 
-def test_goose_search_session_db_regex_no_sql_like_prefilter(tmp_path, capsys, monkeypatch):
+def test_goose_search_session_db_regex_no_sql_like_prefilter(
+    tmp_path, capsys, monkeypatch
+):
     db_path = tmp_path / "sessions.db"
     content = json.dumps([{"type": "text", "text": "foo xyz bar"}])
     _make_goose_db(db_path, "goose-regex-001", content)
@@ -1072,7 +1082,9 @@ def test_goose_regex_case_insensitive_matches_uppercase(tmp_path, monkeypatch, c
     assert count >= 1
 
 
-def test_goose_regex_does_not_match_partial_without_wildcard(tmp_path, monkeypatch, capsys):
+def test_goose_regex_does_not_match_partial_without_wildcard(
+    tmp_path, monkeypatch, capsys
+):
     db_path = tmp_path / "sessions.db"
     content = json.dumps([{"type": "text", "text": "foo baz bar"}])
     _make_goose_db(db_path, "goose-partial", content)

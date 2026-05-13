@@ -1,7 +1,8 @@
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -33,23 +34,22 @@ from session_search.core import (  # noqa: E402
     truncate,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
 def make_session(
-    id="abc123",
-    agent="claude",
-    path="/home/user/.claude/sessions/abc123.json",
-    timestamp="2024-03-01T10:00:00Z",
-    updated_at="",
-    title="My Session",
-    cwd="/home/user/projects/myrepo",
-    score=0,
-    reason="",
-):
+    id: str = "abc123",
+    agent: str = "claude",
+    path: str = "/home/user/.claude/sessions/abc123.json",
+    timestamp: str = "2024-03-01T10:00:00Z",
+    updated_at: str = "",
+    title: str = "My Session",
+    cwd: str = "/home/user/projects/myrepo",
+    score: int = 0,
+    reason: str = "",
+) -> Session:
     return Session(
         id=id,
         agent=agent,
@@ -63,7 +63,7 @@ def make_session(
     )
 
 
-def make_args(since=None, until=None):
+def make_args(since: str | None = None, until: str | None = None) -> argparse.Namespace:
     return argparse.Namespace(since=since, until=until)
 
 
@@ -74,12 +74,14 @@ def make_args(since=None, until=None):
 
 def test_session_is_frozen():
     s = make_session()
-    with pytest.raises(Exception):
-        s.id = "other"  # type: ignore[misc]
+    with pytest.raises(AttributeError):
+        s.id = "other"  # type: ignore
 
 
 def test_sort_time_returns_updated_at_when_present():
-    s = make_session(timestamp="2024-01-01T00:00:00Z", updated_at="2024-06-01T00:00:00Z")
+    s = make_session(
+        timestamp="2024-01-01T00:00:00Z", updated_at="2024-06-01T00:00:00Z"
+    )
     assert s.sort_time == "2024-06-01T00:00:00Z"
 
 
@@ -116,7 +118,7 @@ def test_parse_iso_z_suffix_returns_utc_datetime():
 def test_parse_iso_timezone_offset_returns_aware_datetime():
     result = parse_iso("2024-03-15T12:30:00+05:00")
     assert result is not None
-    assert result.utcoffset().seconds == 5 * 3600
+    assert result.utcoffset() == timedelta(hours=5)
 
 
 def test_parse_iso_empty_string_returns_none():
@@ -180,14 +182,18 @@ def test_repo_score_empty_session_cwd_returns_zero():
 
 
 def test_repo_score_exact_cwd_match():
-    assert repo_score("/home/user/myrepo", "/home/user/myrepo", "/home/user/myrepo", "myrepo") == (
+    assert repo_score(
+        "/home/user/myrepo", "/home/user/myrepo", "/home/user/myrepo", "myrepo"
+    ) == (
         3,
         "exact-cwd",
     )
 
 
 def test_repo_score_session_equals_root_returns_exact_cwd():
-    assert repo_score("/home/user/myrepo", "/other/path", "/home/user/myrepo", "myrepo") == (
+    assert repo_score(
+        "/home/user/myrepo", "/other/path", "/home/user/myrepo", "myrepo"
+    ) == (
         3,
         "exact-cwd",
     )
@@ -221,7 +227,9 @@ def test_repo_score_repo_name_in_path():
 
 
 def test_repo_score_no_match_returns_zero():
-    assert repo_score("/home/user/unrelated", "/home/user/myrepo", "/home/user/myrepo", "myrepo") == (
+    assert repo_score(
+        "/home/user/unrelated", "/home/user/myrepo", "/home/user/myrepo", "myrepo"
+    ) == (
         0,
         "",
     )
@@ -284,7 +292,9 @@ def test_sorted_sessions_oldest_true_sorts_ascending():
 
 
 def test_sorted_sessions_tie_broken_by_title_then_id():
-    a = make_session(id="zzz", score=1, title="Alpha", updated_at="2024-03-01T00:00:00Z")
+    a = make_session(
+        id="zzz", score=1, title="Alpha", updated_at="2024-03-01T00:00:00Z"
+    )
     b = make_session(id="aaa", score=1, title="Beta", updated_at="2024-03-01T00:00:00Z")
     result = sorted_sessions([a, b], oldest=False)
     assert result[0].title == "Beta"
@@ -378,7 +388,17 @@ def test_truncate_one_over_width_gets_ellipsis():
 def test_session_to_json_contains_expected_keys():
     s = make_session()
     result = session_to_json(s)
-    expected_keys = {"id", "agent", "title", "timestamp", "updated_at", "cwd", "path", "repo_score", "repo_reason"}
+    expected_keys = {
+        "id",
+        "agent",
+        "title",
+        "timestamp",
+        "updated_at",
+        "cwd",
+        "path",
+        "repo_score",
+        "repo_reason",
+    }
     assert set(result.keys()) == expected_keys
 
 
