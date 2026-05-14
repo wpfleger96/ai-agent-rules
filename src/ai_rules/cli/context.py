@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
 from rich.console import Console
 
@@ -13,7 +13,9 @@ from ai_rules.agents.base import Agent
 from ai_rules.config import Config
 from ai_rules.targets.base import ConfigTarget
 
-LifecycleOperation = Literal["install", "status", "diff", "validate", "uninstall"]
+LifecycleOperation = Literal[
+    "install", "status", "diff", "validate", "uninstall", "plan", "apply"
+]
 
 
 @dataclass(frozen=True)
@@ -74,3 +76,61 @@ class Component(ABC):
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
         return ComponentResult()
+
+    def plan(self, ctx: CliContext) -> ComponentPlan:
+        return ComponentPlan()
+
+    def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        return ComponentResult()
+
+
+@dataclass
+class ComponentPlan:
+    """Base for all component plans."""
+
+    has_changes: bool = False
+
+
+@dataclass
+class SettingsPlan(ComponentPlan):
+    stale_targets: list[ConfigTarget] = field(default_factory=list)
+    excluded_symlinks_to_clean: list[Path] = field(default_factory=list)
+
+
+@dataclass
+class OptionalToolsPlan(ComponentPlan):
+    pass
+
+
+@dataclass
+class ConfigPlan(ComponentPlan):
+    symlink_ops: list[tuple[Path, Path]] = field(default_factory=list)
+    excluded_count: int = 0
+
+
+@dataclass
+class SkillsPlan(ComponentPlan):
+    symlink_ops: list[tuple[Path, Path]] = field(default_factory=list)
+    cleanup_ops: list[Path] = field(default_factory=list)
+
+
+@dataclass
+class ClaudeExtensionsPlan(ComponentPlan):
+    symlink_ops: list[tuple[str, Path, Path]] = field(default_factory=list)
+
+
+@dataclass
+class MCPPlan(ComponentPlan):
+    install_ops: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    conflict_targets: list[str] = field(default_factory=list)
+
+
+@dataclass
+class PluginPlan(ComponentPlan):
+    pass
+
+
+@dataclass
+class CompletionsPlan(ComponentPlan):
+    shell: str | None = None
+    needs_install: bool = False

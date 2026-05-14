@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from ai_rules.cli.context import CliContext, Component, ComponentResult
+from ai_rules.cli.context import (
+    ClaudeExtensionsPlan,
+    CliContext,
+    Component,
+    ComponentPlan,
+    ComponentResult,
+)
 
 
 class ClaudeExtensionsComponent(Component):
@@ -77,24 +83,110 @@ class ClaudeExtensionsComponent(Component):
             },
         )
 
+    def plan(self, ctx: CliContext) -> ComponentPlan:
+        target = ctx.selected_target("claude")
+        if target is None:
+            return ClaudeExtensionsPlan()
+
+        from ai_rules.claude_extensions import ClaudeExtensionManager
+
+        ext_manager = ClaudeExtensionManager(ctx.config_dir)
+        symlink_ops: list[tuple[str, Any, Any]] = []
+
+        for ext_type in ClaudeExtensionManager.USER_DIRS:
+            managed = ext_manager._get_managed_extensions(ext_type)
+            if not managed:
+                continue
+
+            user_dir = ClaudeExtensionManager.USER_DIRS[ext_type].expanduser()
+            pattern = ClaudeExtensionManager.PATTERNS[ext_type]
+            suffix = pattern.lstrip("*")
+
+            for name, source_path in managed.items():
+                filename = f"{name}{suffix}"
+                target_path = user_dir / filename
+                symlink_ops.append((ext_type, target_path, source_path))
+
+        return ClaudeExtensionsPlan(
+            has_changes=bool(symlink_ops),
+            symlink_ops=symlink_ops,
+        )
+
+    def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        if not isinstance(plan, ClaudeExtensionsPlan):
+            return ComponentResult()
+
+        from ai_rules.cli.runner import get_console
+        from ai_rules.symlinks import SymlinkResult, create_symlink
+
+        console = get_console(ctx)
+        created = updated = skipped = errors = 0
+
+        console.print("\n[bold cyan]Claude Extensions[/bold cyan]")
+
+        current_section = None
+        for ext_type, target_path, source_path in plan.symlink_ops:
+            if ext_type != current_section:
+                console.print(f"\n[bold]{ext_type.capitalize()}:[/bold]")
+                current_section = ext_type
+
+            result, message = create_symlink(
+                target_path,
+                source_path,
+                force=True,
+                dry_run=ctx.dry_run,
+            )
+
+            if result == SymlinkResult.CREATED:
+                console.print(f"  [green]✓[/green] {target_path} → {source_path}")
+                created += 1
+            elif result == SymlinkResult.ALREADY_CORRECT:
+                console.print(
+                    f"  [dim]•[/dim] {target_path} [dim](already correct)[/dim]"
+                )
+            elif result == SymlinkResult.UPDATED:
+                console.print(f"  [yellow]↻[/yellow] {target_path} → {source_path}")
+                updated += 1
+            elif result == SymlinkResult.SKIPPED:
+                console.print(
+                    f"  [yellow]○[/yellow] {target_path} [dim](skipped)[/dim]"
+                )
+                skipped += 1
+            elif result == SymlinkResult.ERROR:
+                console.print(f"  [red]✗[/red] {target_path}: {message}")
+                errors += 1
+
+        return ComponentResult(
+            ok=errors == 0,
+            changed=bool(created or updated),
+            counts={
+                "created": created,
+                "updated": updated,
+                "skipped": skipped,
+                "errors": errors,
+            },
+        )
+
     def uninstall(self, ctx: CliContext) -> ComponentResult:
         target = ctx.selected_target("claude")
         if target is None:
             return ComponentResult()
 
         from ai_rules.claude_extensions import ClaudeExtensionManager
+        from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import remove_symlink
 
+        console = get_console(ctx)
         ext_manager = ClaudeExtensionManager(ctx.config_dir)
         removed = skipped = 0
 
-        ctx.console.print("\n[bold cyan]Claude Extensions[/bold cyan]")
+        console.print("\n[bold cyan]Claude Extensions[/bold cyan]")
         for ext_type in ClaudeExtensionManager.USER_DIRS:
             managed = ext_manager._get_managed_extensions(ext_type)
             if not managed:
                 continue
 
-            ctx.console.print(f"\n[bold]{ext_type.capitalize()}:[/bold]")
+            console.print(f"\n[bold]{ext_type.capitalize()}:[/bold]")
             user_dir = ClaudeExtensionManager.USER_DIRS[ext_type].expanduser()
             pattern = ClaudeExtensionManager.PATTERNS[ext_type]
             suffix = pattern.lstrip("*")
@@ -105,14 +197,14 @@ class ClaudeExtensionsComponent(Component):
                 success, message = remove_symlink(target_path, force=ctx.yes)
 
                 if success:
-                    ctx.console.print(f"  [green]✓[/green] {target_path} removed")
+                    console.print(f"  [green]✓[/green] {target_path} removed")
                     removed += 1
                 elif "Does not exist" in message:
-                    ctx.console.print(
+                    console.print(
                         f"  [dim]•[/dim] {target_path} [dim](not installed)[/dim]"
                     )
                 else:
-                    ctx.console.print(
+                    console.print(
                         f"  [yellow]○[/yellow] {target_path} [dim]({message})[/dim]"
                     )
                     skipped += 1

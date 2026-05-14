@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from rich.prompt import Confirm
 
 from ai_rules.agents.base import Agent
-from ai_rules.cli.context import CliContext, Component, ComponentResult
+from ai_rules.cli.context import (
+    CliContext,
+    Component,
+    ComponentPlan,
+    ComponentResult,
+    MCPPlan,
+)
 
 
 class MCPComponent(Component):
@@ -64,6 +72,97 @@ class MCPComponent(Component):
                 ctx.console.print(f"[dim]○ {target.name}: {message}[/dim]")
             elif result != OperationResult.NOT_FOUND:
                 ctx.console.print(f"[yellow]⚠[/yellow] {target.name}: {message}")
+                errors += 1
+
+        return ComponentResult(
+            changed=updated > 0,
+            counts={
+                "mcp_updated": updated,
+                "mcp_skipped": skipped,
+                "mcp_errors": errors,
+            },
+        )
+
+    def plan(self, ctx: CliContext) -> ComponentPlan:
+        from ai_rules.mcp import OperationResult
+
+        install_ops: list[tuple[str, dict[str, Any]]] = []
+        conflict_targets: list[str] = []
+
+        for target in ctx.selected_targets:
+            if not isinstance(target, Agent):
+                continue
+            if target.is_settings_file_excluded:
+                continue
+            mgr = target.get_mcp_manager()
+            if mgr is None:
+                continue
+
+            # Dry-run detect to find what needs installing and what conflicts exist
+            result, _message, conflicts = target.install_mcps(
+                force=ctx.yes, dry_run=True
+            )
+
+            if result == OperationResult.NOT_FOUND:
+                continue
+
+            if conflicts and not ctx.yes:
+                conflict_targets.append(target.name)
+            else:
+                native_mcps = mgr.load_managed_mcps(ctx.config_dir, ctx.config)
+                install_ops.append((target.name, native_mcps))
+
+        has_changes = bool(install_ops or conflict_targets)
+        return MCPPlan(
+            has_changes=has_changes,
+            install_ops=install_ops,
+            conflict_targets=conflict_targets,
+        )
+
+    def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        if not isinstance(plan, MCPPlan):
+            return ComponentResult()
+
+        from ai_rules.cli.runner import get_console
+        from ai_rules.mcp import OperationResult
+
+        console = get_console(ctx)
+        updated = 0
+        skipped = 0
+        errors = 0
+
+        # Targets with conflicts that can't be resolved without a prompt — skip them.
+        # The serial install() path handles prompt-based conflict resolution.
+        for target_name in plan.conflict_targets:
+            console.print(
+                f"[yellow]⚠[/yellow] {target_name}: MCP conflicts detected, "
+                f"skipping (use -y to force-apply)"
+            )
+            skipped += 1
+
+        # Install non-conflict targets
+        install_target_names = {name for name, _ in plan.install_ops}
+        for target in ctx.selected_targets:
+            if not isinstance(target, Agent):
+                continue
+            if target.is_settings_file_excluded:
+                continue
+            if target.get_mcp_manager() is None:
+                continue
+            if target.name not in install_target_names:
+                continue
+
+            result, message, conflicts = target.install_mcps(
+                force=ctx.yes, dry_run=ctx.dry_run
+            )
+
+            if result == OperationResult.UPDATED:
+                console.print(f"[green]✓[/green] {target.name}: {message}")
+                updated += 1
+            elif result == OperationResult.ALREADY_INSTALLED:
+                console.print(f"[dim]○ {target.name}: {message}[/dim]")
+            elif result != OperationResult.NOT_FOUND:
+                console.print(f"[yellow]⚠[/yellow] {target.name}: {message}")
                 errors += 1
 
         return ComponentResult(
@@ -152,8 +251,10 @@ class MCPComponent(Component):
         return self.status(ctx)
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.runner import get_console
         from ai_rules.mcp import OperationResult
 
+        console = get_console(ctx)
         removed = 0
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
@@ -165,9 +266,9 @@ class MCPComponent(Component):
 
             result, message = target.uninstall_mcps()
             if result == OperationResult.REMOVED:
-                ctx.console.print(f"  [green]✓[/green] {message}")
+                console.print(f"  [green]✓[/green] {message}")
                 removed += 1
             elif result == OperationResult.NOT_FOUND:
-                ctx.console.print(f"  [dim]•[/dim] {message}")
+                console.print(f"  [dim]•[/dim] {message}")
 
         return ComponentResult(changed=removed > 0, counts={"removed": removed})

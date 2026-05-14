@@ -2,15 +2,29 @@
 
 from __future__ import annotations
 
+import contextvars
+
 from collections.abc import Iterable
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from io import StringIO
+from typing import Any
+
+from rich.console import Console as RichConsole
 
 from ai_rules.cli.context import (
     CliContext,
     Component,
+    ComponentPlan,
     ComponentResult,
     LifecycleOperation,
 )
+
+_console_override: contextvars.ContextVar[RichConsole | None] = contextvars.ContextVar(
+    "_console_override", default=None
+)
+
+_BUFFERED_METHODS: frozenset[str] = frozenset({"apply", "uninstall"})
 
 
 @dataclass
@@ -134,3 +148,253 @@ def run_install(
             break
 
     return acc.to_result()
+
+
+def run_install_parallel(
+    infrastructure: Iterable[Component],
+    semantic: Iterable[Component],
+    ctx: CliContext,
+) -> ComponentRunResult:
+    acc = _RunAccumulator()
+
+    # Phase 1: Infrastructure (sequential) — must complete before semantic
+    for component in infrastructure:
+        plan = component.plan(ctx)
+        if plan.has_changes:
+            result = component.apply(ctx, plan)
+        else:
+            result = ComponentResult()
+        acc.fold(component, result)
+        if result.abort or not result.ok:
+            acc.aborted = True
+            return acc.to_result()
+
+    # Phase 2: Prompt gate (main thread)
+    if not ctx.yes and not ctx.dry_run:
+        from rich.prompt import Confirm
+
+        from ai_rules.cli import (
+            _display_pending_changes,
+            check_first_run,
+        )
+
+        if not check_first_run(list(ctx.selected_targets), ctx.yes):
+            acc.aborted = True
+            return acc.to_result()
+
+        if _display_pending_changes(ctx):
+            if not Confirm.ask("Apply these changes?"):
+                acc.aborted = True
+                return acc.to_result()
+
+    # Phase 3: Parallel plan all semantic components
+    semantic_list = list(semantic)
+    plans = run_components_parallel(semantic_list, "plan", ctx)
+
+    # Phase 4: Parallel apply — skip components whose plan failed
+    apply_list = [c for c in semantic_list if type(plans.get(c)) is not ComponentPlan]
+    results = run_components_parallel(apply_list, "apply", ctx, plans=plans)
+
+    # Fold results into accumulator
+    for component in semantic_list:
+        if _should_skip(component, ctx):
+            continue
+        result = results.get(component, ComponentResult())
+        acc.fold(component, result)
+
+    return acc.to_result()
+
+
+def run_uninstall_parallel(
+    components: Iterable[Component],
+    ctx: CliContext,
+) -> ComponentRunResult:
+    """Run uninstall across all components in parallel, returning a ComponentRunResult."""
+    acc = _RunAccumulator()
+    comp_list = list(components)
+    results = run_components_parallel(comp_list, "uninstall", ctx)
+    for comp in comp_list:
+        if _should_skip(comp, ctx):
+            continue
+        result = results.get(comp, ComponentResult())
+        acc.fold(comp, result)
+    return acc.to_result()
+
+
+def get_console(ctx: CliContext) -> RichConsole:
+    """Return the active console — thread override if set, else ctx.console."""
+    return _console_override.get() or ctx.console
+
+
+def run_components_parallel(
+    components: Iterable[Component],
+    method: LifecycleOperation,
+    ctx: CliContext,
+    plans: dict[Component, ComponentPlan] | None = None,
+    max_workers: int | None = None,
+) -> dict[Component, Any]:
+    """Run a component method across all components in parallel.
+
+    For 'apply' and 'uninstall': each component's console output is captured
+    into a per-thread buffer and replayed atomically in completion order.
+
+    For 'plan' and other methods: no buffering — a Status spinner shows progress.
+
+    Errors are collected rather than aborting on first failure. After all futures
+    settle, per-component errors are printed and partial results are returned.
+    """
+    comp_list = [c for c in components if not _should_skip(c, ctx)]
+    if not comp_list:
+        return {}
+
+    should_buffer = method in _BUFFERED_METHODS
+    results: dict[Component, Any] = {}
+    errors: dict[Component, BaseException] = {}
+    futures: dict[Future[Any], Component] = {}
+
+    buffers: dict[Component, StringIO] = {}
+    buffered_consoles: dict[Component, RichConsole] = {}
+
+    if should_buffer:
+        for comp in comp_list:
+            buf = StringIO()
+            buffers[comp] = buf
+            buffered_consoles[comp] = RichConsole(
+                file=buf,
+                force_terminal=ctx.console.is_terminal,
+                color_system=ctx.console.color_system,  # type: ignore[arg-type]
+                highlight=False,
+            )
+
+    def _make_task(comp: Component, override: RichConsole | None = None) -> Any:
+        def _run() -> Any:
+            if override is not None:
+                _console_override.set(override)
+            if method == "apply":
+                plan = (plans or {})[comp]
+                return comp.apply(ctx, plan)
+            return getattr(comp, method)(ctx)
+
+        return _run
+
+    with ThreadPoolExecutor(max_workers=max_workers or len(comp_list)) as pool:
+        if should_buffer:
+            _run_buffered(
+                pool,
+                comp_list,
+                _make_task,
+                buffered_consoles,
+                buffers,
+                futures,
+                results,
+                errors,
+                ctx.console,
+            )
+        else:
+            _run_unbuffered(
+                pool,
+                comp_list,
+                method,
+                _make_task,
+                futures,
+                results,
+                errors,
+                ctx.console,
+            )
+
+    if errors:
+        for comp, exc in errors.items():
+            ctx.console.print(f"[red]✗[/red] {comp.label}: {type(exc).__name__}: {exc}")
+            results[comp] = ComponentResult(ok=False, counts={"errors": 1})
+        if len(errors) == len(comp_list):
+            raise next(iter(errors.values()))
+
+    return results
+
+
+def _run_buffered(
+    pool: ThreadPoolExecutor,
+    components: list[Component],
+    make_task: Any,
+    buffered_consoles: dict[Component, RichConsole],
+    buffers: dict[Component, StringIO],
+    futures: dict[Future[Any], Component],
+    results: dict[Component, Any],
+    errors: dict[Component, BaseException],
+    real_console: RichConsole,
+) -> None:
+    from rich.progress import Progress, SpinnerColumn, TextColumn
+
+    completed_buffers: list[tuple[Component, str]] = []
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=real_console,
+        transient=True,
+    ) as progress:
+        task_ids: dict[Component, Any] = {}
+        for comp in components:
+            task_ids[comp] = progress.add_task(f"[cyan]{comp.label}[/cyan]", total=None)
+            future = pool.submit(make_task(comp, buffered_consoles[comp]))
+            futures[future] = comp
+
+        for future in as_completed(futures):
+            comp = futures[future]
+            exc = future.exception()
+            if exc is not None:
+                errors[comp] = exc
+                progress.update(
+                    task_ids[comp],
+                    description=f"[red]{comp.label} (failed)[/red]",
+                    completed=True,
+                )
+            else:
+                results[comp] = future.result()
+                progress.update(
+                    task_ids[comp],
+                    description=f"[green]{comp.label}[/green]",
+                    completed=True,
+                )
+
+            buf_content = buffers[comp].getvalue()
+            if buf_content.strip():
+                completed_buffers.append((comp, buf_content))
+
+    for comp, buf_content in completed_buffers:
+        real_console.print(f"\n[bold cyan]{comp.label}[/bold cyan]")
+        real_console.file.write(buf_content)
+        real_console.file.flush()
+
+
+def _run_unbuffered(
+    pool: ThreadPoolExecutor,
+    components: list[Component],
+    method: LifecycleOperation,
+    make_task: Any,
+    futures: dict[Future[Any], Component],
+    results: dict[Component, Any],
+    errors: dict[Component, BaseException],
+    real_console: RichConsole,
+) -> None:
+    with real_console.status(f"Running {method}...") as status:
+        for comp in components:
+            future = pool.submit(make_task(comp))
+            futures[future] = comp
+
+        completed = 0
+        for future in as_completed(futures):
+            comp = futures[future]
+            completed += 1
+            exc = future.exception()
+            if exc is not None:
+                if method == "plan":
+                    results[comp] = ComponentPlan(has_changes=False)
+                    real_console.print(
+                        f"[yellow]⚠[/yellow] {comp.label} plan failed: {exc}"
+                    )
+                else:
+                    errors[comp] = exc
+            else:
+                results[comp] = future.result()
+            status.update(f"Running {method}... ({completed}/{len(components)} done)")

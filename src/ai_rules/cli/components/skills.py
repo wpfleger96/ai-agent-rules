@@ -2,13 +2,131 @@
 
 from __future__ import annotations
 
+import os
+
+from pathlib import Path
+
 from ai_rules.agents.base import Agent
-from ai_rules.cli.context import CliContext, Component, ComponentResult
+from ai_rules.cli.context import (
+    CliContext,
+    Component,
+    ComponentPlan,
+    ComponentResult,
+    SkillsPlan,
+)
 
 
 class SkillsComponent(Component):
     label = "Skills"
     component_id = "skills"
+
+    def plan(self, ctx: CliContext) -> SkillsPlan:
+        from ai_rules.config import AGENT_SKILLS_DIRS
+
+        skills_source_dir = ctx.config_dir / "skills"
+        if not skills_source_dir.exists():
+            return SkillsPlan()
+
+        skill_folders = sorted(
+            f
+            for f in skills_source_dir.glob("*")
+            if f.is_dir() and not f.name.startswith(".")
+        )
+
+        symlink_ops: list[tuple[Path, Path]] = []
+        cleanup_ops: list[Path] = []
+        config_skills_abs = skills_source_dir.resolve()
+
+        for target in ctx.selected_targets:
+            if not isinstance(target, Agent):
+                continue
+
+            if target.agent_id == "shared":
+                target_dirs = list(AGENT_SKILLS_DIRS.items())
+            elif target.agent_id in AGENT_SKILLS_DIRS:
+                target_dirs = [(target.agent_id, AGENT_SKILLS_DIRS[target.agent_id])]
+            else:
+                continue
+
+            for _agent_id, skills_dir_path in target_dirs:
+                user_skills_dir = skills_dir_path.expanduser()
+
+                for skill_folder in skill_folders:
+                    symlink_target = user_skills_dir / skill_folder.name
+                    if ctx.config.is_excluded(str(symlink_target)):
+                        continue
+                    symlink_ops.append((symlink_target, skill_folder))
+
+                if user_skills_dir.exists():
+                    for existing in user_skills_dir.iterdir():
+                        if not existing.is_symlink():
+                            continue
+                        try:
+                            link_target = existing.resolve()
+                        except (OSError, RuntimeError):
+                            link_target = None
+
+                        if link_target is None:
+                            existing_raw = Path(os.readlink(existing))
+                            if not existing_raw.is_absolute():
+                                existing_raw = (
+                                    existing.parent / existing_raw
+                                ).resolve()
+                            try:
+                                existing_raw.relative_to(config_skills_abs)
+                            except ValueError:
+                                continue
+                            cleanup_ops.append(existing)
+                            continue
+
+                        try:
+                            link_target.relative_to(config_skills_abs)
+                        except ValueError:
+                            continue
+
+                        if not link_target.exists():
+                            cleanup_ops.append(existing)
+
+        has_changes = bool(symlink_ops or cleanup_ops)
+        return SkillsPlan(
+            has_changes=has_changes,
+            symlink_ops=symlink_ops,
+            cleanup_ops=cleanup_ops,
+        )
+
+    def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        if not isinstance(plan, SkillsPlan):
+            return ComponentResult()
+
+        from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
+
+        created = 0
+        skipped = 0
+        errors = 0
+
+        for symlink_target, skill_folder in plan.symlink_ops:
+            result, _msg = create_symlink(
+                symlink_target,
+                skill_folder,
+                force=True,
+                dry_run=ctx.dry_run,
+            )
+            if result == SymlinkResult.ERROR:
+                errors += 1
+            elif result == SymlinkResult.ALREADY_CORRECT:
+                skipped += 1
+            else:
+                created += 1
+
+        if not ctx.dry_run:
+            for existing in plan.cleanup_ops:
+                remove_symlink(existing, force=True)
+
+        return ComponentResult(
+            ok=errors == 0,
+            changed=created > 0,
+            counts={"created": created, "skipped": skipped, "errors": errors},
+        )
 
     def install(self, ctx: CliContext) -> ComponentResult:
         import os

@@ -6,8 +6,14 @@ import pytest
 
 from rich.console import Console
 
-from ai_rules.cli.context import CliContext, Component, ComponentResult
-from ai_rules.cli.runner import run_components, run_install
+from ai_rules.cli.context import CliContext, Component, ComponentPlan, ComponentResult
+from ai_rules.cli.runner import (
+    run_components,
+    run_components_parallel,
+    run_install,
+    run_install_parallel,
+    run_uninstall_parallel,
+)
 from ai_rules.config import Config
 
 
@@ -174,3 +180,262 @@ def test_run_install_aggregates_counts_across_phases(tmp_path: Path) -> None:
     result = run_install([infra], [semantic], make_context(tmp_path, yes=True))
 
     assert result.counts == {"cache_updated": 1, "created": 2}
+
+
+class _SubclassPlan(ComponentPlan):
+    """Subclass of ComponentPlan used by test fixtures.
+
+    run_install_parallel skips apply for components whose plan() returns the
+    base ComponentPlan type exactly (used as error fallback). Tests that need
+    apply() to run must return a subclass.
+    """
+
+
+class PlanApplyComponent(Component):
+    component_id = "plannable"
+    filterable = True
+
+    def __init__(
+        self,
+        label: str,
+        *,
+        plan_result: ComponentPlan | None = None,
+        plan_error: Exception | None = None,
+        apply_result: ComponentResult | None = None,
+        apply_error: Exception | None = None,
+        uninstall_result: ComponentResult | None = None,
+        uninstall_error: Exception | None = None,
+    ):
+        self.label = label
+        self._plan_result = plan_result or _SubclassPlan(has_changes=True)
+        self._plan_error = plan_error
+        self._apply_result = apply_result or ComponentResult()
+        self._apply_error = apply_error
+        self._uninstall_result = uninstall_result or ComponentResult()
+        self._uninstall_error = uninstall_error
+        self.plan_calls = 0
+        self.apply_calls = 0
+        self.uninstall_calls = 0
+
+    def plan(self, ctx: CliContext) -> ComponentPlan:
+        self.plan_calls += 1
+        if self._plan_error:
+            raise self._plan_error
+        return self._plan_result
+
+    def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        self.apply_calls += 1
+        if self._apply_error:
+            raise self._apply_error
+        return self._apply_result
+
+    def uninstall(self, ctx: CliContext) -> ComponentResult:
+        self.uninstall_calls += 1
+        if self._uninstall_error:
+            raise self._uninstall_error
+        return self._uninstall_result
+
+
+class PlanApplyInfraComponent(Component):
+    component_id = "infra_plannable"
+    filterable = False
+
+    def __init__(
+        self,
+        label: str,
+        *,
+        plan_result: ComponentPlan | None = None,
+        apply_result: ComponentResult | None = None,
+        apply_error: Exception | None = None,
+    ):
+        self.label = label
+        self._plan_result = plan_result or _SubclassPlan(has_changes=True)
+        self._apply_result = apply_result or ComponentResult()
+        self._apply_error = apply_error
+        self.plan_calls = 0
+        self.apply_calls = 0
+
+    def plan(self, ctx: CliContext) -> ComponentPlan:
+        self.plan_calls += 1
+        return self._plan_result
+
+    def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        self.apply_calls += 1
+        if self._apply_error:
+            raise self._apply_error
+        return self._apply_result
+
+
+@pytest.mark.unit
+def test_run_install_parallel_infra_runs_before_semantic(tmp_path: Path) -> None:
+    call_order: list[str] = []
+
+    class OrderedInfra(PlanApplyInfraComponent):
+        def plan(self, ctx: CliContext) -> ComponentPlan:
+            call_order.append("infra_plan")
+            return super().plan(ctx)
+
+        def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+            call_order.append("infra_apply")
+            return super().apply(ctx, plan)
+
+    class OrderedSemantic(PlanApplyComponent):
+        def plan(self, ctx: CliContext) -> ComponentPlan:
+            call_order.append("semantic_plan")
+            return super().plan(ctx)
+
+        def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+            call_order.append("semantic_apply")
+            return super().apply(ctx, plan)
+
+    infra = OrderedInfra("infra")
+    semantic = OrderedSemantic("semantic")
+
+    result = run_install_parallel([infra], [semantic], make_context(tmp_path, yes=True))
+
+    assert result.ok is True
+    assert call_order.index("infra_plan") < call_order.index("semantic_plan")
+    assert call_order.index("infra_apply") < call_order.index("semantic_apply")
+
+
+@pytest.mark.unit
+def test_run_install_parallel_aborts_if_infrastructure_fails(tmp_path: Path) -> None:
+    infra = PlanApplyInfraComponent("infra", apply_result=ComponentResult(ok=False))
+    semantic = PlanApplyComponent("semantic")
+
+    result = run_install_parallel([infra], [semantic], make_context(tmp_path, yes=True))
+
+    assert result.ok is False
+    assert result.aborted is True
+    assert semantic.plan_calls == 0
+    assert semantic.apply_calls == 0
+
+
+@pytest.mark.unit
+def test_run_install_parallel_skips_confirmation_when_yes(tmp_path: Path) -> None:
+    infra = PlanApplyInfraComponent("infra")
+    semantic = PlanApplyComponent("semantic")
+
+    with patch("rich.prompt.Confirm.ask") as mock_ask:
+        result = run_install_parallel(
+            [infra], [semantic], make_context(tmp_path, yes=True)
+        )
+
+    mock_ask.assert_not_called()
+    assert result.ok is True
+
+
+@pytest.mark.unit
+def test_run_install_parallel_skips_confirmation_when_dry_run(tmp_path: Path) -> None:
+    infra = PlanApplyInfraComponent("infra")
+    semantic = PlanApplyComponent("semantic")
+
+    with patch("rich.prompt.Confirm.ask") as mock_ask:
+        result = run_install_parallel(
+            [infra], [semantic], make_context(tmp_path, dry_run=True)
+        )
+
+    mock_ask.assert_not_called()
+    assert result.ok is True
+
+
+@pytest.mark.unit
+def test_run_install_parallel_aggregates_counts_across_phases(tmp_path: Path) -> None:
+    infra = PlanApplyInfraComponent(
+        "infra", apply_result=ComponentResult(counts={"cache_updated": 1})
+    )
+    semantic = PlanApplyComponent(
+        "semantic", apply_result=ComponentResult(counts={"created": 3})
+    )
+
+    result = run_install_parallel([infra], [semantic], make_context(tmp_path, yes=True))
+
+    assert result.counts == {"cache_updated": 1, "created": 3}
+
+
+@pytest.mark.unit
+def test_run_install_parallel_skips_apply_for_failed_plan(tmp_path: Path) -> None:
+    failing = PlanApplyComponent("failing", plan_error=RuntimeError("plan exploded"))
+    succeeding = PlanApplyComponent("succeeding")
+
+    result = run_install_parallel(
+        [], [failing, succeeding], make_context(tmp_path, yes=True)
+    )
+
+    assert failing.apply_calls == 0
+    assert succeeding.apply_calls == 1
+    assert result.ok is True
+
+
+@pytest.mark.unit
+def test_run_install_parallel_reports_failure_on_apply_error(tmp_path: Path) -> None:
+    bad = PlanApplyComponent("bad", apply_error=RuntimeError("apply exploded"))
+    good = PlanApplyComponent("good")
+
+    result = run_install_parallel([], [bad, good], make_context(tmp_path, yes=True))
+
+    assert result.ok is False
+
+
+@pytest.mark.unit
+def test_run_uninstall_parallel_aggregates_counts(tmp_path: Path) -> None:
+    first = PlanApplyComponent(
+        "first", uninstall_result=ComponentResult(counts={"removed": 2})
+    )
+    second = PlanApplyComponent(
+        "second", uninstall_result=ComponentResult(counts={"removed": 1, "errors": 0})
+    )
+
+    result = run_uninstall_parallel([first, second], make_context(tmp_path, yes=True))
+
+    assert result.counts == {"removed": 3, "errors": 0}
+
+
+@pytest.mark.unit
+def test_run_uninstall_parallel_reports_failure_on_error(tmp_path: Path) -> None:
+    bad = PlanApplyComponent("bad", uninstall_error=RuntimeError("uninstall exploded"))
+    good = PlanApplyComponent("good")
+
+    result = run_uninstall_parallel([bad, good], make_context(tmp_path, yes=True))
+
+    assert result.ok is False
+
+
+@pytest.mark.unit
+def test_run_components_parallel_plan_fallback_on_error(tmp_path: Path) -> None:
+    failing = PlanApplyComponent("failing", plan_error=ValueError("plan failed"))
+    succeeding = PlanApplyComponent(
+        "succeeding", plan_result=ComponentPlan(has_changes=True)
+    )
+
+    results = run_components_parallel(
+        [failing, succeeding], "plan", make_context(tmp_path, yes=True)
+    )
+
+    assert type(results[failing]) is ComponentPlan
+    assert results[failing].has_changes is False
+    assert results[succeeding].has_changes is True
+
+
+class _IncludedComponent(PlanApplyComponent):
+    component_id = "plannable"
+
+
+class _ExcludedComponent(PlanApplyComponent):
+    component_id = "other"
+
+
+@pytest.mark.unit
+def test_run_components_parallel_respects_component_filter(tmp_path: Path) -> None:
+    included = _IncludedComponent("included")
+    excluded = _ExcludedComponent("excluded")
+
+    from dataclasses import replace
+
+    ctx = make_context(tmp_path, yes=True)
+    ctx_filtered = replace(ctx, component_filter=("plannable",))
+
+    results = run_components_parallel([included, excluded], "plan", ctx_filtered)
+
+    assert included in results
+    assert excluded not in results

@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from ai_rules.cli.context import CliContext, Component, ComponentResult
+from ai_rules.cli.context import (
+    CliContext,
+    Component,
+    ComponentPlan,
+    ComponentResult,
+    PluginPlan,
+)
 
 
 class ClaudePluginComponent(Component):
@@ -11,6 +17,57 @@ class ClaudePluginComponent(Component):
 
     def _claude_selected(self, ctx: CliContext) -> bool:
         return ctx.selected_target("claude") is not None
+
+    def plan(self, ctx: CliContext) -> PluginPlan:
+        if not self._claude_selected(ctx) or not (
+            ctx.config.plugins or ctx.config.marketplaces
+        ):
+            return PluginPlan()
+        return PluginPlan(has_changes=True)
+
+    def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        if not isinstance(plan, PluginPlan):
+            return ComponentResult()
+
+        if not plan.has_changes:
+            return ComponentResult()
+
+        from ai_rules.cli.runner import get_console
+        from ai_rules.plugins import OperationResult, PluginManager
+
+        console = get_console(ctx)
+        plugin_manager = PluginManager()
+
+        if not plugin_manager.is_cli_available():
+            if not ctx.dry_run:
+                console.print(
+                    "[dim]○[/dim] Skipped plugin sync (claude CLI not available)"
+                )
+            return ComponentResult()
+
+        desired_plugins = ctx.config.get_plugin_configs()
+        desired_marketplaces = ctx.config.get_marketplace_configs()
+
+        plugin_result, message, warnings = plugin_manager.sync_plugins(
+            desired_plugins, desired_marketplaces, dry_run=ctx.dry_run
+        )
+
+        if plugin_result == OperationResult.SUCCESS:
+            console.print(f"[green]✓[/green] {message}")
+        elif plugin_result == OperationResult.ALREADY_INSTALLED:
+            console.print(f"[dim]○[/dim] {message}")
+        elif plugin_result == OperationResult.DRY_RUN:
+            console.print(f"[dim]{message}[/dim]")
+        elif plugin_result == OperationResult.ERROR:
+            console.print(f"[yellow]⚠[/yellow] {message}")
+
+        for warning in warnings:
+            console.print(f"[yellow]⚠[/yellow] {warning}")
+
+        return ComponentResult(
+            changed=plugin_result in (OperationResult.SUCCESS, OperationResult.DRY_RUN),
+            counts={"plugin_errors": int(plugin_result == OperationResult.ERROR)},
+        )
 
     def install(self, ctx: CliContext) -> ComponentResult:
         if not self._claude_selected(ctx) or not (

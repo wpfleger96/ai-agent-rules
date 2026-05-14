@@ -2,13 +2,91 @@
 
 from __future__ import annotations
 
-from ai_rules.cli.context import CliContext, Component, ComponentResult
+from pathlib import Path
+
+from ai_rules.cli.context import (
+    CliContext,
+    Component,
+    ComponentPlan,
+    ComponentResult,
+    SettingsPlan,
+)
 
 
 class SettingsComponent(Component):
     label = "Settings"
     component_id = "settings"
     filterable = False
+
+    def plan(self, ctx: CliContext) -> SettingsPlan:
+        stale_targets = []
+        for target in ctx.selected_targets:
+            base_path = target._base_settings_path
+            if not base_path.exists():
+                continue
+            if target.needs_cache and (ctx.rebuild_cache or target.is_cache_stale()):
+                stale_targets.append(target)
+
+        excluded_symlinks_to_clean: list[Path] = []
+        for target in ctx.all_targets:
+            if not target.is_settings_file_excluded:
+                continue
+            symlink_target = target.settings_symlink_target
+            if symlink_target is None:
+                continue
+            expanded = symlink_target.expanduser()
+            if expanded.is_symlink():
+                link_dest = expanded.resolve()
+                cache_dir = ctx.config.get_cache_dir()
+                if cache_dir:
+                    try:
+                        link_dest.relative_to(cache_dir)
+                    except ValueError:
+                        continue
+                    excluded_symlinks_to_clean.append(expanded)
+
+        has_changes = bool(stale_targets or excluded_symlinks_to_clean)
+        return SettingsPlan(
+            has_changes=has_changes,
+            stale_targets=stale_targets,
+            excluded_symlinks_to_clean=excluded_symlinks_to_clean,
+        )
+
+    def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        if not isinstance(plan, SettingsPlan):
+            return ComponentResult()
+
+        from ai_rules.cli.runner import get_console
+
+        console = get_console(ctx)
+
+        if ctx.dry_run:
+            return ComponentResult()
+
+        built = 0
+        for target in plan.stale_targets:
+            try:
+                if target.build_merged_settings(force_rebuild=ctx.rebuild_cache):
+                    built += 1
+            except ValueError as exc:
+                console.print(f"[red]Error building {target.name} config:[/red] {exc}")
+                return ComponentResult(ok=False, abort=True, counts={"errors": 1})
+
+        for expanded in plan.excluded_symlinks_to_clean:
+            expanded.unlink()
+
+        orphaned = ctx.config.cleanup_orphaned_cache(
+            {target.target_id for target in ctx.all_targets if target.needs_cache}
+        )
+        if orphaned:
+            console.print(
+                f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
+            )
+
+        return ComponentResult(
+            changed=bool(built or orphaned),
+            counts={"cache_updated": built, "cache_removed": len(orphaned)},
+        )
 
     def install(self, ctx: CliContext) -> ComponentResult:
         if ctx.dry_run:
