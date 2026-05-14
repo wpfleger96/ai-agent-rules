@@ -2,6 +2,26 @@
 
 <!-- version list -->
 
+## v0.48.0 (2026-05-14)
+
+### Bug Fixes
+
+- Address crossfire review findings in session-search skill
+  ([#32](https://github.com/wpfleger96/ai-agent-rules/pull/32),
+  [`8f162ad`](https://github.com/wpfleger96/ai-agent-rules/commit/8f162ad58167014cef298810cc8ae78cee698f55))
+
+### Features
+
+- Add cross-agent session search skill ([#32](https://github.com/wpfleger96/ai-agent-rules/pull/32),
+  [`8f162ad`](https://github.com/wpfleger96/ai-agent-rules/commit/8f162ad58167014cef298810cc8ae78cee698f55))
+
+### Testing
+
+- Add fixture-based tests for session search skill
+  ([#32](https://github.com/wpfleger96/ai-agent-rules/pull/32),
+  [`8f162ad`](https://github.com/wpfleger96/ai-agent-rules/commit/8f162ad58167014cef298810cc8ae78cee698f55))
+
+
 ## v0.47.12 (2026-05-14)
 
 ### Bug Fixes
