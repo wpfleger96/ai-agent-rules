@@ -55,7 +55,7 @@ jobs:
         with:
           github_token: ${{ steps.app-token.outputs.token }}
 
-      - name: Bundle skills ZIP
+      - name: Bundle per-skill ZIPs
         if: steps.release.outputs.released == 'true'
         run: |
           if [ ! -d "src/ai_rules/config/skills" ] || [ -z "$(ls -A src/ai_rules/config/skills)" ]; then
@@ -63,17 +63,18 @@ jobs:
             exit 1
           fi
           cd src/ai_rules/config/skills
-          zip -r "${{ github.workspace }}/skills-bundle.zip" .
+          for skill_dir in */; do
+            skill_name="${skill_dir%/}"
+            zip -r "${{ github.workspace }}/${skill_name}.zip" "$skill_name" -x "*/__pycache__/*"
+          done
 
-      - name: Upload skills bundle to release
+      - name: Upload skill ZIPs to release
         if: steps.release.outputs.released == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           TAG: ${{ steps.release.outputs.tag }}
         run: |
-          gh release upload "$TAG" \
-            "${{ github.workspace }}/skills-bundle.zip" \
-            --clobber
+          gh release upload "$TAG" "${{ github.workspace }}"/*.zip --clobber
 
       - name: Append download links to release notes
         if: steps.release.outputs.released == 'true'
@@ -89,7 +90,15 @@ jobs:
             echo ""
             echo "### Skills Downloads"
             echo ""
-            echo "- **[Download skills ZIP](https://github.com/${REPO}/releases/download/${TAG}/skills-bundle.zip)** — upload to Claude Desktop via Customize > Skills > +"
-            echo "- **[Browse individual skills](https://github.com/${REPO}/tree/${TAG}/src/ai_rules/config/skills)** — view and download specific skills from GitHub"
+            echo "Each ZIP is directly uploadable to Claude Desktop (Customize > Skills > +) or Codex Desktop."
+            echo ""
+            echo "| Skill | Download |"
+            echo "|-------|----------|"
+            for skill_dir in src/ai_rules/config/skills/*/; do
+              skill_name=$(basename "$skill_dir")
+              echo "| \`${skill_name}\` | [${skill_name}.zip](https://github.com/${REPO}/releases/download/${TAG}/${skill_name}.zip) |"
+            done
+            echo ""
+            echo "**[Browse skill source on GitHub](https://github.com/${REPO}/tree/${TAG}/src/ai_rules/config/skills)**"
           } >> /tmp/release-notes.md
           gh release edit "$TAG" --notes-file /tmp/release-notes.md
