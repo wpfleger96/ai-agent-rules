@@ -2,6 +2,46 @@
 
 <!-- version list -->
 
+## v0.50.0 (2026-05-15)
+
+### Bug Fixes
+
+- Correct LSP plugin marketplace source
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+- Deterministic key ordering for all config serialization
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+- Preserve user-contributed settings, remove stale keys, harden schema validation
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+### Features
+
+- Add declarative LSP language server management
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+- Add LSP plugins to personal profile ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+- LSP support, unify settings cache pipeline
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+### Refactoring
+
+- Simplify LSP support to just the env var
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+- Unify settings cache pipeline, fix user-key data loss
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+
 ## v0.49.1 (2026-05-14)
 
 ### Bug Fixes
