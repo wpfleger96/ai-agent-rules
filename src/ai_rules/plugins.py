@@ -123,7 +123,7 @@ class PluginManager:
 
             data = {"plugins": sorted(list(plugins))}
             with open(self.MANAGED_PLUGINS_PATH, "w") as f:
-                json.dump(data, f, indent=2)
+                json.dump(data, f, indent=2, sort_keys=True)
             with open(self.MANAGED_PLUGINS_PATH, "a") as f:
                 f.write("\n")
         except Exception:
@@ -214,7 +214,7 @@ class PluginManager:
             settings["enabledPlugins"][plugin_key] = True
 
             with open(self.SETTINGS_PATH, "w") as f:
-                json.dump(settings, f, indent=2)
+                json.dump(settings, f, indent=2, sort_keys=True)
             with open(self.SETTINGS_PATH, "a") as f:
                 f.write("\n")
 
@@ -243,7 +243,7 @@ class PluginManager:
             del plugins[plugin_key]
 
             with open(self.INSTALLED_PLUGINS_PATH, "w") as f:
-                json.dump(installed_data, f, indent=2)
+                json.dump(installed_data, f, indent=2, sort_keys=True)
             with open(self.INSTALLED_PLUGINS_PATH, "a") as f:
                 f.write("\n")
 
@@ -258,7 +258,7 @@ class PluginManager:
                     del settings["enabledPlugins"][plugin_key]
 
                     with open(self.SETTINGS_PATH, "w") as f:
-                        json.dump(settings, f, indent=2)
+                        json.dump(settings, f, indent=2, sort_keys=True)
                     with open(self.SETTINGS_PATH, "a") as f:
                         f.write("\n")
 

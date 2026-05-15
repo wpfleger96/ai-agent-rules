@@ -279,12 +279,12 @@ def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
             expected_parsed = json.loads("".join(expected_lines))
             if actual_parsed == expected_parsed:
                 return None
-            actual_lines = (json.dumps(actual_parsed, indent=2) + "\n").splitlines(
-                keepends=True
-            )
-            expected_lines = (json.dumps(expected_parsed, indent=2) + "\n").splitlines(
-                keepends=True
-            )
+            actual_lines = (
+                json.dumps(actual_parsed, indent=2, sort_keys=True) + "\n"
+            ).splitlines(keepends=True)
+            expected_lines = (
+                json.dumps(expected_parsed, indent=2, sort_keys=True) + "\n"
+            ).splitlines(keepends=True)
         except (json.JSONDecodeError, ValueError):
             pass
 

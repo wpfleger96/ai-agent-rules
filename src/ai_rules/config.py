@@ -200,6 +200,13 @@ def write_file_atomic(
         raise
 
 
+def _sort_dict(data: dict[str, Any]) -> dict[str, Any]:
+    """Recursively sort dict keys for deterministic serialization."""
+    return {
+        k: _sort_dict(v) if isinstance(v, dict) else v for k, v in sorted(data.items())
+    }
+
+
 def dump_config_file(path: Path, data: dict[str, Any], config_format: str) -> None:
     """Write a config file based on format.
 
@@ -215,15 +222,15 @@ def dump_config_file(path: Path, data: dict[str, Any], config_format: str) -> No
     _validate_for_format(data, config_format)
     path.parent.mkdir(parents=True, exist_ok=True)
     if config_format == "toml":
-        write_file_atomic(path, lambda f: tomli_w.dump(data, f), binary=True)
+        write_file_atomic(
+            path, lambda f: tomli_w.dump(_sort_dict(data), f), binary=True
+        )
     elif config_format == "json":
-        write_file_atomic(path, lambda f: json.dump(data, f, indent=2))
+        write_file_atomic(path, lambda f: json.dump(data, f, indent=2, sort_keys=True))
     elif config_format == "yaml":
         write_file_atomic(
             path,
-            lambda f: yaml.safe_dump(
-                data, f, default_flow_style=False, sort_keys=False
-            ),
+            lambda f: yaml.safe_dump(data, f, default_flow_style=False, sort_keys=True),
         )
     else:
         raise ValueError(f"Unsupported config format: {config_format}")
@@ -459,7 +466,7 @@ class ManagedFieldsTracker:
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.path, "w") as f:
-                json.dump(self._data, f, indent=2)
+                json.dump(self._data, f, indent=2, sort_keys=True)
                 f.write("\n")
         except Exception:
             pass
@@ -862,7 +869,7 @@ class Config:
         user_config_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(user_config_path, "w") as f:
-            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+            yaml.dump(data, f, default_flow_style=False, sort_keys=True)
 
     def cleanup_orphaned_cache(self, agents_needing_cache: set[str]) -> list[str]:
         """Remove cache files for agents that no longer need them.

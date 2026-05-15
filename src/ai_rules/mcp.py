@@ -149,8 +149,8 @@ class MCPManager(ABC):
         """Format a unified diff between expected and installed MCP config."""
         import difflib
 
-        expected_json = json.dumps(expected, indent=2)
-        installed_json = json.dumps(installed, indent=2)
+        expected_json = json.dumps(expected, indent=2, sort_keys=True)
+        installed_json = json.dumps(installed, indent=2, sort_keys=True)
 
         diff = difflib.unified_diff(
             expected_json.splitlines(keepends=True),
@@ -166,7 +166,7 @@ class MCPManager(ABC):
         """Format expected MCP config for pending installation."""
         marker = self._marker_field
         display_config = {k: v for k, v in expected.items() if k != marker}
-        config_json = json.dumps(display_config, indent=2)
+        config_json = json.dumps(display_config, indent=2, sort_keys=True)
 
         lines = ["[dim]    Will be installed with:[/dim]"]
         for line in config_json.splitlines():
@@ -343,7 +343,7 @@ class ClaudeMCPManager(MCPManager):
         }
 
     def _write_json_atomic(self, path: Path, data: dict[str, Any]) -> None:
-        write_file_atomic(path, lambda f: json.dump(data, f, indent=2))
+        write_file_atomic(path, lambda f: json.dump(data, f, indent=2, sort_keys=True))
 
     @property
     def CLAUDE_JSON(self) -> Path:
@@ -414,7 +414,7 @@ class GooseMCPManager(MCPManager):
         full = self._load_full_config()
         full["extensions"] = mcps
         with open(self._config_path, "w") as f:
-            yaml.safe_dump(full, f, default_flow_style=False, sort_keys=False)
+            yaml.safe_dump(full, f, default_flow_style=False, sort_keys=True)
 
     def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -600,7 +600,9 @@ class GeminiMCPManager(MCPManager):
         self._config_path.parent.mkdir(parents=True, exist_ok=True)
         full = self._load_full_config()
         full["mcpServers"] = mcps
-        write_file_atomic(self._config_path, lambda f: json.dump(full, f, indent=2))
+        write_file_atomic(
+            self._config_path, lambda f: json.dump(full, f, indent=2, sort_keys=True)
+        )
 
     def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
         result: dict[str, Any] = {}
@@ -650,7 +652,9 @@ class AmpMCPManager(MCPManager):
         self._config_path.parent.mkdir(parents=True, exist_ok=True)
         full = self._load_full_config()
         full["amp.mcpServers"] = mcps
-        write_file_atomic(self._config_path, lambda f: json.dump(full, f, indent=2))
+        write_file_atomic(
+            self._config_path, lambda f: json.dump(full, f, indent=2, sort_keys=True)
+        )
 
     def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
         result: dict[str, Any] = {}

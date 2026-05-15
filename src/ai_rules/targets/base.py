@@ -357,25 +357,25 @@ class ConfigTarget(ABC):
             return None
 
         if config_format == "json":
-            current_text = json.dumps(current_settings, indent=2)
-            expected_text = json.dumps(expected, indent=2)
+            current_text = json.dumps(current_settings, indent=2, sort_keys=True)
+            expected_text = json.dumps(expected, indent=2, sort_keys=True)
         elif config_format == "yaml":
             current_text = yaml.dump(
-                current_settings, default_flow_style=False, sort_keys=False
+                current_settings, default_flow_style=False, sort_keys=True
             )
             expected_text = yaml.dump(
-                expected, default_flow_style=False, sort_keys=False
+                expected, default_flow_style=False, sort_keys=True
             )
         elif config_format == "toml":
-            from ai_rules.config import _validate_for_format
+            from ai_rules.config import _sort_dict, _validate_for_format
 
             try:
                 _validate_for_format(current_settings, "toml")
                 _validate_for_format(expected, "toml")
             except ValueError as exc:
                 return f"[red]Config contains invalid values:[/red] {exc}"
-            current_text = tomli_w.dumps(current_settings)
-            expected_text = tomli_w.dumps(expected)
+            current_text = tomli_w.dumps(_sort_dict(current_settings))
+            expected_text = tomli_w.dumps(_sort_dict(expected))
         else:
             return None
 
