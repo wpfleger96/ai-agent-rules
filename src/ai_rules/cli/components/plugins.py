@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from rich.console import Console
-
 from ai_rules.cli.context import (
     CliContext,
     Component,
@@ -69,8 +64,6 @@ class ClaudePluginComponent(Component):
         for warning in warnings:
             console.print(f"[yellow]⚠[/yellow] {warning}")
 
-        self._check_lsp_binaries(ctx, console)
-
         return ComponentResult(
             changed=plugin_result in (OperationResult.SUCCESS, OperationResult.DRY_RUN),
             counts={"plugin_errors": int(plugin_result == OperationResult.ERROR)},
@@ -111,30 +104,10 @@ class ClaudePluginComponent(Component):
         for warning in warnings:
             ctx.console.print(f"[yellow]⚠[/yellow] {warning}")
 
-        self._check_lsp_binaries(ctx, ctx.console)
-
         return ComponentResult(
             changed=plugin_result in (OperationResult.SUCCESS, OperationResult.DRY_RUN),
             counts={"plugin_errors": int(plugin_result == OperationResult.ERROR)},
         )
-
-    @staticmethod
-    def _check_lsp_binaries(ctx: CliContext, console: Console) -> None:
-        if not ctx.config.lsp:
-            return
-
-        from ai_rules.lsp import LSP_REGISTRY, check_binaries
-
-        results = check_binaries(ctx.config.lsp)
-        for lang, binary, path in results:
-            if path:
-                console.print(f"[dim]○[/dim] LSP binary [bold]{binary}[/bold] found")
-            else:
-                hint = LSP_REGISTRY[lang].install_hint
-                console.print(
-                    f"[yellow]⚠[/yellow] LSP binary [bold]{binary}[/bold] not found. "
-                    f"Install with: [dim]{hint}[/dim]"
-                )
 
     def status(self, ctx: CliContext) -> ComponentResult:
         if not self._claude_selected(ctx):

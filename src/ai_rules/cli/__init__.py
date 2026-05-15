@@ -345,7 +345,6 @@ def _register_commands() -> None:
     from ai_rules.cli.groups.completions import completions
     from ai_rules.cli.groups.config import config
     from ai_rules.cli.groups.exclude import exclude
-    from ai_rules.cli.groups.lsp import lsp
     from ai_rules.cli.groups.override import override
     from ai_rules.cli.groups.profile import profile
     from ai_rules.cli.groups.skill import skill
@@ -366,7 +365,6 @@ def _register_commands() -> None:
     main.add_command(completions)
     main.add_command(skill)
     main.add_command(tool)
-    main.add_command(lsp)
 
 
 _register_commands()

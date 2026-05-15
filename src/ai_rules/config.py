@@ -559,7 +559,6 @@ class Config:
         plugins: list[dict[str, str]] | None = None,
         marketplaces: list[dict[str, str]] | None = None,
         managed_tools: dict[str, Any] | None = None,
-        lsp: list[str] | None = None,
     ):
         self.exclude_symlinks = set(exclude_symlinks or [])
         self.settings_overrides = settings_overrides or {}
@@ -568,7 +567,6 @@ class Config:
         self.plugins = plugins or []
         self.marketplaces = marketplaces or []
         self.managed_tools = managed_tools or {}
-        self.lsp = lsp or []
 
     def get_plugin_configs(self) -> list[PluginConfig]:
         """Convert plugin dicts to PluginConfig objects."""
@@ -635,7 +633,6 @@ class Config:
         plugins = copy.deepcopy(profile_data.plugins)
         marketplaces = copy.deepcopy(profile_data.marketplaces)
         managed_tools = copy.deepcopy(profile_data.managed_tools)
-        lsp = list(profile_data.lsp)
 
         user_config_path = get_user_config_path()
         if user_config_path.exists():
@@ -669,40 +666,6 @@ class Config:
             if user_managed_tools:
                 managed_tools = deep_merge(managed_tools, user_managed_tools)
 
-            user_lsp = user_data.get("lsp", [])
-            if user_lsp:
-                if not isinstance(user_lsp, list):
-                    raise ValueError(
-                        f"User config: 'lsp' must be a list, got {type(user_lsp).__name__}"
-                    )
-                for i, lang in enumerate(user_lsp):
-                    if not isinstance(lang, str):
-                        raise ValueError(
-                            f"User config: lsp[{i}] must be a string, got {type(lang).__name__}"
-                        )
-                lsp = list(dict.fromkeys(lsp + user_lsp))
-
-        if lsp:
-            from ai_rules.lsp import resolve_languages
-
-            lsp_plugins, lsp_marketplaces = resolve_languages(lsp)
-
-            plugins_by_name = {p["name"]: p for p in plugins}
-            for plugin in lsp_plugins:
-                if plugin["name"] not in plugins_by_name:
-                    plugins_by_name[plugin["name"]] = plugin
-            plugins = list(plugins_by_name.values())
-
-            marketplaces_by_name = {m["name"]: m for m in marketplaces}
-            for marketplace in lsp_marketplaces:
-                if marketplace["name"] not in marketplaces_by_name:
-                    marketplaces_by_name[marketplace["name"]] = marketplace
-            marketplaces = list(marketplaces_by_name.values())
-
-            claude_overrides = settings_overrides.setdefault("claude", {})
-            claude_env = claude_overrides.setdefault("env", {})
-            claude_env.setdefault("ENABLE_LSP_TOOL", "1")
-
         return cls(
             exclude_symlinks=exclude_symlinks,
             settings_overrides=settings_overrides,
@@ -711,7 +674,6 @@ class Config:
             plugins=plugins,
             marketplaces=marketplaces,
             managed_tools=managed_tools,
-            lsp=lsp,
         )
 
     def get_tool_install_source(self, tool_id: str) -> str | None:

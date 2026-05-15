@@ -23,7 +23,6 @@ class Profile:
     plugins: list[dict[str, str]] = field(default_factory=list)
     marketplaces: list[dict[str, str]] = field(default_factory=list)
     managed_tools: dict[str, Any] = field(default_factory=dict)
-    lsp: list[str] = field(default_factory=list)
 
 
 class ProfileError(Exception):
@@ -128,7 +127,6 @@ class ProfileLoader:
             plugins=data.get("plugins", []),
             marketplaces=data.get("marketplaces", []),
             managed_tools=data.get("managed_tools", {}),
-            lsp=data.get("lsp", []),
         )
 
         if profile.extends:
@@ -185,14 +183,6 @@ class ProfileLoader:
             raise ProfileError(
                 f"Profile '{profile_name}': managed_tools must be a dict"
             )
-        if "lsp" in data:
-            if not isinstance(data["lsp"], list):
-                raise ProfileError(f"Profile '{profile_name}': lsp must be a list")
-            for i, lang in enumerate(data["lsp"]):
-                if not isinstance(lang, str):
-                    raise ProfileError(
-                        f"Profile '{profile_name}': lsp[{i}] must be a string"
-                    )
 
     def _merge_profiles(self, parent: Profile, child: Profile) -> Profile:
         """Merge parent profile into child, with child taking precedence."""
@@ -218,8 +208,6 @@ class ProfileLoader:
 
         merged_managed_tools = deep_merge(parent.managed_tools, child.managed_tools)
 
-        merged_lsp = list(dict.fromkeys(parent.lsp + child.lsp))
-
         return Profile(
             name=child.name,
             description=child.description,
@@ -230,7 +218,6 @@ class ProfileLoader:
             plugins=merged_plugins,
             marketplaces=merged_marketplaces,
             managed_tools=merged_managed_tools,
-            lsp=merged_lsp,
         )
 
     def get_profile_info(self, name: str) -> dict[str, Any]:
