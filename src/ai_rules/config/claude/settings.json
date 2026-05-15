@@ -122,11 +122,6 @@
     ],
     "deny": [
       "Bash(gh pr merge:*)",
-      "Bash(git push --force:*)",
-      "Bash(git reset:*)",
-      "Bash(git revert:*)",
-      "Bash(git stash drop:*)",
-      "Bash(rm -f:*)",
       "Bash(rm -r:*)"
     ],
     "defaultMode": "plan"
