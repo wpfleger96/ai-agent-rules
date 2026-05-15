@@ -222,12 +222,14 @@ def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
     if actual_path.is_dir() and expected_path.is_dir():
         diffs = []
         actual_files = {
-            p.relative_to(actual_path): p for p in actual_path.rglob("*") if p.is_file()
+            p.relative_to(actual_path): p
+            for p in actual_path.rglob("*")
+            if p.is_file() and "__pycache__" not in p.parts
         }
         expected_files = {
             p.relative_to(expected_path): p
             for p in expected_path.rglob("*")
-            if p.is_file()
+            if p.is_file() and "__pycache__" not in p.parts
         }
 
         all_files = set(actual_files.keys()) | set(expected_files.keys())

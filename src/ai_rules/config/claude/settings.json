@@ -141,6 +141,5 @@
   "alwaysThinkingEnabled": true,
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
-  "skipAutoPermissionPrompt": true,
   "hooks": {}
 }

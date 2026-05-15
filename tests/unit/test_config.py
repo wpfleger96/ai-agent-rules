@@ -877,6 +877,130 @@ settings_overrides:
 
 @pytest.mark.unit
 @pytest.mark.config
+class TestUserContributedKeysPreservation:
+    """Test that user-contributed keys (e.g., from Claude Code UI) survive cache rebuilds."""
+
+    def test_user_key_preserved_on_rebuild(self, tmp_path, monkeypatch):
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(
+            json.dumps({"model": "base", "verbose": True, "hooks": {}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"model": "new"}})
+        agent = ClaudeAgent(config_dir, config)
+        result_path = agent.build_merged_settings(force_rebuild=True)
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert result["model"] == "new"
+        assert result["verbose"] is True
+
+    def test_stale_airules_key_dropped_on_rebuild(self, tmp_path, monkeypatch):
+        import json
+
+        from ai_rules.config import ManagedFieldsTracker
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        tracker = ManagedFieldsTracker()
+        tracker.set_field_contributions(
+            "_contributed_keys",
+            ["autoCompactEnabled", "hooks", "model"],
+        )
+        tracker.save()
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(
+            json.dumps(
+                {
+                    "model": "base",
+                    "autoCompactEnabled": False,
+                    "hooks": {},
+                }
+            )
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"model": "new"}})
+        agent = ClaudeAgent(config_dir, config)
+        result_path = agent.build_merged_settings(force_rebuild=True)
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert result["model"] == "new"
+        assert "autoCompactEnabled" not in result
+
+    def test_first_install_preserves_all_unknown_keys(self, tmp_path, monkeypatch):
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(
+            json.dumps(
+                {
+                    "model": "base",
+                    "verbose": True,
+                    "autoCompactEnabled": False,
+                    "hooks": {},
+                }
+            )
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"model": "new"}})
+        agent = ClaudeAgent(config_dir, config)
+        result_path = agent.build_merged_settings(force_rebuild=True)
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert result["verbose"] is True
+        assert result["autoCompactEnabled"] is False
+
+
+@pytest.mark.unit
+@pytest.mark.config
 class TestPathParsing:
     """Test setting path parsing with array notation."""
 

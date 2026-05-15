@@ -163,41 +163,54 @@ class ConfigTarget(ABC):
 
             preserved = self._effective_preserved_fields
 
-            # JSON targets: use ManagedFieldsTracker for granular cleanup on
-            # profile switch (e.g. removing stale hook entries)
             tracker = ManagedFieldsTracker() if config_format == "json" else None
+            existing: dict[str, Any] | None = None
 
-            if cache_path.exists() and preserved:
+            if cache_path.exists():
                 try:
                     existing = load_config_file(cache_path, config_format)
-
-                    if tracker:
-                        existing = tracker.cleanup_stale_entries(
-                            existing, merged, preserved
-                        )
-
-                    for field in preserved:
-                        if field in existing:
-                            if isinstance(merged.get(field), dict) and isinstance(
-                                existing[field], dict
-                            ):
-                                merged[field] = deep_merge(
-                                    merged[field], existing[field]
-                                )
-                            else:
-                                merged[field] = existing[field]
                 except CONFIG_PARSE_ERRORS:
-                    pass
+                    existing = None
+
+            if existing is not None and preserved:
+                if tracker:
+                    existing = tracker.cleanup_stale_entries(
+                        existing, merged, preserved
+                    )
+
+                for field in preserved:
+                    if field in existing:
+                        if isinstance(merged.get(field), dict) and isinstance(
+                            existing[field], dict
+                        ):
+                            merged[field] = deep_merge(merged[field], existing[field])
+                        else:
+                            merged[field] = existing[field]
+
+            if existing is not None and tracker is not None:
+                previously_contributed = set(
+                    tracker.get_field_contributions("_contributed_keys") or []
+                )
+                for key in existing:
+                    if key in merged or key in preserved:
+                        continue
+                    if key in previously_contributed:
+                        continue
+                    merged[key] = existing[key]
 
             self._merge_managed_mcps(merged)
 
-            if tracker and preserved:
-                for field in preserved:
-                    merged_value = merged.get(field)
-                    if merged_value:
-                        tracker.set_field_contributions(field, merged_value)
-                    else:
-                        tracker.set_field_contributions(field, None)
+            if tracker:
+                if preserved:
+                    for field in preserved:
+                        merged_value = merged.get(field)
+                        if merged_value:
+                            tracker.set_field_contributions(field, merged_value)
+                        else:
+                            tracker.set_field_contributions(field, None)
+                tracker.set_field_contributions(
+                    "_contributed_keys", sorted(merged.keys())
+                )
                 tracker.save()
 
             try:
@@ -306,6 +319,17 @@ class ConfigTarget(ABC):
         for field in mcp_preserved:
             current_copy.pop(field, None)
             expected_copy.pop(field, None)
+
+        if config_format == "json" and cache_exists:
+            from ai_rules.config import ManagedFieldsTracker
+
+            tracker = ManagedFieldsTracker()
+            previously_contributed = set(
+                tracker.get_field_contributions("_contributed_keys") or []
+            )
+            for key in list(current_copy.keys()):
+                if key not in expected_copy and key not in previously_contributed:
+                    current_copy.pop(key)
 
         for field in static_preserved:
             profile_value = expected_copy.get(field)
