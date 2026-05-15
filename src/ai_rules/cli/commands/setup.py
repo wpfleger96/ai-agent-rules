@@ -48,7 +48,7 @@ def setup(
         get_tool_by_id,
         perform_tool_upgrade,
     )
-    from ai_rules.cli.display import console, print_error, print_warning
+    from ai_rules.cli.display import console, print_error, print_hint, print_warning
 
     console.print("[bold cyan]Step 1/3: Install ai-agent-rules system-wide[/bold cyan]")
     console.print("This allows you to run 'ai-agent-rules' from any directory.\n")
@@ -81,9 +81,7 @@ def setup(
         if dry_run and statusline_message:
             console.print(f"[dim]{statusline_message}[/dim]")
     elif statusline_result == "failed":
-        console.print(
-            "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)"
-        )
+        print_warning("Failed to install claude-statusline (continuing anyway)")
 
     ai_rules_tool = get_tool_by_id("ai-agent-rules")
     tool_install_success = False
@@ -174,8 +172,8 @@ def setup(
     if not tool_install_success:
         if not yes and not dry_run:
             if not click.confirm("Install ai-agent-rules permanently?", default=True):
-                console.print(
-                    "\n[yellow]Skipped.[/yellow] You can still run via: uvx ai-agent-rules <command>"
+                print_warning(
+                    "Skipped. You can still run via: uvx ai-agent-rules <command>"
                 )
                 return
 
@@ -269,7 +267,7 @@ def setup(
                     if success:
                         console.print(f"[green]✓[/green] {msg}")
                     else:
-                        console.print(f"[yellow]⚠[/yellow] {msg}")
+                        print_warning(msg)
                 else:
                     console.print(
                         f"[green]✓[/green] {shell} completion already installed"
@@ -283,7 +281,7 @@ def setup(
                 if success:
                     console.print(f"[green]✓[/green] {msg}")
                 else:
-                    console.print(f"[yellow]⚠[/yellow] {msg}")
+                    print_warning(msg)
         else:
             supported = ", ".join(get_supported_shells())
             console.print(
@@ -291,7 +289,7 @@ def setup(
             )
 
     if dry_run:
-        console.print("\n[dim]Dry run complete - no changes were made.[/dim]")
+        print_hint("Dry run complete - no changes were made.")
     else:
         console.print("\n[green]✓ Setup complete![/green]")
         console.print(

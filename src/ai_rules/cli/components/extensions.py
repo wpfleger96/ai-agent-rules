@@ -24,6 +24,7 @@ class ClaudeExtensionsComponent(Component):
             return ComponentResult()
 
         from ai_rules.claude_extensions import ClaudeExtensionManager
+        from ai_rules.cli.display import print_error
         from ai_rules.symlinks import SymlinkResult, create_symlink
 
         ext_manager = ClaudeExtensionManager(ctx.config_dir)
@@ -71,7 +72,7 @@ class ClaudeExtensionsComponent(Component):
                     )
                     skipped += 1
                 elif result == SymlinkResult.ERROR:
-                    ctx.console.print(f"  [red]✗[/red] {target_path}: {message}")
+                    print_error(f"{target_path}: {message}", indent=2)
                     errors += 1
 
         return ComponentResult(
@@ -119,6 +120,7 @@ class ClaudeExtensionsComponent(Component):
         if not isinstance(plan, ClaudeExtensionsPlan):
             return ComponentResult()
 
+        from ai_rules.cli.display import print_error
         from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import SymlinkResult, create_symlink
 
@@ -157,7 +159,7 @@ class ClaudeExtensionsComponent(Component):
                 )
                 skipped += 1
             elif result == SymlinkResult.ERROR:
-                console.print(f"  [red]✗[/red] {target_path}: {message}")
+                print_error(f"{target_path}: {message}", indent=2)
                 errors += 1
 
         return ComponentResult(

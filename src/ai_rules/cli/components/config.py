@@ -29,9 +29,10 @@ def _display_symlink_status(
 ) -> bool:
     from rich.console import Console
 
+    from ai_rules.cli.display import get_console
     from ai_rules.symlinks import get_content_diff
 
-    active_console: Console = console if isinstance(console, Console) else Console()
+    active_console: Console = console if isinstance(console, Console) else get_console()
 
     target_str = str(target)
     if source.is_dir():
@@ -112,6 +113,7 @@ class ConfigComponent(Component):
             return ComponentResult()
 
         from ai_rules.cli import cleanup_deprecated_symlinks
+        from ai_rules.cli.display import print_error
         from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import SymlinkResult, create_symlink
 
@@ -137,7 +139,7 @@ class ConfigComponent(Component):
                 console.print(f"  [yellow]○[/yellow] {target} [dim](skipped)[/dim]")
                 skipped += 1
             elif result == SymlinkResult.ERROR:
-                console.print(f"  [red]✗[/red] {target}: {message}")
+                print_error(f"{target}: {message}", indent=2)
                 errors += 1
 
         cleanup_deprecated_symlinks(
@@ -159,6 +161,7 @@ class ConfigComponent(Component):
 
     def install(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.cli import cleanup_deprecated_symlinks
+        from ai_rules.cli.display import print_error
         from ai_rules.symlinks import SymlinkResult, create_symlink
 
         created = updated = unchanged = skipped = excluded = errors = 0
@@ -204,7 +207,7 @@ class ConfigComponent(Component):
                     )
                     skipped += 1
                 elif result == SymlinkResult.ERROR:
-                    ctx.console.print(f"  [red]✗[/red] {target}: {message}")
+                    print_error(f"{target}: {message}", indent=2)
                     errors += 1
 
         cleanup_deprecated_symlinks(
@@ -260,6 +263,7 @@ class ConfigComponent(Component):
         return ComponentResult(ok=all_correct, changed=not all_correct)
 
     def diff(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.display import print_error, print_warning
         from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import check_symlink, get_content_diff
 
@@ -331,20 +335,20 @@ class ConfigComponent(Component):
                     content_diff,
                 ) in target_diffs:
                     if diff_type == "missing":
-                        console.print(f"  [red]✗[/red] {path}")
+                        print_error(str(path), indent=2)
                         console.print(f"    [dim]{desc}[/dim]")
                         console.print(f"    [dim]Expected: → {expected_source}[/dim]")
                     elif diff_type == "broken":
-                        console.print(f"  [red]✗[/red] {path}")
+                        print_error(str(path), indent=2)
                         console.print(f"    [dim]{desc}[/dim]")
                     elif diff_type == "wrong":
-                        console.print(f"  [yellow]⚠[/yellow] {path}")
+                        print_warning(str(path), indent=2)
                         console.print(f"    [dim]{desc}[/dim]")
                         console.print(f"    [dim]Expected: → {expected_source}[/dim]")
                         if content_diff:
                             console.print(content_diff)
                     elif diff_type == "file":
-                        console.print(f"  [yellow]⚠[/yellow] {path}")
+                        print_warning(str(path), indent=2)
                         console.print(f"    [dim]{desc}[/dim]")
                         console.print(f"    [dim]Expected: → {expected_source}[/dim]")
                         if content_diff:

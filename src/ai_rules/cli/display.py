@@ -48,17 +48,17 @@ def get_console() -> Console:
     return _console_override.get() or _real_console
 
 
-def print_error(message: str) -> None:
-    get_console().print(f"[red]✗[/red] {message}")
+def print_error(message: str, *, indent: int = 0) -> None:
+    get_console().print(f"{' ' * indent}[red]✗[/red] {message}")
 
 
-def print_warning(message: str) -> None:
-    get_console().print(f"[yellow]⚠[/yellow] {message}")
+def print_warning(message: str, *, indent: int = 0) -> None:
+    get_console().print(f"{' ' * indent}[yellow]⚠[/yellow] {message}")
 
 
-def print_info(message: str) -> None:
-    get_console().print(f"[blue]ℹ[/blue] {message}")
+def print_info(message: str, *, indent: int = 0) -> None:
+    get_console().print(f"{' ' * indent}[blue]ℹ[/blue] {message}")
 
 
-def print_hint(message: str) -> None:
-    get_console().print(f"[yellow]💡[/yellow] {message}")
+def print_hint(message: str, *, indent: int = 0) -> None:
+    get_console().print(f"{' ' * indent}[yellow]💡[/yellow] {message}")

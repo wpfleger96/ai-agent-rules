@@ -67,7 +67,7 @@ def upgrade(
     missing_tools = [t for t in all_tools if not t.is_installed()]
 
     for tool in missing_tools:
-        console.print(f"[yellow]⚠[/yellow] {tool.display_name} is not installed")
+        print_warning(f"{tool.display_name} is not installed")
 
     if missing_tools and not check:
         if yes or click.confirm("\nReinstall missing tools?", default=True):
@@ -90,9 +90,9 @@ def upgrade(
 
     if not tools:
         if only:
-            console.print(f"[yellow]⚠[/yellow] Tool '{only}' is not installed")
+            print_warning(f"Tool '{only}' is not installed")
         else:
-            console.print("[yellow]⚠[/yellow] No tools are installed")
+            print_warning("No tools are installed")
         sys.exit(1)
 
     tool_updates = []
@@ -145,7 +145,7 @@ def upgrade(
 
     if check:
         if tool_updates:
-            console.print("\nRun [bold]ai-agent-rules upgrade[/bold] to install")
+            print_hint("Run 'ai-agent-rules upgrade' to install")
         return
 
     if not force and not yes:
@@ -175,8 +175,8 @@ def upgrade(
                 if tool.tool_id == "ai-agent-rules":
                     ai_rules_upgraded = True
             elif new_version == update_info.current_version:
-                console.print(
-                    f"[yellow]⚠[/yellow] {tool.display_name} upgrade reported success but version unchanged ({new_version})"
+                print_warning(
+                    f"{tool.display_name} upgrade reported success but version unchanged ({new_version})"
                 )
             else:
                 console.print(
@@ -216,15 +216,13 @@ def upgrade(
             if result.returncode == 0:
                 console.print("[dim]✓ Install completed successfully[/dim]")
             else:
-                console.print(
-                    f"[yellow]⚠[/yellow] Install failed with exit code {result.returncode}"
-                )
+                print_warning(f"Install failed with exit code {result.returncode}")
                 print_hint(
                     "Run 'ai-agent-rules install --rebuild-cache' manually to retry"
                 )
         except subprocess.TimeoutExpired:
-            console.print("[yellow]⚠[/yellow] Install timed out after 30 seconds")
+            print_warning("Install timed out after 30 seconds")
             print_hint("Run 'ai-agent-rules install --rebuild-cache' manually to retry")
         except Exception as e:
-            console.print(f"[yellow]⚠[/yellow] Could not run install: {e}")
+            print_warning(f"Could not run install: {e}")
             print_hint("Run 'ai-agent-rules install --rebuild-cache' manually")

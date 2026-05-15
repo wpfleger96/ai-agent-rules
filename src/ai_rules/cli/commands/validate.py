@@ -37,7 +37,7 @@ def validate(agents: str | None, component_filter: str | None) -> None:
     """Validate configuration and source files."""
     from ai_rules.cli.components import VALIDATE_COMPONENTS
     from ai_rules.cli.context import CliContext
-    from ai_rules.cli.display import console
+    from ai_rules.cli.display import console, print_error
     from ai_rules.cli.runner import run_validate_parallel
     from ai_rules.config import Config
 
@@ -69,5 +69,5 @@ def validate(agents: str | None, component_filter: str | None) -> None:
     if result.ok:
         console.print("[green]All source files are valid![/green]")
     else:
-        console.print(f"[red]Found {total_issues} issue(s)[/red]")
+        print_error(f"Found {total_issues} issue(s)")
         sys.exit(1)

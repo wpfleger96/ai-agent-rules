@@ -206,7 +206,7 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
         param: Click parameter
         value: Whether --version flag was provided
     """
-    from ai_rules.cli.display import console
+    from ai_rules.cli.display import console, print_hint
 
     if not value or ctx.resilient_parsing:
         return
@@ -251,7 +251,7 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
                 console.print(
                     f"\n[cyan]Update available:[/cyan] {update_info.current_version} → {update_info.latest_version}"
                 )
-                console.print("[dim]Run 'ai-agent-rules upgrade' to install[/dim]")
+                print_hint("Run 'ai-agent-rules upgrade' to install")
     except Exception as e:
         logger.debug(f"Failed to check for updates in version callback: {e}")
 

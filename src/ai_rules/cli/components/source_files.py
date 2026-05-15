@@ -11,6 +11,7 @@ class SourceFilesComponent(Component):
     component_id = "source-files"
 
     def validate(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.display import print_error
         from ai_rules.cli.runner import get_console
 
         console = get_console(ctx)
@@ -45,7 +46,7 @@ class SourceFilesComponent(Component):
                 )
 
             for path, issue in target_issues:
-                console.print(f"  [red]✗[/red] {path}")
+                print_error(str(path), indent=2)
                 console.print(f"    [dim]{issue}[/dim]")
                 total_issues += 1
 

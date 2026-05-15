@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from rich.prompt import Confirm
+import click
 
 from ai_rules.agents.base import Agent
 from ai_rules.cli.context import (
@@ -55,10 +55,12 @@ class MCPComponent(Component):
                         diff = mgr.format_diff(conflict_name, expected, installed)
                         ctx.console.print(f"\n{diff}\n")
 
-                if not ctx.dry_run and not Confirm.ask(
+                if not ctx.dry_run and not click.confirm(
                     "Overwrite local changes?", default=False
                 ):
-                    ctx.console.print("[yellow]Skipped MCP installation[/yellow]")
+                    from ai_rules.cli.display import print_warning
+
+                    print_warning("Skipped MCP installation")
                     skipped += 1
                 else:
                     result, message, _ = target.install_mcps(
@@ -72,7 +74,9 @@ class MCPComponent(Component):
             elif result == OperationResult.ALREADY_INSTALLED:
                 ctx.console.print(f"  [dim]○ {target.name}: {message}[/dim]")
             elif result != OperationResult.NOT_FOUND:
-                ctx.console.print(f"  [yellow]⚠[/yellow] {target.name}: {message}")
+                from ai_rules.cli.display import print_warning
+
+                print_warning(f"{target.name}: {message}", indent=2)
                 errors += 1
 
         return ComponentResult(
@@ -163,7 +167,9 @@ class MCPComponent(Component):
             elif result == OperationResult.ALREADY_INSTALLED:
                 console.print(f"  [dim]○ {target.name}: {message}[/dim]")
             elif result != OperationResult.NOT_FOUND:
-                console.print(f"  [yellow]⚠[/yellow] {target.name}: {message}")
+                from ai_rules.cli.display import print_warning
+
+                print_warning(f"{target.name}: {message}", indent=2)
                 errors += 1
 
         return ComponentResult(

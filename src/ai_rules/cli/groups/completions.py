@@ -148,7 +148,7 @@ def completions_status() -> None:
     """Show shell completion installation status."""
     from rich.table import Table
 
-    from ai_rules.cli.display import console
+    from ai_rules.cli.display import console, print_warning
     from ai_rules.completions import (
         detect_shell,
         find_config_file,
@@ -161,7 +161,7 @@ def completions_status() -> None:
     if detected_shell:
         console.print(f"Detected shell: [cyan]{detected_shell}[/cyan]\n")
     else:
-        console.print("[yellow]No supported shell detected[/yellow]\n")
+        print_warning("No supported shell detected")
 
     table = Table(show_header=True)
     table.add_column("Shell")

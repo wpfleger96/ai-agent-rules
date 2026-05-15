@@ -154,7 +154,7 @@ def format_summary(
     unchanged: int = 0,
 ) -> None:
     """Format and print operation summary."""
-    from ai_rules.cli.display import console
+    from ai_rules.cli.display import console, print_error
 
     console.print()
 
@@ -196,4 +196,4 @@ def format_summary(
         console.print(f"  ({excluded} excluded by config)")
 
     if errors > 0:
-        console.print(f"  [red]{errors} error(s)[/red]")
+        print_error(f"{errors} error(s)", indent=2)

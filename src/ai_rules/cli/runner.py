@@ -117,19 +117,23 @@ def run_install(
             return acc.to_result()
 
     if not ctx.yes and not ctx.dry_run:
-        from rich.prompt import Confirm
+        import click
 
         from ai_rules.cli import (
             _display_pending_changes,
             check_first_run,
         )
+        from ai_rules.cli.display import print_warning
 
         if not check_first_run(list(ctx.selected_targets), ctx.yes):
             acc.aborted = True
             return acc.to_result()
 
         if _display_pending_changes(ctx):
-            if not Confirm.ask("Apply these changes?"):
+            try:
+                click.confirm("Apply these changes?", abort=True)
+            except click.exceptions.Abort:
+                print_warning("Cancelled")
                 acc.aborted = True
                 return acc.to_result()
 
@@ -166,19 +170,23 @@ def run_install_parallel(
             return acc.to_result()
 
     if not ctx.yes and not ctx.dry_run:
-        from rich.prompt import Confirm
+        import click
 
         from ai_rules.cli import (
             _display_pending_changes,
             check_first_run,
         )
+        from ai_rules.cli.display import print_warning
 
         if not check_first_run(list(ctx.selected_targets), ctx.yes):
             acc.aborted = True
             return acc.to_result()
 
         if _display_pending_changes(ctx):
-            if not Confirm.ask("Apply these changes?"):
+            try:
+                click.confirm("Apply these changes?", abort=True)
+            except click.exceptions.Abort:
+                print_warning("Cancelled")
                 acc.aborted = True
                 return acc.to_result()
 

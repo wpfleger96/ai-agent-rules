@@ -22,7 +22,7 @@ def config() -> None:
 @click.option("--agent", help="Show config for specific agent only")
 def config_show(merged: bool, agent: str | None) -> None:
     """Show current configuration."""
-    from ai_rules.cli.display import console
+    from ai_rules.cli.display import console, print_error
     from ai_rules.config import Config
 
     config_dir = cli_facade.get_config_dir()
@@ -53,7 +53,7 @@ def config_show(merged: bool, agent: str | None) -> None:
 
             agent_format = AGENT_FORMATS.get(agent_name)
             if not agent_format:
-                console.print(f"  [red]✗[/red] Unknown agent: {agent_name}")
+                print_error(f"Unknown agent: {agent_name}", indent=2)
                 console.print()
                 continue
 
@@ -65,8 +65,8 @@ def config_show(merged: bool, agent: str | None) -> None:
                 try:
                     base_settings = load_config_file(base_path, agent_format)
                 except CONFIG_PARSE_ERRORS as e:
-                    console.print(
-                        f"  [red]✗[/red] Failed to load base settings from {base_path}: {e}"
+                    print_error(
+                        f"Failed to load base settings from {base_path}: {e}", indent=2
                     )
                     console.print()
                     continue
@@ -225,7 +225,7 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
     """
     import json
 
-    from ai_rules.cli.display import console
+    from ai_rules.cli.display import console, print_warning
 
     console.print("\n[bold]Step 2: Settings Overrides[/bold]")
     response = console.input(
@@ -254,7 +254,7 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
         agent = agent_map.get(agent_choice)
 
         if not agent:
-            console.print("[yellow]Invalid choice[/yellow]")
+            print_warning("Invalid choice")
             continue
 
         console.print(f"\n[bold]{agent.title()} settings overrides:[/bold]")
@@ -268,7 +268,7 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
                 break
 
             if "=" not in override:
-                console.print("[yellow]Invalid format. Use key=value[/yellow]")
+                print_warning("Invalid format. Use key=value")
                 continue
 
             key, value = override.split("=", 1)

@@ -151,10 +151,12 @@ class SettingsComponent(Component):
         if not stale_targets:
             return ComponentResult()
 
+        from ai_rules.cli.display import print_warning
+
         console = get_console(ctx)
         for target in stale_targets:
             console.print(f"[bold]{target.name}[/bold]")
-            console.print("  [yellow]⚠[/yellow] Cached settings are stale")
+            print_warning("Cached settings are stale", indent=2)
             diff_output = target.get_cache_diff()
             if diff_output:
                 console.print(diff_output)

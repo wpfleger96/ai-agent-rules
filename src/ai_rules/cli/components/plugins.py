@@ -9,6 +9,7 @@ from ai_rules.cli.context import (
     ComponentResult,
     PluginPlan,
 )
+from ai_rules.cli.display import print_warning
 
 
 class ClaudePluginComponent(Component):
@@ -60,10 +61,10 @@ class ClaudePluginComponent(Component):
         elif plugin_result == OperationResult.DRY_RUN:
             console.print(f"[dim]{message}[/dim]")
         elif plugin_result == OperationResult.ERROR:
-            console.print(f"[yellow]⚠[/yellow] {message}")
+            print_warning(message)
 
         for warning in warnings:
-            console.print(f"[yellow]⚠[/yellow] {warning}")
+            print_warning(warning)
 
         return ComponentResult(
             changed=plugin_result in (OperationResult.SUCCESS, OperationResult.DRY_RUN),
@@ -100,10 +101,10 @@ class ClaudePluginComponent(Component):
         elif plugin_result == OperationResult.DRY_RUN:
             ctx.console.print(f"[dim]{message}[/dim]")
         elif plugin_result == OperationResult.ERROR:
-            ctx.console.print(f"[yellow]⚠[/yellow] {message}")
+            print_warning(message)
 
         for warning in warnings:
-            ctx.console.print(f"[yellow]⚠[/yellow] {warning}")
+            print_warning(warning)
 
         return ComponentResult(
             changed=plugin_result in (OperationResult.SUCCESS, OperationResult.DRY_RUN),
