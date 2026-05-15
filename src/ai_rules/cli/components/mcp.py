@@ -18,6 +18,7 @@ from ai_rules.cli.context import (
 
 class MCPComponent(Component):
     label = "MCPs"
+    display_name = "MCPs"
     component_id = "mcps"
 
     def install(self, ctx: CliContext) -> ComponentResult:
@@ -63,15 +64,15 @@ class MCPComponent(Component):
                     result, message, _ = target.install_mcps(
                         force=True, dry_run=ctx.dry_run
                     )
-                    ctx.console.print(f"[green]✓[/green] {target.name}: {message}")
+                    ctx.console.print(f"  [green]✓[/green] {target.name}: {message}")
                     updated += 1
             elif result == OperationResult.UPDATED:
-                ctx.console.print(f"[green]✓[/green] {target.name}: {message}")
+                ctx.console.print(f"  [green]✓[/green] {target.name}: {message}")
                 updated += 1
             elif result == OperationResult.ALREADY_INSTALLED:
-                ctx.console.print(f"[dim]○ {target.name}: {message}[/dim]")
+                ctx.console.print(f"  [dim]○ {target.name}: {message}[/dim]")
             elif result != OperationResult.NOT_FOUND:
-                ctx.console.print(f"[yellow]⚠[/yellow] {target.name}: {message}")
+                ctx.console.print(f"  [yellow]⚠[/yellow] {target.name}: {message}")
                 errors += 1
 
         return ComponentResult(
@@ -135,7 +136,7 @@ class MCPComponent(Component):
         # The serial install() path handles prompt-based conflict resolution.
         for target_name in plan.conflict_targets:
             console.print(
-                f"[yellow]⚠[/yellow] {target_name}: MCP conflicts detected, "
+                f"  [yellow]⚠[/yellow] {target_name}: MCP conflicts detected, "
                 f"skipping (use -y to force-apply)"
             )
             skipped += 1
@@ -157,12 +158,12 @@ class MCPComponent(Component):
             )
 
             if result == OperationResult.UPDATED:
-                console.print(f"[green]✓[/green] {target.name}: {message}")
+                console.print(f"  [green]✓[/green] {target.name}: {message}")
                 updated += 1
             elif result == OperationResult.ALREADY_INSTALLED:
-                console.print(f"[dim]○ {target.name}: {message}[/dim]")
+                console.print(f"  [dim]○ {target.name}: {message}[/dim]")
             elif result != OperationResult.NOT_FOUND:
-                console.print(f"[yellow]⚠[/yellow] {target.name}: {message}")
+                console.print(f"  [yellow]⚠[/yellow] {target.name}: {message}")
                 errors += 1
 
         return ComponentResult(
@@ -175,8 +176,10 @@ class MCPComponent(Component):
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.runner import get_console
+
+        console = get_console(ctx)
         all_correct = True
-        rendered_header = False
 
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
@@ -193,12 +196,8 @@ class MCPComponent(Component):
             ):
                 continue
 
-            if not rendered_header:
-                ctx.console.print("[bold cyan]MCPs[/bold cyan]\n")
-                rendered_header = True
-
             mgr = target.get_mcp_manager()
-            ctx.console.print(f"[bold]{target.name}:[/bold]")
+            console.print(f"[bold]{target.name}[/bold]")
             for name in sorted(mcp_status.managed_mcps.keys()):
                 is_installed = mcp_status.installed.get(name, False)
                 has_override = mcp_status.has_overrides.get(name, False)
@@ -208,7 +207,7 @@ class MCPComponent(Component):
                     else "[yellow]Outdated[/yellow]"
                 )
                 override_text = ", override" if has_override else ""
-                ctx.console.print(
+                console.print(
                     f"  {name:<20} {status_text} [dim](managed{override_text})[/dim]"
                 )
                 if not is_installed and mgr is not None:
@@ -222,28 +221,28 @@ class MCPComponent(Component):
                             if line.startswith("MCP"):
                                 continue
                             if line.strip():
-                                ctx.console.print(f"    [dim]{line}[/dim]")
+                                console.print(f"    [dim]{line}[/dim]")
                     all_correct = False
             for name in sorted(mcp_status.pending_mcps.keys()):
                 has_override = mcp_status.has_overrides.get(name, False)
                 override_text = ", override" if has_override else ""
-                ctx.console.print(
+                console.print(
                     f"  {name:<20} [yellow]Not installed[/yellow] [dim](managed{override_text})[/dim]"
                 )
                 if mgr is not None:
                     expected = mcp_status.pending_mcps.get(name, {})
                     pending_output = mgr.format_pending(name, expected)
                     if pending_output:
-                        ctx.console.print(pending_output)
+                        console.print(pending_output)
                 all_correct = False
             for name in sorted(mcp_status.stale_mcps.keys()):
-                ctx.console.print(
+                console.print(
                     f"  {name:<20} [red]Should be removed[/red] [dim](no longer in config)[/dim]"
                 )
                 all_correct = False
             for name in sorted(mcp_status.unmanaged_mcps.keys()):
-                ctx.console.print(f"  {name:<20} [dim]Unmanaged[/dim]")
-            ctx.console.print()
+                console.print(f"  {name:<20} [dim]Unmanaged[/dim]")
+            console.print()
 
         return ComponentResult(ok=all_correct, changed=not all_correct)
 

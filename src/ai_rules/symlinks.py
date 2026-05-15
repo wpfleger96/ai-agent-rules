@@ -6,9 +6,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-from rich.console import Console
-
-console = Console()
+from ai_rules.cli.display import console
 
 
 def create_backup_path(target: Path) -> Path:

@@ -35,14 +35,11 @@ def _complete_components(
 )
 def validate(agents: str | None, component_filter: str | None) -> None:
     """Validate configuration and source files."""
-    from rich.console import Console
-
     from ai_rules.cli.components import VALIDATE_COMPONENTS
     from ai_rules.cli.context import CliContext
-    from ai_rules.cli.runner import run_components
+    from ai_rules.cli.display import console
+    from ai_rules.cli.runner import run_validate_parallel
     from ai_rules.config import Config
-
-    console = Console()
 
     config_dir = cli_facade.get_config_dir()
     config = Config.load()
@@ -63,7 +60,7 @@ def validate(agents: str | None, component_filter: str | None) -> None:
         target_filter=agents,
         component_filter=parsed_filter,
     )
-    result = run_components(VALIDATE_COMPONENTS, "validate", cli_ctx)
+    result = run_validate_parallel(VALIDATE_COMPONENTS, cli_ctx)
     total_checked = result.counts.get("checked", 0)
     total_issues = result.counts.get("errors", 0)
 

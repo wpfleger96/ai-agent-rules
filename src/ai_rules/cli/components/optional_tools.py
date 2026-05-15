@@ -13,6 +13,7 @@ from ai_rules.cli.context import (
 
 class OptionalToolsComponent(Component):
     label = "Optional Tools"
+    display_name = "Optional Tools"
     component_id = "tools"
 
     def plan(self, ctx: CliContext) -> OptionalToolsPlan:
@@ -125,22 +126,22 @@ class OptionalToolsComponent(Component):
     def status(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.bootstrap import is_command_available
         from ai_rules.bootstrap.installer import _is_recall_configured
+        from ai_rules.cli.runner import get_console
 
-        ctx.console.print("[bold cyan]Optional Tools[/bold cyan]\n")
-
+        console = get_console(ctx)
         missing = 0
         if is_command_available("claude-statusline"):
-            ctx.console.print("  [green]✓[/green] claude-statusline installed")
+            console.print("  [green]✓[/green] claude-statusline installed")
         else:
-            ctx.console.print("  [yellow]○[/yellow] claude-statusline not installed")
+            console.print("  [yellow]○[/yellow] claude-statusline not installed")
             missing += 1
 
         if _is_recall_configured(ctx.config):
             if is_command_available("recall"):
-                ctx.console.print("  [green]✓[/green] recall installed")
+                console.print("  [green]✓[/green] recall installed")
             else:
-                ctx.console.print("  [yellow]○[/yellow] recall not installed")
+                console.print("  [yellow]○[/yellow] recall not installed")
                 missing += 1
 
-        ctx.console.print()
+        console.print()
         return ComponentResult(counts={"optional_missing": missing})

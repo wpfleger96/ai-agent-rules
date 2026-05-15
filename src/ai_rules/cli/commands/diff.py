@@ -33,14 +33,11 @@ def _complete_components(
 )
 def diff(agents: str | None, component_filter: str | None) -> None:
     """Show differences between repo configs and installed symlinks."""
-    from rich.console import Console
-
     from ai_rules.cli.components import DIFF_COMPONENTS
     from ai_rules.cli.context import CliContext
-    from ai_rules.cli.runner import run_components
+    from ai_rules.cli.display import console, print_hint
+    from ai_rules.cli.runner import run_diff_parallel
     from ai_rules.config import Config
-
-    console = Console()
 
     config_dir = cli_facade.get_config_dir()
     config = Config.load()
@@ -61,11 +58,9 @@ def diff(agents: str | None, component_filter: str | None) -> None:
         target_filter=agents,
         component_filter=parsed_filter,
     )
-    result = run_components(DIFF_COMPONENTS, "diff", cli_ctx)
+    result = run_diff_parallel(DIFF_COMPONENTS, cli_ctx)
 
     if not result.changed:
         console.print("[green]No differences found - all symlinks are correct![/green]")
     else:
-        console.print(
-            "[yellow]💡 Run 'ai-agent-rules install' to fix these differences[/yellow]"
-        )
+        print_hint("Run 'ai-agent-rules install' to fix these differences")

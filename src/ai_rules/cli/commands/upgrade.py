@@ -44,9 +44,6 @@ def upgrade(
         ai-agent-rules upgrade -y                 # Auto-confirm installation
         ai-agent-rules upgrade --only=statusline  # Only upgrade statusline tool
     """
-    from rich.console import Console
-    from rich.prompt import Confirm
-
     from ai_rules.bootstrap import (
         ToolSource,
         check_tool_updates,
@@ -56,8 +53,7 @@ def upgrade(
     )
     from ai_rules.bootstrap.installer import install_tool
     from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES
-
-    console = Console()
+    from ai_rules.cli.display import console, print_error, print_hint, print_warning
 
     resolved_only = _TOOL_ID_ALIASES.get(only, only) if only else None
     all_tools = [
@@ -74,7 +70,7 @@ def upgrade(
         console.print(f"[yellow]⚠[/yellow] {tool.display_name} is not installed")
 
     if missing_tools and not check:
-        if yes or Confirm.ask("\nReinstall missing tools?", default=True):
+        if yes or click.confirm("\nReinstall missing tools?", default=True):
             for tool in missing_tools:
                 source, local_path = get_effective_install_source(tool.tool_id)
                 from_github = source == ToolSource.GITHUB
@@ -90,9 +86,7 @@ def upgrade(
                     console.print(f"[green]✓[/green] {tool.display_name} reinstalled")
                     tools.append(tool)
                 else:
-                    console.print(
-                        f"[red]Error:[/red] Failed to install {tool.display_name}: {msg}"
-                    )
+                    print_error(f"Failed to install {tool.display_name}: {msg}")
 
     if not tools:
         if only:
@@ -110,18 +104,14 @@ def upgrade(
                     f"[dim]{tool.display_name} current version: {current}[/dim]"
                 )
         except Exception as e:
-            console.print(
-                f"[red]Error:[/red] Could not get {tool.display_name} version: {e}"
-            )
+            print_error(f"Could not get {tool.display_name} version: {e}")
             continue
 
         with console.status(f"Checking {tool.display_name} for updates..."):
             try:
                 update_info = check_tool_updates(tool)
             except Exception as e:
-                console.print(
-                    f"[red]Error:[/red] Failed to check {tool.display_name} updates: {e}"
-                )
+                print_error(f"Failed to check {tool.display_name} updates: {e}")
                 continue
 
         if update_info and (update_info.has_update or force):
@@ -163,8 +153,8 @@ def upgrade(
             prompt = f"\nInstall {tool_updates[0][0].display_name} update?"
         else:
             prompt = f"\nInstall {len(tool_updates)} updates?"
-        if not Confirm.ask(prompt, default=True):
-            console.print("[yellow]Cancelled.[/yellow]")
+        if not click.confirm(prompt, default=True):
+            print_warning("Cancelled")
             return
 
     ai_rules_upgraded = False
@@ -173,9 +163,7 @@ def upgrade(
             try:
                 success, msg, was_upgraded = perform_tool_upgrade(tool)
             except Exception as e:
-                console.print(
-                    f"\n[red]Error:[/red] {tool.display_name} upgrade failed: {e}"
-                )
+                print_error(f"{tool.display_name} upgrade failed: {e}")
                 continue
 
         if success:
@@ -197,9 +185,7 @@ def upgrade(
                 if tool.tool_id == "ai-agent-rules":
                     ai_rules_upgraded = True
         else:
-            console.print(
-                f"[red]Error:[/red] {tool.display_name} upgrade failed: {msg}"
-            )
+            print_error(f"{tool.display_name} upgrade failed: {msg}")
 
     if ai_rules_upgraded and not skip_install:
         try:
@@ -233,16 +219,12 @@ def upgrade(
                 console.print(
                     f"[yellow]⚠[/yellow] Install failed with exit code {result.returncode}"
                 )
-                console.print(
-                    "[dim]Run 'ai-agent-rules install --rebuild-cache' manually to retry[/dim]"
+                print_hint(
+                    "Run 'ai-agent-rules install --rebuild-cache' manually to retry"
                 )
         except subprocess.TimeoutExpired:
             console.print("[yellow]⚠[/yellow] Install timed out after 30 seconds")
-            console.print(
-                "[dim]Run 'ai-agent-rules install --rebuild-cache' manually to retry[/dim]"
-            )
+            print_hint("Run 'ai-agent-rules install --rebuild-cache' manually to retry")
         except Exception as e:
             console.print(f"[yellow]⚠[/yellow] Could not run install: {e}")
-            console.print(
-                "[dim]Run 'ai-agent-rules install --rebuild-cache' manually[/dim]"
-            )
+            print_hint("Run 'ai-agent-rules install --rebuild-cache' manually")

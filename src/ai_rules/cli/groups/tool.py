@@ -55,7 +55,6 @@ def tool() -> None:
 @tool.command("list")
 def tool_list() -> None:
     """List managed tools with version and update info."""
-    from rich.console import Console
     from rich.table import Table
 
     from ai_rules.bootstrap import (
@@ -63,9 +62,8 @@ def tool_list() -> None:
         get_tool_source,
         get_updatable_tools,
     )
+    from ai_rules.cli.display import console
     from ai_rules.config import Config
-
-    console = Console()
 
     try:
         config = Config.load()
@@ -108,7 +106,9 @@ def tool_list() -> None:
     console.print(table)
 
     if has_updates:
-        console.print("\n[dim]Run 'ai-agent-rules upgrade' to install updates.[/dim]")
+        from ai_rules.cli.display import print_hint
+
+        print_hint("Run 'ai-agent-rules upgrade' to install updates.")
 
 
 @tool.command("show")
@@ -122,16 +122,13 @@ def tool_show(tool_id: str) -> None:
         ai-agent-rules tool show statusline
         ai-agent-rules tool show ai-agent-rules
     """
-    from rich.console import Console
-
     from ai_rules.bootstrap import (
         check_tool_updates,
         get_tool_source,
     )
     from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES, get_tool_by_id
+    from ai_rules.cli.display import console, print_error
     from ai_rules.config import Config
-
-    console = Console()
 
     canonical_id = _TOOL_ID_ALIASES.get(tool_id, tool_id)
     spec = get_tool_by_id(canonical_id)
@@ -139,9 +136,7 @@ def tool_show(tool_id: str) -> None:
         from ai_rules.bootstrap import get_updatable_tools
 
         valid_ids = ", ".join(sorted(t.tool_id for t in get_updatable_tools()))
-        console.print(
-            f"[red]Error:[/red] Unknown tool '{tool_id}'. Valid tools: {valid_ids}"
-        )
+        print_error(f"Unknown tool '{tool_id}'. Valid tools: {valid_ids}")
         sys.exit(1)
 
     console.print(f"[bold]{spec.display_name}[/bold]\n")
@@ -197,13 +192,11 @@ def source_list() -> None:
     Examples:
         ai-agent-rules tool source list
     """
-    from rich.console import Console
     from rich.table import Table
 
     from ai_rules.bootstrap.updater import get_updatable_tools
+    from ai_rules.cli.display import console
     from ai_rules.config import Config
-
-    console = Console()
 
     tools = get_updatable_tools()
     table = Table(title="Tool Install Source Preferences", show_header=True)
@@ -235,10 +228,10 @@ def _resolve_tool_id(tool_id: str) -> str:
     canonical_id = _TOOL_ID_ALIASES.get(tool_id, tool_id)
     valid_ids = {t.tool_id for t in get_updatable_tools()}
     if canonical_id not in valid_ids:
-        from rich.console import Console
+        from ai_rules.cli.display import print_error
 
-        Console().print(
-            f"[red]Error:[/red] Unknown tool '{tool_id}'. Valid tools: {', '.join(sorted(valid_ids))}"
+        print_error(
+            f"Unknown tool '{tool_id}'. Valid tools: {', '.join(sorted(valid_ids))}"
         )
         sys.exit(1)
     return canonical_id
@@ -254,11 +247,9 @@ def source_get(tool_id: str) -> None:
     Examples:
         ai-agent-rules tool source get statusline
     """
-    from rich.console import Console
-
+    from ai_rules.cli.display import console
     from ai_rules.config import Config
 
-    console = Console()
     canonical_id = _resolve_tool_id(tool_id)
 
     user_pref = Config.get_tool_install_source_from_user_config(canonical_id)
@@ -298,11 +289,9 @@ def source_set(tool_id: str, source_value: str) -> None:
         ai-agent-rules tool source set ai-agent-rules "local:~/Development/Personal/ai-rules"
         ai-agent-rules tool source set statusline reset
     """
-    from rich.console import Console
-
+    from ai_rules.cli.display import console, print_error
     from ai_rules.config import Config
 
-    console = Console()
     canonical_id = _resolve_tool_id(tool_id)
 
     if source_value == "reset":
@@ -322,7 +311,7 @@ def source_set(tool_id: str, source_value: str) -> None:
         local_path = source_value[len("local:") :]
         resolved = Path(local_path).expanduser().resolve()
         if not resolved.exists():
-            console.print(f"[red]Error:[/red] Path does not exist: {resolved}")
+            print_error(f"Path does not exist: {resolved}")
             sys.exit(1)
         Config.set_tool_install_source(canonical_id, f"local:{resolved}")
         console.print(
@@ -332,7 +321,7 @@ def source_set(tool_id: str, source_value: str) -> None:
             "[dim]Run 'ai-agent-rules install' to install from local path.[/dim]"
         )
     else:
-        console.print(
-            f"[red]Error:[/red] Invalid source value '{source_value}'. Use: pypi, github, local:<path>, or reset"
+        print_error(
+            f"Invalid source value '{source_value}'. Use: pypi, github, local:<path>, or reset"
         )
         sys.exit(1)

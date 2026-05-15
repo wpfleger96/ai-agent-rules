@@ -74,11 +74,9 @@ def _display_pending_symlink_changes(targets: list["ConfigTarget"]) -> bool:
     Returns:
         True if changes were found and displayed, False otherwise
     """
-    from rich.console import Console
-
+    from ai_rules.cli.display import console
     from ai_rules.symlinks import check_symlink, get_content_diff
 
-    console = Console()
     found_changes = False
 
     for agent in targets:
@@ -126,9 +124,7 @@ def _display_pending_plugin_changes(config: "Config") -> bool:
     Returns:
         True if changes were found and displayed, False otherwise
     """
-    from rich.console import Console
-
-    console = Console()
+    from ai_rules.cli.display import console
 
     result = _get_plugin_status(config)
     if result is None:
@@ -175,10 +171,7 @@ def check_first_run(targets: list["ConfigTarget"], force: bool) -> bool:
     Returns:
         True if should continue, False if should abort
     """
-    from rich.console import Console
-    from rich.prompt import Confirm
-
-    console = Console()
+    from ai_rules.cli.display import console, print_warning
 
     existing_files = []
 
@@ -194,7 +187,7 @@ def check_first_run(targets: list["ConfigTarget"], force: bool) -> bool:
     if force:
         return True
 
-    console.print("\n[yellow]Warning:[/yellow] Found existing configuration files:\n")
+    print_warning("Found existing configuration files:\n")
     for agent_name, path in existing_files:
         console.print(f"  [{agent_name}] {path}")
 
@@ -202,7 +195,7 @@ def check_first_run(targets: list["ConfigTarget"], force: bool) -> bool:
         "\n[dim]These will be replaced with symlinks (originals will be backed up).[/dim]\n"
     )
 
-    return Confirm.ask("Continue?", default=False)
+    return click.confirm("Continue?", default=False)
 
 
 def version_callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:
@@ -213,9 +206,7 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
         param: Click parameter
         value: Whether --version flag was provided
     """
-    from rich.console import Console
-
-    console = Console()
+    from ai_rules.cli.display import console
 
     if not value or ctx.resilient_parsing:
         return
@@ -298,11 +289,9 @@ def cleanup_deprecated_symlinks(
     Returns:
         Count of removed symlinks
     """
-    from rich.console import Console
-
+    from ai_rules.cli.display import console
     from ai_rules.symlinks import remove_symlink
 
-    console = Console()
     removed_count = 0
 
     for agent in selected_targets:

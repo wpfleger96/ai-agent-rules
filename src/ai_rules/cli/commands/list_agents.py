@@ -8,13 +8,11 @@ import ai_rules.cli as cli_facade
 @click.command("list-agents")
 def list_agents_cmd() -> None:
     """List available AI agents."""
-    from rich.console import Console
     from rich.table import Table
 
+    from ai_rules.cli.display import console
     from ai_rules.config import Config
     from ai_rules.symlinks import check_symlink
-
-    console = Console()
 
     config_dir = cli_facade.get_config_dir()
     config = Config.load()

@@ -25,12 +25,13 @@ def _display_symlink_status(
     target: Path,
     source: Path,
     message: str,
+    console: object | None = None,
 ) -> bool:
     from rich.console import Console
 
     from ai_rules.symlinks import get_content_diff
 
-    console = Console()
+    active_console: Console = console if isinstance(console, Console) else Console()
 
     target_str = str(target)
     if source.is_dir():
@@ -38,35 +39,41 @@ def _display_symlink_status(
     target_display = target_str
 
     if status_code == "correct":
-        console.print(f"  [green]✓[/green] {target_display}")
+        active_console.print(f"  [green]✓[/green] {target_display}")
         return True
     if status_code == "missing":
-        console.print(f"  [red]✗[/red] {target_display} [dim](not installed)[/dim]")
+        active_console.print(
+            f"  [red]✗[/red] {target_display} [dim](not installed)[/dim]"
+        )
         return False
     if status_code == "broken":
-        console.print(f"  [red]✗[/red] {target_display} [dim](broken symlink)[/dim]")
+        active_console.print(
+            f"  [red]✗[/red] {target_display} [dim](broken symlink)[/dim]"
+        )
         return False
     if status_code == "wrong_target":
-        console.print(f"  [yellow]⚠[/yellow] {target_display} [dim]({message})[/dim]")
+        active_console.print(
+            f"  [yellow]⚠[/yellow] {target_display} [dim]({message})[/dim]"
+        )
 
         try:
             actual = target.expanduser().resolve()
             diff_output = get_content_diff(actual, source)
             if diff_output:
-                console.print(diff_output)
+                active_console.print(diff_output)
         except (OSError, RuntimeError):
             pass
 
         return False
     if status_code == "not_symlink":
-        console.print(
+        active_console.print(
             f"  [yellow]⚠[/yellow] {target_display} [dim](not a symlink)[/dim]"
         )
 
         try:
             diff_output = get_content_diff(target.expanduser(), source)
             if diff_output:
-                console.print(diff_output)
+                active_console.print(diff_output)
         except (OSError, RuntimeError):
             pass
 
@@ -76,6 +83,7 @@ def _display_symlink_status(
 
 class ConfigComponent(Component):
     label = "Config Files"
+    display_name = "Config Files"
     component_id = "config"
 
     def plan(self, ctx: CliContext) -> ConfigPlan:
@@ -218,13 +226,14 @@ class ConfigComponent(Component):
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import check_symlink
 
-        ctx.console.print("[bold cyan]Config Files[/bold cyan]\n")
+        console = get_console(ctx)
         all_correct = True
 
         for target in ctx.selected_targets:
-            ctx.console.print(f"[bold]{target.name}:[/bold]")
+            console.print(f"[bold]{target.name}[/bold]")
 
             filtered_symlinks = target.get_filtered_symlinks()
             excluded_symlinks = [
@@ -238,21 +247,23 @@ class ConfigComponent(Component):
                     continue
 
                 status_code, message = check_symlink(tgt, source)
-                is_correct = _display_symlink_status(status_code, tgt, source, message)
+                is_correct = _display_symlink_status(
+                    status_code, tgt, source, message, console
+                )
                 all_correct = all_correct and is_correct
 
             for tgt, _source in excluded_symlinks:
-                ctx.console.print(
-                    f"  [dim]○[/dim] {tgt} [dim](excluded by config)[/dim]"
-                )
+                console.print(f"  [dim]○[/dim] {tgt} [dim](excluded by config)[/dim]")
 
-            ctx.console.print()
+            console.print()
 
         return ComponentResult(ok=all_correct, changed=not all_correct)
 
     def diff(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import check_symlink, get_content_diff
 
+        console = get_console(ctx)
         found_differences = False
 
         for target in ctx.selected_targets:
@@ -311,7 +322,7 @@ class ConfigComponent(Component):
                     target_has_diff = True
 
             if target_has_diff:
-                ctx.console.print(f"[bold]{target.name}:[/bold]")
+                console.print(f"[bold]{target.name}[/bold]")
                 for (
                     path,
                     expected_source,
@@ -320,32 +331,26 @@ class ConfigComponent(Component):
                     content_diff,
                 ) in target_diffs:
                     if diff_type == "missing":
-                        ctx.console.print(f"  [red]✗[/red] {path}")
-                        ctx.console.print(f"    [dim]{desc}[/dim]")
-                        ctx.console.print(
-                            f"    [dim]Expected: → {expected_source}[/dim]"
-                        )
+                        console.print(f"  [red]✗[/red] {path}")
+                        console.print(f"    [dim]{desc}[/dim]")
+                        console.print(f"    [dim]Expected: → {expected_source}[/dim]")
                     elif diff_type == "broken":
-                        ctx.console.print(f"  [red]✗[/red] {path}")
-                        ctx.console.print(f"    [dim]{desc}[/dim]")
+                        console.print(f"  [red]✗[/red] {path}")
+                        console.print(f"    [dim]{desc}[/dim]")
                     elif diff_type == "wrong":
-                        ctx.console.print(f"  [yellow]⚠[/yellow] {path}")
-                        ctx.console.print(f"    [dim]{desc}[/dim]")
-                        ctx.console.print(
-                            f"    [dim]Expected: → {expected_source}[/dim]"
-                        )
+                        console.print(f"  [yellow]⚠[/yellow] {path}")
+                        console.print(f"    [dim]{desc}[/dim]")
+                        console.print(f"    [dim]Expected: → {expected_source}[/dim]")
                         if content_diff:
-                            ctx.console.print(content_diff)
+                            console.print(content_diff)
                     elif diff_type == "file":
-                        ctx.console.print(f"  [yellow]⚠[/yellow] {path}")
-                        ctx.console.print(f"    [dim]{desc}[/dim]")
-                        ctx.console.print(
-                            f"    [dim]Expected: → {expected_source}[/dim]"
-                        )
+                        console.print(f"  [yellow]⚠[/yellow] {path}")
+                        console.print(f"    [dim]{desc}[/dim]")
+                        console.print(f"    [dim]Expected: → {expected_source}[/dim]")
                         if content_diff:
-                            ctx.console.print(content_diff)
+                            console.print(content_diff)
 
-                ctx.console.print()
+                console.print()
                 found_differences = True
 
         return ComponentResult(ok=not found_differences, changed=found_differences)

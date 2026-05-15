@@ -18,6 +18,7 @@ from ai_rules.cli.context import (
 
 class SkillsComponent(Component):
     label = "Skills"
+    display_name = "Skills"
     component_id = "skills"
 
     def plan(self, ctx: CliContext) -> SkillsPlan:
@@ -284,8 +285,10 @@ class SkillsComponent(Component):
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.runner import get_console
+
+        console = get_console(ctx)
         all_correct = True
-        rendered_header = False
 
         for target in ctx.selected_targets:
             skill_status = (
@@ -320,48 +323,49 @@ class SkillsComponent(Component):
             ):
                 continue
 
-            if not rendered_header:
-                ctx.console.print("[bold cyan]Skills[/bold cyan]\n")
-                rendered_header = True
-            ctx.console.print(f"[bold]{target.name}:[/bold]")
+            console.print(f"[bold]{target.name}[/bold]")
 
             for name in sorted(skill_status.managed_installed.keys()):
-                ctx.console.print(
+                console.print(
                     f"  {name:<20} [green]Installed[/green] [dim](managed)[/dim]"
                 )
 
             for name, item in sorted(skill_status.managed_wrong_target.items()):
                 if item.is_broken:
-                    ctx.console.print(
+                    console.print(
                         f"  {name:<20} [red]Broken symlink[/red] [dim](managed)[/dim]"
                     )
                 else:
-                    ctx.console.print(
+                    console.print(
                         f"  {name:<20} [yellow]Wrong target[/yellow] [dim](managed)[/dim]"
                     )
                     if item.actual_source and item.expected_source:
+                        console.print(f"    [dim]Points to {item.actual_source}[/dim]")
+                        console.print(
+                            f"    [dim]Expected: → {item.expected_source}[/dim]"
+                        )
                         from ai_rules.symlinks import get_content_diff
 
                         diff_output = get_content_diff(
                             item.actual_source, item.expected_source
                         )
                         if diff_output:
-                            ctx.console.print(diff_output)
+                            console.print(diff_output)
                 all_correct = False
 
             for name in sorted(skill_status.managed_pending.keys()):
-                ctx.console.print(
+                console.print(
                     f"  {name:<20} [yellow]Not installed[/yellow] [dim](managed)[/dim]"
                 )
                 all_correct = False
 
             for name in sorted(skill_status.unmanaged.keys()):
                 if name in orphaned_skills:
-                    ctx.console.print(f"  {name:<20} [yellow]Orphaned[/yellow]")
+                    console.print(f"  {name:<20} [yellow]Orphaned[/yellow]")
                 else:
-                    ctx.console.print(f"  {name:<20} [dim]Unmanaged[/dim]")
+                    console.print(f"  {name:<20} [dim]Unmanaged[/dim]")
 
-            ctx.console.print()
+            console.print()
 
         return ComponentResult(ok=all_correct, changed=not all_correct)
 

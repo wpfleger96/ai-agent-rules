@@ -15,6 +15,7 @@ from ai_rules.cli.context import (
 
 class SettingsComponent(Component):
     label = "Settings"
+    display_name = "Settings Cache"
     component_id = "settings"
     filterable = False
 
@@ -69,7 +70,9 @@ class SettingsComponent(Component):
                 if target.build_merged_settings(force_rebuild=ctx.rebuild_cache):
                     built += 1
             except ValueError as exc:
-                console.print(f"[red]Error building {target.name} config:[/red] {exc}")
+                from ai_rules.cli.display import print_error
+
+                print_error(f"Error building {target.name} config: {exc}")
                 return ComponentResult(ok=False, abort=True, counts={"errors": 1})
 
         for expanded in plan.excluded_symlinks_to_clean:
@@ -101,9 +104,9 @@ class SettingsComponent(Component):
                 if target.build_merged_settings(force_rebuild=ctx.rebuild_cache):
                     built += 1
             except ValueError as exc:
-                ctx.console.print(
-                    f"[red]Error building {target.name} config:[/red] {exc}"
-                )
+                from ai_rules.cli.display import print_error
+
+                print_error(f"Error building {target.name} config: {exc}")
                 return ComponentResult(ok=False, abort=True, counts={"errors": 1})
 
         for target in ctx.all_targets:
@@ -138,6 +141,8 @@ class SettingsComponent(Component):
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.runner import get_console
+
         stale_targets = []
         for target in ctx.selected_targets:
             if target.needs_cache and target.is_cache_stale():
@@ -146,14 +151,14 @@ class SettingsComponent(Component):
         if not stale_targets:
             return ComponentResult()
 
-        ctx.console.print("[bold cyan]Settings Cache[/bold cyan]\n")
+        console = get_console(ctx)
         for target in stale_targets:
-            ctx.console.print(f"[bold]{target.name}:[/bold]")
-            ctx.console.print("  [yellow]⚠[/yellow] Cached settings are stale")
+            console.print(f"[bold]{target.name}[/bold]")
+            console.print("  [yellow]⚠[/yellow] Cached settings are stale")
             diff_output = target.get_cache_diff()
             if diff_output:
-                ctx.console.print(diff_output)
-            ctx.console.print()
+                console.print(diff_output)
+            console.print()
 
         return ComponentResult(
             ok=False,

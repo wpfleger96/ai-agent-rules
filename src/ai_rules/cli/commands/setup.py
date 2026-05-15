@@ -36,9 +36,6 @@ def setup(
     Example:
         uvx ai-agent-rules setup
     """
-    from rich.console import Console
-    from rich.prompt import Confirm
-
     from ai_rules.bootstrap import (
         ToolSource,
         ensure_statusline_installed,
@@ -46,13 +43,12 @@ def setup(
         get_tool_config_dir,
         install_tool,
     )
-
-    console = Console()
     from ai_rules.bootstrap.updater import (
         check_tool_updates,
         get_tool_by_id,
         perform_tool_upgrade,
     )
+    from ai_rules.cli.display import console, print_error, print_warning
 
     console.print("[bold cyan]Step 1/3: Install ai-agent-rules system-wide[/bold cyan]")
     console.print("This allows you to run 'ai-agent-rules' from any directory.\n")
@@ -116,10 +112,10 @@ def setup(
                 )
                 tool_install_success = True
             else:
-                if not yes and not Confirm.ask(
+                if not yes and not click.confirm(
                     f"Switch ai-agent-rules to {source_name} install?", default=True
                 ):
-                    console.print("[yellow]Skipped source switch[/yellow]")
+                    print_warning("Skipped source switch")
                     tool_install_success = True
                 else:
                     uninstall_success, _ = uninstall_tool(ai_rules_tool.package_name)
@@ -142,13 +138,9 @@ def setup(
                             )
                             tool_install_success = True
                         else:
-                            console.print(
-                                f"[red]Error:[/red] Failed to install: {message}"
-                            )
+                            print_error(f"Failed to install: {message}")
                     else:
-                        console.print(
-                            "[red]Error:[/red] Failed to uninstall current version"
-                        )
+                        print_error("Failed to uninstall current version")
         else:
             try:
                 update_info = check_tool_updates(ai_rules_tool, timeout=10)
@@ -159,13 +151,11 @@ def setup(
                         )
                         tool_install_success = True
                     else:
-                        if not yes and not Confirm.ask(
+                        if not yes and not click.confirm(
                             f"Upgrade ai-agent-rules {update_info.current_version} → {update_info.latest_version}?",
                             default=True,
                         ):
-                            console.print(
-                                "[yellow]Skipped ai-agent-rules upgrade[/yellow]"
-                            )
+                            print_warning("Skipped ai-agent-rules upgrade")
                             tool_install_success = True
                         else:
                             success, msg, _ = perform_tool_upgrade(ai_rules_tool)
@@ -175,9 +165,7 @@ def setup(
                                 )
                                 tool_install_success = True
                             else:
-                                console.print(
-                                    "[red]Error:[/red] Failed to upgrade ai-agent-rules"
-                                )
+                                print_error("Failed to upgrade ai-agent-rules")
                 else:
                     tool_install_success = True
             except Exception:
@@ -185,7 +173,7 @@ def setup(
 
     if not tool_install_success:
         if not yes and not dry_run:
-            if not Confirm.ask("Install ai-agent-rules permanently?", default=True):
+            if not click.confirm("Install ai-agent-rules permanently?", default=True):
                 console.print(
                     "\n[yellow]Skipped.[/yellow] You can still run via: uvx ai-agent-rules <command>"
                 )
@@ -218,12 +206,12 @@ def setup(
                 console.print("[green]✓[/green] Tool installed successfully")
                 tool_install_success = True
             else:
-                console.print(f"\n[red]Error:[/red] {message}")
+                print_error(message)
                 console.print("\n[yellow]Manual installation:[/yellow]")
                 console.print("  uv tool install ai-agent-rules")
                 return
         except Exception as e:
-            console.print(f"\n[red]Error:[/red] {e}")
+            print_error(str(e))
             return
 
     if not skip_symlinks:
@@ -238,16 +226,14 @@ def setup(
                 if tool_config_dir.exists():
                     config_dir_override = str(tool_config_dir)
                 else:
-                    console.print(
-                        f"[yellow]Warning:[/yellow] Tool config not found at expected location: {tool_config_dir}"
+                    print_warning(
+                        f"Tool config not found at expected location: {tool_config_dir}"
                     )
                     console.print(
                         "[dim]Falling back to current config directory[/dim]\n"
                     )
             except Exception as e:
-                console.print(
-                    f"[yellow]Warning:[/yellow] Could not determine tool config path: {e}"
-                )
+                print_warning(f"Could not determine tool config path: {e}")
                 console.print("[dim]Falling back to current config directory[/dim]\n")
 
         ctx.invoke(
@@ -291,7 +277,7 @@ def setup(
             elif (
                 yes
                 or dry_run
-                or Confirm.ask(f"Install {shell} tab completion?", default=True)
+                or click.confirm(f"Install {shell} tab completion?", default=True)
             ):
                 success, msg = install_completion(shell, dry_run=dry_run)
                 if success:

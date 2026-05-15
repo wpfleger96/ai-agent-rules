@@ -19,11 +19,8 @@ _SUPPORTED_SHELLS = list(get_supported_shells())
 @completions.command(name="bash")
 def completions_bash() -> None:
     """Output bash completion script for manual installation."""
-    from rich.console import Console
-
+    from ai_rules.cli.display import console
     from ai_rules.completions import generate_completion_script
-
-    console = Console()
 
     try:
         script = generate_completion_script("bash")
@@ -33,18 +30,17 @@ def completions_bash() -> None:
         )
         console.print("[dim]  ai-agent-rules completions install[/dim]")
     except Exception as e:
-        console.print(f"[red]Error generating completion script:[/red] {e}")
+        from ai_rules.cli.display import print_error
+
+        print_error(f"Error generating completion script: {e}")
         sys.exit(1)
 
 
 @completions.command(name="zsh")
 def completions_zsh() -> None:
     """Output zsh completion script for manual installation."""
-    from rich.console import Console
-
+    from ai_rules.cli.display import console
     from ai_rules.completions import generate_completion_script
-
-    console = Console()
 
     try:
         script = generate_completion_script("zsh")
@@ -52,7 +48,9 @@ def completions_zsh() -> None:
         console.print("\n[dim]To install: Add the above to your ~/.zshrc or run:[/dim]")
         console.print("[dim]  ai-agent-rules completions install[/dim]")
     except Exception as e:
-        console.print(f"[red]Error generating completion script:[/red] {e}")
+        from ai_rules.cli.display import print_error
+
+        print_error(f"Error generating completion script: {e}")
         sys.exit(1)
 
 
@@ -64,18 +62,13 @@ def completions_zsh() -> None:
 )
 def completions_install(shell: str | None) -> None:
     """Install shell completion to config file."""
-    from rich.console import Console
-
+    from ai_rules.cli.display import console, print_error
     from ai_rules.completions import detect_shell, install_completion
-
-    console = Console()
 
     if shell is None:
         shell = detect_shell()
         if shell is None:
-            console.print(
-                "[red]Error:[/red] Could not detect shell. Please specify with --shell"
-            )
+            print_error("Could not detect shell. Please specify with --shell")
             sys.exit(1)
         console.print(f"[dim]Detected shell:[/dim] {shell}")
 
@@ -84,7 +77,7 @@ def completions_install(shell: str | None) -> None:
     if success:
         console.print(f"[green]✓[/green] {message}")
     else:
-        console.print(f"[red]Error:[/red] {message}")
+        print_error(message)
         sys.exit(1)
 
 
@@ -96,27 +89,22 @@ def completions_install(shell: str | None) -> None:
 )
 def completions_uninstall(shell: str | None) -> None:
     """Remove shell completion from config file."""
-    from rich.console import Console
-
+    from ai_rules.cli.display import console, print_error
     from ai_rules.completions import (
         detect_shell,
         find_config_file,
         uninstall_completion,
     )
 
-    console = Console()
-
     if shell is None:
         shell = detect_shell()
         if shell is None:
-            console.print(
-                "[red]Error:[/red] Could not detect shell. Please specify with --shell"
-            )
+            print_error("Could not detect shell. Please specify with --shell")
             sys.exit(1)
 
     config_path = find_config_file(shell)
     if config_path is None:
-        console.print(f"[red]Error:[/red] No {shell} config file found")
+        print_error(f"No {shell} config file found")
         sys.exit(1)
 
     success, message = uninstall_completion(config_path)
@@ -124,7 +112,7 @@ def completions_uninstall(shell: str | None) -> None:
     if success:
         console.print(f"[green]✓[/green] {message}")
     else:
-        console.print(f"[red]Error:[/red] {message}")
+        print_error(message)
         sys.exit(1)
 
 
@@ -136,18 +124,13 @@ def completions_uninstall(shell: str | None) -> None:
 )
 def completions_update(shell: str | None) -> None:
     """Re-generate completion block (fixes PATH shadowing issues)."""
-    from rich.console import Console
-
+    from ai_rules.cli.display import console, print_error
     from ai_rules.completions import detect_shell, update_completion
-
-    console = Console()
 
     if shell is None:
         shell = detect_shell()
         if shell is None:
-            console.print(
-                "[red]Error:[/red] Could not detect shell. Use --shell to specify."
-            )
+            print_error("Could not detect shell. Use --shell to specify.")
             sys.exit(1)
         console.print(f"[dim]Detected shell:[/dim] {shell}")
 
@@ -156,23 +139,21 @@ def completions_update(shell: str | None) -> None:
     if success:
         console.print(f"[green]✓[/green] {message}")
     else:
-        console.print(f"[red]Error:[/red] {message}")
+        print_error(message)
         sys.exit(1)
 
 
 @completions.command(name="status")
 def completions_status() -> None:
     """Show shell completion installation status."""
-    from rich.console import Console
     from rich.table import Table
 
+    from ai_rules.cli.display import console
     from ai_rules.completions import (
         detect_shell,
         find_config_file,
         is_completion_installed,
     )
-
-    console = Console()
 
     detected_shell = detect_shell()
     console.print("[bold cyan]Shell Completions Status[/bold cyan]\n")

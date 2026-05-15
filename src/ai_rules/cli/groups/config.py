@@ -22,11 +22,8 @@ def config() -> None:
 @click.option("--agent", help="Show config for specific agent only")
 def config_show(merged: bool, agent: str | None) -> None:
     """Show current configuration."""
-    from rich.console import Console
-
+    from ai_rules.cli.display import console
     from ai_rules.config import Config
-
-    console = Console()
 
     config_dir = cli_facade.get_config_dir()
     cfg = Config.load()
@@ -120,12 +117,10 @@ def config_show(merged: bool, agent: str | None) -> None:
 @config.command("edit")
 def config_edit() -> None:
     """Edit user configuration file in $EDITOR."""
-    from rich.console import Console
-
-    console = Console()
-
     import os
     import subprocess
+
+    from ai_rules.cli.display import console
 
     user_config_path = cli_facade.get_user_config_path()
     editor = os.environ.get("EDITOR", "vi")
@@ -139,7 +134,9 @@ def config_edit() -> None:
         subprocess.run([editor, str(user_config_path)], check=True)
         console.print(f"[green]✓[/green] Config edited: {user_config_path}")
     except subprocess.CalledProcessError:
-        console.print("[red]Error opening editor[/red]")
+        from ai_rules.cli.display import print_error
+
+        print_error("Error opening editor")
         sys.exit(1)
 
 
@@ -183,9 +180,7 @@ def _collect_exclusion_patterns() -> list[str]:
     Returns:
         List of exclusion patterns
     """
-    from rich.console import Console
-
-    console = Console()
+    from ai_rules.cli.display import console
 
     console.print("\n[bold]Step 1: Exclusion Patterns[/bold]")
     console.print("Do you want to exclude any files from being managed?\n")
@@ -228,11 +223,9 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
     Returns:
         Dictionary of agent settings overrides
     """
-    from rich.console import Console
-
-    console = Console()
-
     import json
+
+    from ai_rules.cli.display import console
 
     console.print("\n[bold]Step 2: Settings Overrides[/bold]")
     response = console.input(
@@ -308,12 +301,10 @@ def _display_configuration_summary(config_data: dict[str, Any]) -> None:
     Args:
         config_data: Configuration dictionary to display
     """
-    from rich.console import Console
-
-    console = Console()
+    from ai_rules.cli.display import console
 
     console.print("\n[bold cyan]Configuration Summary:[/bold cyan]")
-    console.print("=" * 50)
+    console.rule()
 
     if "exclude_symlinks" in config_data:
         console.print(
@@ -329,18 +320,14 @@ def _display_configuration_summary(config_data: dict[str, Any]) -> None:
             for key, value in overrides.items():
                 console.print(f"    • {key}: {value}")
 
-    console.print("\n" + "=" * 50)
+    console.rule()
 
 
 @config.command("init")
 def config_init() -> None:
     """Interactive configuration wizard."""
-    from rich.console import Console
-    from rich.prompt import Confirm
-
+    from ai_rules.cli.display import console, print_warning
     from ai_rules.config import Config
-
-    console = Console()
 
     user_config_path = cli_facade.get_user_config_path()
 
@@ -351,8 +338,8 @@ def config_init() -> None:
     console.print(f"Config will be created at: [dim]{user_config_path}[/dim]\n")
 
     if user_config_path.exists():
-        console.print("[yellow]⚠[/yellow] Config file already exists!")
-        if not Confirm.ask("Overwrite existing config?", default=False):
+        print_warning("Config file already exists!")
+        if not click.confirm("Overwrite existing config?", default=False):
             console.print("[dim]Cancelled[/dim]")
             return
 
@@ -368,7 +355,7 @@ def config_init() -> None:
 
     _display_configuration_summary(config_data)
 
-    if Confirm.ask("\nSave configuration?", default=True):
+    if click.confirm("\nSave configuration?", default=True):
         Config.save_user_config(config_data)
 
         console.print(f"\n[green]✓[/green] Configuration saved to {user_config_path}")

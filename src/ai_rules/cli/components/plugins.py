@@ -13,6 +13,7 @@ from ai_rules.cli.context import (
 
 class ClaudePluginComponent(Component):
     label = "Claude Plugins"
+    display_name = "Claude Plugins"
     component_id = "plugins"
 
     def _claude_selected(self, ctx: CliContext) -> bool:
@@ -114,6 +115,7 @@ class ClaudePluginComponent(Component):
             return ComponentResult()
 
         from ai_rules.cli import _get_plugin_status
+        from ai_rules.cli.runner import get_console
 
         plugin_result = _get_plugin_status(ctx.config)
         if plugin_result is None:
@@ -129,10 +131,10 @@ class ClaudePluginComponent(Component):
             or plugin_status.extra
             or plugin_status.marketplaces_missing
         ):
-            ctx.console.print("[bold cyan]Claude Plugins[/bold cyan]\n")
+            console = get_console(ctx)
 
             for marketplace in plugin_status.marketplaces_missing:
-                ctx.console.print(
+                console.print(
                     f"  {marketplace['name']:<20} [yellow]Marketplace missing[/yellow] [dim]({marketplace['source']})[/dim]"
                 )
                 all_correct = False
@@ -140,18 +142,18 @@ class ClaudePluginComponent(Component):
             for plugin_config in desired_plugins:
                 plugin_key = plugin_config.key
                 if plugin_key in plugin_status.installed:
-                    ctx.console.print(
+                    console.print(
                         f"  {plugin_config.name:<20} [green]Installed[/green] [dim](managed)[/dim]"
                     )
                 else:
-                    ctx.console.print(
+                    console.print(
                         f"  {plugin_config.name:<20} [yellow]Not installed[/yellow] [dim](managed)[/dim]"
                     )
                     all_correct = False
 
             for key in sorted(plugin_status.extra):
-                ctx.console.print(f"  {key:<20} [dim]Unmanaged[/dim]")
-            ctx.console.print()
+                console.print(f"  {key:<20} [dim]Unmanaged[/dim]")
+            console.print()
 
         return ComponentResult(ok=all_correct, changed=not all_correct)
 

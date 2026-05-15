@@ -58,6 +58,7 @@ class CliContext:
 
 class Component(ABC):
     label: str
+    display_name: str = ""
     filterable: bool = True
 
     component_id: ClassVar[str]
