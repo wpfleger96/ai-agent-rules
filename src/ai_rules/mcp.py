@@ -3,7 +3,6 @@
 import copy
 import json
 import shutil
-import tempfile
 
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -13,7 +12,7 @@ from typing import Any, cast
 
 import yaml
 
-from .config import Config
+from .config import Config, write_file_atomic
 from .utils import deep_merge
 
 
@@ -344,17 +343,7 @@ class ClaudeMCPManager(MCPManager):
         }
 
     def _write_json_atomic(self, path: Path, data: dict[str, Any]) -> None:
-        fd, temp_path = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
-        try:
-            with open(fd, "w") as f:
-                json.dump(data, f, indent=2)
-            if path.exists():
-                shutil.copystat(path, temp_path)
-            shutil.move(temp_path, path)
-        except Exception:
-            if Path(temp_path).exists():
-                Path(temp_path).unlink()
-            raise
+        write_file_atomic(path, lambda f: json.dump(data, f, indent=2))
 
     @property
     def CLAUDE_JSON(self) -> Path:
@@ -611,20 +600,7 @@ class GeminiMCPManager(MCPManager):
         self._config_path.parent.mkdir(parents=True, exist_ok=True)
         full = self._load_full_config()
         full["mcpServers"] = mcps
-
-        fd, temp_path = tempfile.mkstemp(
-            dir=self._config_path.parent, prefix=f".{self._config_path.name}."
-        )
-        try:
-            with open(fd, "w") as f:
-                json.dump(full, f, indent=2)
-            if self._config_path.exists():
-                shutil.copystat(self._config_path, temp_path)
-            shutil.move(temp_path, self._config_path)
-        except Exception:
-            if Path(temp_path).exists():
-                Path(temp_path).unlink()
-            raise
+        write_file_atomic(self._config_path, lambda f: json.dump(full, f, indent=2))
 
     def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
         result: dict[str, Any] = {}
@@ -674,20 +650,7 @@ class AmpMCPManager(MCPManager):
         self._config_path.parent.mkdir(parents=True, exist_ok=True)
         full = self._load_full_config()
         full["amp.mcpServers"] = mcps
-
-        fd, temp_path = tempfile.mkstemp(
-            dir=self._config_path.parent, prefix=f".{self._config_path.name}."
-        )
-        try:
-            with open(fd, "w") as f:
-                json.dump(full, f, indent=2)
-            if self._config_path.exists():
-                shutil.copystat(self._config_path, temp_path)
-            shutil.move(temp_path, self._config_path)
-        except Exception:
-            if Path(temp_path).exists():
-                Path(temp_path).unlink()
-            raise
+        write_file_atomic(self._config_path, lambda f: json.dump(full, f, indent=2))
 
     def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
         result: dict[str, Any] = {}

@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any
 
 from ai_rules.config import Config
-from ai_rules.utils import deep_merge
 
 
 class ConfigTarget(ABC):
@@ -108,7 +107,63 @@ class ConfigTarget(ABC):
         Override in Agent to reconcile managed MCP entries.
         """
 
-    # --- settings cache methods -------------------------------------------
+    def _reconcile_cache(
+        self,
+        merged: dict[str, Any],
+        existing: dict[str, Any] | None,
+        tracker: Any | None,
+    ) -> tuple[dict[str, Any], set[str]]:
+        """Merge existing cache state into merged settings, preserving user keys.
+
+        Mutates merged in place. Returns (merged, airules_keys) where airules_keys
+        is the set of top-level keys contributed by ai-rules (not by the user).
+
+        Phases:
+          1. Preserved fields — copy from existing, tracker cleanup first
+          2. Snapshot airules_keys BEFORE user pass-through
+          3. User pass-through — copy unknown keys the user owns
+          4. MCP merge hook
+          5. Finalize — capture any keys added by MCP merge
+        """
+        from ai_rules.utils import deep_merge
+
+        preserved = self._effective_preserved_fields
+        user_keys: set[str] = set()
+
+        if existing is not None and preserved:
+            if tracker:
+                existing = tracker.cleanup_stale_entries(existing, merged, preserved)
+            for field in preserved:
+                if field in existing:
+                    if isinstance(merged.get(field), dict) and isinstance(
+                        existing[field], dict
+                    ):
+                        merged[field] = deep_merge(merged[field], existing[field])
+                    else:
+                        merged[field] = existing[field]
+
+        airules_keys = set(merged.keys())
+
+        if existing is not None and tracker is not None:
+            previously_contributed = set(
+                tracker.get_field_contributions(f"_contributed_keys_{self.target_id}")
+                or []
+            )
+            for key in existing:
+                if key in merged:
+                    continue
+                if key in preserved:
+                    continue
+                if key in previously_contributed:
+                    continue
+                merged[key] = existing[key]
+                user_keys.add(key)
+
+        self._merge_managed_mcps(merged)
+
+        airules_keys |= set(merged.keys()) - user_keys
+
+        return merged, airules_keys
 
     @property
     def _base_settings_path(self) -> Path:
@@ -161,8 +216,6 @@ class ConfigTarget(ABC):
         if cache_path:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-            preserved = self._effective_preserved_fields
-
             tracker = ManagedFieldsTracker() if config_format == "json" else None
             existing: dict[str, Any] | None = None
 
@@ -172,44 +225,23 @@ class ConfigTarget(ABC):
                 except CONFIG_PARSE_ERRORS:
                     existing = None
 
-            if existing is not None and preserved:
-                if tracker:
-                    existing = tracker.cleanup_stale_entries(
-                        existing, merged, preserved
-                    )
+            source_preserved = {
+                f: merged.get(f)
+                for f in self._effective_preserved_fields
+                if merged.get(f)
+            }
 
-                for field in preserved:
-                    if field in existing:
-                        if isinstance(merged.get(field), dict) and isinstance(
-                            existing[field], dict
-                        ):
-                            merged[field] = deep_merge(merged[field], existing[field])
-                        else:
-                            merged[field] = existing[field]
-
-            if existing is not None and tracker is not None:
-                previously_contributed = set(
-                    tracker.get_field_contributions("_contributed_keys") or []
-                )
-                for key in existing:
-                    if key in merged or key in preserved:
-                        continue
-                    if key in previously_contributed:
-                        continue
-                    merged[key] = existing[key]
-
-            self._merge_managed_mcps(merged)
+            merged, airules_keys = self._reconcile_cache(merged, existing, tracker)
 
             if tracker:
-                if preserved:
-                    for field in preserved:
-                        merged_value = merged.get(field)
-                        if merged_value:
-                            tracker.set_field_contributions(field, merged_value)
-                        else:
-                            tracker.set_field_contributions(field, None)
+                for field, value in source_preserved.items():
+                    tracker.set_field_contributions(field, value)
+                for field in self._effective_preserved_fields:
+                    if field not in source_preserved:
+                        tracker.set_field_contributions(field, None)
                 tracker.set_field_contributions(
-                    "_contributed_keys", sorted(merged.keys())
+                    f"_contributed_keys_{self.target_id}",
+                    sorted(airules_keys),
                 )
                 tracker.save()
 
@@ -273,7 +305,11 @@ class ConfigTarget(ABC):
         import tomli_w
         import yaml
 
-        from ai_rules.config import CONFIG_PARSE_ERRORS, load_config_file
+        from ai_rules.config import (
+            CONFIG_PARSE_ERRORS,
+            ManagedFieldsTracker,
+            load_config_file,
+        )
 
         if not self.needs_cache:
             return None
@@ -307,69 +343,39 @@ class ConfigTarget(ABC):
             from_label = "Base (current)"
             to_label = "Expected (with overrides)"
 
-        expected_settings = self.config.merge_settings(self.target_id, base_settings)
+        merged = self.config.merge_settings(self.target_id, base_settings)
 
-        current_copy = copy.deepcopy(current_settings)
-        expected_copy = copy.deepcopy(expected_settings)
+        tracker = ManagedFieldsTracker() if config_format == "json" else None
 
-        static_preserved = set(self.preserved_fields)
-        effective_preserved = set(self._effective_preserved_fields)
-        mcp_preserved = effective_preserved - static_preserved
+        expected, _ = self._reconcile_cache(
+            merged,
+            copy.deepcopy(current_settings) if cache_exists else None,
+            tracker,
+        )
 
-        for field in mcp_preserved:
-            current_copy.pop(field, None)
-            expected_copy.pop(field, None)
-
-        if config_format == "json" and cache_exists:
-            from ai_rules.config import ManagedFieldsTracker
-
-            tracker = ManagedFieldsTracker()
-            previously_contributed = set(
-                tracker.get_field_contributions("_contributed_keys") or []
-            )
-            for key in list(current_copy.keys()):
-                if key not in expected_copy and key not in previously_contributed:
-                    current_copy.pop(key)
-
-        for field in static_preserved:
-            profile_value = expected_copy.get(field)
-            cache_value = current_copy.get(field)
-
-            if isinstance(profile_value, dict) and isinstance(cache_value, dict):
-                current_copy[field] = {
-                    k: cache_value[k] for k in profile_value if k in cache_value
-                }
-                expected_copy[field] = profile_value
-                if current_copy[field] == expected_copy[field]:
-                    current_copy.pop(field, None)
-                    expected_copy.pop(field, None)
-            else:
-                current_copy.pop(field, None)
-                expected_copy.pop(field, None)
-
-        if current_copy == expected_copy:
+        if current_settings == expected:
             return None
 
         if config_format == "json":
-            current_text = json.dumps(current_copy, indent=2)
-            expected_text = json.dumps(expected_copy, indent=2)
+            current_text = json.dumps(current_settings, indent=2)
+            expected_text = json.dumps(expected, indent=2)
         elif config_format == "yaml":
             current_text = yaml.dump(
-                current_copy, default_flow_style=False, sort_keys=False
+                current_settings, default_flow_style=False, sort_keys=False
             )
             expected_text = yaml.dump(
-                expected_copy, default_flow_style=False, sort_keys=False
+                expected, default_flow_style=False, sort_keys=False
             )
         elif config_format == "toml":
             from ai_rules.config import _validate_for_format
 
             try:
-                _validate_for_format(current_copy, "toml")
-                _validate_for_format(expected_copy, "toml")
+                _validate_for_format(current_settings, "toml")
+                _validate_for_format(expected, "toml")
             except ValueError as exc:
                 return f"[red]Config contains invalid values:[/red] {exc}"
-            current_text = tomli_w.dumps(current_copy)
-            expected_text = tomli_w.dumps(expected_copy)
+            current_text = tomli_w.dumps(current_settings)
+            expected_text = tomli_w.dumps(expected)
         else:
             return None
 
