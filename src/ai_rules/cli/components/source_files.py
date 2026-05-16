@@ -11,7 +11,7 @@ class SourceFilesComponent(Component):
     component_id = "source-files"
 
     def validate(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.cli.display import print_error, print_success
+        from ai_rules.cli.display import print_dim, print_error, print_success
         from ai_rules.cli.runner import get_console
 
         console = get_console(ctx)
@@ -41,13 +41,14 @@ class SourceFilesComponent(Component):
                 if (tgt, source) not in target.get_filtered_symlinks()
             ]
             if excluded_symlinks:
-                console.print(
-                    f"  [dim]({len(excluded_symlinks)} symlink(s) excluded by config)[/dim]"
+                print_dim(
+                    f"({len(excluded_symlinks)} symlink(s) excluded by config)",
+                    indent=2,
                 )
 
             for path, issue in target_issues:
                 print_error(str(path), indent=2)
-                console.print(f"    [dim]{issue}[/dim]")
+                print_dim(issue, indent=4)
                 total_issues += 1
 
             console.print()

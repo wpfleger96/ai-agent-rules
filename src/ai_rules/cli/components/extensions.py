@@ -25,6 +25,7 @@ class ClaudeExtensionsComponent(Component):
 
         from ai_rules.claude_extensions import ClaudeExtensionManager
         from ai_rules.cli.display import (
+            dim,
             print_absent,
             print_error,
             print_success,
@@ -62,14 +63,14 @@ class ClaudeExtensionsComponent(Component):
                     created += 1
                 elif result == SymlinkResult.ALREADY_CORRECT:
                     print_unchanged(
-                        f"{target_path} [dim](already correct)[/dim]", indent=2
+                        f"{target_path} {dim('(already correct)')}", indent=2
                     )
                     unchanged += 1
                 elif result == SymlinkResult.UPDATED:
                     print_update(f"{target_path} → {source_path}", indent=2)
                     updated += 1
                 elif result == SymlinkResult.SKIPPED:
-                    print_absent(f"{target_path} [dim](skipped)[/dim]", indent=2)
+                    print_absent(f"{target_path} {dim('(skipped)')}", indent=2)
                     skipped += 1
                 elif result == SymlinkResult.ERROR:
                     print_error(f"{target_path}: {message}", indent=2)
@@ -121,6 +122,7 @@ class ClaudeExtensionsComponent(Component):
             return ComponentResult()
 
         from ai_rules.cli.display import (
+            dim,
             print_absent,
             print_error,
             print_success,
@@ -152,13 +154,13 @@ class ClaudeExtensionsComponent(Component):
                 print_success(f"{target_path} → {source_path}", indent=2)
                 created += 1
             elif result == SymlinkResult.ALREADY_CORRECT:
-                print_unchanged(f"{target_path} [dim](already correct)[/dim]", indent=2)
+                print_unchanged(f"{target_path} {dim('(already correct)')}", indent=2)
                 unchanged += 1
             elif result == SymlinkResult.UPDATED:
                 print_update(f"{target_path} → {source_path}", indent=2)
                 updated += 1
             elif result == SymlinkResult.SKIPPED:
-                print_absent(f"{target_path} [dim](skipped)[/dim]", indent=2)
+                print_absent(f"{target_path} {dim('(skipped)')}", indent=2)
                 skipped += 1
             elif result == SymlinkResult.ERROR:
                 print_error(f"{target_path}: {message}", indent=2)
@@ -211,15 +213,13 @@ class ClaudeExtensionsComponent(Component):
                     print_success(f"{target_path} removed", indent=2)
                     removed += 1
                 elif "Does not exist" in message:
-                    from ai_rules.cli.display import print_unchanged
+                    from ai_rules.cli.display import dim, print_unchanged
 
-                    print_unchanged(
-                        f"{target_path} [dim](not installed)[/dim]", indent=2
-                    )
+                    print_unchanged(f"{target_path} {dim('(not installed)')}", indent=2)
                 else:
-                    from ai_rules.cli.display import print_absent
+                    from ai_rules.cli.display import dim, print_absent
 
-                    print_absent(f"{target_path} [dim]({message})[/dim]", indent=2)
+                    print_absent(f"{target_path} {dim(f'({message})')}", indent=2)
                     skipped += 1
 
         return ComponentResult(
@@ -250,6 +250,7 @@ class ClaudeExtensionsComponent(Component):
                 pass
 
         from ai_rules.claude_extensions import ClaudeExtensionManager
+        from ai_rules.cli.display import dim, print_dim
         from ai_rules.cli.runner import get_console
 
         ext_manager = ClaudeExtensionManager(ctx.config_dir)
@@ -285,23 +286,21 @@ class ClaudeExtensionsComponent(Component):
 
             for name in sorted(type_status.managed_installed.keys()):
                 console.print(
-                    f"  {name:<20} [green]Installed[/green] [dim](managed)[/dim]"
+                    f"  {name:<20} [green]Installed[/green] {dim('(managed)')}"
                 )
 
             for name, item in sorted(type_status.managed_wrong_target.items()):
                 if item.is_broken:
                     console.print(
-                        f"  {name:<20} [red]Broken symlink[/red] [dim](managed)[/dim]"
+                        f"  {name:<20} [red]Broken symlink[/red] {dim('(managed)')}"
                     )
                 else:
                     console.print(
-                        f"  {name:<20} [yellow]Wrong target[/yellow] [dim](managed)[/dim]"
+                        f"  {name:<20} [yellow]Wrong target[/yellow] {dim('(managed)')}"
                     )
                     if item.actual_source and item.expected_source:
-                        console.print(f"    [dim]Points to {item.actual_source}[/dim]")
-                        console.print(
-                            f"    [dim]Expected: → {item.expected_source}[/dim]"
-                        )
+                        print_dim(f"Points to {item.actual_source}", indent=4)
+                        print_dim(f"Expected: → {item.expected_source}", indent=4)
                         from ai_rules.symlinks import get_content_diff
 
                         diff_output = get_content_diff(
@@ -313,7 +312,7 @@ class ClaudeExtensionsComponent(Component):
 
             for name in sorted(type_status.managed_pending.keys()):
                 console.print(
-                    f"  {name:<20} [yellow]Not installed[/yellow] [dim](managed)[/dim]"
+                    f"  {name:<20} [yellow]Not installed[/yellow] {dim('(managed)')}"
                 )
                 all_correct = False
 
@@ -321,11 +320,11 @@ class ClaudeExtensionsComponent(Component):
                 if ext_type in all_orphaned and name in all_orphaned[ext_type]:
                     console.print(f"  {name:<20} [yellow]Orphaned[/yellow]")
                 else:
-                    console.print(f"  {name:<20} [dim]Unmanaged[/dim]")
+                    console.print(f"  {name:<20} {dim('Unmanaged')}")
 
             for name in sorted(orphaned_hooks.keys()):
                 console.print(
-                    f"  {name:<20} [yellow]No configuration[/yellow] [dim](orphaned)[/dim]"
+                    f"  {name:<20} [yellow]No configuration[/yellow] {dim('(orphaned)')}"
                 )
                 all_correct = False
             console.print()

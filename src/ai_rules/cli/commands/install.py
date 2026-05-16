@@ -118,7 +118,10 @@ def install(
         set_active_profile(profile)
 
     if profile and profile != "default":
-        console.print(f"[dim]Using profile: {profile}[/dim]\n")
+        from ai_rules.cli.display import print_label
+
+        print_label("Using profile", profile)
+        console.print()
 
     all_targets = cli_facade.get_targets(config_dir, config)
     selected_targets = cli_facade.select_targets(all_targets, agents)

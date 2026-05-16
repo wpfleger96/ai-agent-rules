@@ -187,9 +187,11 @@ def check_first_run(targets: list["ConfigTarget"], force: bool) -> bool:
     for agent_name, path in existing_files:
         console.print(f"  [{agent_name}] {path}")
 
-    console.print(
-        "\n[dim]These will be replaced with symlinks (originals will be backed up).[/dim]\n"
-    )
+    from ai_rules.cli.display import print_dim
+
+    console.print()
+    print_dim("These will be replaced with symlinks (originals will be backed up).")
+    console.print()
 
     return click.confirm("Continue?", default=False)
 
@@ -219,8 +221,10 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
             if statusline_version:
                 console.print(f"statusline, version {statusline_version}")
             else:
+                from ai_rules.cli.display import dim
+
                 console.print(
-                    "statusline, version [dim](installed, version unknown)[/dim]"
+                    f"statusline, version {dim('(installed, version unknown)')}"
                 )
     except Exception as e:
         logger.debug(f"Failed to get statusline version: {e}")
@@ -233,7 +237,9 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
             if bm_version:
                 console.print(f"recall, version {bm_version}")
             else:
-                console.print("recall, version [dim](installed, version unknown)[/dim]")
+                from ai_rules.cli.display import dim as _dim
+
+                console.print(f"recall, version {_dim('(installed, version unknown)')}")
     except Exception as e:
         logger.debug(f"Failed to get recall version: {e}")
 
@@ -310,8 +316,10 @@ def cleanup_deprecated_symlinks(
             else:
                 success, message = remove_symlink(target, force=True)
                 if success:
-                    console.print(
-                        f"  [dim]Cleaned up deprecated symlink:[/dim] {deprecated_path}"
+                    from ai_rules.cli.display import print_label
+
+                    print_label(
+                        "Cleaned up deprecated symlink", str(deprecated_path), indent=2
                     )
                     removed_count += 1
 

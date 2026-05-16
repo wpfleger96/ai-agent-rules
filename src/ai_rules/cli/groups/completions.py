@@ -4,6 +4,15 @@ import sys
 
 import click
 
+from ai_rules.cli.display import (
+    ICON_ABSENT,
+    ICON_NONE,
+    ICON_SUCCESS,
+    dim,
+    print_hint,
+    print_label,
+)
+
 
 @click.group()
 def completions() -> None:
@@ -25,10 +34,10 @@ def completions_bash() -> None:
     try:
         script = generate_completion_script("bash")
         console.print(script)
-        console.print(
-            "\n[dim]To install: Add the above to your ~/.bashrc or run:[/dim]"
+        console.print()
+        print_hint(
+            "To install: Add the above to your ~/.bashrc or run: ai-agent-rules completions install"
         )
-        console.print("[dim]  ai-agent-rules completions install[/dim]")
     except Exception as e:
         from ai_rules.cli.display import print_error
 
@@ -45,8 +54,10 @@ def completions_zsh() -> None:
     try:
         script = generate_completion_script("zsh")
         console.print(script)
-        console.print("\n[dim]To install: Add the above to your ~/.zshrc or run:[/dim]")
-        console.print("[dim]  ai-agent-rules completions install[/dim]")
+        console.print()
+        print_hint(
+            "To install: Add the above to your ~/.zshrc or run: ai-agent-rules completions install"
+        )
     except Exception as e:
         from ai_rules.cli.display import print_error
 
@@ -62,7 +73,7 @@ def completions_zsh() -> None:
 )
 def completions_install(shell: str | None) -> None:
     """Install shell completion to config file."""
-    from ai_rules.cli.display import console, print_error, print_success
+    from ai_rules.cli.display import print_error, print_success
     from ai_rules.completions import detect_shell, install_completion
 
     if shell is None:
@@ -70,7 +81,7 @@ def completions_install(shell: str | None) -> None:
         if shell is None:
             print_error("Could not detect shell. Please specify with --shell")
             sys.exit(1)
-        console.print(f"[dim]Detected shell:[/dim] {shell}")
+        print_label("Detected shell", shell)
 
     success, message = install_completion(shell, dry_run=False)
 
@@ -124,7 +135,7 @@ def completions_uninstall(shell: str | None) -> None:
 )
 def completions_update(shell: str | None) -> None:
     """Re-generate completion block (fixes PATH shadowing issues)."""
-    from ai_rules.cli.display import console, print_error, print_success
+    from ai_rules.cli.display import print_error, print_success
     from ai_rules.completions import detect_shell, update_completion
 
     if shell is None:
@@ -132,7 +143,7 @@ def completions_update(shell: str | None) -> None:
         if shell is None:
             print_error("Could not detect shell. Use --shell to specify.")
             sys.exit(1)
-        console.print(f"[dim]Detected shell:[/dim] {shell}")
+        print_label("Detected shell", shell)
 
     success, message = update_completion(shell, dry_run=False)
 
@@ -172,17 +183,18 @@ def completions_status() -> None:
         config_path = find_config_file(shell)
 
         if config_path is None:
-            status = "[dim]-[/dim]"
-            config_str = "[dim]No config file found[/dim]"
+            status = ICON_NONE
+            config_str = dim("No config file found")
         elif is_completion_installed(config_path):
-            status = "[green]✓[/green]"
+            status = ICON_SUCCESS
             config_str = str(config_path)
         else:
-            status = "[yellow]○[/yellow]"
-            config_str = f"{config_path} [dim](not installed)[/dim]"
+            status = ICON_ABSENT
+            config_str = f"{config_path} {dim('(not installed)')}"
 
         shell_name = f"[bold]{shell}[/bold]" if shell == detected_shell else shell
         table.add_row(shell_name, status, config_str)
 
     console.print(table)
-    console.print("\n[dim]To install: ai-agent-rules completions install[/dim]")
+    console.print()
+    print_hint("To install: ai-agent-rules completions install")

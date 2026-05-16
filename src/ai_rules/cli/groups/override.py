@@ -8,6 +8,8 @@ import click
 
 import ai_rules.cli as cli_facade
 
+from ai_rules.cli.display import print_dim
+
 
 @click.group()
 def override() -> None:
@@ -163,9 +165,7 @@ def override_set(key: str, value: str) -> None:
     parts = key.split(".", 1)
     if len(parts) != 2:
         print_error("Key must be in format 'agent.setting'")
-        console.print(
-            "[dim]Example: claude.model or claude.hooks.SubagentStop[0].command[/dim]"
-        )
+        print_dim("Example: claude.model or claude.hooks.SubagentStop[0].command")
         sys.exit(1)
 
     agent, setting = parts
@@ -177,9 +177,7 @@ def override_set(key: str, value: str) -> None:
     if not is_valid:
         print_error(error_msg)
         if suggestions:
-            console.print(
-                f"[dim]Available options: {', '.join(suggestions[:10])}[/dim]"
-            )
+            print_dim(f"Available options: {', '.join(suggestions[:10])}")
         sys.exit(1)
 
     if warning_msg:
@@ -218,7 +216,7 @@ def override_set(key: str, value: str) -> None:
     Config.save_user_config(data)
 
     print_success(f"Set override: {agent}.{setting} = {parsed_value}")
-    console.print(f"[dim]Config updated: {user_config_path}[/dim]")
+    print_dim(f"Config updated: {user_config_path}")
     print_hint("Run 'ai-agent-rules install --rebuild-cache' to apply changes")
 
 
@@ -231,7 +229,6 @@ def override_unset(key: str) -> None:
     Supports nested keys like 'agent.nested.key'
     """
     from ai_rules.cli.display import (
-        console,
         print_error,
         print_hint,
         print_success,
@@ -293,7 +290,7 @@ def override_unset(key: str) -> None:
     Config.save_user_config(data)
 
     print_success(f"Removed override: {key}")
-    console.print(f"[dim]Config updated: {user_config_path}[/dim]")
+    print_dim(f"Config updated: {user_config_path}")
     print_hint("Run 'ai-agent-rules install --rebuild-cache' to apply changes")
 
 
@@ -307,7 +304,7 @@ def override_list() -> None:
     user_overrides = user_data.get("settings_overrides", {})
 
     if not user_overrides:
-        console.print("[dim]No settings overrides configured[/dim]")
+        print_dim("No settings overrides configured")
         return
 
     console.print("[bold]Settings Overrides:[/bold]\n")

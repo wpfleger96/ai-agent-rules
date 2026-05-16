@@ -68,6 +68,11 @@ class CompletionsComponent(Component):
         return ComponentResult(changed=success)
 
     def status(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.display import (
+            ICON_ABSENT,
+            ICON_SUCCESS,
+            print_dim,
+        )
         from ai_rules.cli.runner import get_console
         from ai_rules.completions import (
             detect_shell,
@@ -82,17 +87,18 @@ class CompletionsComponent(Component):
             config_path = find_config_file(shell)
             if config_path and is_completion_installed(config_path):
                 console.print(
-                    f"  [green]✓[/green] {shell} completion installed ({config_path})"
+                    f"  {ICON_SUCCESS} {shell} completion installed ({config_path})"
                 )
             else:
                 console.print(
-                    f"  [yellow]○[/yellow] {shell} completion not installed "
+                    f"  {ICON_ABSENT} {shell} completion not installed "
                     "(run: ai-agent-rules completions install)"
                 )
         else:
             supported = ", ".join(get_supported_shells())
-            console.print(
-                f"  [dim]Shell completion not available for your shell (only {supported} supported)[/dim]"
+            print_dim(
+                f"Shell completion not available for your shell (only {supported} supported)",
+                indent=2,
             )
 
         console.print()

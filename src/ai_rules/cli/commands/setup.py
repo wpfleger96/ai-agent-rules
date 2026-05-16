@@ -5,6 +5,7 @@ import click
 import ai_rules.cli as cli_facade
 
 from ai_rules.cli.commands.install import install
+from ai_rules.cli.display import dim, print_dim
 
 
 @click.command()
@@ -71,18 +72,19 @@ def setup(
     )
     if statusline_result == "installed":
         if dry_run and statusline_message:
-            console.print(f"[dim]{statusline_message}[/dim]")
+            print_dim(statusline_message)
         else:
             print_success("Installed claude-statusline")
     elif statusline_result == "upgraded":
         print_success(f"Upgraded claude-statusline ({statusline_message})")
     elif statusline_result == "upgrade_available":
-        console.print(f"[dim]{statusline_message}[/dim]")
+        if statusline_message:
+            print_dim(statusline_message)
     elif statusline_result == "source_switched":
         print_success(f"Switched claude-statusline source ({statusline_message})")
     elif statusline_result == "source_switch_needed":
         if dry_run and statusline_message:
-            console.print(f"[dim]{statusline_message}[/dim]")
+            print_dim(statusline_message)
     elif statusline_result == "failed":
         print_warning("Failed to install claude-statusline (continuing anyway)")
 
@@ -109,7 +111,9 @@ def setup(
                 source_name = "PyPI"
             if dry_run:
                 console.print(
-                    f"[dim]Would switch ai-agent-rules from {current_source.name if current_source else 'unknown'} to {source_name}[/dim]"
+                    dim(
+                        f"Would switch ai-agent-rules from {current_source.name if current_source else 'unknown'} to {source_name}"
+                    )
                 )
                 tool_install_success = True
             else:
@@ -145,8 +149,8 @@ def setup(
                 update_info = check_tool_updates(ai_rules_tool, timeout=10)
                 if update_info and update_info.has_update:
                     if dry_run:
-                        console.print(
-                            f"[dim]Would upgrade ai-agent-rules {update_info.current_version} → {update_info.latest_version}[/dim]"
+                        print_dim(
+                            f"Would upgrade ai-agent-rules {update_info.current_version} → {update_info.latest_version}"
                         )
                         tool_install_success = True
                     else:
@@ -199,7 +203,7 @@ def setup(
             )
 
             if dry_run:
-                console.print(f"[dim]{message}[/dim]")
+                print_dim(message)
                 tool_install_success = True
             elif success:
                 print_success("Tool installed successfully")
@@ -228,12 +232,11 @@ def setup(
                     print_warning(
                         f"Tool config not found at expected location: {tool_config_dir}"
                     )
-                    console.print(
-                        "[dim]Falling back to current config directory[/dim]\n"
-                    )
+                    print_dim("Falling back to current config directory")
+                    console.print()
             except Exception as e:
                 print_warning(f"Could not determine tool config path: {e}")
-                console.print("[dim]Falling back to current config directory[/dim]\n")
+                print_dim("Falling back to current config directory")
 
         ctx.invoke(
             install,
@@ -283,8 +286,8 @@ def setup(
                     print_warning(msg)
         else:
             supported = ", ".join(get_supported_shells())
-            console.print(
-                f"[dim]Shell completion not available for your shell (only {supported} supported)[/dim]"
+            print_dim(
+                f"Shell completion not available for your shell (only {supported} supported)"
             )
 
     if dry_run:

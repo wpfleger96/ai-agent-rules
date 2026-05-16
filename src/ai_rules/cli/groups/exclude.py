@@ -6,6 +6,8 @@ import click
 
 import ai_rules.cli as cli_facade
 
+from ai_rules.cli.display import dim, print_dim
+
 
 @click.group()
 def exclude() -> None:
@@ -20,7 +22,7 @@ def exclude_add(pattern: str) -> None:
 
     PATTERN can be an exact path or glob pattern (e.g., ~/.claude/*.json)
     """
-    from ai_rules.cli.display import console, print_success, print_warning
+    from ai_rules.cli.display import print_success, print_warning
     from ai_rules.config import Config
 
     data = Config.load_user_config()
@@ -37,14 +39,14 @@ def exclude_add(pattern: str) -> None:
 
     user_config_path = cli_facade.get_user_config_path()
     print_success(f"Added exclusion pattern: {pattern}")
-    console.print(f"[dim]Config updated: {user_config_path}[/dim]")
+    print_dim(f"Config updated: {user_config_path}")
 
 
 @exclude.command("remove")
 @click.argument("pattern")
 def exclude_remove(pattern: str) -> None:
     """Remove an exclusion pattern from user config."""
-    from ai_rules.cli.display import console, print_error, print_success, print_warning
+    from ai_rules.cli.display import print_error, print_success, print_warning
     from ai_rules.config import Config
 
     user_config_path = cli_facade.get_user_config_path()
@@ -63,7 +65,7 @@ def exclude_remove(pattern: str) -> None:
     Config.save_user_config(data)
 
     print_success(f"Removed exclusion pattern: {pattern}")
-    console.print(f"[dim]Config updated: {user_config_path}[/dim]")
+    print_dim(f"Config updated: {user_config_path}")
 
 
 @exclude.command("list")
@@ -75,10 +77,10 @@ def exclude_list() -> None:
     config = Config.load()
 
     if not config.exclude_symlinks:
-        console.print("[dim]No exclusion patterns configured[/dim]")
+        print_dim("No exclusion patterns configured")
         return
 
     console.print("[bold]Exclusion Patterns:[/bold]\n")
 
     for pattern in sorted(config.exclude_symlinks):
-        console.print(f"  • {pattern} [dim](user)[/dim]")
+        console.print(f"  • {pattern} {dim('(user)')}")

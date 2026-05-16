@@ -8,6 +8,8 @@ import click
 
 import ai_rules.cli as cli_facade
 
+from ai_rules.cli.display import dim
+
 
 @click.group()
 def config() -> None:
@@ -51,9 +53,10 @@ def config_show(merged: bool, agent: str | None) -> None:
             has_cache = cache_path and cache_path.exists()
 
             if not has_overrides and not has_cache:
-                console.print(
-                    f"[dim]{agent_name}: No overrides (using base settings)[/dim]\n"
-                )
+                from ai_rules.cli.display import print_dim
+
+                print_dim(f"{agent_name}: No overrides (using base settings)")
+                console.print()
                 continue
 
             console.print(f"[bold]{agent_name}:[/bold]")
@@ -98,8 +101,10 @@ def config_show(merged: bool, agent: str | None) -> None:
             else:
                 print_warning(f"No base settings found at {base_path}", indent=2)
                 if has_overrides:
-                    console.print(
-                        f"  [dim]Overrides: {cfg.settings_overrides[agent_name]}[/dim]"
+                    from ai_rules.cli.display import print_dim
+
+                    print_dim(
+                        f"Overrides: {cfg.settings_overrides[agent_name]}", indent=2
                     )
 
             console.print()
@@ -112,7 +117,10 @@ def config_show(merged: bool, agent: str | None) -> None:
             console.print(f"[bold]User Config:[/bold] {user_config_path}")
             console.print(content)
         else:
-            console.print(f"[dim]No user config at {user_config_path}[/dim]\n")
+            from ai_rules.cli.display import print_dim
+
+            print_dim(f"No user config at {user_config_path}")
+            console.print()
 
 
 @config.command("edit")
@@ -199,10 +207,11 @@ def _collect_exclusion_patterns() -> list[str]:
             selected_exclusions.append(pattern)
             print_success(f"Will exclude: {pattern}", indent=4)
 
-    console.print(
-        "\n[dim]Enter custom exclusion patterns (glob patterns supported)[/dim]"
-    )
-    console.print("[dim]One per line, empty line to finish:[/dim]")
+    from ai_rules.cli.display import print_dim
+
+    console.print()
+    print_dim("Enter custom exclusion patterns (glob patterns supported)")
+    print_dim("One per line, empty line to finish:")
     while True:
         pattern = console.input("> ").strip()
         if not pattern:
@@ -257,8 +266,11 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
             continue
 
         console.print(f"\n[bold]{agent.title()} settings overrides:[/bold]")
-        console.print("[dim]Enter key=value pairs (empty to finish):[/dim]")
-        console.print("[dim]Example: model=claude-sonnet-4-5-20250929[/dim]\n")
+        from ai_rules.cli.display import print_dim
+
+        print_dim("Enter key=value pairs (empty to finish):")
+        print_dim("Example: model=claude-sonnet-4-5-20250929")
+        console.print()
 
         agent_overrides = {}
         while True:
@@ -334,12 +346,14 @@ def config_init() -> None:
         "[bold cyan]Welcome to ai-agent-rules configuration wizard![/bold cyan]\n"
     )
     console.print("This will help you set up your .ai-agent-rules-config.yaml file.")
-    console.print(f"Config will be created at: [dim]{user_config_path}[/dim]\n")
+    console.print(f"Config will be created at: {dim(str(user_config_path))}\n")
 
     if user_config_path.exists():
         print_warning("Config file already exists!")
         if not click.confirm("Overwrite existing config?", default=False):
-            console.print("[dim]Cancelled[/dim]")
+            from ai_rules.cli.display import print_dim
+
+            print_dim("Cancelled")
             return
 
     config_data: dict[str, Any] = {"version": 1}
@@ -369,4 +383,6 @@ def config_init() -> None:
             "  • Run [cyan]ai-agent-rules config show --merged[/cyan] to see merged settings"
         )
     else:
-        console.print("[dim]Configuration not saved[/dim]")
+        from ai_rules.cli.display import print_dim
+
+        print_dim("Configuration not saved")

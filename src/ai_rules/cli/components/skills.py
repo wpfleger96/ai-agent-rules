@@ -285,6 +285,7 @@ class SkillsComponent(Component):
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.display import dim, print_dim
         from ai_rules.cli.runner import get_console
 
         console = get_console(ctx)
@@ -327,23 +328,21 @@ class SkillsComponent(Component):
 
             for name in sorted(skill_status.managed_installed.keys()):
                 console.print(
-                    f"  {name:<20} [green]Installed[/green] [dim](managed)[/dim]"
+                    f"  {name:<20} [green]Installed[/green] {dim('(managed)')}"
                 )
 
             for name, item in sorted(skill_status.managed_wrong_target.items()):
                 if item.is_broken:
                     console.print(
-                        f"  {name:<20} [red]Broken symlink[/red] [dim](managed)[/dim]"
+                        f"  {name:<20} [red]Broken symlink[/red] {dim('(managed)')}"
                     )
                 else:
                     console.print(
-                        f"  {name:<20} [yellow]Wrong target[/yellow] [dim](managed)[/dim]"
+                        f"  {name:<20} [yellow]Wrong target[/yellow] {dim('(managed)')}"
                     )
                     if item.actual_source and item.expected_source:
-                        console.print(f"    [dim]Points to {item.actual_source}[/dim]")
-                        console.print(
-                            f"    [dim]Expected: → {item.expected_source}[/dim]"
-                        )
+                        print_dim(f"Points to {item.actual_source}", indent=4)
+                        print_dim(f"Expected: → {item.expected_source}", indent=4)
                         from ai_rules.symlinks import get_content_diff
 
                         diff_output = get_content_diff(
@@ -355,7 +354,7 @@ class SkillsComponent(Component):
 
             for name in sorted(skill_status.managed_pending.keys()):
                 console.print(
-                    f"  {name:<20} [yellow]Not installed[/yellow] [dim](managed)[/dim]"
+                    f"  {name:<20} [yellow]Not installed[/yellow] {dim('(managed)')}"
                 )
                 all_correct = False
 
@@ -363,7 +362,7 @@ class SkillsComponent(Component):
                 if name in orphaned_skills:
                     console.print(f"  {name:<20} [yellow]Orphaned[/yellow]")
                 else:
-                    console.print(f"  {name:<20} [dim]Unmanaged[/dim]")
+                    console.print(f"  {name:<20} {dim('Unmanaged')}")
 
             console.print()
 

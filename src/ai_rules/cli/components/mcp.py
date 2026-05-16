@@ -190,6 +190,7 @@ class MCPComponent(Component):
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.display import dim, print_dim
         from ai_rules.cli.runner import get_console
 
         console = get_console(ctx)
@@ -222,7 +223,7 @@ class MCPComponent(Component):
                 )
                 override_text = ", override" if has_override else ""
                 console.print(
-                    f"  {name:<20} {status_text} [dim](managed{override_text})[/dim]"
+                    f"  {name:<20} {status_text} {dim(f'(managed{override_text})')}"
                 )
                 if not is_installed and mgr is not None:
                     expected = mgr.load_managed_mcps(ctx.config_dir, ctx.config).get(
@@ -235,13 +236,13 @@ class MCPComponent(Component):
                             if line.startswith("MCP"):
                                 continue
                             if line.strip():
-                                console.print(f"    [dim]{line}[/dim]")
+                                print_dim(line, indent=4)
                     all_correct = False
             for name in sorted(mcp_status.pending_mcps.keys()):
                 has_override = mcp_status.has_overrides.get(name, False)
                 override_text = ", override" if has_override else ""
                 console.print(
-                    f"  {name:<20} [yellow]Not installed[/yellow] [dim](managed{override_text})[/dim]"
+                    f"  {name:<20} [yellow]Not installed[/yellow] {dim(f'(managed{override_text})')}"
                 )
                 if mgr is not None:
                     expected = mcp_status.pending_mcps.get(name, {})
@@ -251,11 +252,11 @@ class MCPComponent(Component):
                 all_correct = False
             for name in sorted(mcp_status.stale_mcps.keys()):
                 console.print(
-                    f"  {name:<20} [red]Should be removed[/red] [dim](no longer in config)[/dim]"
+                    f"  {name:<20} [red]Should be removed[/red] {dim('(no longer in config)')}"
                 )
                 all_correct = False
             for name in sorted(mcp_status.unmanaged_mcps.keys()):
-                console.print(f"  {name:<20} [dim]Unmanaged[/dim]")
+                console.print(f"  {name:<20} {dim('Unmanaged')}")
             console.print()
 
         return ComponentResult(ok=all_correct, changed=not all_correct)

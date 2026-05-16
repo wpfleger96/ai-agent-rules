@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 
 from ai_rules.bootstrap import ToolSource
+from ai_rules.cli.display import dim, print_hint
 
 
 def _resolve_configured_source(configured: str | None) -> ToolSource | None:
@@ -23,7 +24,7 @@ def _resolve_configured_source(configured: str | None) -> ToolSource | None:
 def _format_source_display(source: ToolSource | None, configured: str | None) -> str:
     """Format combined source+config info for table display."""
     if not source:
-        return "[dim]unknown[/dim]"
+        return dim("unknown")
 
     source_str = source.name.lower()
     configured_source = _resolve_configured_source(configured)
@@ -33,8 +34,8 @@ def _format_source_display(source: ToolSource | None, configured: str | None) ->
     if configured is not None:
         if configured and configured.startswith("local:"):
             local_cfg_path = configured[len("local:") :]
-            return f"{source_str} [dim]({local_cfg_path})[/dim]"
-        return f"{source_str} [dim](config)[/dim]"
+            return f"{source_str} {dim(f'({local_cfg_path})')}"
+        return f"{source_str} {dim('(config)')}"
     return source_str
 
 
@@ -80,7 +81,7 @@ def tool_list() -> None:
 
     for spec in get_updatable_tools():
         if not spec.is_installed():
-            table.add_row(spec.display_name, "-", "-", "[dim](not installed)[/dim]")
+            table.add_row(spec.display_name, "-", "-", dim("(not installed)"))
             continue
 
         source = get_tool_source(spec.package_name)
@@ -88,7 +89,7 @@ def tool_list() -> None:
         source_display = _format_source_display(source, configured)
 
         version = spec.get_version()
-        version_display = version if version else "[dim]unknown[/dim]"
+        version_display = version if version else dim("unknown")
 
         update_display = "-"
         try:
@@ -97,7 +98,7 @@ def tool_list() -> None:
                 update_display = f"[cyan]{update_info.latest_version} available[/cyan]"
                 has_updates = True
         except Exception:
-            update_display = "[dim](check failed)[/dim]"
+            update_display = dim("(check failed)")
 
         table.add_row(
             spec.display_name, source_display, version_display, update_display
@@ -142,16 +143,14 @@ def tool_show(tool_id: str) -> None:
     console.print(f"[bold]{spec.display_name}[/bold]\n")
 
     if not spec.is_installed():
-        console.print("  Status: [dim]not installed[/dim]")
+        console.print(f"  Status: {dim('not installed')}")
         return
 
     version = spec.get_version()
-    console.print(f"  Version:  {version or '[dim]unknown[/dim]'}")
+    console.print(f"  Version:  {version or dim('unknown')}")
 
     source = get_tool_source(spec.package_name)
-    console.print(
-        f"  Source:   {source.name.lower() if source else '[dim]unknown[/dim]'}"
-    )
+    console.print(f"  Source:   {source.name.lower() if source else dim('unknown')}")
 
     try:
         config = Config.load()
@@ -162,7 +161,7 @@ def tool_show(tool_id: str) -> None:
         config_display = _format_config_display(source, configured)
         console.print(f"  Config:   {config_display}")
     else:
-        console.print("  Config:   [dim](not set — default: pypi)[/dim]")
+        console.print(f"  Config:   {dim('(not set — default: pypi)')}")
 
     if spec.github_repo:
         console.print(f"  Repo:     https://github.com/{spec.github_repo}")
@@ -176,7 +175,7 @@ def tool_show(tool_id: str) -> None:
         elif update_info:
             console.print("  Update:   [green]up to date[/green]")
     except Exception:
-        console.print("  Update:   [dim](check failed)[/dim]")
+        console.print(f"  Update:   {dim('(check failed)')}")
 
 
 @tool.group()
@@ -212,12 +211,12 @@ def source_list() -> None:
             effective_pref = None
         table.add_row(
             spec.tool_id,
-            user_pref or "[dim](not set)[/dim]",
-            effective_pref or "[dim](default: pypi)[/dim]",
+            user_pref or dim("(not set)"),
+            effective_pref or dim("(default: pypi)"),
         )
     console.print(table)
-    console.print(
-        "\n[dim]Run 'ai-agent-rules setup' after changing to switch the installed source.[/dim]"
+    print_hint(
+        "Run 'ai-agent-rules setup' after changing to switch the installed source."
     )
 
 
@@ -263,14 +262,14 @@ def source_get(tool_id: str) -> None:
             f"[cyan]{canonical_id}[/cyan] user config: [bold]{user_pref}[/bold]"
         )
     else:
-        console.print(f"[cyan]{canonical_id}[/cyan] user config: [dim](not set)[/dim]")
+        console.print(f"[cyan]{canonical_id}[/cyan] user config: {dim('(not set)')}")
     if effective_pref:
         console.print(
             f"[cyan]{canonical_id}[/cyan] effective (profile/config): [bold]{effective_pref}[/bold]"
         )
     else:
         console.print(
-            f"[cyan]{canonical_id}[/cyan] effective: [dim](default: pypi)[/dim]"
+            f"[cyan]{canonical_id}[/cyan] effective: {dim('(default: pypi)')}"
         )
 
 
@@ -289,7 +288,7 @@ def source_set(tool_id: str, source_value: str) -> None:
         ai-agent-rules tool source set ai-agent-rules "local:~/Development/Personal/ai-rules"
         ai-agent-rules tool source set statusline reset
     """
-    from ai_rules.cli.display import console, print_error, print_success
+    from ai_rules.cli.display import print_error, print_success
     from ai_rules.config import Config
 
     canonical_id = _resolve_tool_id(tool_id)
@@ -304,8 +303,8 @@ def source_set(tool_id: str, source_value: str) -> None:
         print_success(
             f"Set [cyan]{canonical_id}[/cyan] install source to [bold]{source_value}[/bold]"
         )
-        console.print(
-            "[dim]Run 'ai-agent-rules setup' to switch the installed source if needed.[/dim]"
+        print_hint(
+            "Run 'ai-agent-rules setup' to switch the installed source if needed."
         )
     elif source_value.startswith("local:"):
         local_path = source_value[len("local:") :]
@@ -317,9 +316,7 @@ def source_set(tool_id: str, source_value: str) -> None:
         print_success(
             f"Set [cyan]{canonical_id}[/cyan] install source to [bold]local: {resolved}[/bold]"
         )
-        console.print(
-            "[dim]Run 'ai-agent-rules install' to install from local path.[/dim]"
-        )
+        print_hint("Run 'ai-agent-rules install' to install from local path.")
     else:
         print_error(
             f"Invalid source value '{source_value}'. Use: pypi, github, local:<path>, or reset"

@@ -29,7 +29,7 @@ class OptionalToolsComponent(Component):
             ensure_statusline_installed,
             get_effective_install_source,
         )
-        from ai_rules.cli.display import print_success, print_warning
+        from ai_rules.cli.display import print_dim, print_success, print_warning
         from ai_rules.cli.runner import get_console
 
         console = get_console(ctx)
@@ -39,7 +39,8 @@ class OptionalToolsComponent(Component):
         )
         if recall_result == "installed":
             if ctx.dry_run and recall_message:
-                console.print(f"[dim]{recall_message}[/dim]\n")
+                print_dim(recall_message)
+                console.print()
             else:
                 print_success("Installed recall")
                 console.print()
@@ -50,7 +51,8 @@ class OptionalToolsComponent(Component):
                 print_success("Updated recall")
             console.print()
         elif recall_result == "upgrade_available" and ctx.dry_run and recall_message:
-            console.print(f"[dim]{recall_message}[/dim]\n")
+            print_dim(recall_message)
+            console.print()
         elif recall_result == "failed":
             print_warning("Failed to install recall (continuing anyway)")
             console.print()
@@ -65,7 +67,8 @@ class OptionalToolsComponent(Component):
         )
         if statusline_result == "installed":
             if ctx.dry_run and statusline_message:
-                console.print(f"[dim]{statusline_message}[/dim]\n")
+                print_dim(statusline_message)
+                console.print()
             else:
                 print_success("Installed claude-statusline")
                 console.print()
@@ -82,14 +85,15 @@ class OptionalToolsComponent(Component):
             ensure_statusline_installed,
             get_effective_install_source,
         )
-        from ai_rules.cli.display import print_success, print_warning
+        from ai_rules.cli.display import print_dim, print_success, print_warning
 
         recall_result, recall_message = ensure_recall_installed(
             dry_run=ctx.dry_run, config=ctx.config
         )
         if recall_result == "installed":
             if ctx.dry_run and recall_message:
-                ctx.console.print(f"[dim]{recall_message}[/dim]\n")
+                print_dim(recall_message)
+                ctx.console.print()
             else:
                 print_success("Installed recall")
                 ctx.console.print()
@@ -100,7 +104,8 @@ class OptionalToolsComponent(Component):
                 print_success("Updated recall")
             ctx.console.print()
         elif recall_result == "upgrade_available" and ctx.dry_run and recall_message:
-            ctx.console.print(f"[dim]{recall_message}[/dim]\n")
+            print_dim(recall_message)
+            ctx.console.print()
         elif recall_result == "failed":
             print_warning("Failed to install recall (continuing anyway)")
             ctx.console.print()
@@ -115,7 +120,8 @@ class OptionalToolsComponent(Component):
         )
         if statusline_result == "installed":
             if ctx.dry_run and statusline_message:
-                ctx.console.print(f"[dim]{statusline_message}[/dim]\n")
+                print_dim(statusline_message)
+                ctx.console.print()
             else:
                 print_success("Installed claude-statusline")
                 ctx.console.print()

@@ -53,7 +53,10 @@ def status(agents: str | None, component_filter: str | None) -> None:
 
     active_profile = get_active_profile()
     if active_profile:
-        console.print(f"[dim]Profile: {active_profile}[/dim]\n")
+        from ai_rules.cli.display import print_label
+
+        print_label("Profile", active_profile)
+        console.print()
 
     cli_ctx = CliContext(
         console=console,

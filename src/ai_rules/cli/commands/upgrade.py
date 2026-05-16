@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 import click
 
+from ai_rules.cli.display import print_dim
+
 if TYPE_CHECKING:
     from ai_rules.bootstrap.updater import ToolSpec
 
@@ -107,9 +109,7 @@ def upgrade(
         try:
             current = tool.get_version()
             if current:
-                console.print(
-                    f"[dim]{tool.display_name} current version: {current}[/dim]"
-                )
+                print_dim(f"{tool.display_name} current version: {current}")
         except Exception as e:
             print_error(f"Could not get {tool.display_name} version: {e}")
             continue
@@ -192,9 +192,8 @@ def upgrade(
         try:
             import subprocess
 
-            console.print(
-                "\n[dim]Running 'ai-agent-rules install --rebuild-cache'...[/dim]"
-            )
+            console.print()
+            print_dim("Running 'ai-agent-rules install --rebuild-cache'...")
 
             from ai_rules.state import get_active_profile
 

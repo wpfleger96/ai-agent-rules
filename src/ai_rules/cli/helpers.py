@@ -81,7 +81,7 @@ def select_targets(
     all_targets: list[ConfigTarget], filter_string: str | None
 ) -> list[ConfigTarget]:
     """Select targets based on a comma-separated target filter."""
-    from ai_rules.cli.display import console, print_error
+    from ai_rules.cli.display import print_error
 
     if not filter_string:
         return all_targets
@@ -95,7 +95,9 @@ def select_targets(
         invalid_ids = requested_ids - {target.target_id for target in all_targets}
         available_ids = [target.target_id for target in all_targets]
         print_error(f"Invalid agent ID(s): {', '.join(sorted(invalid_ids))}")
-        console.print(f"[dim]Available agents: {', '.join(available_ids)}[/dim]")
+        from ai_rules.cli.display import print_dim
+
+        print_dim(f"Available agents: {', '.join(available_ids)}")
         sys.exit(1)
 
     return selected
@@ -116,12 +118,12 @@ def select_components(
 
     invalid_ids = [cid for cid in requested_ids if cid not in known_ids]
     if invalid_ids:
-        from ai_rules.cli.display import console, print_error
+        from ai_rules.cli.display import print_error
 
         print_error(f"Invalid component ID(s): {', '.join(sorted(invalid_ids))}")
-        console.print(
-            f"[dim]Available components: {', '.join(sorted(known_ids))}[/dim]"
-        )
+        from ai_rules.cli.display import print_dim
+
+        print_dim(f"Available components: {', '.join(sorted(known_ids))}")
         sys.exit(1)
 
     return tuple(requested_ids)

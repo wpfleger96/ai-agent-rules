@@ -8,6 +8,7 @@ import click
 
 import ai_rules.cli as cli_facade
 
+from ai_rules.cli.display import dim, print_dim, print_label
 from ai_rules.profiles import Profile
 
 
@@ -40,7 +41,7 @@ def profile_list() -> None:
             extends = info.get("extends") or "-"
             table.add_row(name, desc, extends)
         except Exception:
-            table.add_row(name, "[dim]Error loading[/dim]", "-")
+            table.add_row(name, dim("Error loading"), "-")
 
     console.print(table)
 
@@ -65,9 +66,9 @@ def profile_show(name: str, resolved: bool) -> None:
         if resolved:
             profile = loader.load_profile(name)
             console.print(f"[bold]Profile: {profile.name}[/bold] (resolved)")
-            console.print(f"[dim]Description:[/dim] {profile.description}")
+            print_label("Description", profile.description)
             if profile.extends:
-                console.print(f"[dim]Extends:[/dim] {profile.extends}")
+                print_label("Extends", profile.extends)
 
             if profile.settings_overrides:
                 console.print("\n[bold]Settings Overrides:[/bold]")
@@ -134,7 +135,7 @@ def profile_current() -> None:
     if active:
         console.print(f"Active profile: [cyan]{active}[/cyan]")
     else:
-        console.print("[dim]No profile set (using default)[/dim]")
+        print_dim("No profile set (using default)")
 
 
 def _detect_profile_override_conflicts(

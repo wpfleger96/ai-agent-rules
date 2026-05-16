@@ -34,10 +34,9 @@ class ClaudePluginComponent(Component):
         if not plan.has_changes:
             return ComponentResult()
 
-        from ai_rules.cli.runner import get_console
+        from ai_rules.cli.display import print_dim
         from ai_rules.plugins import OperationResult, PluginManager
 
-        console = get_console(ctx)
         plugin_manager = PluginManager()
 
         if not plugin_manager.is_cli_available():
@@ -57,7 +56,7 @@ class ClaudePluginComponent(Component):
         elif plugin_result == OperationResult.ALREADY_INSTALLED:
             print_skipped(message)
         elif plugin_result == OperationResult.DRY_RUN:
-            console.print(f"[dim]{message}[/dim]")
+            print_dim(message)
         elif plugin_result == OperationResult.ERROR:
             print_warning(message)
 
@@ -75,6 +74,7 @@ class ClaudePluginComponent(Component):
         ):
             return ComponentResult()
 
+        from ai_rules.cli.display import print_dim
         from ai_rules.plugins import OperationResult, PluginManager
 
         plugin_manager = PluginManager()
@@ -95,7 +95,7 @@ class ClaudePluginComponent(Component):
         elif plugin_result == OperationResult.ALREADY_INSTALLED:
             print_skipped(message)
         elif plugin_result == OperationResult.DRY_RUN:
-            ctx.console.print(f"[dim]{message}[/dim]")
+            print_dim(message)
         elif plugin_result == OperationResult.ERROR:
             print_warning(message)
 
@@ -128,11 +128,14 @@ class ClaudePluginComponent(Component):
             or plugin_status.extra
             or plugin_status.marketplaces_missing
         ):
+            from ai_rules.cli.display import dim
+
             console = get_console(ctx)
 
             for marketplace in plugin_status.marketplaces_missing:
+                mp_source = marketplace["source"]
                 console.print(
-                    f"  {marketplace['name']:<20} [yellow]Marketplace missing[/yellow] [dim]({marketplace['source']})[/dim]"
+                    f"  {marketplace['name']:<20} [yellow]Marketplace missing[/yellow] {dim(f'({mp_source})')}"
                 )
                 all_correct = False
 
@@ -140,16 +143,16 @@ class ClaudePluginComponent(Component):
                 plugin_key = plugin_config.key
                 if plugin_key in plugin_status.installed:
                     console.print(
-                        f"  {plugin_config.name:<20} [green]Installed[/green] [dim](managed)[/dim]"
+                        f"  {plugin_config.name:<20} [green]Installed[/green] {dim('(managed)')}"
                     )
                 else:
                     console.print(
-                        f"  {plugin_config.name:<20} [yellow]Not installed[/yellow] [dim](managed)[/dim]"
+                        f"  {plugin_config.name:<20} [yellow]Not installed[/yellow] {dim('(managed)')}"
                     )
                     all_correct = False
 
             for key in sorted(plugin_status.extra):
-                console.print(f"  {key:<20} [dim]Unmanaged[/dim]")
+                console.print(f"  {key:<20} {dim('Unmanaged')}")
             console.print()
 
         return ComponentResult(ok=all_correct, changed=not all_correct)

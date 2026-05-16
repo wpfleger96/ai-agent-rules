@@ -48,53 +48,88 @@ def get_console() -> Console:
     return _console_override.get() or _real_console
 
 
+# ─── Icon constants ──────────────────────────────────────────────────────────
+
+ICON_SUCCESS = "[green]✓[/green]"
+ICON_DONE = "[dim]✓[/dim]"
+ICON_UNCHANGED = "[dim]•[/dim]"
+ICON_SKIPPED = "[dim]○[/dim]"
+ICON_ABSENT = "[yellow]○[/yellow]"
+ICON_UPDATE = "[yellow]↻[/yellow]"
+ICON_ERROR = "[red]✗[/red]"
+ICON_WARNING = "[yellow]⚠[/yellow]"
+ICON_INFO = "[blue]ℹ[/blue]"
+ICON_HINT = "[yellow]💡[/yellow]"
+ICON_WOULD = "[dim]→[/dim]"
+ICON_ADD = "[green]+[/green]"
+ICON_NONE = "[dim]-[/dim]"
+
+
+# ─── Markup builder ──────────────────────────────────────────────────────────
+
+
+def dim(text: str) -> str:
+    return f"[dim]{text}[/dim]"
+
+
+# ─── Print helpers ───────────────────────────────────────────────────────────
+
+
 def print_error(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[red]✗[/red] {message}")
+    get_console().print(f"{' ' * indent}{ICON_ERROR} {message}")
 
 
 def print_warning(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[yellow]⚠[/yellow] {message}")
+    get_console().print(f"{' ' * indent}{ICON_WARNING} {message}")
 
 
 def print_info(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[blue]ℹ[/blue] {message}")
+    get_console().print(f"{' ' * indent}{ICON_INFO} {message}")
 
 
 def print_hint(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[yellow]💡[/yellow] {message}")
+    get_console().print(f"{' ' * indent}{ICON_HINT} {message}")
 
 
 def print_success(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[green]✓[/green] {message}")
+    get_console().print(f"{' ' * indent}{ICON_SUCCESS} {message}")
 
 
 def print_done(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[dim]✓[/dim] {message}")
+    get_console().print(f"{' ' * indent}{ICON_DONE} {message}")
 
 
 def print_unchanged(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[dim]•[/dim] {message}")
+    get_console().print(f"{' ' * indent}{ICON_UNCHANGED} {message}")
 
 
 def print_skipped(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[dim]○[/dim] {message}")
+    get_console().print(f"{' ' * indent}{ICON_SKIPPED} {message}")
 
 
 def print_absent(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[yellow]○[/yellow] {message}")
+    get_console().print(f"{' ' * indent}{ICON_ABSENT} {message}")
 
 
 def print_update(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[yellow]↻[/yellow] {message}")
+    get_console().print(f"{' ' * indent}{ICON_UPDATE} {message}")
 
 
 def print_would(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[dim]→[/dim] {message}")
+    get_console().print(f"{' ' * indent}{ICON_WOULD} {message}")
 
 
 def print_add(message: str, *, indent: int = 0) -> None:
-    get_console().print(f"{' ' * indent}[green]+[/green] {message}")
+    get_console().print(f"{' ' * indent}{ICON_ADD} {message}")
 
 
 def print_progress(message: str, *, indent: int = 0) -> None:
     get_console().print(f"{' ' * indent}[yellow]{message}[/yellow]")
+
+
+def print_dim(message: str, *, indent: int = 0) -> None:
+    get_console().print(f"{' ' * indent}{dim(message)}")
+
+
+def print_label(key: str, value: str, *, indent: int = 0) -> None:
+    get_console().print(f"{' ' * indent}{dim(key + ':')} {value}")
