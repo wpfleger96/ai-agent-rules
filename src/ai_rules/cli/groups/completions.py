@@ -62,7 +62,7 @@ def completions_zsh() -> None:
 )
 def completions_install(shell: str | None) -> None:
     """Install shell completion to config file."""
-    from ai_rules.cli.display import console, print_error
+    from ai_rules.cli.display import console, print_error, print_success
     from ai_rules.completions import detect_shell, install_completion
 
     if shell is None:
@@ -75,7 +75,7 @@ def completions_install(shell: str | None) -> None:
     success, message = install_completion(shell, dry_run=False)
 
     if success:
-        console.print(f"[green]✓[/green] {message}")
+        print_success(message)
     else:
         print_error(message)
         sys.exit(1)
@@ -89,7 +89,7 @@ def completions_install(shell: str | None) -> None:
 )
 def completions_uninstall(shell: str | None) -> None:
     """Remove shell completion from config file."""
-    from ai_rules.cli.display import console, print_error
+    from ai_rules.cli.display import print_error, print_success
     from ai_rules.completions import (
         detect_shell,
         find_config_file,
@@ -110,7 +110,7 @@ def completions_uninstall(shell: str | None) -> None:
     success, message = uninstall_completion(config_path)
 
     if success:
-        console.print(f"[green]✓[/green] {message}")
+        print_success(message)
     else:
         print_error(message)
         sys.exit(1)
@@ -124,7 +124,7 @@ def completions_uninstall(shell: str | None) -> None:
 )
 def completions_update(shell: str | None) -> None:
     """Re-generate completion block (fixes PATH shadowing issues)."""
-    from ai_rules.cli.display import console, print_error
+    from ai_rules.cli.display import console, print_error, print_success
     from ai_rules.completions import detect_shell, update_completion
 
     if shell is None:
@@ -137,7 +137,7 @@ def completions_update(shell: str | None) -> None:
     success, message = update_completion(shell, dry_run=False)
 
     if success:
-        console.print(f"[green]✓[/green] {message}")
+        print_success(message)
     else:
         print_error(message)
         sys.exit(1)

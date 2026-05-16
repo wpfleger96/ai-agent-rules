@@ -22,7 +22,14 @@ def config() -> None:
 @click.option("--agent", help="Show config for specific agent only")
 def config_show(merged: bool, agent: str | None) -> None:
     """Show current configuration."""
-    from ai_rules.cli.display import console, print_error
+    from ai_rules.cli.display import (
+        console,
+        print_add,
+        print_error,
+        print_unchanged,
+        print_update,
+        print_warning,
+    )
     from ai_rules.config import Config
 
     config_dir = cli_facade.get_config_dir()
@@ -79,23 +86,17 @@ def config_show(merged: bool, agent: str | None) -> None:
                     if key in base_settings:
                         old_val = base_settings[key]
                         new_val = merged_settings[key]
-                        console.print(
-                            f"  [yellow]↻[/yellow] {key}: {old_val} → {new_val}"
-                        )
+                        print_update(f"{key}: {old_val} → {new_val}", indent=2)
                         overridden_keys.append(key)
                     else:
-                        console.print(
-                            f"  [green]+[/green] {key}: {merged_settings[key]}"
-                        )
+                        print_add(f"{key}: {merged_settings[key]}", indent=2)
                         overridden_keys.append(key)
 
                 for key, value in merged_settings.items():
                     if key not in overridden_keys:
-                        console.print(f"  [dim]•[/dim] {key}: {value}")
+                        print_unchanged(f"{key}: {value}", indent=2)
             else:
-                console.print(
-                    f"  [yellow]⚠[/yellow] No base settings found at {base_path}"
-                )
+                print_warning(f"No base settings found at {base_path}", indent=2)
                 if has_overrides:
                     console.print(
                         f"  [dim]Overrides: {cfg.settings_overrides[agent_name]}[/dim]"
@@ -120,7 +121,7 @@ def config_edit() -> None:
     import os
     import subprocess
 
-    from ai_rules.cli.display import console
+    from ai_rules.cli.display import print_success
 
     user_config_path = cli_facade.get_user_config_path()
     editor = os.environ.get("EDITOR", "vi")
@@ -132,7 +133,7 @@ def config_edit() -> None:
 
     try:
         subprocess.run([editor, str(user_config_path)], check=True)
-        console.print(f"[green]✓[/green] Config edited: {user_config_path}")
+        print_success(f"Config edited: {user_config_path}")
     except subprocess.CalledProcessError:
         from ai_rules.cli.display import print_error
 
@@ -180,7 +181,7 @@ def _collect_exclusion_patterns() -> list[str]:
     Returns:
         List of exclusion patterns
     """
-    from ai_rules.cli.display import console
+    from ai_rules.cli.display import console, print_success
 
     console.print("\n[bold]Step 1: Exclusion Patterns[/bold]")
     console.print("Do you want to exclude any files from being managed?\n")
@@ -196,7 +197,7 @@ def _collect_exclusion_patterns() -> list[str]:
         )
         if should_exclude:
             selected_exclusions.append(pattern)
-            console.print(f"    [green]✓[/green] Will exclude: {pattern}")
+            print_success(f"Will exclude: {pattern}", indent=4)
 
     console.print(
         "\n[dim]Enter custom exclusion patterns (glob patterns supported)[/dim]"
@@ -207,12 +208,10 @@ def _collect_exclusion_patterns() -> list[str]:
         if not pattern:
             break
         selected_exclusions.append(pattern)
-        console.print(f"  [green]✓[/green] Added: {pattern}")
+        print_success(f"Added: {pattern}", indent=2)
 
     if selected_exclusions:
-        console.print(
-            f"\n[green]✓[/green] Configured {len(selected_exclusions)} exclusion pattern(s)"
-        )
+        print_success(f"Configured {len(selected_exclusions)} exclusion pattern(s)")
 
     return selected_exclusions
 
@@ -225,7 +224,7 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
     """
     import json
 
-    from ai_rules.cli.display import console, print_warning
+    from ai_rules.cli.display import console, print_success, print_warning
 
     console.print("\n[bold]Step 2: Settings Overrides[/bold]")
     response = console.input(
@@ -281,15 +280,15 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
                 parsed_value = value
 
             agent_overrides[key] = parsed_value
-            console.print(f"  [green]✓[/green] Added: {key} = {parsed_value}")
+            print_success(f"Added: {key} = {parsed_value}", indent=2)
 
         if agent_overrides:
             settings_overrides[agent] = agent_overrides
 
     if settings_overrides:
         total_overrides = sum(len(v) for v in settings_overrides.values())
-        console.print(
-            f"\n[green]✓[/green] Configured {total_overrides} override(s) for {len(settings_overrides)} agent(s)"
+        print_success(
+            f"Configured {total_overrides} override(s) for {len(settings_overrides)} agent(s)"
         )
 
     return settings_overrides
@@ -326,7 +325,7 @@ def _display_configuration_summary(config_data: dict[str, Any]) -> None:
 @config.command("init")
 def config_init() -> None:
     """Interactive configuration wizard."""
-    from ai_rules.cli.display import console, print_warning
+    from ai_rules.cli.display import console, print_success, print_warning
     from ai_rules.config import Config
 
     user_config_path = cli_facade.get_user_config_path()
@@ -358,7 +357,7 @@ def config_init() -> None:
     if click.confirm("\nSave configuration?", default=True):
         Config.save_user_config(config_data)
 
-        console.print(f"\n[green]✓[/green] Configuration saved to {user_config_path}")
+        print_success(f"Configuration saved to {user_config_path}")
         console.print("\n[bold]Next steps:[/bold]")
         console.print(
             "  • Run [cyan]ai-agent-rules install[/cyan] to apply these settings"

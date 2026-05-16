@@ -9,7 +9,7 @@ from ai_rules.cli.context import (
     ComponentResult,
     PluginPlan,
 )
-from ai_rules.cli.display import print_warning
+from ai_rules.cli.display import print_skipped, print_success, print_warning
 
 
 class ClaudePluginComponent(Component):
@@ -42,9 +42,7 @@ class ClaudePluginComponent(Component):
 
         if not plugin_manager.is_cli_available():
             if not ctx.dry_run:
-                console.print(
-                    "[dim]○[/dim] Skipped plugin sync (claude CLI not available)"
-                )
+                print_skipped("Skipped plugin sync (claude CLI not available)")
             return ComponentResult()
 
         desired_plugins = ctx.config.get_plugin_configs()
@@ -55,9 +53,9 @@ class ClaudePluginComponent(Component):
         )
 
         if plugin_result == OperationResult.SUCCESS:
-            console.print(f"[green]✓[/green] {message}")
+            print_success(message)
         elif plugin_result == OperationResult.ALREADY_INSTALLED:
-            console.print(f"[dim]○[/dim] {message}")
+            print_skipped(message)
         elif plugin_result == OperationResult.DRY_RUN:
             console.print(f"[dim]{message}[/dim]")
         elif plugin_result == OperationResult.ERROR:
@@ -82,9 +80,7 @@ class ClaudePluginComponent(Component):
         plugin_manager = PluginManager()
         if not plugin_manager.is_cli_available():
             if not ctx.dry_run:
-                ctx.console.print(
-                    "[dim]○[/dim] Skipped plugin sync (claude CLI not available)"
-                )
+                print_skipped("Skipped plugin sync (claude CLI not available)")
             return ComponentResult()
 
         desired_plugins = ctx.config.get_plugin_configs()
@@ -95,9 +91,9 @@ class ClaudePluginComponent(Component):
         )
 
         if plugin_result == OperationResult.SUCCESS:
-            ctx.console.print(f"[green]✓[/green] {message}")
+            print_success(message)
         elif plugin_result == OperationResult.ALREADY_INSTALLED:
-            ctx.console.print(f"[dim]○[/dim] {message}")
+            print_skipped(message)
         elif plugin_result == OperationResult.DRY_RUN:
             ctx.console.print(f"[dim]{message}[/dim]")
         elif plugin_result == OperationResult.ERROR:

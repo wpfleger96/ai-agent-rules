@@ -74,7 +74,7 @@ def _display_pending_symlink_changes(targets: list["ConfigTarget"]) -> bool:
     Returns:
         True if changes were found and displayed, False otherwise
     """
-    from ai_rules.cli.display import console
+    from ai_rules.cli.display import console, print_add, print_update
     from ai_rules.symlinks import check_symlink, get_content_diff
 
     found_changes = False
@@ -109,9 +109,9 @@ def _display_pending_symlink_changes(targets: list["ConfigTarget"]) -> bool:
             console.print(f"\n[bold]{agent.name}[/bold]")
             for action, target, source, content_diff in agent_changes:
                 if action == "create":
-                    console.print(f"  [green]+[/green] Create: {target} → {source}")
+                    print_add(f"Create: {target} → {source}", indent=2)
                 else:
-                    console.print(f"  [yellow]↻[/yellow] Update: {target} → {source}")
+                    print_update(f"Update: {target} → {source}", indent=2)
                     if content_diff:
                         console.print(content_diff)
 
@@ -124,7 +124,7 @@ def _display_pending_plugin_changes(config: "Config") -> bool:
     Returns:
         True if changes were found and displayed, False otherwise
     """
-    from ai_rules.cli.display import console
+    from ai_rules.cli.display import console, print_add, print_skipped
 
     result = _get_plugin_status(config)
     if result is None:
@@ -137,23 +137,19 @@ def _display_pending_plugin_changes(config: "Config") -> bool:
         found_changes = True
         console.print("\n[bold]Marketplaces[/bold]")
         for marketplace in plugin_status.marketplaces_missing:
-            console.print(
-                f"  [green]+[/green] Add: {marketplace['name']} ({marketplace['source']})"
-            )
+            print_add(f"Add: {marketplace['name']} ({marketplace['source']})", indent=2)
 
     if plugin_status.pending:
         found_changes = True
         console.print("\n[bold]Plugins[/bold]")
         for plugin in plugin_status.pending:
-            console.print(
-                f"  [green]+[/green] Install: {plugin['name']}@{plugin['marketplace']}"
-            )
+            print_add(f"Install: {plugin['name']}@{plugin['marketplace']}", indent=2)
 
     if plugin_status.extra:
         if not found_changes:
             console.print("\n[bold]Plugins[/bold]")
         for name in sorted(plugin_status.extra):
-            console.print(f"  [dim]○[/dim] {name} (Unmanaged)")
+            print_skipped(f"{name} (Unmanaged)", indent=2)
 
     return found_changes
 

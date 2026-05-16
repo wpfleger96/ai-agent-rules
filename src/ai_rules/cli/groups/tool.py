@@ -289,20 +289,20 @@ def source_set(tool_id: str, source_value: str) -> None:
         ai-agent-rules tool source set ai-agent-rules "local:~/Development/Personal/ai-rules"
         ai-agent-rules tool source set statusline reset
     """
-    from ai_rules.cli.display import console, print_error
+    from ai_rules.cli.display import console, print_error, print_success
     from ai_rules.config import Config
 
     canonical_id = _resolve_tool_id(tool_id)
 
     if source_value == "reset":
         Config.set_tool_install_source(canonical_id, None)
-        console.print(
-            f"[green]✓[/green] Cleared install source preference for [cyan]{canonical_id}[/cyan]"
+        print_success(
+            f"Cleared install source preference for [cyan]{canonical_id}[/cyan]"
         )
     elif source_value in ("pypi", "github"):
         Config.set_tool_install_source(canonical_id, source_value)
-        console.print(
-            f"[green]✓[/green] Set [cyan]{canonical_id}[/cyan] install source to [bold]{source_value}[/bold]"
+        print_success(
+            f"Set [cyan]{canonical_id}[/cyan] install source to [bold]{source_value}[/bold]"
         )
         console.print(
             "[dim]Run 'ai-agent-rules setup' to switch the installed source if needed.[/dim]"
@@ -314,8 +314,8 @@ def source_set(tool_id: str, source_value: str) -> None:
             print_error(f"Path does not exist: {resolved}")
             sys.exit(1)
         Config.set_tool_install_source(canonical_id, f"local:{resolved}")
-        console.print(
-            f"[green]✓[/green] Set [cyan]{canonical_id}[/cyan] install source to [bold]local: {resolved}[/bold]"
+        print_success(
+            f"Set [cyan]{canonical_id}[/cyan] install source to [bold]local: {resolved}[/bold]"
         )
         console.print(
             "[dim]Run 'ai-agent-rules install' to install from local path.[/dim]"

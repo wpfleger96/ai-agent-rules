@@ -32,6 +32,7 @@ class CompletionsComponent(Component):
         if not isinstance(plan, CompletionsPlan):
             return ComponentResult()
 
+        from ai_rules.cli.display import print_done
         from ai_rules.cli.runner import get_console
 
         if not plan.needs_install or plan.shell is None:
@@ -42,7 +43,8 @@ class CompletionsComponent(Component):
         console = get_console(ctx)
         success, msg = install_completion(plan.shell, dry_run=ctx.dry_run)
         if success and not ctx.dry_run and "already installed" not in msg:
-            console.print(f"\n[dim]✓ {msg}[/dim]")
+            console.print()
+            print_done(msg)
 
         return ComponentResult(changed=success)
 
@@ -56,9 +58,12 @@ class CompletionsComponent(Component):
         if not shell:
             return ComponentResult()
 
+        from ai_rules.cli.display import print_done
+
         success, msg = install_completion(shell, dry_run=ctx.dry_run)
         if success and not ctx.dry_run and "already installed" not in msg:
-            ctx.console.print(f"\n[dim]✓ {msg}[/dim]")
+            ctx.console.print()
+            print_done(msg)
 
         return ComponentResult(changed=success)
 

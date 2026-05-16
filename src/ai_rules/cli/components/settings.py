@@ -57,10 +57,6 @@ class SettingsComponent(Component):
         if not isinstance(plan, SettingsPlan):
             return ComponentResult()
 
-        from ai_rules.cli.runner import get_console
-
-        console = get_console(ctx)
-
         if ctx.dry_run:
             return ComponentResult()
 
@@ -78,12 +74,14 @@ class SettingsComponent(Component):
         for expanded in plan.excluded_symlinks_to_clean:
             expanded.unlink()
 
+        from ai_rules.cli.display import print_done
+
         orphaned = ctx.config.cleanup_orphaned_cache(
             {target.target_id for target in ctx.all_targets if target.needs_cache}
         )
         if orphaned:
-            console.print(
-                f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
+            print_done(
+                f"Cleaned up orphaned cache for: {', '.join(orphaned)}", indent=2
             )
 
         return ComponentResult(
@@ -126,13 +124,15 @@ class SettingsComponent(Component):
                         continue
                     expanded.unlink()
 
+        from ai_rules.cli.display import print_done
+
         targets_needing_cache = {
             target.target_id for target in ctx.all_targets if target.needs_cache
         }
         orphaned = ctx.config.cleanup_orphaned_cache(targets_needing_cache)
         if orphaned:
-            ctx.console.print(
-                f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
+            print_done(
+                f"Cleaned up orphaned cache for: {', '.join(orphaned)}", indent=2
             )
 
         return ComponentResult(

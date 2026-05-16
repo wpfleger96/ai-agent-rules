@@ -53,7 +53,14 @@ def upgrade(
     )
     from ai_rules.bootstrap.installer import install_tool
     from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES
-    from ai_rules.cli.display import console, print_error, print_hint, print_warning
+    from ai_rules.cli.display import (
+        console,
+        print_done,
+        print_error,
+        print_hint,
+        print_success,
+        print_warning,
+    )
 
     resolved_only = _TOOL_ID_ALIASES.get(only, only) if only else None
     all_tools = [
@@ -83,7 +90,7 @@ def upgrade(
                         local_path=local_path,
                     )
                 if success:
-                    console.print(f"[green]✓[/green] {tool.display_name} reinstalled")
+                    print_success(f"{tool.display_name} reinstalled")
                     tools.append(tool)
                 else:
                     print_error(f"Failed to install {tool.display_name}: {msg}")
@@ -117,14 +124,12 @@ def upgrade(
         if update_info and (update_info.has_update or force):
             tool_updates.append((tool, update_info))
         elif update_info and not update_info.has_update:
-            console.print(
-                f"[green]✓[/green] {tool.display_name} is already up to date!"
-            )
+            print_success(f"{tool.display_name} is already up to date!")
 
     console.print()
 
     if not tool_updates and not force:
-        console.print("[green]✓[/green] All tools are up to date!")
+        print_success("All tools are up to date!")
         return
 
     for tool, update_info in tool_updates:
@@ -169,9 +174,7 @@ def upgrade(
         if success:
             new_version = tool.get_version()
             if new_version == update_info.latest_version:
-                console.print(
-                    f"[green]✓[/green] {tool.display_name} upgraded to {new_version}"
-                )
+                print_success(f"{tool.display_name} upgraded to {new_version}")
                 if tool.tool_id == "ai-agent-rules":
                     ai_rules_upgraded = True
             elif new_version == update_info.current_version:
@@ -179,9 +182,7 @@ def upgrade(
                     f"{tool.display_name} upgrade reported success but version unchanged ({new_version})"
                 )
             else:
-                console.print(
-                    f"[green]✓[/green] {tool.display_name} upgraded to {new_version}"
-                )
+                print_success(f"{tool.display_name} upgraded to {new_version}")
                 if tool.tool_id == "ai-agent-rules":
                     ai_rules_upgraded = True
         else:
@@ -214,7 +215,7 @@ def upgrade(
             )
 
             if result.returncode == 0:
-                console.print("[dim]✓ Install completed successfully[/dim]")
+                print_done("Install completed successfully")
             else:
                 print_warning(f"Install failed with exit code {result.returncode}")
                 print_hint(

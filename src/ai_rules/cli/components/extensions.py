@@ -24,7 +24,13 @@ class ClaudeExtensionsComponent(Component):
             return ComponentResult()
 
         from ai_rules.claude_extensions import ClaudeExtensionManager
-        from ai_rules.cli.display import print_error
+        from ai_rules.cli.display import (
+            print_absent,
+            print_error,
+            print_success,
+            print_unchanged,
+            print_update,
+        )
         from ai_rules.symlinks import SymlinkResult, create_symlink
 
         ext_manager = ClaudeExtensionManager(ctx.config_dir)
@@ -52,24 +58,18 @@ class ClaudeExtensionsComponent(Component):
                 )
 
                 if result == SymlinkResult.CREATED:
-                    ctx.console.print(
-                        f"  [green]✓[/green] {target_path} → {source_path}"
-                    )
+                    print_success(f"{target_path} → {source_path}", indent=2)
                     created += 1
                 elif result == SymlinkResult.ALREADY_CORRECT:
-                    ctx.console.print(
-                        f"  [dim]•[/dim] {target_path} [dim](already correct)[/dim]"
+                    print_unchanged(
+                        f"{target_path} [dim](already correct)[/dim]", indent=2
                     )
                     unchanged += 1
                 elif result == SymlinkResult.UPDATED:
-                    ctx.console.print(
-                        f"  [yellow]↻[/yellow] {target_path} → {source_path}"
-                    )
+                    print_update(f"{target_path} → {source_path}", indent=2)
                     updated += 1
                 elif result == SymlinkResult.SKIPPED:
-                    ctx.console.print(
-                        f"  [yellow]○[/yellow] {target_path} [dim](skipped)[/dim]"
-                    )
+                    print_absent(f"{target_path} [dim](skipped)[/dim]", indent=2)
                     skipped += 1
                 elif result == SymlinkResult.ERROR:
                     print_error(f"{target_path}: {message}", indent=2)
@@ -120,7 +120,13 @@ class ClaudeExtensionsComponent(Component):
         if not isinstance(plan, ClaudeExtensionsPlan):
             return ComponentResult()
 
-        from ai_rules.cli.display import print_error
+        from ai_rules.cli.display import (
+            print_absent,
+            print_error,
+            print_success,
+            print_unchanged,
+            print_update,
+        )
         from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import SymlinkResult, create_symlink
 
@@ -143,20 +149,16 @@ class ClaudeExtensionsComponent(Component):
             )
 
             if result == SymlinkResult.CREATED:
-                console.print(f"  [green]✓[/green] {target_path} → {source_path}")
+                print_success(f"{target_path} → {source_path}", indent=2)
                 created += 1
             elif result == SymlinkResult.ALREADY_CORRECT:
-                console.print(
-                    f"  [dim]•[/dim] {target_path} [dim](already correct)[/dim]"
-                )
+                print_unchanged(f"{target_path} [dim](already correct)[/dim]", indent=2)
                 unchanged += 1
             elif result == SymlinkResult.UPDATED:
-                console.print(f"  [yellow]↻[/yellow] {target_path} → {source_path}")
+                print_update(f"{target_path} → {source_path}", indent=2)
                 updated += 1
             elif result == SymlinkResult.SKIPPED:
-                console.print(
-                    f"  [yellow]○[/yellow] {target_path} [dim](skipped)[/dim]"
-                )
+                print_absent(f"{target_path} [dim](skipped)[/dim]", indent=2)
                 skipped += 1
             elif result == SymlinkResult.ERROR:
                 print_error(f"{target_path}: {message}", indent=2)
@@ -204,16 +206,20 @@ class ClaudeExtensionsComponent(Component):
                 success, message = remove_symlink(target_path, force=ctx.yes)
 
                 if success:
-                    console.print(f"  [green]✓[/green] {target_path} removed")
+                    from ai_rules.cli.display import print_success
+
+                    print_success(f"{target_path} removed", indent=2)
                     removed += 1
                 elif "Does not exist" in message:
-                    console.print(
-                        f"  [dim]•[/dim] {target_path} [dim](not installed)[/dim]"
+                    from ai_rules.cli.display import print_unchanged
+
+                    print_unchanged(
+                        f"{target_path} [dim](not installed)[/dim]", indent=2
                     )
                 else:
-                    console.print(
-                        f"  [yellow]○[/yellow] {target_path} [dim]({message})[/dim]"
-                    )
+                    from ai_rules.cli.display import print_absent
+
+                    print_absent(f"{target_path} [dim]({message})[/dim]", indent=2)
                     skipped += 1
 
         return ComponentResult(

@@ -173,7 +173,7 @@ def _handle_profile_conflicts(
         profile_name: Name of profile being installed
         user_config: User config dict to potentially modify
     """
-    from ai_rules.cli.display import console, print_warning
+    from ai_rules.cli.display import console, print_success, print_warning
     from ai_rules.config import Config
 
     if not conflicts:
@@ -192,7 +192,7 @@ def _handle_profile_conflicts(
                     del user_settings[agent]
 
         Config.save_user_config(user_config)
-        console.print("[green]✓[/green] Cleared conflicting overrides\n")
+        print_success("Cleared conflicting overrides")
     else:
         console.print()
 

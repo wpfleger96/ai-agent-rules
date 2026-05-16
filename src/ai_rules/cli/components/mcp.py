@@ -66,13 +66,19 @@ class MCPComponent(Component):
                     result, message, _ = target.install_mcps(
                         force=True, dry_run=ctx.dry_run
                     )
-                    ctx.console.print(f"  [green]✓[/green] {target.name}: {message}")
+                    from ai_rules.cli.display import print_success
+
+                    print_success(f"{target.name}: {message}", indent=2)
                     updated += 1
             elif result == OperationResult.UPDATED:
-                ctx.console.print(f"  [green]✓[/green] {target.name}: {message}")
+                from ai_rules.cli.display import print_success
+
+                print_success(f"{target.name}: {message}", indent=2)
                 updated += 1
             elif result == OperationResult.ALREADY_INSTALLED:
-                ctx.console.print(f"  [dim]○ {target.name}: {message}[/dim]")
+                from ai_rules.cli.display import print_skipped
+
+                print_skipped(f"{target.name}: {message}", indent=2)
             elif result != OperationResult.NOT_FOUND:
                 from ai_rules.cli.display import print_warning
 
@@ -128,20 +134,24 @@ class MCPComponent(Component):
         if not isinstance(plan, MCPPlan):
             return ComponentResult()
 
-        from ai_rules.cli.runner import get_console
         from ai_rules.mcp import OperationResult
 
-        console = get_console(ctx)
         updated = 0
         skipped = 0
         errors = 0
 
+        from ai_rules.cli.display import (
+            print_skipped,
+            print_success,
+            print_warning,
+        )
+
         # Targets with conflicts that can't be resolved without a prompt — skip them.
         # The serial install() path handles prompt-based conflict resolution.
         for target_name in plan.conflict_targets:
-            console.print(
-                f"  [yellow]⚠[/yellow] {target_name}: MCP conflicts detected, "
-                f"skipping (use -y to force-apply)"
+            print_warning(
+                f"{target_name}: MCP conflicts detected, skipping (use -y to force-apply)",
+                indent=2,
             )
             skipped += 1
 
@@ -162,13 +172,11 @@ class MCPComponent(Component):
             )
 
             if result == OperationResult.UPDATED:
-                console.print(f"  [green]✓[/green] {target.name}: {message}")
+                print_success(f"{target.name}: {message}", indent=2)
                 updated += 1
             elif result == OperationResult.ALREADY_INSTALLED:
-                console.print(f"  [dim]○ {target.name}: {message}[/dim]")
+                print_skipped(f"{target.name}: {message}", indent=2)
             elif result != OperationResult.NOT_FOUND:
-                from ai_rules.cli.display import print_warning
-
                 print_warning(f"{target.name}: {message}", indent=2)
                 errors += 1
 
@@ -256,10 +264,8 @@ class MCPComponent(Component):
         return self.status(ctx)
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.cli.runner import get_console
         from ai_rules.mcp import OperationResult
 
-        console = get_console(ctx)
         removed = 0
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
@@ -271,9 +277,13 @@ class MCPComponent(Component):
 
             result, message = target.uninstall_mcps()
             if result == OperationResult.REMOVED:
-                console.print(f"  [green]✓[/green] {message}")
+                from ai_rules.cli.display import print_success
+
+                print_success(message, indent=2)
                 removed += 1
             elif result == OperationResult.NOT_FOUND:
-                console.print(f"  [dim]•[/dim] {message}")
+                from ai_rules.cli.display import print_unchanged
+
+                print_unchanged(message, indent=2)
 
         return ComponentResult(changed=removed > 0, counts={"removed": removed})

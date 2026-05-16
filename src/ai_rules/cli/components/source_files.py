@@ -11,7 +11,7 @@ class SourceFilesComponent(Component):
     component_id = "source-files"
 
     def validate(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.cli.display import print_error
+        from ai_rules.cli.display import print_error, print_success
         from ai_rules.cli.runner import get_console
 
         console = get_console(ctx)
@@ -33,7 +33,7 @@ class SourceFilesComponent(Component):
                     target_issues.append((source, "Source is not a file or directory"))
                     all_valid = False
                 else:
-                    console.print(f"  [green]✓[/green] {source.name}")
+                    print_success(source.name, indent=2)
 
             excluded_symlinks = [
                 (tgt, source)

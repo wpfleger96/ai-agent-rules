@@ -20,7 +20,7 @@ def exclude_add(pattern: str) -> None:
 
     PATTERN can be an exact path or glob pattern (e.g., ~/.claude/*.json)
     """
-    from ai_rules.cli.display import console, print_warning
+    from ai_rules.cli.display import console, print_success, print_warning
     from ai_rules.config import Config
 
     data = Config.load_user_config()
@@ -36,7 +36,7 @@ def exclude_add(pattern: str) -> None:
     Config.save_user_config(data)
 
     user_config_path = cli_facade.get_user_config_path()
-    console.print(f"[green]✓[/green] Added exclusion pattern: {pattern}")
+    print_success(f"Added exclusion pattern: {pattern}")
     console.print(f"[dim]Config updated: {user_config_path}[/dim]")
 
 
@@ -44,7 +44,7 @@ def exclude_add(pattern: str) -> None:
 @click.argument("pattern")
 def exclude_remove(pattern: str) -> None:
     """Remove an exclusion pattern from user config."""
-    from ai_rules.cli.display import console, print_error, print_warning
+    from ai_rules.cli.display import console, print_error, print_success, print_warning
     from ai_rules.config import Config
 
     user_config_path = cli_facade.get_user_config_path()
@@ -62,7 +62,7 @@ def exclude_remove(pattern: str) -> None:
     data["exclude_symlinks"].remove(pattern)
     Config.save_user_config(data)
 
-    console.print(f"[green]✓[/green] Removed exclusion pattern: {pattern}")
+    print_success(f"Removed exclusion pattern: {pattern}")
     console.print(f"[dim]Config updated: {user_config_path}[/dim]")
 
 

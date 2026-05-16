@@ -144,7 +144,13 @@ def override_set(key: str, value: str) -> None:
     - Validates full path against base settings structure
     - Provides helpful suggestions when paths are invalid
     """
-    from ai_rules.cli.display import console, print_error, print_hint, print_warning
+    from ai_rules.cli.display import (
+        console,
+        print_error,
+        print_hint,
+        print_success,
+        print_warning,
+    )
     from ai_rules.config import (
         Config,
         parse_setting_path,
@@ -211,7 +217,7 @@ def override_set(key: str, value: str) -> None:
 
     Config.save_user_config(data)
 
-    console.print(f"[green]✓[/green] Set override: {agent}.{setting} = {parsed_value}")
+    print_success(f"Set override: {agent}.{setting} = {parsed_value}")
     console.print(f"[dim]Config updated: {user_config_path}[/dim]")
     print_hint("Run 'ai-agent-rules install --rebuild-cache' to apply changes")
 
@@ -224,7 +230,13 @@ def override_unset(key: str) -> None:
     KEY should be in format 'agent.setting' (e.g., 'claude.model')
     Supports nested keys like 'agent.nested.key'
     """
-    from ai_rules.cli.display import console, print_error, print_hint, print_warning
+    from ai_rules.cli.display import (
+        console,
+        print_error,
+        print_hint,
+        print_success,
+        print_warning,
+    )
     from ai_rules.config import Config
 
     user_config_path = cli_facade.get_user_config_path()
@@ -280,7 +292,7 @@ def override_unset(key: str) -> None:
 
     Config.save_user_config(data)
 
-    console.print(f"[green]✓[/green] Removed override: {key}")
+    print_success(f"Removed override: {key}")
     console.print(f"[dim]Config updated: {user_config_path}[/dim]")
     print_hint("Run 'ai-agent-rules install --rebuild-cache' to apply changes")
 
