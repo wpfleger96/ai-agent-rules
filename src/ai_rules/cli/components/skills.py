@@ -18,7 +18,6 @@ from ai_rules.cli.context import (
 
 class SkillsComponent(Component):
     label = "Skills"
-    display_name = "Skills"
     component_id = "skills"
 
     def plan(self, ctx: CliContext) -> SkillsPlan:

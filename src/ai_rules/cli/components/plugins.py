@@ -9,12 +9,10 @@ from ai_rules.cli.context import (
     ComponentResult,
     PluginPlan,
 )
-from ai_rules.cli.display import print_skipped, print_success, print_warning
 
 
 class ClaudePluginComponent(Component):
     label = "Claude Plugins"
-    display_name = "Claude Plugins"
     component_id = "plugins"
 
     def _claude_selected(self, ctx: CliContext) -> bool:
@@ -34,7 +32,12 @@ class ClaudePluginComponent(Component):
         if not plan.has_changes:
             return ComponentResult()
 
-        from ai_rules.cli.display import print_dim
+        from ai_rules.cli.display import (
+            print_dim,
+            print_skipped,
+            print_success,
+            print_warning,
+        )
         from ai_rules.plugins import OperationResult, PluginManager
 
         plugin_manager = PluginManager()
@@ -74,7 +77,12 @@ class ClaudePluginComponent(Component):
         ):
             return ComponentResult()
 
-        from ai_rules.cli.display import print_dim
+        from ai_rules.cli.display import (
+            print_dim,
+            print_skipped,
+            print_success,
+            print_warning,
+        )
         from ai_rules.plugins import OperationResult, PluginManager
 
         plugin_manager = PluginManager()

@@ -13,7 +13,6 @@ from ai_rules.cli.context import (
 
 class OptionalToolsComponent(Component):
     label = "Optional Tools"
-    display_name = "Optional Tools"
     component_id = "tools"
 
     def plan(self, ctx: CliContext) -> OptionalToolsPlan:

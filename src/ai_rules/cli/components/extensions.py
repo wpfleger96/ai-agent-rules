@@ -15,7 +15,6 @@ from ai_rules.cli.context import (
 
 class ClaudeExtensionsComponent(Component):
     label = "Claude Extensions"
-    display_name = "Claude Extensions"
     component_id = "extensions"
 
     def install(self, ctx: CliContext) -> ComponentResult:
@@ -135,8 +134,6 @@ class ClaudeExtensionsComponent(Component):
         console = get_console(ctx)
         created = updated = unchanged = skipped = errors = 0
 
-        console.print("\n[bold cyan]Claude Extensions[/bold cyan]")
-
         current_section = None
         for ext_type, target_path, source_path in plan.symlink_ops:
             if ext_type != current_section:
@@ -184,6 +181,12 @@ class ClaudeExtensionsComponent(Component):
             return ComponentResult()
 
         from ai_rules.claude_extensions import ClaudeExtensionManager
+        from ai_rules.cli.display import (
+            dim,
+            print_absent,
+            print_success,
+            print_unchanged,
+        )
         from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import remove_symlink
 
@@ -191,7 +194,6 @@ class ClaudeExtensionsComponent(Component):
         ext_manager = ClaudeExtensionManager(ctx.config_dir)
         removed = skipped = 0
 
-        console.print("\n[bold cyan]Claude Extensions[/bold cyan]")
         for ext_type in ClaudeExtensionManager.USER_DIRS:
             managed = ext_manager._get_managed_extensions(ext_type)
             if not managed:
@@ -208,17 +210,11 @@ class ClaudeExtensionsComponent(Component):
                 success, message = remove_symlink(target_path, force=ctx.yes)
 
                 if success:
-                    from ai_rules.cli.display import print_success
-
                     print_success(f"{target_path} removed", indent=2)
                     removed += 1
                 elif "Does not exist" in message:
-                    from ai_rules.cli.display import dim, print_unchanged
-
                     print_unchanged(f"{target_path} {dim('(not installed)')}", indent=2)
                 else:
-                    from ai_rules.cli.display import dim, print_absent
-
                     print_absent(f"{target_path} {dim(f'({message})')}", indent=2)
                     skipped += 1
 

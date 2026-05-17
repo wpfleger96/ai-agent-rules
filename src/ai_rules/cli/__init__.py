@@ -291,7 +291,7 @@ def cleanup_deprecated_symlinks(
     Returns:
         Count of removed symlinks
     """
-    from ai_rules.cli.display import console
+    from ai_rules.cli.display import print_would
     from ai_rules.symlinks import remove_symlink
 
     removed_count = 0
@@ -309,9 +309,7 @@ def cleanup_deprecated_symlinks(
                 continue
 
             if dry_run:
-                console.print(
-                    f"  [yellow]Would remove deprecated:[/yellow] {deprecated_path}"
-                )
+                print_would(f"Would remove deprecated: {deprecated_path}", indent=2)
                 removed_count += 1
             else:
                 success, message = remove_symlink(target, force=True)

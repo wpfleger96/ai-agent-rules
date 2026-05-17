@@ -13,7 +13,6 @@ from ai_rules.cli.context import (
 
 class CompletionsComponent(Component):
     label = "Shell Completions"
-    display_name = "Shell Completions"
     component_id = "completions"
 
     def plan(self, ctx: CliContext) -> CompletionsPlan:

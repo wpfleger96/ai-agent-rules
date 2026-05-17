@@ -7,7 +7,6 @@ from ai_rules.cli.context import CliContext, Component, ComponentResult
 
 class SourceFilesComponent(Component):
     label = "Source Files"
-    display_name = "Source Files"
     component_id = "source-files"
 
     def validate(self, ctx: CliContext) -> ComponentResult:

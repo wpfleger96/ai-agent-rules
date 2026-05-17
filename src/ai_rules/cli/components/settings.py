@@ -14,8 +14,7 @@ from ai_rules.cli.context import (
 
 
 class SettingsComponent(Component):
-    label = "Settings"
-    display_name = "Settings Cache"
+    label = "Settings Cache"
     component_id = "settings"
     filterable = False
 

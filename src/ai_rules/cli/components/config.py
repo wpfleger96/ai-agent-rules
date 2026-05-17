@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rich.console import Console
 
 from ai_rules.cli.context import (
     CliContext,
@@ -25,9 +29,8 @@ def _display_symlink_status(
     target: Path,
     source: Path,
     message: str,
-    console: object | None = None,
+    console: Console | None = None,
 ) -> bool:
-    from rich.console import Console
 
     from ai_rules.cli.display import (
         dim,
@@ -38,7 +41,7 @@ def _display_symlink_status(
     )
     from ai_rules.symlinks import get_content_diff
 
-    active_console: Console = console if isinstance(console, Console) else get_console()
+    active_console: Console = console or get_console()
 
     target_str = str(target)
     if source.is_dir():
@@ -82,7 +85,6 @@ def _display_symlink_status(
 
 class ConfigComponent(Component):
     label = "Config Files"
-    display_name = "Config Files"
     component_id = "config"
 
     def plan(self, ctx: CliContext) -> ConfigPlan:
@@ -378,7 +380,6 @@ class ConfigComponent(Component):
         total_removed = 0
         total_skipped = 0
 
-        console.print("\n[bold cyan]Config Files[/bold cyan]")
         for target in ctx.selected_targets:
             console.print(f"\n[bold]{target.name}[/bold]")
 

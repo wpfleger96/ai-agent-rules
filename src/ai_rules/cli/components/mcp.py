@@ -18,7 +18,6 @@ from ai_rules.cli.context import (
 
 class MCPComponent(Component):
     label = "MCPs"
-    display_name = "MCPs"
     component_id = "mcps"
 
     def install(self, ctx: CliContext) -> ComponentResult:

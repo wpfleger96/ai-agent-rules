@@ -193,7 +193,9 @@ def run_install_parallel(
     semantic_list = list(semantic)
     plans = run_components_parallel(semantic_list, "plan", ctx)
 
-    apply_list = [c for c in semantic_list if type(plans.get(c)) is not ComponentPlan]
+    apply_list = [
+        c for c in semantic_list if getattr(plans.get(c), "has_changes", False)
+    ]
     results = run_components_parallel(apply_list, "apply", ctx, plans=plans)
 
     for component in semantic_list:
@@ -205,73 +207,52 @@ def run_install_parallel(
     return acc.to_result()
 
 
+def run_parallel(
+    components: Iterable[Component],
+    method: LifecycleOperation,
+    ctx: CliContext,
+) -> ComponentRunResult:
+    acc = _RunAccumulator()
+    comp_list = list(components)
+    results = run_components_parallel(comp_list, method, ctx)
+    for comp in comp_list:
+        if _should_skip(comp, ctx):
+            continue
+        acc.fold(comp, results.get(comp, ComponentResult()))
+    return acc.to_result()
+
+
 def run_uninstall_parallel(
     components: Iterable[Component],
     ctx: CliContext,
 ) -> ComponentRunResult:
-    """Run uninstall across all components in parallel."""
-    acc = _RunAccumulator()
-    comp_list = list(components)
-    results = run_components_parallel(comp_list, "uninstall", ctx)
-    for comp in comp_list:
-        if _should_skip(comp, ctx):
-            continue
-        result = results.get(comp, ComponentResult())
-        acc.fold(comp, result)
-    return acc.to_result()
+    return run_parallel(components, "uninstall", ctx)
 
 
 def run_status_parallel(
     components: Iterable[Component],
     ctx: CliContext,
 ) -> ComponentRunResult:
-    """Run status across all components in parallel."""
-    acc = _RunAccumulator()
-    comp_list = list(components)
-    results = run_components_parallel(comp_list, "status", ctx)
-    for comp in comp_list:
-        if _should_skip(comp, ctx):
-            continue
-        result = results.get(comp, ComponentResult())
-        acc.fold(comp, result)
-    return acc.to_result()
+    return run_parallel(components, "status", ctx)
 
 
 def run_diff_parallel(
     components: Iterable[Component],
     ctx: CliContext,
 ) -> ComponentRunResult:
-    """Run diff across all components in parallel."""
-    acc = _RunAccumulator()
-    comp_list = list(components)
-    results = run_components_parallel(comp_list, "diff", ctx)
-    for comp in comp_list:
-        if _should_skip(comp, ctx):
-            continue
-        result = results.get(comp, ComponentResult())
-        acc.fold(comp, result)
-    return acc.to_result()
+    return run_parallel(components, "diff", ctx)
 
 
 def run_validate_parallel(
     components: Iterable[Component],
     ctx: CliContext,
 ) -> ComponentRunResult:
-    """Run validate across all components in parallel."""
-    acc = _RunAccumulator()
-    comp_list = list(components)
-    results = run_components_parallel(comp_list, "validate", ctx)
-    for comp in comp_list:
-        if _should_skip(comp, ctx):
-            continue
-        result = results.get(comp, ComponentResult())
-        acc.fold(comp, result)
-    return acc.to_result()
+    return run_parallel(components, "validate", ctx)
 
 
 def get_console(ctx: CliContext) -> RichConsole:
-    """Return the active console — thread override if set, else ctx.console."""
-    return _console_override.get() or ctx.console
+    """Return the active console for the current execution context."""
+    return _console_override.get() or _real_console
 
 
 def run_components_parallel(
@@ -349,7 +330,7 @@ def run_components_parallel(
                 futures,
                 results,
                 errors,
-                _real_console,
+                get_console(ctx),
             )
         else:
             _run_unbuffered(
@@ -360,10 +341,13 @@ def run_components_parallel(
                 futures,
                 results,
                 errors,
-                _real_console,
+                get_console(ctx),
             )
 
     if errors:
+        for _comp, exc in errors.items():
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise exc
         from ai_rules.cli.display import print_error
 
         for comp, exc in errors.items():
@@ -432,14 +416,9 @@ def _run_buffered(
         if buf_content.strip():
             if not first:
                 real_console.print()
-            header = comp.display_name or comp.label
-            real_console.print(f"[bold cyan]{header}[/bold cyan]")
+            real_console.print(f"[bold cyan]{comp.label}[/bold cyan]")
             first = False
-            try:
-                real_console.file.write(buf_content.rstrip("\n") + "\n")
-                real_console.file.flush()
-            except OSError:
-                pass
+            real_console.print(buf_content.rstrip("\n"), markup=False, highlight=False)
 
 
 def _run_unbuffered(
@@ -455,6 +434,8 @@ def _run_unbuffered(
     """Execute components under a Progress bar (no output buffering)."""
     from ai_rules.cli.display import print_warning
 
+    pending_warnings: list[str] = []
+
     with _make_progress(real_console) as progress:
         task_ids: dict[Component, Any] = {}
         for comp in components:
@@ -468,7 +449,7 @@ def _run_unbuffered(
             if exc is not None:
                 if method == "plan":
                     results[comp] = ComponentPlan(has_changes=False)
-                    print_warning(f"{comp.label} plan failed: {exc}")
+                    pending_warnings.append(f"{comp.label} plan failed: {exc}")
                 else:
                     errors[comp] = exc
                 progress.update(
@@ -483,3 +464,6 @@ def _run_unbuffered(
                     description=f"[green]{comp.label}[/green]",
                     completed=True,
                 )
+
+    for msg in pending_warnings:
+        print_warning(msg)
