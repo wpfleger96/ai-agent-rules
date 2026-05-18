@@ -268,6 +268,10 @@ Updates are required when the PR's scope has materially changed — new directio
 - ❌ Pushing 3 feedback-driven commits and moving on without checking the description
 - ✅ Re-reading, evaluating against the full commit set, editing if the description is now stale
 
+### PR Description Content
+
+**NEVER include a "Test Plan", "Testing", or "Test plan" section in PR descriptions.** CI passing is a gate, not a finding.
+
 ### Commit Messages
 **Rule:** Subject states WHAT changed. Body explains WHY -- the problem, motivation, or design decision. Never narrate what's visible in `git show --stat` or the diff itself.
 

@@ -16,26 +16,32 @@ from ai_rules.cli.context import (
 )
 
 
+def _enabled_skill_folders(skills_source_dir: Path) -> list[Path]:
+    """Get skill directories that are not hidden and not disabled."""
+    from ai_rules.skills import SkillManager
+
+    return sorted(
+        f
+        for f in skills_source_dir.glob("*")
+        if f.is_dir()
+        and not f.name.startswith(".")
+        and not SkillManager.is_skill_disabled(f)
+    )
+
+
 class SkillsComponent(Component):
     label = "Skills"
     component_id = "skills"
 
     def plan(self, ctx: CliContext) -> SkillsPlan:
         from ai_rules.config import AGENT_SKILLS_DIRS
+        from ai_rules.skills import SkillManager
 
         skills_source_dir = ctx.config_dir / "skills"
         if not skills_source_dir.exists():
             return SkillsPlan()
 
-        from ai_rules.skills import SkillManager
-
-        skill_folders = sorted(
-            f
-            for f in skills_source_dir.glob("*")
-            if f.is_dir()
-            and not f.name.startswith(".")
-            and not SkillManager.is_skill_disabled(f)
-        )
+        skill_folders = _enabled_skill_folders(skills_source_dir)
 
         symlink_ops: list[tuple[Path, Path]] = []
         cleanup_ops: list[Path] = []
@@ -94,6 +100,8 @@ class SkillsComponent(Component):
                             continue
 
                         if not link_target.exists():
+                            cleanup_ops.append(existing)
+                        elif SkillManager.is_skill_disabled(link_target):
                             cleanup_ops.append(existing)
 
         has_changes = bool(symlink_ops or cleanup_ops)
@@ -155,13 +163,7 @@ class SkillsComponent(Component):
         if not skills_source_dir.exists():
             return ComponentResult(ok=True)
 
-        skill_folders = sorted(
-            f
-            for f in skills_source_dir.glob("*")
-            if f.is_dir()
-            and not f.name.startswith(".")
-            and not SkillManager.is_skill_disabled(f)
-        )
+        skill_folders = _enabled_skill_folders(skills_source_dir)
 
         seen_dirs: set[Path] = set()
 
@@ -231,6 +233,8 @@ class SkillsComponent(Component):
                             continue
 
                         if not link_target.exists():
+                            remove_symlink(existing, force=True)
+                        elif SkillManager.is_skill_disabled(link_target):
                             remove_symlink(existing, force=True)
 
         return ComponentResult(

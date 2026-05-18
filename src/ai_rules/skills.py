@@ -84,10 +84,12 @@ class SkillManager:
             if len(parts) >= 3:
                 try:
                     frontmatter = yaml.safe_load(parts[1])
+                    if not isinstance(frontmatter, dict):
+                        return SkillMetadata(name=skill_dir.name, description="")
                     return SkillMetadata(
                         name=frontmatter.get("name", skill_dir.name),
                         description=frontmatter.get("description", ""),
-                        disabled=bool(frontmatter.get("disabled", False)),
+                        disabled=frontmatter.get("disabled", False) is True,
                     )
                 except yaml.YAMLError:
                     pass
@@ -246,14 +248,27 @@ class SkillManager:
 
         return status
 
-    def list_bundled_skills(self) -> list[SkillMetadata]:
-        """List all bundled skills with their metadata."""
-        managed = self._get_managed_skills()
+    def list_bundled_skills(
+        self, *, include_disabled: bool = False
+    ) -> list[SkillMetadata]:
+        """List bundled skills with their metadata."""
+        if self.agent_id:
+            source_dir = self.config_dir / self.agent_id / "skills"
+        else:
+            source_dir = self.config_dir / "skills"
+
+        if not source_dir.exists():
+            return []
+
         results = []
-        for name, source_path in managed.items():
-            metadata = self.parse_skill_md(source_path)
+        for item in sorted(source_dir.glob("*")):
+            if not item.is_dir():
+                continue
+            metadata = self.parse_skill_md(item)
             if metadata is None:
-                metadata = SkillMetadata(name=name, description="")
+                continue
+            if metadata.disabled and not include_disabled:
+                continue
             results.append(metadata)
         return results
 
