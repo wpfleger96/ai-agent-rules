@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v0.52.1 (2026-05-18)
+
+### Bug Fixes
+
+- Address code review findings for disabled skill feature
+  ([#48](https://github.com/wpfleger96/ai-agent-rules/pull/48),
+  [`05a0e86`](https://github.com/wpfleger96/ai-agent-rules/commit/05a0e86f84415b3f0aaaf1be8d4e2c2c972393a4))
+
+### Refactoring
+
+- Compress AGENTS.md and add nbsp ban + PR maintenance rules
+  ([#48](https://github.com/wpfleger96/ai-agent-rules/pull/48),
+  [`05a0e86`](https://github.com/wpfleger96/ai-agent-rules/commit/05a0e86f84415b3f0aaaf1be8d4e2c2c972393a4))
+
+- Reduce static token overhead in agent sessions
+  ([#48](https://github.com/wpfleger96/ai-agent-rules/pull/48),
+  [`05a0e86`](https://github.com/wpfleger96/ai-agent-rules/commit/05a0e86f84415b3f0aaaf1be8d4e2c2c972393a4))
+
+
 ## v0.52.0 (2026-05-18)
 
 ### Chores
