@@ -85,6 +85,23 @@ class TestProviderSchemaValidation:
                 f"({len(known)} instance(s): {[e.instance for e in known]})"
             )
 
+    def test_claude_settings_has_no_unknown_keys(self, claude_schema):
+        """Catch keys we ship that are deprecated or never existed upstream.
+
+        The upstream schema uses additionalProperties: true, so standard
+        validation never rejects unknown keys. This test explicitly checks
+        that every top-level key in our base settings.json is recognized by
+        the schema.
+        """
+        config = load_config_file(_config_root() / "claude" / "settings.json", "json")
+        schema_props = set(claude_schema.get("properties", {}).keys())
+        our_keys = set(config.keys())
+        unknown = our_keys - schema_props
+        assert not unknown, (
+            f"Base settings.json contains keys not in upstream schema: {unknown}. "
+            f"These may be deprecated — remove them to avoid stale config."
+        )
+
     def test_codex_config_validates_against_schema(self, codex_schema):
         config = load_config_file(_config_root() / "codex" / "config.toml", "toml")
         jsonschema.validate(config, codex_schema)

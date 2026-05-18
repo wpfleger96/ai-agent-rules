@@ -3,7 +3,6 @@
 import copy
 import json
 import shutil
-import tempfile
 
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -13,7 +12,7 @@ from typing import Any, cast
 
 import yaml
 
-from .config import Config
+from .config import Config, write_file_atomic
 from .utils import deep_merge
 
 
@@ -150,8 +149,8 @@ class MCPManager(ABC):
         """Format a unified diff between expected and installed MCP config."""
         import difflib
 
-        expected_json = json.dumps(expected, indent=2)
-        installed_json = json.dumps(installed, indent=2)
+        expected_json = json.dumps(expected, indent=2, sort_keys=True)
+        installed_json = json.dumps(installed, indent=2, sort_keys=True)
 
         diff = difflib.unified_diff(
             expected_json.splitlines(keepends=True),
@@ -165,11 +164,13 @@ class MCPManager(ABC):
 
     def format_pending(self, name: str, expected: dict[str, Any]) -> str:
         """Format expected MCP config for pending installation."""
+        from ai_rules.cli.display import dim
+
         marker = self._marker_field
         display_config = {k: v for k, v in expected.items() if k != marker}
-        config_json = json.dumps(display_config, indent=2)
+        config_json = json.dumps(display_config, indent=2, sort_keys=True)
 
-        lines = ["[dim]    Will be installed with:[/dim]"]
+        lines = [f"    {dim('Will be installed with:')}"]
         for line in config_json.splitlines():
             lines.append(f"[green]    {line}[/green]")
         return "\n".join(lines)
@@ -344,17 +345,7 @@ class ClaudeMCPManager(MCPManager):
         }
 
     def _write_json_atomic(self, path: Path, data: dict[str, Any]) -> None:
-        fd, temp_path = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
-        try:
-            with open(fd, "w") as f:
-                json.dump(data, f, indent=2)
-            if path.exists():
-                shutil.copystat(path, temp_path)
-            shutil.move(temp_path, path)
-        except Exception:
-            if Path(temp_path).exists():
-                Path(temp_path).unlink()
-            raise
+        write_file_atomic(path, lambda f: json.dump(data, f, indent=2, sort_keys=True))
 
     @property
     def CLAUDE_JSON(self) -> Path:
@@ -425,7 +416,7 @@ class GooseMCPManager(MCPManager):
         full = self._load_full_config()
         full["extensions"] = mcps
         with open(self._config_path, "w") as f:
-            yaml.safe_dump(full, f, default_flow_style=False, sort_keys=False)
+            yaml.safe_dump(full, f, default_flow_style=False, sort_keys=True)
 
     def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -611,20 +602,9 @@ class GeminiMCPManager(MCPManager):
         self._config_path.parent.mkdir(parents=True, exist_ok=True)
         full = self._load_full_config()
         full["mcpServers"] = mcps
-
-        fd, temp_path = tempfile.mkstemp(
-            dir=self._config_path.parent, prefix=f".{self._config_path.name}."
+        write_file_atomic(
+            self._config_path, lambda f: json.dump(full, f, indent=2, sort_keys=True)
         )
-        try:
-            with open(fd, "w") as f:
-                json.dump(full, f, indent=2)
-            if self._config_path.exists():
-                shutil.copystat(self._config_path, temp_path)
-            shutil.move(temp_path, self._config_path)
-        except Exception:
-            if Path(temp_path).exists():
-                Path(temp_path).unlink()
-            raise
 
     def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
         result: dict[str, Any] = {}
@@ -674,20 +654,9 @@ class AmpMCPManager(MCPManager):
         self._config_path.parent.mkdir(parents=True, exist_ok=True)
         full = self._load_full_config()
         full["amp.mcpServers"] = mcps
-
-        fd, temp_path = tempfile.mkstemp(
-            dir=self._config_path.parent, prefix=f".{self._config_path.name}."
+        write_file_atomic(
+            self._config_path, lambda f: json.dump(full, f, indent=2, sort_keys=True)
         )
-        try:
-            with open(fd, "w") as f:
-                json.dump(full, f, indent=2)
-            if self._config_path.exists():
-                shutil.copystat(self._config_path, temp_path)
-            shutil.move(temp_path, self._config_path)
-        except Exception:
-            if Path(temp_path).exists():
-                Path(temp_path).unlink()
-            raise
 
     def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
         result: dict[str, Any] = {}

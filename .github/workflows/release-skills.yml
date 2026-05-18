@@ -1,0 +1,74 @@
+name: Attach Skill ZIPs to Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to backfill skill ZIPs onto (e.g. v0.50.1)"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.release.tag_name || github.event.inputs.tag }}
+
+jobs:
+  skill-zips:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || github.event.inputs.tag }}
+
+      - name: Bundle per-skill ZIPs
+        run: |
+          if [ ! -d "src/ai_rules/config/skills" ] || [ -z "$(ls -A src/ai_rules/config/skills)" ]; then
+            echo "::error::Skills directory is empty or missing"
+            exit 1
+          fi
+          cd src/ai_rules/config/skills
+          for skill_dir in */; do
+            skill_name="${skill_dir%/}"
+            zip -r "${{ github.workspace }}/${skill_name}.zip" "$skill_name" -x "*/__pycache__/*"
+          done
+
+      - name: Upload skill ZIPs to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$TAG" "${{ github.workspace }}"/*.zip --clobber
+
+      - name: Append download links to release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh release view "$TAG" --json body -q '.body // ""' > /tmp/body.md
+          # Drop any existing Skills Downloads section so re-runs stay idempotent.
+          awk 'BEGIN{p=1} /^### Skills Downloads$/{p=0} p{print}' /tmp/body.md > /tmp/release-notes.md
+          while [ -s /tmp/release-notes.md ] && tail -n1 /tmp/release-notes.md | grep -qE '^(---)?[[:space:]]*$'; do
+            sed -i '$ d' /tmp/release-notes.md
+          done
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "### Skills Downloads"
+            echo ""
+            echo "Each ZIP is directly uploadable to Claude Desktop (Customize > Skills > +) or Codex Desktop."
+            echo ""
+            echo "| Skill | Download |"
+            echo "|-------|----------|"
+            for skill_dir in src/ai_rules/config/skills/*/; do
+              skill_name=$(basename "$skill_dir")
+              echo "| \`${skill_name}\` | [${skill_name}.zip](https://github.com/${REPO}/releases/download/${TAG}/${skill_name}.zip) |"
+            done
+            echo ""
+            echo "**[Browse skill source on GitHub](https://github.com/${REPO}/tree/${TAG}/src/ai_rules/config/skills)**"
+          } >> /tmp/release-notes.md
+          gh release edit "$TAG" --notes-file /tmp/release-notes.md

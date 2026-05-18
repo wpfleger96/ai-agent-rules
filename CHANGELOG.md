@@ -2,6 +2,94 @@
 
 <!-- version list -->
 
+## v0.51.0 (2026-05-18)
+
+### Chores
+
+- **deps**: Update astral-sh/setup-uv action to v8
+  ([#46](https://github.com/wpfleger96/ai-agent-rules/pull/46),
+  [`aa6875b`](https://github.com/wpfleger96/ai-agent-rules/commit/aa6875b914cba5784f98f19fcb8555612e570cf8))
+
+### Continuous Integration
+
+- Attach skill ZIPs to releases via standalone workflow
+  ([#43](https://github.com/wpfleger96/ai-agent-rules/pull/43),
+  [`583a6d4`](https://github.com/wpfleger96/ai-agent-rules/commit/583a6d4f31f8c143ca5186157ddc35891aa0565c))
+
+### Features
+
+- Parallelize all CLI commands and standardize output rendering
+  ([#42](https://github.com/wpfleger96/ai-agent-rules/pull/42),
+  [`1e4ef69`](https://github.com/wpfleger96/ai-agent-rules/commit/1e4ef6947c360fb1730f83401ac0218588ff02a2))
+
+### Refactoring
+
+- Address crossfire code review feedback
+  ([#42](https://github.com/wpfleger96/ai-agent-rules/pull/42),
+  [`1e4ef69`](https://github.com/wpfleger96/ai-agent-rules/commit/1e4ef6947c360fb1730f83401ac0218588ff02a2))
+
+- Complete display helper migration across all CLI modules
+  ([#42](https://github.com/wpfleger96/ai-agent-rules/pull/42),
+  [`1e4ef69`](https://github.com/wpfleger96/ai-agent-rules/commit/1e4ef6947c360fb1730f83401ac0218588ff02a2))
+
+- Eliminate all raw Rich markup via display helpers
+  ([#42](https://github.com/wpfleger96/ai-agent-rules/pull/42),
+  [`1e4ef69`](https://github.com/wpfleger96/ai-agent-rules/commit/1e4ef6947c360fb1730f83401ac0218588ff02a2))
+
+- Expand display helpers to cover all symbol patterns
+  ([#42](https://github.com/wpfleger96/ai-agent-rules/pull/42),
+  [`1e4ef69`](https://github.com/wpfleger96/ai-agent-rules/commit/1e4ef6947c360fb1730f83401ac0218588ff02a2))
+
+
+## v0.50.1 (2026-05-15)
+
+### Bug Fixes
+
+- Ease up Claude Code shell command permissions
+  ([#41](https://github.com/wpfleger96/ai-agent-rules/pull/41),
+  [`8530be7`](https://github.com/wpfleger96/ai-agent-rules/commit/8530be7f6511ed8daa0aae758aa5dde0112390d4))
+
+
+## v0.50.0 (2026-05-15)
+
+### Bug Fixes
+
+- Correct LSP plugin marketplace source
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+- Deterministic key ordering for all config serialization
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+- Preserve user-contributed settings, remove stale keys, harden schema validation
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+### Features
+
+- Add declarative LSP language server management
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+- Add LSP plugins to personal profile ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+- LSP support, unify settings cache pipeline
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+### Refactoring
+
+- Simplify LSP support to just the env var
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+- Unify settings cache pipeline, fix user-key data loss
+  ([#40](https://github.com/wpfleger96/ai-agent-rules/pull/40),
+  [`2ce7faa`](https://github.com/wpfleger96/ai-agent-rules/commit/2ce7faac246670322665caa6878e95793222cb48))
+
+
 ## v0.49.1 (2026-05-14)
 
 ### Bug Fixes

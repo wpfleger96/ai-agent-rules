@@ -534,9 +534,12 @@ settings_overrides:
         """get_cache_diff shows diff when profile hook changed but cache has old value."""
         import json
 
+        from ai_rules.config import ManagedFieldsTracker
+
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
         old_hook = [{"hooks": [{"type": "command", "command": "old_script.py"}]}]
         new_hook = [{"hooks": [{"type": "command", "command": "new_script.py"}]}]
@@ -546,6 +549,11 @@ settings_overrides:
         (cache_dir / "settings.json").write_text(
             json.dumps({"model": "base", "hooks": {"Stop": old_hook}})
         )
+
+        tracker = ManagedFieldsTracker()
+        tracker.set_field_contributions("hooks", {"Stop": old_hook})
+        tracker.set_field_contributions("_contributed_keys_claude", ["hooks", "model"])
+        tracker.save()
 
         config_dir = tmp_path / "config"
         claude_dir = config_dir / "claude"
@@ -873,6 +881,361 @@ settings_overrides:
 
         result = config.get_settings_file_for_symlink("claude", base_settings_path)
         assert result == base_settings_path
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestUserContributedKeysPreservation:
+    """Test that user-contributed keys (e.g., from Claude Code UI) survive cache rebuilds."""
+
+    def test_user_key_preserved_on_rebuild(self, tmp_path, monkeypatch):
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(
+            json.dumps({"model": "base", "verbose": True, "hooks": {}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"model": "new"}})
+        agent = ClaudeAgent(config_dir, config)
+        result_path = agent.build_merged_settings(force_rebuild=True)
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert result["model"] == "new"
+        assert result["verbose"] is True
+
+        # Second rebuild — the bug dropped user keys here
+        result_path2 = agent.build_merged_settings(force_rebuild=True)
+        assert result_path2 is not None
+        with open(result_path2) as f:
+            result2 = json.load(f)
+        assert result2["model"] == "new"
+        assert result2["verbose"] is True
+
+    def test_user_key_survives_multiple_rebuilds(self, tmp_path, monkeypatch):
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "verbose": True, "hooks": {}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"model": "new"}})
+        agent = ClaudeAgent(config_dir, config)
+
+        for i in range(3):
+            result_path = agent.build_merged_settings(force_rebuild=True)
+            assert result_path is not None
+            with open(result_path) as f:
+                result = json.load(f)
+            assert result["verbose"] is True, f"verbose missing after rebuild {i + 1}"
+
+    def test_get_cache_diff_none_with_user_keys(self, tmp_path, monkeypatch):
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "verbose": True, "hooks": {}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"model": "base"}})
+        agent = ClaudeAgent(config_dir, config)
+
+        agent.build_merged_settings(force_rebuild=True)
+        diff = agent.get_cache_diff()
+
+        assert diff is None
+
+    def test_user_key_preserved_across_profile_switch(self, tmp_path, monkeypatch):
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "verbose": True, "hooks": {}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config_a = Config(settings_overrides={"claude": {"model": "alpha"}})
+        agent_a = ClaudeAgent(config_dir, config_a)
+        agent_a.build_merged_settings(force_rebuild=True)
+
+        config_b = Config(settings_overrides={"claude": {"model": "beta"}})
+        agent_b = ClaudeAgent(config_dir, config_b)
+        result_path = agent_b.build_merged_settings(force_rebuild=True)
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert result["verbose"] is True
+        assert result["model"] == "beta"
+
+    def test_user_deleted_key_stays_gone(self, tmp_path, monkeypatch):
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(
+            json.dumps({"model": "base", "verbose": True, "hooks": {}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"model": "new"}})
+        agent = ClaudeAgent(config_dir, config)
+
+        result_path = agent.build_merged_settings(force_rebuild=True)
+        assert result_path is not None
+        with open(result_path) as f:
+            first_result = json.load(f)
+        assert first_result["verbose"] is True
+
+        # Simulate user deleting the key from the cache
+        del first_result["verbose"]
+        with open(result_path, "w") as f:
+            json.dump(first_result, f)
+
+        result_path2 = agent.build_merged_settings(force_rebuild=True)
+        assert result_path2 is not None
+        with open(result_path2) as f:
+            result2 = json.load(f)
+        assert "verbose" not in result2
+
+    def test_stale_airules_key_not_resurrected_by_user_passthrough(
+        self, tmp_path, monkeypatch
+    ):
+        import json
+
+        from ai_rules.config import ManagedFieldsTracker
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        tracker = ManagedFieldsTracker()
+        tracker.set_field_contributions(
+            "_contributed_keys_claude", ["autoCompactEnabled", "hooks", "model"]
+        )
+        tracker.save()
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "autoCompactEnabled": False, "hooks": {}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"model": "new"}})
+        agent = ClaudeAgent(config_dir, config)
+
+        result_path = agent.build_merged_settings(force_rebuild=True)
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert "autoCompactEnabled" not in result
+
+        result_path2 = agent.build_merged_settings(force_rebuild=True)
+        assert result_path2 is not None
+        with open(result_path2) as f:
+            result2 = json.load(f)
+        assert "autoCompactEnabled" not in result2
+
+    def test_contributed_keys_namespaced_per_agent(self, tmp_path, monkeypatch):
+        import json
+
+        from ai_rules.agents.gemini import GeminiAgent
+        from ai_rules.config import ManagedFieldsTracker
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        config_dir = tmp_path / "config"
+
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        gemini_dir = config_dir / "gemini"
+        gemini_dir.mkdir(parents=True)
+        (gemini_dir / "settings.json").write_text(json.dumps({"model": "base"}))
+
+        claude_config = Config(settings_overrides={"claude": {"model": "new"}})
+        claude_agent = ClaudeAgent(config_dir, claude_config)
+        claude_agent.build_merged_settings(force_rebuild=True)
+
+        gemini_config = Config(settings_overrides={"gemini": {"model": "new"}})
+        gemini_agent = GeminiAgent(config_dir, gemini_config)
+        gemini_agent.build_merged_settings(force_rebuild=True)
+
+        tracker = ManagedFieldsTracker()
+        claude_keys = tracker.get_field_contributions("_contributed_keys_claude")
+        gemini_keys = tracker.get_field_contributions("_contributed_keys_gemini")
+
+        assert claude_keys is not None, "_contributed_keys_claude not written"
+        assert gemini_keys is not None, "_contributed_keys_gemini not written"
+        assert "model" in claude_keys
+        assert "model" in gemini_keys
+
+    def test_stale_airules_key_dropped_on_rebuild(self, tmp_path, monkeypatch):
+        import json
+
+        from ai_rules.config import ManagedFieldsTracker
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        tracker = ManagedFieldsTracker()
+        tracker.set_field_contributions(
+            "_contributed_keys_claude",
+            ["autoCompactEnabled", "hooks", "model"],
+        )
+        tracker.save()
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(
+            json.dumps(
+                {
+                    "model": "base",
+                    "autoCompactEnabled": False,
+                    "hooks": {},
+                }
+            )
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"model": "new"}})
+        agent = ClaudeAgent(config_dir, config)
+        result_path = agent.build_merged_settings(force_rebuild=True)
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert result["model"] == "new"
+        assert "autoCompactEnabled" not in result
+
+    def test_first_install_preserves_all_unknown_keys(self, tmp_path, monkeypatch):
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(
+            json.dumps(
+                {
+                    "model": "base",
+                    "verbose": True,
+                    "autoCompactEnabled": False,
+                    "hooks": {},
+                }
+            )
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        config = Config(settings_overrides={"claude": {"model": "new"}})
+        agent = ClaudeAgent(config_dir, config)
+        result_path = agent.build_merged_settings(force_rebuild=True)
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert result["verbose"] is True
+        assert result["autoCompactEnabled"] is False
 
 
 @pytest.mark.unit

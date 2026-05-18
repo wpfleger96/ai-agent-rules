@@ -12,7 +12,7 @@ from ai_rules.cli.components import (
 @pytest.mark.unit
 def test_install_components_run_in_expected_order():
     assert [component.label for component in INSTALL_COMPONENTS] == [
-        "Settings",
+        "Settings Cache",
         "Optional Tools",
         "Config Files",
         "Skills",
@@ -27,7 +27,7 @@ def test_install_components_run_in_expected_order():
 def test_status_components_cover_managed_lifecycle_surfaces():
     assert [component.label for component in STATUS_COMPONENTS] == [
         "Config Files",
-        "Settings",
+        "Settings Cache",
         "MCPs",
         "Claude Plugins",
         "Claude Extensions",
@@ -41,7 +41,7 @@ def test_status_components_cover_managed_lifecycle_surfaces():
 def test_diff_components_include_drift_sources():
     assert [component.label for component in DIFF_COMPONENTS] == [
         "Config Files",
-        "Settings",
+        "Settings Cache",
         "MCPs",
         "Claude Plugins",
         "Claude Extensions",

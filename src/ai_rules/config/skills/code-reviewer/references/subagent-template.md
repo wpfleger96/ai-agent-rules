@@ -85,25 +85,37 @@ CRITICAL RULES:
 ## Lens Definitions
 
 ### Security & Reliability Agent
-**Focus:** Injection, authentication, authorization, data exposure, error handling, edge cases, data corruption risks
+**Focus:** Injection, authentication, authorization, data exposure, error handling, edge cases, data corruption risks, dependency hygiene
 **Key questions (adapt per diff):**
 - Are there input validation gaps where external data enters the system?
 - Could any change introduce auth bypass, data leakage, or injection vulnerabilities?
 - Is error handling adequate for external dependencies and failure modes?
 - Are edge cases handled that could cause data corruption or crashes?
+- If dependency files (pyproject.toml, uv.lock, package.json, Cargo.toml, etc.) are in the diff: are new dependencies well-maintained, pinned to a specific version range, and free of known security concerns?
 
 ### Design & Simplicity Agent
-**Focus:** Architecture fit, abstraction level, over-engineering, code duplication, maintainability, naming clarity
+**Focus:** Architecture fit, abstraction level, over-engineering, code duplication, maintainability, naming clarity, project conventions
 **Key questions (adapt per diff):**
 - Does this change integrate well with the existing architecture and patterns?
 - Is there unnecessary complexity or over-engineering for the problem being solved?
 - Are there duplication opportunities (3+ occurrences of similar logic)?
 - Will future developers understand this code without the PR context?
+- Are there violations of project-specific conventions documented in AGENTS.md, CLAUDE.md, or similar convention files? (Read these files as part of your review context.)
 
 ### Functionality & Testing Agent
-**Focus:** Correctness, intended behavior, user-facing edge cases, test coverage, test quality
+**Focus:** Correctness, intended behavior, user-facing edge cases, test coverage, test quality, API contract accuracy
 **Key questions (adapt per diff):**
 - Does the code actually do what the developer intended? Any logical errors?
 - Are critical paths covered by tests that verify behavior (not implementation)?
 - Are there edge cases end users will encounter that aren't handled?
 - For UI changes: will the user experience work as expected?
+- For any changed public API, function signature, or user-facing behavior: is the corresponding documentation (docstrings, README, changelog) still accurate?
+
+### Performance & Scalability Agent
+**Focus:** Algorithmic complexity, query efficiency, I/O patterns, memory growth, hot-path regressions, resource utilization
+**Condition:** Only activated when the diff touches performance-sensitive code (database queries, loops over collections, data structure operations, I/O in loops)
+**Key questions (adapt per diff):**
+- Does this change introduce any operations whose cost scales worse than linearly with input size?
+- Are there database queries or I/O operations inside loops that could be batched or hoisted?
+- Could any new data structures grow unboundedly in proportion to user/data volume?
+- Are there repeated computations or I/O calls that could be cached or deduplicated?

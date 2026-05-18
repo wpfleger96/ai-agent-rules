@@ -6,7 +6,8 @@
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
     "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-6",
     "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
-    "CLAUDE_CODE_EFFORT_LEVEL": "max"
+    "CLAUDE_CODE_EFFORT_LEVEL": "max",
+    "ENABLE_LSP_TOOL": "1"
   },
   "attribution": {
     "commit": "",
@@ -121,11 +122,6 @@
     ],
     "deny": [
       "Bash(gh pr merge:*)",
-      "Bash(git push --force:*)",
-      "Bash(git reset:*)",
-      "Bash(git revert:*)",
-      "Bash(git stash drop:*)",
-      "Bash(rm -f:*)",
       "Bash(rm -r:*)"
     ],
     "defaultMode": "plan"
@@ -140,6 +136,5 @@
   "alwaysThinkingEnabled": true,
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
-  "skipAutoPermissionPrompt": true,
   "hooks": {}
 }

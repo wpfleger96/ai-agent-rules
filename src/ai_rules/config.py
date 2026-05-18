@@ -7,7 +7,9 @@ import json
 import re
 import shutil
 import sys
+import tempfile
 
+from collections.abc import Callable
 from fnmatch import fnmatch
 from functools import lru_cache
 from pathlib import Path
@@ -35,6 +37,7 @@ __all__ = [
     "CONFIG_PARSE_ERRORS",
     "ManagedFieldsTracker",
     "dump_config_file",
+    "write_file_atomic",
     "get_managed_fields_path",
     "get_user_config_path",
     "load_config_file",
@@ -180,6 +183,30 @@ def _validate_for_format(
         _validate_value_for_format(value, config_format, current)
 
 
+def write_file_atomic(
+    path: Path, write_fn: Callable[[Any], None], binary: bool = False
+) -> None:
+    """Write a file atomically via tempfile + rename."""
+    fd, temp_path = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    try:
+        mode = "wb" if binary else "w"
+        with open(fd, mode) as f:
+            write_fn(f)
+        if path.exists():
+            shutil.copymode(path, temp_path)
+        shutil.move(temp_path, path)
+    except Exception:
+        Path(temp_path).unlink(missing_ok=True)
+        raise
+
+
+def _sort_dict(data: dict[str, Any]) -> dict[str, Any]:
+    """Recursively sort dict keys for deterministic serialization."""
+    return {
+        k: _sort_dict(v) if isinstance(v, dict) else v for k, v in sorted(data.items())
+    }
+
+
 def dump_config_file(path: Path, data: dict[str, Any], config_format: str) -> None:
     """Write a config file based on format.
 
@@ -193,15 +220,18 @@ def dump_config_file(path: Path, data: dict[str, Any], config_format: str) -> No
         OSError, tomli_w errors: on write errors
     """
     _validate_for_format(data, config_format)
+    path.parent.mkdir(parents=True, exist_ok=True)
     if config_format == "toml":
-        with open(path, "wb") as f:
-            tomli_w.dump(data, f)
+        write_file_atomic(
+            path, lambda f: tomli_w.dump(_sort_dict(data), f), binary=True
+        )
     elif config_format == "json":
-        with open(path, "w") as f:
-            json.dump(data, f, indent=2)
+        write_file_atomic(path, lambda f: json.dump(data, f, indent=2, sort_keys=True))
     elif config_format == "yaml":
-        with open(path, "w") as f:
-            yaml.safe_dump(data, f, default_flow_style=False, sort_keys=False)
+        write_file_atomic(
+            path,
+            lambda f: yaml.safe_dump(data, f, default_flow_style=False, sort_keys=True),
+        )
     else:
         raise ValueError(f"Unsupported config format: {config_format}")
 
@@ -417,14 +447,16 @@ class ManagedFieldsTracker:
     def load(self) -> dict[str, Any]:
         """Load tracked ai-agent-rules contributions."""
         if not self.path.exists():
-            return {"version": 1}
+            self._data = {"version": 1}
+            return self._data
 
         try:
             with open(self.path) as f:
                 self._data = json.load(f)
                 return self._data
         except (OSError, json.JSONDecodeError):
-            return {"version": 1}
+            self._data = {"version": 1}
+            return self._data
 
     def save(self, contributions: dict[str, Any] | None = None) -> None:
         """Save ai-agent-rules contributions."""
@@ -434,8 +466,7 @@ class ManagedFieldsTracker:
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.path, "w") as f:
-                json.dump(self._data, f, indent=2)
-            with open(self.path, "a") as f:
+                json.dump(self._data, f, indent=2, sort_keys=True)
                 f.write("\n")
         except Exception:
             pass
@@ -838,7 +869,7 @@ class Config:
         user_config_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(user_config_path, "w") as f:
-            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+            yaml.dump(data, f, default_flow_style=False, sort_keys=True)
 
     def cleanup_orphaned_cache(self, agents_needing_cache: set[str]) -> list[str]:
         """Remove cache files for agents that no longer need them.
