@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v0.52.0 (2026-05-18)
+
+### Chores
+
+- **deps**: Update python Docker tag to v3.14
+  ([#45](https://github.com/wpfleger96/ai-agent-rules/pull/45),
+  [`7ee5bd0`](https://github.com/wpfleger96/ai-agent-rules/commit/7ee5bd0967443b688d3c47fc6cf021d821273d9a))
+
+### Features
+
+- **code-reviewer**: Add conditional Performance lens, extend existing agents
+  ([#44](https://github.com/wpfleger96/ai-agent-rules/pull/44),
+  [`38970b2`](https://github.com/wpfleger96/ai-agent-rules/commit/38970b219a611fa43da1e92c5898be2e51fc4f2b))
+
+
 ## v0.51.0 (2026-05-18)
 
 ### Chores
