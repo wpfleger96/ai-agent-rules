@@ -1,6 +1,6 @@
 ---
 name: agents-md
-description: "This skill should be used when the user asks to 'create AGENTS.md', 'update AGENTS.md', 'add to AGENTS.md', 'document the repo', 'write repo documentation', 'create repository guide', 'document patterns', 'document conventions', 'add coding guidelines', or after implementing features to document new patterns, conventions, commands, or gotchas that should be added to AGENTS.md. Also triggers when noticing undocumented patterns, repeated gotchas, or missing workflow documentation."
+description: Create or update AGENTS.md with repo-specific patterns, conventions, commands, and gotchas for LLM coding agents. Use after implementing features that introduce new patterns worth documenting.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, TodoWrite
 model: sonnet
 ---

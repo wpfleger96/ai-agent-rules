@@ -18,6 +18,7 @@ class SkillMetadata:
 
     name: str
     description: str
+    disabled: bool = False
 
 
 @dataclass
@@ -86,11 +87,18 @@ class SkillManager:
                     return SkillMetadata(
                         name=frontmatter.get("name", skill_dir.name),
                         description=frontmatter.get("description", ""),
+                        disabled=bool(frontmatter.get("disabled", False)),
                     )
                 except yaml.YAMLError:
                     pass
 
         return SkillMetadata(name=skill_dir.name, description="")
+
+    @staticmethod
+    def is_skill_disabled(skill_dir: Path) -> bool:
+        """Check if a skill has disabled: true in its SKILL.md frontmatter."""
+        meta = SkillManager.parse_skill_md(skill_dir)
+        return meta is not None and meta.disabled
 
     def _get_managed_skills(self) -> dict[str, Path]:
         """Get all managed skills from config_dir."""
@@ -104,7 +112,7 @@ class SkillManager:
 
         result = {}
         for item in sorted(source_dir.glob("*")):
-            if item.is_dir():
+            if item.is_dir() and not self.is_skill_disabled(item):
                 result[item.name] = item
         return result
 

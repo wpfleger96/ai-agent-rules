@@ -1,6 +1,6 @@
 ---
 name: doc-writer
-description: "This skill should be used when the user asks to 'write docs', 'create documentation', 'update docs', 'improve documentation', 'review docs', 'document this code', 'add README', 'update README', 'write API docs', 'create architecture doc', 'how to document', 'what should I document', 'document the changes', 'update docs for this feature', or after implementing features to document new APIs, CLI commands, or behavior changes. Also triggers on mentions of README, ARCHITECTURE.md, CONTRIBUTING.md, API docs, examples, tutorials, user guides, or technical writing."
+description: Write, update, or review documentation (README, ARCHITECTURE.md, API docs, guides). Use after implementing features to document new APIs, CLI commands, or behavior changes.
 model: sonnet
 ---
 

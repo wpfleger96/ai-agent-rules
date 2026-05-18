@@ -8,7 +8,7 @@ resolution-markers = [
 
 [[package]]
 name = "ai-agent-rules"
-version = "0.50.1"
+version = "0.52.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },

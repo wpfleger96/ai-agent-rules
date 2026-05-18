@@ -35,6 +35,7 @@ class SharedAgent(Agent):
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of shared symlinks for agent-agnostic configurations."""
         from ai_rules.config import AGENT_SKILLS_DIRS
+        from ai_rules.skills import SkillManager
 
         result = []
 
@@ -43,7 +44,11 @@ class SharedAgent(Agent):
         skills_dir = self.config_dir / "skills"
         if skills_dir.exists():
             for skill_folder in sorted(skills_dir.glob("*")):
-                if skill_folder.is_dir() and not skill_folder.name.startswith("."):
+                if (
+                    skill_folder.is_dir()
+                    and not skill_folder.name.startswith(".")
+                    and not SkillManager.is_skill_disabled(skill_folder)
+                ):
                     for agent_skills_dir in AGENT_SKILLS_DIRS.values():
                         result.append(
                             (agent_skills_dir / skill_folder.name, skill_folder)

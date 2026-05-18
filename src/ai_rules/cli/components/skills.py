@@ -27,10 +27,14 @@ class SkillsComponent(Component):
         if not skills_source_dir.exists():
             return SkillsPlan()
 
+        from ai_rules.skills import SkillManager
+
         skill_folders = sorted(
             f
             for f in skills_source_dir.glob("*")
-            if f.is_dir() and not f.name.startswith(".")
+            if f.is_dir()
+            and not f.name.startswith(".")
+            and not SkillManager.is_skill_disabled(f)
         )
 
         symlink_ops: list[tuple[Path, Path]] = []
@@ -139,6 +143,7 @@ class SkillsComponent(Component):
         from pathlib import Path
 
         from ai_rules.config import AGENT_SKILLS_DIRS
+        from ai_rules.skills import SkillManager
         from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
 
         created = 0
@@ -153,7 +158,9 @@ class SkillsComponent(Component):
         skill_folders = sorted(
             f
             for f in skills_source_dir.glob("*")
-            if f.is_dir() and not f.name.startswith(".")
+            if f.is_dir()
+            and not f.name.startswith(".")
+            and not SkillManager.is_skill_disabled(f)
         )
 
         seen_dirs: set[Path] = set()
