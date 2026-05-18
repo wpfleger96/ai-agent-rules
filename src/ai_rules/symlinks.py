@@ -6,9 +6,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-from rich.console import Console
-
-console = Console()
+from ai_rules.cli.display import console, dim
 
 
 def create_backup_path(target: Path) -> Path:
@@ -85,7 +83,7 @@ def create_symlink(
             elif force:
                 backup = create_backup_path(target)
                 target.rename(backup)
-                console.print(f"  [dim]Backed up to {backup}[/dim]")
+                console.print(f"  {dim(f'Backed up to {backup}')}")
             else:
                 response = console.input(
                     f"[yellow]?[/yellow] File {target} exists and is not a symlink\n  Replace with symlink? (y/N): "
@@ -94,7 +92,7 @@ def create_symlink(
                     return (SymlinkResult.SKIPPED, "Skipped by user")
                 backup = create_backup_path(target)
                 target.rename(backup)
-                console.print(f"  [dim]Backed up to {backup}[/dim]")
+                console.print(f"  {dim(f'Backed up to {backup}')}")
 
     if dry_run:
         return (SymlinkResult.CREATED, f"Would create: {target} → {source}")
@@ -109,14 +107,13 @@ def create_symlink(
         return (
             SymlinkResult.ERROR,
             f"Permission denied: {e}\n"
-            "  [dim]Tip: Check file permissions and ownership. "
-            "You may need to remove existing files manually.[/dim]",
+            f"  {dim('Tip: Check file permissions and ownership. You may need to remove existing files manually.')}",
         )
     except FileExistsError as e:
         return (
             SymlinkResult.ERROR,
             f"File already exists: {e}\n"
-            "  [dim]Tip: Use -y to replace existing files.[/dim]",
+            f"  {dim('Tip: Use -y to replace existing files.')}",
         )
     except (OSError, ValueError) as e:
         try:
@@ -126,13 +123,13 @@ def create_symlink(
             return (
                 SymlinkResult.ERROR,
                 f"Permission denied: {e}\n"
-                "  [dim]Tip: Check file permissions and ownership.[/dim]",
+                f"  {dim('Tip: Check file permissions and ownership.')}",
             )
         except Exception as e2:
             return (
                 SymlinkResult.ERROR,
                 f"Failed to create symlink: {e2}\n"
-                "  [dim]Tip: Check that the target directory exists and is writable.[/dim]",
+                f"  {dim('Tip: Check that the target directory exists and is writable.')}",
             )
 
 
@@ -197,13 +194,13 @@ def remove_symlink(target_path: Path, force: bool = False) -> tuple[bool, str]:
         return (
             False,
             f"Permission denied: {e}\n"
-            "  [dim]Tip: Check file permissions. You may need elevated privileges.[/dim]",
+            f"  {dim('Tip: Check file permissions. You may need elevated privileges.')}",
         )
     except OSError as e:
         return (
             False,
             f"Error removing symlink: {e}\n"
-            "  [dim]Tip: Check that the file exists and is accessible.[/dim]",
+            f"  {dim('Tip: Check that the file exists and is accessible.')}",
         )
 
 

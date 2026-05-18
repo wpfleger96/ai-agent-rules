@@ -8,6 +8,8 @@ import click
 
 import ai_rules.cli as cli_facade
 
+from ai_rules.cli.display import print_dim
+
 
 @click.group()
 def override() -> None:
@@ -69,7 +71,9 @@ def _override_set_with_array_index(
     config_dir = cli_facade.get_config_dir()
     agent_format = AGENT_FORMATS.get(agent)
     if not agent_format:
-        console.print(f"[red]Error:[/red] Unknown agent format for '{agent}'")
+        from ai_rules.cli.display import print_error
+
+        print_error(f"Unknown agent format for '{agent}'")
         sys.exit(1)
 
     config_file = FORMAT_CONFIG_FILES.get(agent_format, "settings.json")
@@ -142,25 +146,26 @@ def override_set(key: str, value: str) -> None:
     - Validates full path against base settings structure
     - Provides helpful suggestions when paths are invalid
     """
-    from rich.console import Console
-
+    from ai_rules.cli.display import (
+        console,
+        print_error,
+        print_hint,
+        print_success,
+        print_warning,
+    )
     from ai_rules.config import (
         Config,
         parse_setting_path,
         validate_override_path,
     )
 
-    console = Console()
-
     user_config_path = cli_facade.get_user_config_path()
     config_dir = cli_facade.get_config_dir()
 
     parts = key.split(".", 1)
     if len(parts) != 2:
-        console.print("[red]Error:[/red] Key must be in format 'agent.setting'")
-        console.print(
-            "[dim]Example: claude.model or claude.hooks.SubagentStop[0].command[/dim]"
-        )
+        print_error("Key must be in format 'agent.setting'")
+        print_dim("Example: claude.model or claude.hooks.SubagentStop[0].command")
         sys.exit(1)
 
     agent, setting = parts
@@ -170,15 +175,13 @@ def override_set(key: str, value: str) -> None:
     )
 
     if not is_valid:
-        console.print(f"[red]Error:[/red] {error_msg}")
+        print_error(error_msg)
         if suggestions:
-            console.print(
-                f"[dim]Available options: {', '.join(suggestions[:10])}[/dim]"
-            )
+            print_dim(f"Available options: {', '.join(suggestions[:10])}")
         sys.exit(1)
 
     if warning_msg:
-        console.print(f"[yellow]Warning:[/yellow] {warning_msg}")
+        print_warning(warning_msg)
 
     import json
 
@@ -198,7 +201,7 @@ def override_set(key: str, value: str) -> None:
     try:
         path_components = parse_setting_path(setting)
     except ValueError as e:
-        console.print(f"[red]Error:[/red] {e}")
+        print_error(str(e))
         sys.exit(1)
 
     has_array_index = any(isinstance(c, int) for c in path_components)
@@ -212,11 +215,9 @@ def override_set(key: str, value: str) -> None:
 
     Config.save_user_config(data)
 
-    console.print(f"[green]✓[/green] Set override: {agent}.{setting} = {parsed_value}")
-    console.print(f"[dim]Config updated: {user_config_path}[/dim]")
-    console.print(
-        "\n[yellow]💡 Run 'ai-agent-rules install --rebuild-cache' to apply changes[/yellow]"
-    )
+    print_success(f"Set override: {agent}.{setting} = {parsed_value}")
+    print_dim(f"Config updated: {user_config_path}")
+    print_hint("Run 'ai-agent-rules install --rebuild-cache' to apply changes")
 
 
 @override.command("unset")
@@ -227,21 +228,23 @@ def override_unset(key: str) -> None:
     KEY should be in format 'agent.setting' (e.g., 'claude.model')
     Supports nested keys like 'agent.nested.key'
     """
-    from rich.console import Console
-
+    from ai_rules.cli.display import (
+        print_error,
+        print_hint,
+        print_success,
+        print_warning,
+    )
     from ai_rules.config import Config
-
-    console = Console()
 
     user_config_path = cli_facade.get_user_config_path()
 
     if not user_config_path.exists():
-        console.print("[red]No user config found[/red]")
+        print_error("No user config found")
         sys.exit(1)
 
     parts = key.split(".", 1)
     if len(parts) != 2:
-        console.print("[red]Error:[/red] Key must be in format 'agent.setting'")
+        print_error("Key must be in format 'agent.setting'")
         sys.exit(1)
 
     agent, setting = parts
@@ -249,7 +252,7 @@ def override_unset(key: str) -> None:
     data = Config.load_user_config()
 
     if "settings_overrides" not in data or agent not in data["settings_overrides"]:
-        console.print(f"[yellow]Override not found:[/yellow] {key}")
+        print_warning(f"Override not found: {key}")
         sys.exit(1)
 
     setting_parts = setting.split(".")
@@ -257,13 +260,13 @@ def override_unset(key: str) -> None:
 
     for part in setting_parts[:-1]:
         if not isinstance(current, dict) or part not in current:
-            console.print(f"[yellow]Override not found:[/yellow] {key}")
+            print_warning(f"Override not found: {key}")
             sys.exit(1)
         current = current[part]
 
     final_key = setting_parts[-1]
     if not isinstance(current, dict) or final_key not in current:
-        console.print(f"[yellow]Override not found:[/yellow] {key}")
+        print_warning(f"Override not found: {key}")
         sys.exit(1)
 
     del current[final_key]
@@ -286,27 +289,22 @@ def override_unset(key: str) -> None:
 
     Config.save_user_config(data)
 
-    console.print(f"[green]✓[/green] Removed override: {key}")
-    console.print(f"[dim]Config updated: {user_config_path}[/dim]")
-    console.print(
-        "\n[yellow]💡 Run 'ai-agent-rules install --rebuild-cache' to apply changes[/yellow]"
-    )
+    print_success(f"Removed override: {key}")
+    print_dim(f"Config updated: {user_config_path}")
+    print_hint("Run 'ai-agent-rules install --rebuild-cache' to apply changes")
 
 
 @override.command("list")
 def override_list() -> None:
     """List all settings overrides."""
-    from rich.console import Console
-
+    from ai_rules.cli.display import console
     from ai_rules.config import Config
-
-    console = Console()
 
     user_data = Config.load_user_config()
     user_overrides = user_data.get("settings_overrides", {})
 
     if not user_overrides:
-        console.print("[dim]No settings overrides configured[/dim]")
+        print_dim("No settings overrides configured")
         return
 
     console.print("[bold]Settings Overrides:[/bold]\n")
