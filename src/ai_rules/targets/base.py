@@ -272,11 +272,7 @@ class ConfigTarget(ABC):
 
         cache_mtime = cache_path.stat().st_mtime
 
-        base_settings_path = self._base_settings_path
-        if base_settings_path.exists():
-            if base_settings_path.stat().st_mtime > cache_mtime:
-                return True
-
+        # User config and profile changes are always real edits — trust mtime
         from ai_rules.config import get_user_config_path
 
         user_config_path = get_user_config_path()
@@ -292,6 +288,8 @@ class ConfigTarget(ABC):
             if profile_path.exists() and profile_path.stat().st_mtime > cache_mtime:
                 return True
 
+        # Base settings mtime changes on upgrades/installs without content change;
+        # fall through to content check to avoid false positives
         return self.get_cache_diff() is not None
 
     def get_cache_diff(self) -> str | None:

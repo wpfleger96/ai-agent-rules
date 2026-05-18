@@ -10,12 +10,16 @@ class SourceFilesComponent(Component):
     component_id = "source-files"
 
     def validate(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.display import print_dim, print_error, print_success
+        from ai_rules.cli.runner import get_console
+
+        console = get_console(ctx)
         all_valid = True
         total_checked = 0
         total_issues = 0
 
         for target in ctx.selected_targets:
-            ctx.console.print(f"[bold]{target.name}:[/bold]")
+            console.print(f"[bold]{target.name}[/bold]")
             target_issues = []
 
             for _tgt, source in target.symlinks:
@@ -28,7 +32,7 @@ class SourceFilesComponent(Component):
                     target_issues.append((source, "Source is not a file or directory"))
                     all_valid = False
                 else:
-                    ctx.console.print(f"  [green]✓[/green] {source.name}")
+                    print_success(source.name, indent=2)
 
             excluded_symlinks = [
                 (tgt, source)
@@ -36,16 +40,17 @@ class SourceFilesComponent(Component):
                 if (tgt, source) not in target.get_filtered_symlinks()
             ]
             if excluded_symlinks:
-                ctx.console.print(
-                    f"  [dim]({len(excluded_symlinks)} symlink(s) excluded by config)[/dim]"
+                print_dim(
+                    f"({len(excluded_symlinks)} symlink(s) excluded by config)",
+                    indent=2,
                 )
 
             for path, issue in target_issues:
-                ctx.console.print(f"  [red]✗[/red] {path}")
-                ctx.console.print(f"    [dim]{issue}[/dim]")
+                print_error(str(path), indent=2)
+                print_dim(issue, indent=4)
                 total_issues += 1
 
-            ctx.console.print()
+            console.print()
 
         return ComponentResult(
             ok=all_valid,

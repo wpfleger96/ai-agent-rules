@@ -8,6 +8,8 @@ import click
 
 import ai_rules.cli as cli_facade
 
+from ai_rules.cli.display import dim
+
 
 @click.group()
 def config() -> None:
@@ -22,11 +24,15 @@ def config() -> None:
 @click.option("--agent", help="Show config for specific agent only")
 def config_show(merged: bool, agent: str | None) -> None:
     """Show current configuration."""
-    from rich.console import Console
-
+    from ai_rules.cli.display import (
+        console,
+        print_add,
+        print_error,
+        print_unchanged,
+        print_update,
+        print_warning,
+    )
     from ai_rules.config import Config
-
-    console = Console()
 
     config_dir = cli_facade.get_config_dir()
     cfg = Config.load()
@@ -47,16 +53,17 @@ def config_show(merged: bool, agent: str | None) -> None:
             has_cache = cache_path and cache_path.exists()
 
             if not has_overrides and not has_cache:
-                console.print(
-                    f"[dim]{agent_name}: No overrides (using base settings)[/dim]\n"
-                )
+                from ai_rules.cli.display import print_dim
+
+                print_dim(f"{agent_name}: No overrides (using base settings)")
+                console.print()
                 continue
 
             console.print(f"[bold]{agent_name}:[/bold]")
 
             agent_format = AGENT_FORMATS.get(agent_name)
             if not agent_format:
-                console.print(f"  [red]✗[/red] Unknown agent: {agent_name}")
+                print_error(f"Unknown agent: {agent_name}", indent=2)
                 console.print()
                 continue
 
@@ -68,8 +75,8 @@ def config_show(merged: bool, agent: str | None) -> None:
                 try:
                     base_settings = load_config_file(base_path, agent_format)
                 except CONFIG_PARSE_ERRORS as e:
-                    console.print(
-                        f"  [red]✗[/red] Failed to load base settings from {base_path}: {e}"
+                    print_error(
+                        f"Failed to load base settings from {base_path}: {e}", indent=2
                     )
                     console.print()
                     continue
@@ -82,26 +89,22 @@ def config_show(merged: bool, agent: str | None) -> None:
                     if key in base_settings:
                         old_val = base_settings[key]
                         new_val = merged_settings[key]
-                        console.print(
-                            f"  [yellow]↻[/yellow] {key}: {old_val} → {new_val}"
-                        )
+                        print_update(f"{key}: {old_val} → {new_val}", indent=2)
                         overridden_keys.append(key)
                     else:
-                        console.print(
-                            f"  [green]+[/green] {key}: {merged_settings[key]}"
-                        )
+                        print_add(f"{key}: {merged_settings[key]}", indent=2)
                         overridden_keys.append(key)
 
                 for key, value in merged_settings.items():
                     if key not in overridden_keys:
-                        console.print(f"  [dim]•[/dim] {key}: {value}")
+                        print_unchanged(f"{key}: {value}", indent=2)
             else:
-                console.print(
-                    f"  [yellow]⚠[/yellow] No base settings found at {base_path}"
-                )
+                print_warning(f"No base settings found at {base_path}", indent=2)
                 if has_overrides:
-                    console.print(
-                        f"  [dim]Overrides: {cfg.settings_overrides[agent_name]}[/dim]"
+                    from ai_rules.cli.display import print_dim
+
+                    print_dim(
+                        f"Overrides: {cfg.settings_overrides[agent_name]}", indent=2
                     )
 
             console.print()
@@ -114,18 +117,19 @@ def config_show(merged: bool, agent: str | None) -> None:
             console.print(f"[bold]User Config:[/bold] {user_config_path}")
             console.print(content)
         else:
-            console.print(f"[dim]No user config at {user_config_path}[/dim]\n")
+            from ai_rules.cli.display import print_dim
+
+            print_dim(f"No user config at {user_config_path}")
+            console.print()
 
 
 @config.command("edit")
 def config_edit() -> None:
     """Edit user configuration file in $EDITOR."""
-    from rich.console import Console
-
-    console = Console()
-
     import os
     import subprocess
+
+    from ai_rules.cli.display import print_success
 
     user_config_path = cli_facade.get_user_config_path()
     editor = os.environ.get("EDITOR", "vi")
@@ -137,9 +141,11 @@ def config_edit() -> None:
 
     try:
         subprocess.run([editor, str(user_config_path)], check=True)
-        console.print(f"[green]✓[/green] Config edited: {user_config_path}")
+        print_success(f"Config edited: {user_config_path}")
     except subprocess.CalledProcessError:
-        console.print("[red]Error opening editor[/red]")
+        from ai_rules.cli.display import print_error
+
+        print_error("Error opening editor")
         sys.exit(1)
 
 
@@ -183,9 +189,7 @@ def _collect_exclusion_patterns() -> list[str]:
     Returns:
         List of exclusion patterns
     """
-    from rich.console import Console
-
-    console = Console()
+    from ai_rules.cli.display import console, print_success
 
     console.print("\n[bold]Step 1: Exclusion Patterns[/bold]")
     console.print("Do you want to exclude any files from being managed?\n")
@@ -201,23 +205,22 @@ def _collect_exclusion_patterns() -> list[str]:
         )
         if should_exclude:
             selected_exclusions.append(pattern)
-            console.print(f"    [green]✓[/green] Will exclude: {pattern}")
+            print_success(f"Will exclude: {pattern}", indent=4)
 
-    console.print(
-        "\n[dim]Enter custom exclusion patterns (glob patterns supported)[/dim]"
-    )
-    console.print("[dim]One per line, empty line to finish:[/dim]")
+    from ai_rules.cli.display import print_dim
+
+    console.print()
+    print_dim("Enter custom exclusion patterns (glob patterns supported)")
+    print_dim("One per line, empty line to finish:")
     while True:
         pattern = console.input("> ").strip()
         if not pattern:
             break
         selected_exclusions.append(pattern)
-        console.print(f"  [green]✓[/green] Added: {pattern}")
+        print_success(f"Added: {pattern}", indent=2)
 
     if selected_exclusions:
-        console.print(
-            f"\n[green]✓[/green] Configured {len(selected_exclusions)} exclusion pattern(s)"
-        )
+        print_success(f"Configured {len(selected_exclusions)} exclusion pattern(s)")
 
     return selected_exclusions
 
@@ -228,11 +231,9 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
     Returns:
         Dictionary of agent settings overrides
     """
-    from rich.console import Console
-
-    console = Console()
-
     import json
+
+    from ai_rules.cli.display import console, print_success, print_warning
 
     console.print("\n[bold]Step 2: Settings Overrides[/bold]")
     response = console.input(
@@ -261,12 +262,15 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
         agent = agent_map.get(agent_choice)
 
         if not agent:
-            console.print("[yellow]Invalid choice[/yellow]")
+            print_warning("Invalid choice")
             continue
 
         console.print(f"\n[bold]{agent.title()} settings overrides:[/bold]")
-        console.print("[dim]Enter key=value pairs (empty to finish):[/dim]")
-        console.print("[dim]Example: model=claude-sonnet-4-5-20250929[/dim]\n")
+        from ai_rules.cli.display import print_dim
+
+        print_dim("Enter key=value pairs (empty to finish):")
+        print_dim("Example: model=claude-sonnet-4-5-20250929")
+        console.print()
 
         agent_overrides = {}
         while True:
@@ -275,7 +279,7 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
                 break
 
             if "=" not in override:
-                console.print("[yellow]Invalid format. Use key=value[/yellow]")
+                print_warning("Invalid format. Use key=value")
                 continue
 
             key, value = override.split("=", 1)
@@ -288,15 +292,15 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
                 parsed_value = value
 
             agent_overrides[key] = parsed_value
-            console.print(f"  [green]✓[/green] Added: {key} = {parsed_value}")
+            print_success(f"Added: {key} = {parsed_value}", indent=2)
 
         if agent_overrides:
             settings_overrides[agent] = agent_overrides
 
     if settings_overrides:
         total_overrides = sum(len(v) for v in settings_overrides.values())
-        console.print(
-            f"\n[green]✓[/green] Configured {total_overrides} override(s) for {len(settings_overrides)} agent(s)"
+        print_success(
+            f"Configured {total_overrides} override(s) for {len(settings_overrides)} agent(s)"
         )
 
     return settings_overrides
@@ -308,12 +312,10 @@ def _display_configuration_summary(config_data: dict[str, Any]) -> None:
     Args:
         config_data: Configuration dictionary to display
     """
-    from rich.console import Console
-
-    console = Console()
+    from ai_rules.cli.display import console
 
     console.print("\n[bold cyan]Configuration Summary:[/bold cyan]")
-    console.print("=" * 50)
+    console.rule()
 
     if "exclude_symlinks" in config_data:
         console.print(
@@ -329,18 +331,14 @@ def _display_configuration_summary(config_data: dict[str, Any]) -> None:
             for key, value in overrides.items():
                 console.print(f"    • {key}: {value}")
 
-    console.print("\n" + "=" * 50)
+    console.rule()
 
 
 @config.command("init")
 def config_init() -> None:
     """Interactive configuration wizard."""
-    from rich.console import Console
-    from rich.prompt import Confirm
-
+    from ai_rules.cli.display import console, print_success, print_warning
     from ai_rules.config import Config
-
-    console = Console()
 
     user_config_path = cli_facade.get_user_config_path()
 
@@ -348,12 +346,14 @@ def config_init() -> None:
         "[bold cyan]Welcome to ai-agent-rules configuration wizard![/bold cyan]\n"
     )
     console.print("This will help you set up your .ai-agent-rules-config.yaml file.")
-    console.print(f"Config will be created at: [dim]{user_config_path}[/dim]\n")
+    console.print(f"Config will be created at: {dim(str(user_config_path))}\n")
 
     if user_config_path.exists():
-        console.print("[yellow]⚠[/yellow] Config file already exists!")
-        if not Confirm.ask("Overwrite existing config?", default=False):
-            console.print("[dim]Cancelled[/dim]")
+        print_warning("Config file already exists!")
+        if not click.confirm("Overwrite existing config?", default=False):
+            from ai_rules.cli.display import print_dim
+
+            print_dim("Cancelled")
             return
 
     config_data: dict[str, Any] = {"version": 1}
@@ -368,10 +368,10 @@ def config_init() -> None:
 
     _display_configuration_summary(config_data)
 
-    if Confirm.ask("\nSave configuration?", default=True):
+    if click.confirm("\nSave configuration?", default=True):
         Config.save_user_config(config_data)
 
-        console.print(f"\n[green]✓[/green] Configuration saved to {user_config_path}")
+        print_success(f"Configuration saved to {user_config_path}")
         console.print("\n[bold]Next steps:[/bold]")
         console.print(
             "  • Run [cyan]ai-agent-rules install[/cyan] to apply these settings"
@@ -383,4 +383,6 @@ def config_init() -> None:
             "  • Run [cyan]ai-agent-rules config show --merged[/cyan] to see merged settings"
         )
     else:
-        console.print("[dim]Configuration not saved[/dim]")
+        from ai_rules.cli.display import print_dim
+
+        print_dim("Configuration not saved")

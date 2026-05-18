@@ -74,19 +74,16 @@ def install(
     config_dir_override: str | None = None,
 ) -> None:
     """Install AI agent configs via symlinks."""
-    from rich.console import Console
-
     from ai_rules.cli.components import INSTALL_COMPONENTS
     from ai_rules.cli.context import CliContext
+    from ai_rules.cli.display import console, print_error
     from ai_rules.cli.runner import run_install_parallel
     from ai_rules.config import Config
-
-    console = Console()
 
     if config_dir_override:
         config_dir = Path(config_dir_override)
         if not config_dir.exists():
-            console.print(f"[red]Error:[/red] Config directory not found: {config_dir}")
+            print_error(f"Config directory not found: {config_dir}")
             sys.exit(1)
     else:
         config_dir = cli_facade.get_config_dir()
@@ -108,20 +105,23 @@ def install(
             if profile_conflicts:
                 _handle_profile_conflicts(profile_conflicts, profile, user_config)
         except ProfileNotFoundError as e:
-            console.print(f"[red]Error:[/red] {e}")
+            print_error(str(e))
             sys.exit(1)
 
     try:
         config = Config.load(profile=profile)
     except ProfileNotFoundError as e:
-        console.print(f"[red]Error:[/red] {e}")
+        print_error(str(e))
         sys.exit(1)
 
     if not dry_run:
         set_active_profile(profile)
 
     if profile and profile != "default":
-        console.print(f"[dim]Using profile: {profile}[/dim]\n")
+        from ai_rules.cli.display import print_label
+
+        print_label("Using profile", profile)
+        console.print()
 
     all_targets = cli_facade.get_targets(config_dir, config)
     selected_targets = cli_facade.select_targets(all_targets, agents)

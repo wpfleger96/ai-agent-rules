@@ -35,15 +35,12 @@ def _complete_components(
 )
 def status(agents: str | None, component_filter: str | None) -> None:
     """Check status of AI agent symlinks."""
-    from rich.console import Console
-
     from ai_rules.cli.components import STATUS_COMPONENTS
     from ai_rules.cli.context import CliContext
-    from ai_rules.cli.runner import run_components
+    from ai_rules.cli.display import console, print_hint
+    from ai_rules.cli.runner import run_status_parallel
     from ai_rules.config import Config
     from ai_rules.state import get_active_profile
-
-    console = Console()
 
     config_dir = cli_facade.get_config_dir()
     config = Config.load()
@@ -56,7 +53,10 @@ def status(agents: str | None, component_filter: str | None) -> None:
 
     active_profile = get_active_profile()
     if active_profile:
-        console.print(f"[dim]Profile: {active_profile}[/dim]\n")
+        from ai_rules.cli.display import print_label
+
+        print_label("Profile", active_profile)
+        console.print()
 
     cli_ctx = CliContext(
         console=console,
@@ -68,23 +68,17 @@ def status(agents: str | None, component_filter: str | None) -> None:
         target_filter=agents,
         component_filter=parsed_filter,
     )
-    result = run_components(STATUS_COMPONENTS, "status", cli_ctx)
+    result = run_status_parallel(STATUS_COMPONENTS, cli_ctx)
 
     if not result.ok:
         if result.counts.get("cache_stale", 0):
-            console.print(
-                "[yellow]💡 Run 'ai-agent-rules install --rebuild-cache' to fix issues[/yellow]"
-            )
+            print_hint("Run 'ai-agent-rules install --rebuild-cache' to fix issues")
         else:
-            console.print(
-                "[yellow]💡 Run 'ai-agent-rules install' to fix issues[/yellow]"
-            )
+            print_hint("Run 'ai-agent-rules install' to fix issues")
         sys.exit(1)
 
     if result.counts.get("optional_missing", 0):
         console.print("[green]All symlinks are correct![/green]")
-        console.print(
-            "[yellow]💡 Run 'ai-agent-rules install' to install optional tools[/yellow]"
-        )
+        print_hint("Run 'ai-agent-rules install' to install optional tools")
     else:
         console.print("[green]All symlinks are correct![/green]")
