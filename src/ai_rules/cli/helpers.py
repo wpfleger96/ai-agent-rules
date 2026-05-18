@@ -81,9 +81,7 @@ def select_targets(
     all_targets: list[ConfigTarget], filter_string: str | None
 ) -> list[ConfigTarget]:
     """Select targets based on a comma-separated target filter."""
-    from rich.console import Console
-
-    console = Console()
+    from ai_rules.cli.display import print_error
 
     if not filter_string:
         return all_targets
@@ -96,10 +94,10 @@ def select_targets(
     if not selected:
         invalid_ids = requested_ids - {target.target_id for target in all_targets}
         available_ids = [target.target_id for target in all_targets]
-        console.print(
-            f"[red]Error:[/red] Invalid agent ID(s): {', '.join(sorted(invalid_ids))}\n"
-            f"[dim]Available agents: {', '.join(available_ids)}[/dim]"
-        )
+        print_error(f"Invalid agent ID(s): {', '.join(sorted(invalid_ids))}")
+        from ai_rules.cli.display import print_dim
+
+        print_dim(f"Available agents: {', '.join(available_ids)}")
         sys.exit(1)
 
     return selected
@@ -120,10 +118,12 @@ def select_components(
 
     invalid_ids = [cid for cid in requested_ids if cid not in known_ids]
     if invalid_ids:
-        click.echo(
-            f"Error: Invalid component ID(s): {', '.join(sorted(invalid_ids))}\n"
-            f"Available components: {', '.join(sorted(known_ids))}"
-        )
+        from ai_rules.cli.display import print_error
+
+        print_error(f"Invalid component ID(s): {', '.join(sorted(invalid_ids))}")
+        from ai_rules.cli.display import print_dim
+
+        print_dim(f"Available components: {', '.join(sorted(known_ids))}")
         sys.exit(1)
 
     return tuple(requested_ids)
@@ -156,9 +156,8 @@ def format_summary(
     unchanged: int = 0,
 ) -> None:
     """Format and print operation summary."""
-    from rich.console import Console
+    from ai_rules.cli.display import console, print_error
 
-    console = Console()
     console.print()
 
     has_actions = created or updated or skipped or errors
@@ -199,4 +198,4 @@ def format_summary(
         console.print(f"  ({excluded} excluded by config)")
 
     if errors > 0:
-        console.print(f"  [red]{errors} error(s)[/red]")
+        print_error(f"{errors} error(s)", indent=2)

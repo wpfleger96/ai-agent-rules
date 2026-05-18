@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rich.console import Console
 
 from ai_rules.cli.context import (
     CliContext,
@@ -25,12 +29,19 @@ def _display_symlink_status(
     target: Path,
     source: Path,
     message: str,
+    console: Console | None = None,
 ) -> bool:
-    from rich.console import Console
 
+    from ai_rules.cli.display import (
+        dim,
+        get_console,
+        print_error,
+        print_success,
+        print_warning,
+    )
     from ai_rules.symlinks import get_content_diff
 
-    console = Console()
+    active_console: Console = console or get_console()
 
     target_str = str(target)
     if source.is_dir():
@@ -38,35 +49,33 @@ def _display_symlink_status(
     target_display = target_str
 
     if status_code == "correct":
-        console.print(f"  [green]✓[/green] {target_display}")
+        print_success(target_display, indent=2)
         return True
     if status_code == "missing":
-        console.print(f"  [red]✗[/red] {target_display} [dim](not installed)[/dim]")
+        print_error(f"{target_display} {dim('(not installed)')}", indent=2)
         return False
     if status_code == "broken":
-        console.print(f"  [red]✗[/red] {target_display} [dim](broken symlink)[/dim]")
+        print_error(f"{target_display} {dim('(broken symlink)')}", indent=2)
         return False
     if status_code == "wrong_target":
-        console.print(f"  [yellow]⚠[/yellow] {target_display} [dim]({message})[/dim]")
+        print_warning(f"{target_display} {dim(f'({message})')}", indent=2)
 
         try:
             actual = target.expanduser().resolve()
             diff_output = get_content_diff(actual, source)
             if diff_output:
-                console.print(diff_output)
+                active_console.print(diff_output)
         except (OSError, RuntimeError):
             pass
 
         return False
     if status_code == "not_symlink":
-        console.print(
-            f"  [yellow]⚠[/yellow] {target_display} [dim](not a symlink)[/dim]"
-        )
+        print_warning(f"{target_display} {dim('(not a symlink)')}", indent=2)
 
         try:
             diff_output = get_content_diff(target.expanduser(), source)
             if diff_output:
-                console.print(diff_output)
+                active_console.print(diff_output)
         except (OSError, RuntimeError):
             pass
 
@@ -104,10 +113,15 @@ class ConfigComponent(Component):
             return ComponentResult()
 
         from ai_rules.cli import cleanup_deprecated_symlinks
-        from ai_rules.cli.runner import get_console
+        from ai_rules.cli.display import (
+            dim,
+            print_absent,
+            print_error,
+            print_success,
+            print_unchanged,
+            print_update,
+        )
         from ai_rules.symlinks import SymlinkResult, create_symlink
-
-        console = get_console(ctx)
 
         created = updated = unchanged = skipped = excluded = errors = 0
 
@@ -117,19 +131,19 @@ class ConfigComponent(Component):
             result, message = create_symlink(target, source, True, ctx.dry_run)
 
             if result == SymlinkResult.CREATED:
-                console.print(f"  [green]✓[/green] {target} → {source}")
+                print_success(f"{target} → {source}", indent=2)
                 created += 1
             elif result == SymlinkResult.ALREADY_CORRECT:
-                console.print(f"  [dim]•[/dim] {target} [dim](already correct)[/dim]")
+                print_unchanged(f"{target} {dim('(already correct)')}", indent=2)
                 unchanged += 1
             elif result == SymlinkResult.UPDATED:
-                console.print(f"  [yellow]↻[/yellow] {target} → {source}")
+                print_update(f"{target} → {source}", indent=2)
                 updated += 1
             elif result == SymlinkResult.SKIPPED:
-                console.print(f"  [yellow]○[/yellow] {target} [dim](skipped)[/dim]")
+                print_absent(f"{target} {dim('(skipped)')}", indent=2)
                 skipped += 1
             elif result == SymlinkResult.ERROR:
-                console.print(f"  [red]✗[/red] {target}: {message}")
+                print_error(f"{target}: {message}", indent=2)
                 errors += 1
 
         cleanup_deprecated_symlinks(
@@ -151,6 +165,15 @@ class ConfigComponent(Component):
 
     def install(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.cli import cleanup_deprecated_symlinks
+        from ai_rules.cli.display import (
+            dim,
+            print_absent,
+            print_dim,
+            print_error,
+            print_success,
+            print_unchanged,
+            print_update,
+        )
         from ai_rules.symlinks import SymlinkResult, create_symlink
 
         created = updated = unchanged = skipped = excluded = errors = 0
@@ -169,9 +192,7 @@ class ConfigComponent(Component):
             ]
 
             if user_excluded_count > 0:
-                ctx.console.print(
-                    f"  [dim]({user_excluded_count} symlink(s) excluded)[/dim]"
-                )
+                print_dim(f"({user_excluded_count} symlink(s) excluded)", indent=2)
                 excluded += user_excluded_count
 
             for target, source in config_symlinks:
@@ -180,23 +201,19 @@ class ConfigComponent(Component):
                 )
 
                 if result == SymlinkResult.CREATED:
-                    ctx.console.print(f"  [green]✓[/green] {target} → {source}")
+                    print_success(f"{target} → {source}", indent=2)
                     created += 1
                 elif result == SymlinkResult.ALREADY_CORRECT:
-                    ctx.console.print(
-                        f"  [dim]•[/dim] {target} [dim](already correct)[/dim]"
-                    )
+                    print_unchanged(f"{target} {dim('(already correct)')}", indent=2)
                     unchanged += 1
                 elif result == SymlinkResult.UPDATED:
-                    ctx.console.print(f"  [yellow]↻[/yellow] {target} → {source}")
+                    print_update(f"{target} → {source}", indent=2)
                     updated += 1
                 elif result == SymlinkResult.SKIPPED:
-                    ctx.console.print(
-                        f"  [yellow]○[/yellow] {target} [dim](skipped)[/dim]"
-                    )
+                    print_absent(f"{target} {dim('(skipped)')}", indent=2)
                     skipped += 1
                 elif result == SymlinkResult.ERROR:
-                    ctx.console.print(f"  [red]✗[/red] {target}: {message}")
+                    print_error(f"{target}: {message}", indent=2)
                     errors += 1
 
         cleanup_deprecated_symlinks(
@@ -218,13 +235,15 @@ class ConfigComponent(Component):
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.display import dim, print_skipped
+        from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import check_symlink
 
-        ctx.console.print("[bold cyan]Config Files[/bold cyan]\n")
+        console = get_console(ctx)
         all_correct = True
 
         for target in ctx.selected_targets:
-            ctx.console.print(f"[bold]{target.name}:[/bold]")
+            console.print(f"[bold]{target.name}[/bold]")
 
             filtered_symlinks = target.get_filtered_symlinks()
             excluded_symlinks = [
@@ -238,21 +257,24 @@ class ConfigComponent(Component):
                     continue
 
                 status_code, message = check_symlink(tgt, source)
-                is_correct = _display_symlink_status(status_code, tgt, source, message)
+                is_correct = _display_symlink_status(
+                    status_code, tgt, source, message, console
+                )
                 all_correct = all_correct and is_correct
 
             for tgt, _source in excluded_symlinks:
-                ctx.console.print(
-                    f"  [dim]○[/dim] {tgt} [dim](excluded by config)[/dim]"
-                )
+                print_skipped(f"{tgt} {dim('(excluded by config)')}", indent=2)
 
-            ctx.console.print()
+            console.print()
 
         return ComponentResult(ok=all_correct, changed=not all_correct)
 
     def diff(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.display import print_dim, print_error, print_warning
+        from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import check_symlink, get_content_diff
 
+        console = get_console(ctx)
         found_differences = False
 
         for target in ctx.selected_targets:
@@ -311,7 +333,7 @@ class ConfigComponent(Component):
                     target_has_diff = True
 
             if target_has_diff:
-                ctx.console.print(f"[bold]{target.name}:[/bold]")
+                console.print(f"[bold]{target.name}[/bold]")
                 for (
                     path,
                     expected_source,
@@ -320,37 +342,37 @@ class ConfigComponent(Component):
                     content_diff,
                 ) in target_diffs:
                     if diff_type == "missing":
-                        ctx.console.print(f"  [red]✗[/red] {path}")
-                        ctx.console.print(f"    [dim]{desc}[/dim]")
-                        ctx.console.print(
-                            f"    [dim]Expected: → {expected_source}[/dim]"
-                        )
+                        print_error(str(path), indent=2)
+                        print_dim(desc, indent=4)
+                        print_dim(f"Expected: → {expected_source}", indent=4)
                     elif diff_type == "broken":
-                        ctx.console.print(f"  [red]✗[/red] {path}")
-                        ctx.console.print(f"    [dim]{desc}[/dim]")
+                        print_error(str(path), indent=2)
+                        print_dim(desc, indent=4)
                     elif diff_type == "wrong":
-                        ctx.console.print(f"  [yellow]⚠[/yellow] {path}")
-                        ctx.console.print(f"    [dim]{desc}[/dim]")
-                        ctx.console.print(
-                            f"    [dim]Expected: → {expected_source}[/dim]"
-                        )
+                        print_warning(str(path), indent=2)
+                        print_dim(desc, indent=4)
+                        print_dim(f"Expected: → {expected_source}", indent=4)
                         if content_diff:
-                            ctx.console.print(content_diff)
+                            console.print(content_diff)
                     elif diff_type == "file":
-                        ctx.console.print(f"  [yellow]⚠[/yellow] {path}")
-                        ctx.console.print(f"    [dim]{desc}[/dim]")
-                        ctx.console.print(
-                            f"    [dim]Expected: → {expected_source}[/dim]"
-                        )
+                        print_warning(str(path), indent=2)
+                        print_dim(desc, indent=4)
+                        print_dim(f"Expected: → {expected_source}", indent=4)
                         if content_diff:
-                            ctx.console.print(content_diff)
+                            console.print(content_diff)
 
-                ctx.console.print()
+                console.print()
                 found_differences = True
 
         return ComponentResult(ok=not found_differences, changed=found_differences)
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.display import (
+            dim,
+            print_absent,
+            print_success,
+            print_unchanged,
+        )
         from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import remove_symlink
 
@@ -358,7 +380,6 @@ class ConfigComponent(Component):
         total_removed = 0
         total_skipped = 0
 
-        console.print("\n[bold cyan]Config Files[/bold cyan]")
         for target in ctx.selected_targets:
             console.print(f"\n[bold]{target.name}[/bold]")
 
@@ -368,12 +389,12 @@ class ConfigComponent(Component):
                 success, message = remove_symlink(tgt, ctx.yes)
 
                 if success:
-                    console.print(f"  [green]✓[/green] {tgt} removed")
+                    print_success(f"{tgt} removed", indent=2)
                     total_removed += 1
                 elif "Does not exist" in message:
-                    console.print(f"  [dim]•[/dim] {tgt} [dim](not installed)[/dim]")
+                    print_unchanged(f"{tgt} {dim('(not installed)')}", indent=2)
                 else:
-                    console.print(f"  [yellow]○[/yellow] {tgt} [dim]({message})[/dim]")
+                    print_absent(f"{tgt} {dim(f'({message})')}", indent=2)
                     total_skipped += 1
 
         return ComponentResult(

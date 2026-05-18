@@ -8,6 +8,7 @@ import click
 
 import ai_rules.cli as cli_facade
 
+from ai_rules.cli.display import dim, print_dim, print_label
 from ai_rules.profiles import Profile
 
 
@@ -20,12 +21,10 @@ def profile() -> None:
 @profile.command("list")
 def profile_list() -> None:
     """List available profiles."""
-    from rich.console import Console
     from rich.table import Table
 
+    from ai_rules.cli.display import console
     from ai_rules.profiles import ProfileLoader
-
-    console = Console()
 
     loader = ProfileLoader()
     profiles = loader.list_profiles()
@@ -42,7 +41,7 @@ def profile_list() -> None:
             extends = info.get("extends") or "-"
             table.add_row(name, desc, extends)
         except Exception:
-            table.add_row(name, "[dim]Error loading[/dim]", "-")
+            table.add_row(name, dim("Error loading"), "-")
 
     console.print(table)
 
@@ -54,15 +53,12 @@ def profile_list() -> None:
 )
 def profile_show(name: str, resolved: bool) -> None:
     """Show profile details."""
-    from rich.console import Console
-
+    from ai_rules.cli.display import console, print_error
     from ai_rules.profiles import (
         CircularInheritanceError,
         ProfileLoader,
         ProfileNotFoundError,
     )
-
-    console = Console()
 
     loader = ProfileLoader()
 
@@ -70,9 +66,9 @@ def profile_show(name: str, resolved: bool) -> None:
         if resolved:
             profile = loader.load_profile(name)
             console.print(f"[bold]Profile: {profile.name}[/bold] (resolved)")
-            console.print(f"[dim]Description:[/dim] {profile.description}")
+            print_label("Description", profile.description)
             if profile.extends:
-                console.print(f"[dim]Extends:[/dim] {profile.extends}")
+                print_label("Extends", profile.extends)
 
             if profile.settings_overrides:
                 console.print("\n[bold]Settings Overrides:[/bold]")
@@ -122,27 +118,24 @@ def profile_show(name: str, resolved: bool) -> None:
             console.print(yaml.dump(info, default_flow_style=False, sort_keys=False))
 
     except ProfileNotFoundError as e:
-        console.print(f"[red]Error:[/red] {e}")
+        print_error(str(e))
         sys.exit(1)
     except CircularInheritanceError as e:
-        console.print(f"[red]Error:[/red] {e}")
+        print_error(str(e))
         sys.exit(1)
 
 
 @profile.command("current")
 def profile_current() -> None:
     """Show currently active profile."""
-    from rich.console import Console
-
+    from ai_rules.cli.display import console
     from ai_rules.state import get_active_profile
-
-    console = Console()
 
     active = get_active_profile()
     if active:
         console.print(f"Active profile: [cyan]{active}[/cyan]")
     else:
-        console.print("[dim]No profile set (using default)[/dim]")
+        print_dim("No profile set (using default)")
 
 
 def _detect_profile_override_conflicts(
@@ -181,18 +174,13 @@ def _handle_profile_conflicts(
         profile_name: Name of profile being installed
         user_config: User config dict to potentially modify
     """
-    from rich.console import Console
-
+    from ai_rules.cli.display import console, print_success, print_warning
     from ai_rules.config import Config
-
-    console = Console()
 
     if not conflicts:
         return
 
-    console.print(
-        f"\n[yellow]⚠[/yellow]  User overrides conflict with profile '{profile_name}':"
-    )
+    print_warning(f"User overrides conflict with profile '{profile_name}':")
     for agent, key, value in conflicts:
         console.print(f"  • {agent}.{key}: {value}")
 
@@ -205,7 +193,7 @@ def _handle_profile_conflicts(
                     del user_settings[agent]
 
         Config.save_user_config(user_config)
-        console.print("[green]✓[/green] Cleared conflicting overrides\n")
+        print_success("Cleared conflicting overrides")
     else:
         console.print()
 
@@ -215,19 +203,16 @@ def _handle_profile_conflicts(
 @click.pass_context
 def profile_switch(ctx: click.Context, name: str) -> None:
     """Switch to a different profile."""
-    from rich.console import Console
-
     from ai_rules.cli.commands.install import install
+    from ai_rules.cli.display import console, print_error
     from ai_rules.config import Config
     from ai_rules.profiles import ProfileLoader, ProfileNotFoundError
-
-    console = Console()
 
     loader = ProfileLoader()
     try:
         profile_obj = loader.load_profile(name)
     except ProfileNotFoundError as e:
-        console.print(f"[red]Error:[/red] {e}")
+        print_error(str(e))
         sys.exit(1)
 
     user_config = Config.load_user_config()

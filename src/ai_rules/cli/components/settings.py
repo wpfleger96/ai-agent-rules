@@ -14,7 +14,7 @@ from ai_rules.cli.context import (
 
 
 class SettingsComponent(Component):
-    label = "Settings"
+    label = "Settings Cache"
     component_id = "settings"
     filterable = False
 
@@ -56,10 +56,6 @@ class SettingsComponent(Component):
         if not isinstance(plan, SettingsPlan):
             return ComponentResult()
 
-        from ai_rules.cli.runner import get_console
-
-        console = get_console(ctx)
-
         if ctx.dry_run:
             return ComponentResult()
 
@@ -69,18 +65,22 @@ class SettingsComponent(Component):
                 if target.build_merged_settings(force_rebuild=ctx.rebuild_cache):
                     built += 1
             except ValueError as exc:
-                console.print(f"[red]Error building {target.name} config:[/red] {exc}")
+                from ai_rules.cli.display import print_error
+
+                print_error(f"Error building {target.name} config: {exc}")
                 return ComponentResult(ok=False, abort=True, counts={"errors": 1})
 
         for expanded in plan.excluded_symlinks_to_clean:
             expanded.unlink()
 
+        from ai_rules.cli.display import print_done
+
         orphaned = ctx.config.cleanup_orphaned_cache(
             {target.target_id for target in ctx.all_targets if target.needs_cache}
         )
         if orphaned:
-            console.print(
-                f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
+            print_done(
+                f"Cleaned up orphaned cache for: {', '.join(orphaned)}", indent=2
             )
 
         return ComponentResult(
@@ -101,9 +101,9 @@ class SettingsComponent(Component):
                 if target.build_merged_settings(force_rebuild=ctx.rebuild_cache):
                     built += 1
             except ValueError as exc:
-                ctx.console.print(
-                    f"[red]Error building {target.name} config:[/red] {exc}"
-                )
+                from ai_rules.cli.display import print_error
+
+                print_error(f"Error building {target.name} config: {exc}")
                 return ComponentResult(ok=False, abort=True, counts={"errors": 1})
 
         for target in ctx.all_targets:
@@ -123,13 +123,15 @@ class SettingsComponent(Component):
                         continue
                     expanded.unlink()
 
+        from ai_rules.cli.display import print_done
+
         targets_needing_cache = {
             target.target_id for target in ctx.all_targets if target.needs_cache
         }
         orphaned = ctx.config.cleanup_orphaned_cache(targets_needing_cache)
         if orphaned:
-            ctx.console.print(
-                f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
+            print_done(
+                f"Cleaned up orphaned cache for: {', '.join(orphaned)}", indent=2
             )
 
         return ComponentResult(
@@ -138,6 +140,8 @@ class SettingsComponent(Component):
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.runner import get_console
+
         stale_targets = []
         for target in ctx.selected_targets:
             if target.needs_cache and target.is_cache_stale():
@@ -146,14 +150,16 @@ class SettingsComponent(Component):
         if not stale_targets:
             return ComponentResult()
 
-        ctx.console.print("[bold cyan]Settings Cache[/bold cyan]\n")
+        from ai_rules.cli.display import print_warning
+
+        console = get_console(ctx)
         for target in stale_targets:
-            ctx.console.print(f"[bold]{target.name}:[/bold]")
-            ctx.console.print("  [yellow]⚠[/yellow] Cached settings are stale")
+            console.print(f"[bold]{target.name}[/bold]")
+            print_warning("Cached settings are stale", indent=2)
             diff_output = target.get_cache_diff()
             if diff_output:
-                ctx.console.print(diff_output)
-            ctx.console.print()
+                console.print(diff_output)
+            console.print()
 
         return ComponentResult(
             ok=False,
