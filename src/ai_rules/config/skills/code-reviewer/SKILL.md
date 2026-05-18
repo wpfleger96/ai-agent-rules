@@ -80,6 +80,17 @@ Compute from the gathered diff:
 
 Crossfire (external model perspectives) is only available for Medium/Large diffs when `crossfire` keyword is in args.
 
+### Performance Relevance
+
+For Medium/Large diffs, scan the diff text to determine whether the Performance & Scalability agent should be activated. Set `performance_relevant = true` when the diff contains ANY of:
+- Database/ORM query construction (`.filter(`, `.all(`, `.query(`, `.execute(`, `SELECT`, `JOIN`, `WHERE`, raw SQL strings)
+- Loops over collections of indeterminate size (`for x in results`, `for item in data`, `while` loops processing external input)
+- New function calls, I/O operations, or subprocess invocations inside loops
+- Data structures that grow proportionally with input volume (appending to lists/dicts in loops, accumulation patterns)
+- Explicit performance-related references in comments/docstrings (`performance`, `latency`, `throughput`, `cache`, `O(n`)
+
+Do NOT activate for: config-only changes, test-only changes, documentation-only changes, UI/template changes, import reorganization, type annotation changes.
+
 ## Review Methodology
 
 ### Phase 1: Context Gathering
@@ -100,6 +111,7 @@ For Small complexity diffs, execute the review inline using all four lenses sequ
 - Is this the right location/abstraction level for this functionality?
 - Would this be better in a library or separate module?
 - Does the overall design approach make sense for this system?
+- If this diff introduces loops, query patterns, or data structure operations: are there obvious algorithmic complexity concerns (e.g., O(n^2) where O(n) is possible) or unnecessary repeated I/O?
 
 **Lens 1: Simplicity & Maintainability**
 - Could this be simpler while maintaining functionality?
@@ -107,12 +119,14 @@ For Small complexity diffs, execute the review inline using all four lenses sequ
 - Is there unnecessary complexity or over-engineering?
 - Is this solving present needs or hypothetical future problems?
 - Are there opportunities to reduce duplication (3+ occurrences)?
+- Does the code follow project-specific conventions from AGENTS.md or CLAUDE.md? (naming, directory structure, tooling mandates)
 
 **Lens 2: Security & Reliability**
 - Are there security vulnerabilities? (SQL injection, XSS, auth bypass, data exposure)
 - Is error handling adequate for external dependencies?
 - Are edge cases properly handled?
 - Could this cause data corruption or loss?
+- If dependency files changed: are new dependencies well-maintained, version-pinned, and free of known vulnerabilities?
 
 **Lens 3: Functionality & Testing**
 - Does the code do what the developer intended?
@@ -122,6 +136,7 @@ For Small complexity diffs, execute the review inline using all four lenses sequ
 - Do tests verify behavior, not implementation details?
 - Is coverage sufficient for the risk level?
 - Are tests focused on what matters, not trivial cases?
+- For changed APIs or function signatures: are docstrings and documentation still accurate?
 
 After applying all lenses, proceed directly to Phase 3.
 
@@ -140,13 +155,16 @@ Gather for subagent briefings:
 
 Load the briefing template from `references/subagent-template.md` and construct one briefing per specialist. Launch all agents in parallel — this is critical for speed.
 
-**Claude subagents (always, for Medium/Large):**
+**Claude subagents (for Medium/Large):**
 
-| Agent | Model | Lens Focus | Scope Boundaries |
-|-------|-------|------------|-----------------|
-| Security & Reliability | `sonnet` | Injection, auth, data exposure, error handling, edge cases | Do NOT review for design fit, over-engineering, or test coverage |
-| Design & Simplicity | `sonnet` | Architecture fit, abstraction level, over-engineering, duplication, maintainability | Do NOT review for security vulnerabilities or test coverage |
-| Functionality & Testing | `sonnet` | Correctness, intended behavior, test coverage, test quality, user-facing edge cases | Do NOT review for security vulnerabilities or design patterns |
+| Agent | Model | Lens Focus | Scope Boundaries | Condition |
+|-------|-------|------------|-----------------|-----------|
+| Security & Reliability | `sonnet` | Injection, auth, data exposure, error handling, edge cases, dependency hygiene | Do NOT review for design fit, over-engineering, test coverage, or performance | Always |
+| Design & Simplicity | `sonnet` | Architecture fit, abstraction level, over-engineering, duplication, maintainability, project conventions | Do NOT review for security vulnerabilities, test coverage, or performance cost | Always |
+| Functionality & Testing | `sonnet` | Correctness, intended behavior, test coverage, test quality, user-facing edge cases, API contract accuracy | Do NOT review for security vulnerabilities, design patterns, or performance | Always |
+| Performance & Scalability | `sonnet` | Algorithmic complexity, query efficiency, I/O patterns, memory growth, hot-path regressions | Do NOT review for security, design architecture, correctness, or test quality | Only when `performance_relevant = true` |
+
+If the diff was flagged as performance-relevant in the Performance Relevance classification, launch all four agents. Otherwise, launch only the three core agents (Security & Reliability, Design & Simplicity, Functionality & Testing).
 
 Each subagent receives: the full diff, instruction to read modified files in full (not just diff hunks), its assigned lens with key questions from the template, explicit scope boundaries, and the severity framework (🔴 MUST FIX / 🟡 SHOULD FIX / 🟢 CONSIDER).
 
@@ -313,8 +331,16 @@ Synthesize findings from ALL sources (Claude subagents + optional crossfire):
 - Identical findings from multiple agents: keep the one with the most specific file:line citation
 - Map crossfire severities: CRITICAL → 🔴, IMPORTANT → 🟡, MINOR → 🟢
 
+**Step 2.5: Cross-agent verification**
+
+Before producing the final output, perform two verification checks:
+
+1. **Contradiction check:** Scan for cases where one agent's findings assume something another agent's findings contradict. When detected, apply orchestrator judgment — explain which finding holds and why, rather than presenting both uncritically.
+
+2. **Gap check:** Ask: "Are there concerns that fall between the scope boundaries of the agents that none of them would have been positioned to catch?" Surface any such concerns as orchestrator-attributed findings with appropriate severity.
+
 **Step 3: Produce unified output**
-Organize findings by severity tier (🔴 then 🟡 then 🟢), NOT by which agent found them. For each finding, note if it was confirmed by multiple sources. Include a methodology note (e.g., "Reviewed via 3 parallel Claude specialists" or "Reviewed via 3 Claude specialists + Codex + Gemini").
+Organize findings by severity tier (🔴 then 🟡 then 🟢), NOT by which agent found them. For each finding, note if it was confirmed by multiple sources. Include a methodology note (e.g., "Reviewed via 3 parallel Claude specialists", "Reviewed via 4 Claude specialists (incl. Performance)" or "Reviewed via 4 Claude specialists + Codex + Gemini").
 
 **Net verdict (PR Mode only):**
 - REQUEST_CHANGES if any HIGH-confidence 🔴 MUST FIX exists
