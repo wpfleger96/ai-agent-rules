@@ -2,6 +2,45 @@
 
 <!-- version list -->
 
+## v0.51.0 (2026-05-18)
+
+### Chores
+
+- **deps**: Update astral-sh/setup-uv action to v8
+  ([#46](https://github.com/wpfleger96/ai-agent-rules/pull/46),
+  [`aa6875b`](https://github.com/wpfleger96/ai-agent-rules/commit/aa6875b914cba5784f98f19fcb8555612e570cf8))
+
+### Continuous Integration
+
+- Attach skill ZIPs to releases via standalone workflow
+  ([#43](https://github.com/wpfleger96/ai-agent-rules/pull/43),
+  [`583a6d4`](https://github.com/wpfleger96/ai-agent-rules/commit/583a6d4f31f8c143ca5186157ddc35891aa0565c))
+
+### Features
+
+- Parallelize all CLI commands and standardize output rendering
+  ([#42](https://github.com/wpfleger96/ai-agent-rules/pull/42),
+  [`1e4ef69`](https://github.com/wpfleger96/ai-agent-rules/commit/1e4ef6947c360fb1730f83401ac0218588ff02a2))
+
+### Refactoring
+
+- Address crossfire code review feedback
+  ([#42](https://github.com/wpfleger96/ai-agent-rules/pull/42),
+  [`1e4ef69`](https://github.com/wpfleger96/ai-agent-rules/commit/1e4ef6947c360fb1730f83401ac0218588ff02a2))
+
+- Complete display helper migration across all CLI modules
+  ([#42](https://github.com/wpfleger96/ai-agent-rules/pull/42),
+  [`1e4ef69`](https://github.com/wpfleger96/ai-agent-rules/commit/1e4ef6947c360fb1730f83401ac0218588ff02a2))
+
+- Eliminate all raw Rich markup via display helpers
+  ([#42](https://github.com/wpfleger96/ai-agent-rules/pull/42),
+  [`1e4ef69`](https://github.com/wpfleger96/ai-agent-rules/commit/1e4ef6947c360fb1730f83401ac0218588ff02a2))
+
+- Expand display helpers to cover all symbol patterns
+  ([#42](https://github.com/wpfleger96/ai-agent-rules/pull/42),
+  [`1e4ef69`](https://github.com/wpfleger96/ai-agent-rules/commit/1e4ef6947c360fb1730f83401ac0218588ff02a2))
+
+
 ## v0.50.1 (2026-05-15)
 
 ### Bug Fixes

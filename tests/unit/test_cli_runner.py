@@ -1,7 +1,11 @@
+import threading
+import time
+
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
+import click
 import pytest
 
 from rich.console import Console
@@ -12,6 +16,7 @@ from ai_rules.cli.runner import (
     run_components_parallel,
     run_install,
     run_install_parallel,
+    run_parallel,
     run_uninstall_parallel,
 )
 from ai_rules.config import Config
@@ -149,7 +154,7 @@ def test_run_install_skips_confirmation_when_yes(tmp_path: Path) -> None:
     # Confirm is only imported inside the branch guarded by `not ctx.yes and not
     # ctx.dry_run`. With yes=True the block is never entered, so both phases run
     # without any interactive prompt.
-    with patch("rich.prompt.Confirm.ask") as mock_ask:
+    with patch("click.confirm") as mock_ask:
         result = run_install([infra], [semantic], make_context(tmp_path, yes=True))
 
     mock_ask.assert_not_called()
@@ -163,7 +168,7 @@ def test_run_install_skips_confirmation_when_dry_run(tmp_path: Path) -> None:
     infra = InfraComponent("infra", ComponentResult())
     semantic = FakeComponent("semantic", ComponentResult())
 
-    with patch("rich.prompt.Confirm.ask") as mock_ask:
+    with patch("click.confirm") as mock_ask:
         result = run_install([infra], [semantic], make_context(tmp_path, dry_run=True))
 
     mock_ask.assert_not_called()
@@ -316,7 +321,7 @@ def test_run_install_parallel_skips_confirmation_when_yes(tmp_path: Path) -> Non
     infra = PlanApplyInfraComponent("infra")
     semantic = PlanApplyComponent("semantic")
 
-    with patch("rich.prompt.Confirm.ask") as mock_ask:
+    with patch("click.confirm") as mock_ask:
         result = run_install_parallel(
             [infra], [semantic], make_context(tmp_path, yes=True)
         )
@@ -330,7 +335,7 @@ def test_run_install_parallel_skips_confirmation_when_dry_run(tmp_path: Path) ->
     infra = PlanApplyInfraComponent("infra")
     semantic = PlanApplyComponent("semantic")
 
-    with patch("rich.prompt.Confirm.ask") as mock_ask:
+    with patch("click.confirm") as mock_ask:
         result = run_install_parallel(
             [infra], [semantic], make_context(tmp_path, dry_run=True)
         )
@@ -439,3 +444,139 @@ def test_run_components_parallel_respects_component_filter(tmp_path: Path) -> No
 
     assert included in results
     assert excluded not in results
+
+
+@pytest.mark.unit
+def test_run_install_user_cancels_confirmation(tmp_path: Path) -> None:
+    infra = InfraComponent("infra", ComponentResult())
+    semantic = FakeComponent("semantic", ComponentResult())
+
+    with (
+        patch("ai_rules.cli.check_first_run", return_value=True),
+        patch("ai_rules.cli._display_pending_changes", return_value=True),
+        patch("click.confirm", side_effect=click.exceptions.Abort()),
+    ):
+        result = run_install([infra], [semantic], make_context(tmp_path))
+
+    assert result.aborted is True
+    assert semantic.calls == 0
+
+
+@pytest.mark.unit
+def test_run_install_parallel_user_cancels_confirmation(tmp_path: Path) -> None:
+    infra = PlanApplyInfraComponent("infra")
+    semantic = PlanApplyComponent("semantic")
+
+    with (
+        patch("ai_rules.cli.check_first_run", return_value=True),
+        patch("ai_rules.cli._display_pending_changes", return_value=True),
+        patch("click.confirm", side_effect=click.exceptions.Abort()),
+    ):
+        result = run_install_parallel([infra], [semantic], make_context(tmp_path))
+
+    assert result.aborted is True
+    assert semantic.plan_calls == 0
+    assert semantic.apply_calls == 0
+
+
+class _StatusComponent(Component):
+    component_id = "status-test"
+    filterable = True
+
+    def __init__(
+        self,
+        label: str,
+        *,
+        result: ComponentResult | None = None,
+        output: str = "",
+        delay: float = 0.0,
+        barrier: threading.Barrier | None = None,
+    ):
+        self.label = label
+        self._result = result or ComponentResult()
+        self._output = output
+        self._delay = delay
+        self._barrier = barrier
+        self.calls = 0
+
+    def status(self, ctx: CliContext) -> ComponentResult:
+        self.calls += 1
+        if self._barrier is not None:
+            self._barrier.wait()
+        if self._delay:
+            time.sleep(self._delay)
+        if self._output:
+            from ai_rules.cli.display import get_console
+
+            get_console().print(self._output, markup=False, highlight=False)
+        return self._result
+
+    def diff(self, ctx: CliContext) -> ComponentResult:
+        return self._result
+
+    def validate(self, ctx: CliContext) -> ComponentResult:
+        return self._result
+
+
+@pytest.mark.unit
+def test_run_parallel_status_aggregates_ok(tmp_path: Path) -> None:
+    first = _StatusComponent("first", result=ComponentResult(ok=True))
+    second = _StatusComponent("second", result=ComponentResult(ok=False))
+
+    result = run_parallel([first, second], "status", make_context(tmp_path))
+
+    assert result.ok is False
+
+
+@pytest.mark.unit
+def test_run_parallel_diff_aggregates_changed(tmp_path: Path) -> None:
+    comp = _StatusComponent("comp", result=ComponentResult(changed=True))
+
+    result = run_parallel([comp], "diff", make_context(tmp_path))
+
+    assert result.changed is True
+
+
+@pytest.mark.unit
+def test_run_parallel_validate_aggregates_failure(tmp_path: Path) -> None:
+    comp = _StatusComponent("comp", result=ComponentResult(ok=False))
+
+    result = run_parallel([comp], "validate", make_context(tmp_path))
+
+    assert result.ok is False
+
+
+@pytest.mark.unit
+def test_run_parallel_buffer_replay_preserves_definition_order(tmp_path: Path) -> None:
+    barrier = threading.Barrier(2)
+
+    first = _StatusComponent(
+        "Alpha",
+        output="alpha-output",
+        delay=0.05,
+        barrier=barrier,
+        result=ComponentResult(),
+    )
+    second = _StatusComponent(
+        "Beta",
+        output="beta-output",
+        barrier=barrier,
+        result=ComponentResult(),
+    )
+
+    buf = StringIO()
+    replay_console = Console(file=buf, highlight=False, markup=False)
+
+    comp_list = [first, second]
+    ctx = make_context(tmp_path)
+
+    with (
+        patch("ai_rules.cli.runner._real_console", replay_console),
+        patch("ai_rules.cli.display._real_console", replay_console),
+    ):
+        run_components_parallel(comp_list, "status", ctx)
+
+    output = buf.getvalue()
+
+    assert output.index("Alpha") < output.index("Beta")
+    assert output.index("alpha-output") < output.index("Beta")

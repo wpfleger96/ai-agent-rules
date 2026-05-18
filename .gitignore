@@ -206,3 +206,5 @@ __marimo__/
 
 # Schema validation test cache
 tests/fixtures/schemas/cache/
+
+.claude/worktrees/

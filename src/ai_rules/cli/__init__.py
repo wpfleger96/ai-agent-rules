@@ -74,11 +74,9 @@ def _display_pending_symlink_changes(targets: list["ConfigTarget"]) -> bool:
     Returns:
         True if changes were found and displayed, False otherwise
     """
-    from rich.console import Console
-
+    from ai_rules.cli.display import console, print_add, print_update
     from ai_rules.symlinks import check_symlink, get_content_diff
 
-    console = Console()
     found_changes = False
 
     for agent in targets:
@@ -111,9 +109,9 @@ def _display_pending_symlink_changes(targets: list["ConfigTarget"]) -> bool:
             console.print(f"\n[bold]{agent.name}[/bold]")
             for action, target, source, content_diff in agent_changes:
                 if action == "create":
-                    console.print(f"  [green]+[/green] Create: {target} → {source}")
+                    print_add(f"Create: {target} → {source}", indent=2)
                 else:
-                    console.print(f"  [yellow]↻[/yellow] Update: {target} → {source}")
+                    print_update(f"Update: {target} → {source}", indent=2)
                     if content_diff:
                         console.print(content_diff)
 
@@ -126,9 +124,7 @@ def _display_pending_plugin_changes(config: "Config") -> bool:
     Returns:
         True if changes were found and displayed, False otherwise
     """
-    from rich.console import Console
-
-    console = Console()
+    from ai_rules.cli.display import console, print_add, print_skipped
 
     result = _get_plugin_status(config)
     if result is None:
@@ -141,23 +137,19 @@ def _display_pending_plugin_changes(config: "Config") -> bool:
         found_changes = True
         console.print("\n[bold]Marketplaces[/bold]")
         for marketplace in plugin_status.marketplaces_missing:
-            console.print(
-                f"  [green]+[/green] Add: {marketplace['name']} ({marketplace['source']})"
-            )
+            print_add(f"Add: {marketplace['name']} ({marketplace['source']})", indent=2)
 
     if plugin_status.pending:
         found_changes = True
         console.print("\n[bold]Plugins[/bold]")
         for plugin in plugin_status.pending:
-            console.print(
-                f"  [green]+[/green] Install: {plugin['name']}@{plugin['marketplace']}"
-            )
+            print_add(f"Install: {plugin['name']}@{plugin['marketplace']}", indent=2)
 
     if plugin_status.extra:
         if not found_changes:
             console.print("\n[bold]Plugins[/bold]")
         for name in sorted(plugin_status.extra):
-            console.print(f"  [dim]○[/dim] {name} (Unmanaged)")
+            print_skipped(f"{name} (Unmanaged)", indent=2)
 
     return found_changes
 
@@ -175,10 +167,7 @@ def check_first_run(targets: list["ConfigTarget"], force: bool) -> bool:
     Returns:
         True if should continue, False if should abort
     """
-    from rich.console import Console
-    from rich.prompt import Confirm
-
-    console = Console()
+    from ai_rules.cli.display import console, print_warning
 
     existing_files = []
 
@@ -194,15 +183,17 @@ def check_first_run(targets: list["ConfigTarget"], force: bool) -> bool:
     if force:
         return True
 
-    console.print("\n[yellow]Warning:[/yellow] Found existing configuration files:\n")
+    print_warning("Found existing configuration files:\n")
     for agent_name, path in existing_files:
         console.print(f"  [{agent_name}] {path}")
 
-    console.print(
-        "\n[dim]These will be replaced with symlinks (originals will be backed up).[/dim]\n"
-    )
+    from ai_rules.cli.display import print_dim
 
-    return Confirm.ask("Continue?", default=False)
+    console.print()
+    print_dim("These will be replaced with symlinks (originals will be backed up).")
+    console.print()
+
+    return click.confirm("Continue?", default=False)
 
 
 def version_callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:
@@ -213,9 +204,7 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
         param: Click parameter
         value: Whether --version flag was provided
     """
-    from rich.console import Console
-
-    console = Console()
+    from ai_rules.cli.display import console, print_hint
 
     if not value or ctx.resilient_parsing:
         return
@@ -232,8 +221,10 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
             if statusline_version:
                 console.print(f"statusline, version {statusline_version}")
             else:
+                from ai_rules.cli.display import dim
+
                 console.print(
-                    "statusline, version [dim](installed, version unknown)[/dim]"
+                    f"statusline, version {dim('(installed, version unknown)')}"
                 )
     except Exception as e:
         logger.debug(f"Failed to get statusline version: {e}")
@@ -246,7 +237,9 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
             if bm_version:
                 console.print(f"recall, version {bm_version}")
             else:
-                console.print("recall, version [dim](installed, version unknown)[/dim]")
+                from ai_rules.cli.display import dim as _dim
+
+                console.print(f"recall, version {_dim('(installed, version unknown)')}")
     except Exception as e:
         logger.debug(f"Failed to get recall version: {e}")
 
@@ -260,7 +253,7 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
                 console.print(
                     f"\n[cyan]Update available:[/cyan] {update_info.current_version} → {update_info.latest_version}"
                 )
-                console.print("[dim]Run 'ai-agent-rules upgrade' to install[/dim]")
+                print_hint("Run 'ai-agent-rules upgrade' to install")
     except Exception as e:
         logger.debug(f"Failed to check for updates in version callback: {e}")
 
@@ -298,11 +291,9 @@ def cleanup_deprecated_symlinks(
     Returns:
         Count of removed symlinks
     """
-    from rich.console import Console
-
+    from ai_rules.cli.display import print_would
     from ai_rules.symlinks import remove_symlink
 
-    console = Console()
     removed_count = 0
 
     for agent in selected_targets:
@@ -318,15 +309,15 @@ def cleanup_deprecated_symlinks(
                 continue
 
             if dry_run:
-                console.print(
-                    f"  [yellow]Would remove deprecated:[/yellow] {deprecated_path}"
-                )
+                print_would(f"Would remove deprecated: {deprecated_path}", indent=2)
                 removed_count += 1
             else:
                 success, message = remove_symlink(target, force=True)
                 if success:
-                    console.print(
-                        f"  [dim]Cleaned up deprecated symlink:[/dim] {deprecated_path}"
+                    from ai_rules.cli.display import print_label
+
+                    print_label(
+                        "Cleaned up deprecated symlink", str(deprecated_path), indent=2
                     )
                     removed_count += 1
 

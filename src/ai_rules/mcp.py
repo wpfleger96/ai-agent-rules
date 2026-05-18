@@ -164,11 +164,13 @@ class MCPManager(ABC):
 
     def format_pending(self, name: str, expected: dict[str, Any]) -> str:
         """Format expected MCP config for pending installation."""
+        from ai_rules.cli.display import dim
+
         marker = self._marker_field
         display_config = {k: v for k, v in expected.items() if k != marker}
         config_json = json.dumps(display_config, indent=2, sort_keys=True)
 
-        lines = ["[dim]    Will be installed with:[/dim]"]
+        lines = [f"    {dim('Will be installed with:')}"]
         for line in config_json.splitlines():
             lines.append(f"[green]    {line}[/green]")
         return "\n".join(lines)

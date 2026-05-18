@@ -39,19 +39,18 @@ def complete_skills(
 )
 def skill_list(download_url: bool) -> None:
     """List all bundled skills."""
-    from rich.console import Console
     from rich.table import Table
 
+    from ai_rules.cli.display import console
     from ai_rules.skills import SkillManager
-
-    console = Console()
 
     if download_url:
         url = SkillManager.get_download_url()
         if url is None:
-            console.print(
-                "[red]Error:[/red] Could not determine GitHub URL. "
-                "Package metadata may be unavailable."
+            from ai_rules.cli.display import print_error
+
+            print_error(
+                "Could not determine GitHub URL. Package metadata may be unavailable."
             )
             sys.exit(1)
         click.echo(url)
@@ -91,12 +90,11 @@ def skill_show(name: str, url: bool, download_url: bool, raw: bool) -> None:
         ai-agent-rules skill show research --download-url
         ai-agent-rules skill show code-reviewer --raw
     """
-    from rich.console import Console
     from rich.markdown import Markdown
 
+    from ai_rules.cli.display import console, print_error
     from ai_rules.skills import SkillManager
 
-    console = Console()
     config_dir = cli_facade.get_config_dir()
     manager = SkillManager(config_dir=config_dir, agent_id="")
 
@@ -109,9 +107,7 @@ def skill_show(name: str, url: bool, download_url: bool, raw: bool) -> None:
         managed = manager._get_managed_skills()
         if name not in managed:
             available = ", ".join(sorted(managed.keys()))
-            console.print(
-                f"[red]Error:[/red] Unknown skill '{name}'. Available: {available}"
-            )
+            print_error(f"Unknown skill '{name}'. Available: {available}")
             sys.exit(1)
 
         if download_url:
@@ -120,9 +116,8 @@ def skill_show(name: str, url: bool, download_url: bool, raw: bool) -> None:
             result = SkillManager.get_skill_url(name)
 
         if result is None:
-            console.print(
-                "[red]Error:[/red] Could not determine GitHub URL. "
-                "Package metadata may be unavailable."
+            print_error(
+                "Could not determine GitHub URL. Package metadata may be unavailable."
             )
             sys.exit(1)
         click.echo(result)
@@ -132,9 +127,7 @@ def skill_show(name: str, url: bool, download_url: bool, raw: bool) -> None:
     if content is None:
         managed = manager._get_managed_skills()
         available = ", ".join(sorted(managed.keys()))
-        console.print(
-            f"[red]Error:[/red] Unknown skill '{name}'. Available: {available}"
-        )
+        print_error(f"Unknown skill '{name}'. Available: {available}")
         sys.exit(1)
 
     if raw:

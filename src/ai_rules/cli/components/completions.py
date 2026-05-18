@@ -31,6 +31,7 @@ class CompletionsComponent(Component):
         if not isinstance(plan, CompletionsPlan):
             return ComponentResult()
 
+        from ai_rules.cli.display import print_done
         from ai_rules.cli.runner import get_console
 
         if not plan.needs_install or plan.shell is None:
@@ -41,7 +42,8 @@ class CompletionsComponent(Component):
         console = get_console(ctx)
         success, msg = install_completion(plan.shell, dry_run=ctx.dry_run)
         if success and not ctx.dry_run and "already installed" not in msg:
-            console.print(f"\n[dim]✓ {msg}[/dim]")
+            console.print()
+            print_done(msg)
 
         return ComponentResult(changed=success)
 
@@ -55,13 +57,22 @@ class CompletionsComponent(Component):
         if not shell:
             return ComponentResult()
 
+        from ai_rules.cli.display import print_done
+
         success, msg = install_completion(shell, dry_run=ctx.dry_run)
         if success and not ctx.dry_run and "already installed" not in msg:
-            ctx.console.print(f"\n[dim]✓ {msg}[/dim]")
+            ctx.console.print()
+            print_done(msg)
 
         return ComponentResult(changed=success)
 
     def status(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.display import (
+            ICON_ABSENT,
+            ICON_SUCCESS,
+            print_dim,
+        )
+        from ai_rules.cli.runner import get_console
         from ai_rules.completions import (
             detect_shell,
             find_config_file,
@@ -69,25 +80,25 @@ class CompletionsComponent(Component):
             is_completion_installed,
         )
 
-        ctx.console.print("[bold cyan]Shell Completions[/bold cyan]\n")
-
+        console = get_console(ctx)
         shell = detect_shell()
         if shell:
             config_path = find_config_file(shell)
             if config_path and is_completion_installed(config_path):
-                ctx.console.print(
-                    f"  [green]✓[/green] {shell} completion installed ({config_path})"
+                console.print(
+                    f"  {ICON_SUCCESS} {shell} completion installed ({config_path})"
                 )
             else:
-                ctx.console.print(
-                    f"  [yellow]○[/yellow] {shell} completion not installed "
+                console.print(
+                    f"  {ICON_ABSENT} {shell} completion not installed "
                     "(run: ai-agent-rules completions install)"
                 )
         else:
             supported = ", ".join(get_supported_shells())
-            ctx.console.print(
-                f"  [dim]Shell completion not available for your shell (only {supported} supported)[/dim]"
+            print_dim(
+                f"Shell completion not available for your shell (only {supported} supported)",
+                indent=2,
             )
 
-        ctx.console.print()
+        console.print()
         return ComponentResult()

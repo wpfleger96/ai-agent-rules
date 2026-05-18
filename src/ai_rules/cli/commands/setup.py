@@ -5,6 +5,7 @@ import click
 import ai_rules.cli as cli_facade
 
 from ai_rules.cli.commands.install import install
+from ai_rules.cli.display import dim, print_dim
 
 
 @click.command()
@@ -36,9 +37,6 @@ def setup(
     Example:
         uvx ai-agent-rules setup
     """
-    from rich.console import Console
-    from rich.prompt import Confirm
-
     from ai_rules.bootstrap import (
         ToolSource,
         ensure_statusline_installed,
@@ -46,12 +44,18 @@ def setup(
         get_tool_config_dir,
         install_tool,
     )
-
-    console = Console()
     from ai_rules.bootstrap.updater import (
         check_tool_updates,
         get_tool_by_id,
         perform_tool_upgrade,
+    )
+    from ai_rules.cli.display import (
+        console,
+        print_error,
+        print_hint,
+        print_progress,
+        print_success,
+        print_warning,
     )
 
     console.print("[bold cyan]Step 1/3: Install ai-agent-rules system-wide[/bold cyan]")
@@ -68,26 +72,21 @@ def setup(
     )
     if statusline_result == "installed":
         if dry_run and statusline_message:
-            console.print(f"[dim]{statusline_message}[/dim]")
+            print_dim(statusline_message)
         else:
-            console.print("[green]✓[/green] Installed claude-statusline")
+            print_success("Installed claude-statusline")
     elif statusline_result == "upgraded":
-        console.print(
-            f"[green]✓[/green] Upgraded claude-statusline ({statusline_message})"
-        )
+        print_success(f"Upgraded claude-statusline ({statusline_message})")
     elif statusline_result == "upgrade_available":
-        console.print(f"[dim]{statusline_message}[/dim]")
+        if statusline_message:
+            print_dim(statusline_message)
     elif statusline_result == "source_switched":
-        console.print(
-            f"[green]✓[/green] Switched claude-statusline source ({statusline_message})"
-        )
+        print_success(f"Switched claude-statusline source ({statusline_message})")
     elif statusline_result == "source_switch_needed":
         if dry_run and statusline_message:
-            console.print(f"[dim]{statusline_message}[/dim]")
+            print_dim(statusline_message)
     elif statusline_result == "failed":
-        console.print(
-            "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)"
-        )
+        print_warning("Failed to install claude-statusline (continuing anyway)")
 
     ai_rules_tool = get_tool_by_id("ai-agent-rules")
     tool_install_success = False
@@ -112,14 +111,16 @@ def setup(
                 source_name = "PyPI"
             if dry_run:
                 console.print(
-                    f"[dim]Would switch ai-agent-rules from {current_source.name if current_source else 'unknown'} to {source_name}[/dim]"
+                    dim(
+                        f"Would switch ai-agent-rules from {current_source.name if current_source else 'unknown'} to {source_name}"
+                    )
                 )
                 tool_install_success = True
             else:
-                if not yes and not Confirm.ask(
+                if not yes and not click.confirm(
                     f"Switch ai-agent-rules to {source_name} install?", default=True
                 ):
-                    console.print("[yellow]Skipped source switch[/yellow]")
+                    print_warning("Skipped source switch")
                     tool_install_success = True
                 else:
                     uninstall_success, _ = uninstall_tool(ai_rules_tool.package_name)
@@ -137,47 +138,37 @@ def setup(
                             force=True,
                         )
                         if success:
-                            console.print(
-                                f"[green]✓[/green] Switched to {source_name} install"
-                            )
+                            print_success(f"Switched to {source_name} install")
                             tool_install_success = True
                         else:
-                            console.print(
-                                f"[red]Error:[/red] Failed to install: {message}"
-                            )
+                            print_error(f"Failed to install: {message}")
                     else:
-                        console.print(
-                            "[red]Error:[/red] Failed to uninstall current version"
-                        )
+                        print_error("Failed to uninstall current version")
         else:
             try:
                 update_info = check_tool_updates(ai_rules_tool, timeout=10)
                 if update_info and update_info.has_update:
                     if dry_run:
-                        console.print(
-                            f"[dim]Would upgrade ai-agent-rules {update_info.current_version} → {update_info.latest_version}[/dim]"
+                        print_dim(
+                            f"Would upgrade ai-agent-rules {update_info.current_version} → {update_info.latest_version}"
                         )
                         tool_install_success = True
                     else:
-                        if not yes and not Confirm.ask(
+                        if not yes and not click.confirm(
                             f"Upgrade ai-agent-rules {update_info.current_version} → {update_info.latest_version}?",
                             default=True,
                         ):
-                            console.print(
-                                "[yellow]Skipped ai-agent-rules upgrade[/yellow]"
-                            )
+                            print_warning("Skipped ai-agent-rules upgrade")
                             tool_install_success = True
                         else:
                             success, msg, _ = perform_tool_upgrade(ai_rules_tool)
                             if success:
-                                console.print(
-                                    f"[green]✓[/green] Upgraded ai-agent-rules ({update_info.current_version} → {update_info.latest_version})"
+                                print_success(
+                                    f"Upgraded ai-agent-rules ({update_info.current_version} → {update_info.latest_version})"
                                 )
                                 tool_install_success = True
                             else:
-                                console.print(
-                                    "[red]Error:[/red] Failed to upgrade ai-agent-rules"
-                                )
+                                print_error("Failed to upgrade ai-agent-rules")
                 else:
                     tool_install_success = True
             except Exception:
@@ -185,9 +176,9 @@ def setup(
 
     if not tool_install_success:
         if not yes and not dry_run:
-            if not Confirm.ask("Install ai-agent-rules permanently?", default=True):
-                console.print(
-                    "\n[yellow]Skipped.[/yellow] You can still run via: uvx ai-agent-rules <command>"
+            if not click.confirm("Install ai-agent-rules permanently?", default=True):
+                print_warning(
+                    "Skipped. You can still run via: uvx ai-agent-rules <command>"
                 )
                 return
 
@@ -212,18 +203,18 @@ def setup(
             )
 
             if dry_run:
-                console.print(f"[dim]{message}[/dim]")
+                print_dim(message)
                 tool_install_success = True
             elif success:
-                console.print("[green]✓[/green] Tool installed successfully")
+                print_success("Tool installed successfully")
                 tool_install_success = True
             else:
-                console.print(f"\n[red]Error:[/red] {message}")
-                console.print("\n[yellow]Manual installation:[/yellow]")
+                print_error(message)
+                print_progress("Manual installation:")
                 console.print("  uv tool install ai-agent-rules")
                 return
         except Exception as e:
-            console.print(f"\n[red]Error:[/red] {e}")
+            print_error(str(e))
             return
 
     if not skip_symlinks:
@@ -238,17 +229,14 @@ def setup(
                 if tool_config_dir.exists():
                     config_dir_override = str(tool_config_dir)
                 else:
-                    console.print(
-                        f"[yellow]Warning:[/yellow] Tool config not found at expected location: {tool_config_dir}"
+                    print_warning(
+                        f"Tool config not found at expected location: {tool_config_dir}"
                     )
-                    console.print(
-                        "[dim]Falling back to current config directory[/dim]\n"
-                    )
+                    print_dim("Falling back to current config directory")
+                    console.print()
             except Exception as e:
-                console.print(
-                    f"[yellow]Warning:[/yellow] Could not determine tool config path: {e}"
-                )
-                console.print("[dim]Falling back to current config directory[/dim]\n")
+                print_warning(f"Could not determine tool config path: {e}")
+                print_dim("Falling back to current config directory")
 
         ctx.invoke(
             install,
@@ -281,33 +269,31 @@ def setup(
                 if is_legacy_completion_block(config_path):
                     success, msg = update_completion(shell, dry_run=dry_run)
                     if success:
-                        console.print(f"[green]✓[/green] {msg}")
+                        print_success(msg)
                     else:
-                        console.print(f"[yellow]⚠[/yellow] {msg}")
+                        print_warning(msg)
                 else:
-                    console.print(
-                        f"[green]✓[/green] {shell} completion already installed"
-                    )
+                    print_success(f"{shell} completion already installed")
             elif (
                 yes
                 or dry_run
-                or Confirm.ask(f"Install {shell} tab completion?", default=True)
+                or click.confirm(f"Install {shell} tab completion?", default=True)
             ):
                 success, msg = install_completion(shell, dry_run=dry_run)
                 if success:
-                    console.print(f"[green]✓[/green] {msg}")
+                    print_success(msg)
                 else:
-                    console.print(f"[yellow]⚠[/yellow] {msg}")
+                    print_warning(msg)
         else:
             supported = ", ".join(get_supported_shells())
-            console.print(
-                f"[dim]Shell completion not available for your shell (only {supported} supported)[/dim]"
+            print_dim(
+                f"Shell completion not available for your shell (only {supported} supported)"
             )
 
     if dry_run:
-        console.print("\n[dim]Dry run complete - no changes were made.[/dim]")
+        print_hint("Dry run complete - no changes were made.")
     else:
-        console.print("\n[green]✓ Setup complete![/green]")
+        print_success("Setup complete!")
         console.print(
             "You can now run [bold]ai-agent-rules[/bold] (or [bold]ai-rules[/bold]) from anywhere."
         )
