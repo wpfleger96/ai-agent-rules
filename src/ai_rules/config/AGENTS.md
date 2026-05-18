@@ -14,14 +14,14 @@
 **Stage 1:** Implement functional requirements
 **Stage 2:** Security checklist: Input validation | SQL injection prevention (parameterized queries) | XSS blocking (output encoding) | Auth/authz checks | Rate limiting | Sanitized errors | No secrets | Audit logging
 
-**Why:** 40%+ of LLM code has vulnerabilities without security prompting.
+**Why:** LLMs produce vulnerable code without explicit security prompting.
 
 ### Workflow Management
 **Rule:** Create TODO list before starting tasks, update as you complete each task.
 
 ### Autonomous Coding Workflow
 
-**Trigger:** After completing non-trivial code implementation (new features, bug fixes, refactors affecting behavior), execute this workflow before presenting results to the user.
+**Trigger:** After non-trivial code changes (features, bug fixes, behavior-altering refactors), execute before presenting results.
 
 **Stages:**
 
@@ -30,7 +30,7 @@
 | 1. Implement | Write/modify code to meet requirements | Code written |
 | 2. Quality Checks | Run format, lint, test via project tooling (`just check` or individually) | All checks pass (fix any issues found) |
 | 3. Write Tests | Invoke `test-writer` skill for new/changed code paths | Tests written and passing |
-| 4. Review | Invoke `code-reviewer` skill via Agent tool (isolated subagent with fresh context — see Delegation & Multi-Agent Orchestration) | Review findings returned |
+| 4. Review | Invoke `code-reviewer` skill via Agent tool (isolated subagent with fresh context) | Review findings returned |
 | 5. Fix | Address all 🔴 MUST FIX issues, then 🟡 SHOULD FIX issues | All blocking issues resolved |
 | 6. Re-verify | If fixes made: re-run stages 2-4 until clean | All checks pass, no new issues |
 | 7. Draft Commit | Generate conventional commit message for the changes | Message ready for user review |
@@ -39,9 +39,7 @@
 
 **Skip workflow when:** Changes are documentation-only, config/settings tweaks, typo fixes, or user explicitly requests "quick fix" or "no review needed."
 
-**Project tooling priority:** Always check for Justfile/Makefile first. Use `just <task>` or `make <task>` when available. See "Project Tooling" section for fallback commands.
-
-**Why this workflow:** Catches 40%+ of bugs and security issues before they reach production. The isolated review subagent prevents context pollution while enabling deep codebase analysis.
+**Project tooling priority:** Always check for Justfile/Makefile first. Use `just <task>` or `make <task>` when available.
 
 ### Delegation & Multi-Agent Orchestration
 
@@ -67,23 +65,22 @@ Subagents have ZERO access to the parent conversation. Every briefing must inclu
 4. **Scope boundaries** — explicit "do NOT research/review/implement X — another agent handles that"
 5. **Key questions** — 3-5 specific, answerable questions that serve as success criteria
 
-For implementation tasks: assign explicit file ownership per agent to prevent merge conflicts. For analysis tasks: use `model: sonnet` for execution-heavy subagents; reserve `opus` for judgment-heavy orchestration.
+Implementation tasks: assign explicit file ownership per agent. Analysis tasks: `sonnet` for execution-heavy, `opus` for judgment-heavy.
 
 **How to synthesize subagent results:**
 - Organize output by theme, not by which agent produced it
 - Surface conflicts explicitly — never silently pick one side
-- Weight by confidence: convergent findings from multiple independent agents = strong evidence
+- Weight by confidence: convergent findings from multiple agents = strong evidence; further passes on the same angle unlikely to yield new insight
 - Write the summary/bottom-line last, after completing full synthesis
-- Check saturation: if agents returned overlapping findings, note that further passes on this angle are unlikely to yield new insight
 
 **Anti-patterns (avoid):**
-- **Bag of agents**: Flat topology with no scope boundaries — produces 17x error amplification vs centralized orchestration
-- **Over-delegation**: Spawning agents for tasks simpler than the coordination overhead justifies
-- **Under-briefing**: Vague objectives or missing scope boundaries cause agents to drift into each other's territory
+- **Bag of agents**: Flat topology with no scope boundaries
+- **Over-delegation**: Spawning agents for tasks simpler than the coordination overhead
+- **Under-briefing**: Vague objectives or missing scope boundaries
 - **Open-loop execution**: No verification gate after synthesis — always validate before presenting results
-- **Echo chamber**: Same model for all perspectives — add diversity via external model perspectives when available
+- **Echo chamber**: Same model for all perspectives — add diversity via external models when available
 
-**Why:** Anthropic's production multi-agent system outperformed single-agent by 90.2%. Context isolation eliminates the "lost in the middle" phenomenon (30%+ accuracy drop for mid-context information) and multi-turn degradation (39% average performance loss). The MAST failure taxonomy (1,600+ traces) shows 41.77% of multi-agent failures stem from specification ambiguity — these explicit heuristics directly address that.
+**Why:** Context isolation eliminates "lost in the middle" degradation. Explicit scope boundaries prevent the primary failure mode in production multi-agent systems.
 
 ### Documentation First
 **Rule:** Read README.md, CONTRIBUTING.md, docs/, .github/, Makefile/Justfile before actions.
@@ -105,10 +102,9 @@ For implementation tasks: assign explicit file ownership per agent to prevent me
 |------------------------------|---------------------------|
 | `ruff .` or `ruff check .` | `just lint` or `uv run ruff check .` |
 | `pytest` | `just test` or `uv run pytest` |
-| `black .` | `just format` or `uv run black .` |
 | `cargo test` | Check Justfile first → `just test` if exists, else `cargo test` |
 
-**Why:** Direct tool invocation bypasses project configuration and environment management. Usage data shows this is the #1 mistake agents make.
+**Why:** Direct tool invocation bypasses project configuration. The #1 agent mistake.
 
 ### Software Engineering Standards
 
@@ -128,14 +124,11 @@ For implementation tasks: assign explicit file ownership per agent to prevent me
 3. Document why if truly novel
 
 ```python
-# ❌ New endpoint duplicating logic
-def fork_session(sid, mid): # 50 lines duplicating validation/state mgmt
-
-# ✅ Extend existing
-def edit_message(mid, content, fork=False): # Reuses validation, adds param
+# ❌ fork_session(sid, mid): duplicates validation/state management
+# ✅ edit_message(mid, content, fork=False): extends existing, adds param
 ```
 
-**Why:** LLMs create "clean" new code vs integrating. Causes duplication, maintenance burden.
+**Why:** LLMs default to clean new code rather than integrating with existing code.
 
 ### Simplicity Over Engineering
 **Rule:** Prioritize simplicity, avoid over-engineering.
@@ -159,11 +152,9 @@ Three similar lines > premature abstraction | No helpers for one-time ops | Only
 5. **IMPLEMENT** — Only after alignment on approach
 
 **Verification rules (MUST follow):**
-- **External APIs:** NEVER assume an external/closed-source API supports a feature. Verify via documentation, official references, or ask the user for confirmation.
-- **Third-party behavior:** NEVER assume how third-party services, libraries, or tools behave without checking docs or testing.
-- **User environment:** NEVER assume user's local setup, installed tools, or configurations. Ask or check.
-- **Business logic:** NEVER assume business rules or domain constraints. Ask for clarification.
-- **Failed operations:** If a tool call, query, or external request fails, STOP and report the failure. NEVER synthesize plausible-looking results (data, text, numbers) and continue as if the operation succeeded.
+- **External/third-party APIs:** NEVER assume an API or service supports a feature without checking docs or asking the user.
+- **User environment and business logic:** NEVER assume local setup, installed tools, or domain constraints. Ask or check.
+- **Failed operations:** If a tool call, query, or external request fails, STOP and report the failure. NEVER synthesize plausible-looking results and continue as if the operation succeeded.
 
 **When uncertain, ask.** Format questions specifically:
 - ❌ "Should I proceed?" (too vague)
@@ -173,24 +164,20 @@ Three similar lines > premature abstraction | No helpers for one-time ops | Only
 
 **Do NOT challenge:** Clear decisions already made | Style preferences | Technology choices already decided
 
-**Why:** LLMs confidently generate plausible-sounding but incorrect assumptions. Explicit verification prevents wasted work and builds trust through transparency.
+**Why:** LLMs confidently generate plausible-sounding but incorrect assumptions. Explicit verification prevents wasted work.
 
 ### Persistent Knowledge Base (recall)
 
 When the recall MCP is configured, it provides a persistent markdown knowledge base at `~/.recall/` with FTS5 full-text search and BM25 ranking. Knowledge persists across sessions, repos, and machines via git sync.
 
 **Write-back (mandatory when recall tools are available):** Persist to the KB when any of these occur:
-- You debugged a non-obvious issue or discovered a workaround not in the codebase docs
+- You solved a non-obvious issue or synthesized a useful answer from multiple sources
 - The user corrected a false assumption you made (write with `[misconception]` tag)
-- You synthesized a useful answer combining knowledge from multiple sources
 - The user says "remember this" or "save this"
 
 Search first (`search_notes`) to avoid duplicates. If a related note exists, `edit_note` to add the insight rather than rewriting the whole note. Invoke the `/kb` skill for formatting conventions.
 
-**Quality conventions:** Use `[GAP: ...]` annotations for unverified claims. Use `[misconception]` tags to document what is NOT true (prevents confident false assertions). Use `[promote]` to flag patterns worth promoting to AGENTS.md rules.
-
-**Key tools:** `search_notes(query)` for FTS5 search, `build_context(path)` for graph traversal, `read_note(path)` for specific notes, `write_note(path, content)` to persist knowledge.
-
+**Quality conventions:** Use `[GAP: ...]` annotations for unverified claims. Use `[misconception]` tags to document what is NOT true. Use `[promote]` to flag patterns worth promoting to AGENTS.md rules.
 
 ---
 
@@ -202,8 +189,6 @@ Search first (`search_notes`) to avoid duplicates. If a related note exists, `ed
 - Linting: `uv run ruff check .`
 - Formatting: `uv run ruff format .`
 - Testing: `uv run pytest`
-
-**NEVER use direct tool invocation** (e.g., `ruff .`, `pytest`, `black .`) — always prefix with `uv run` or use project tooling.
 
 **Testing framework:** `pytest` (not unittest)
 
@@ -224,12 +209,11 @@ Search first (`search_notes`) to avoid duplicates. If a related note exists, `ed
 # ✅ Behavior
 def test_duplicate_email_fails():
     db.save(User(email="test@x.com"))
-    result = register_user("test@x.com", "pass")
-    assert not result.success and "exists" in result.error
+    assert not register_user("test@x.com", "pass").success
 
 # ❌ Implementation
 def test_calls_hash_password():
-    mock = Mock(); register_user("a", "b"); mock.assert_called() # Who cares?
+    mock = Mock(); register_user("a", "b"); mock.assert_called()  # Who cares?
 ```
 
 **Structure:** Arrange-act-assert | Names: `test_<scenario>_<result>` | Independent | Deterministic
@@ -258,33 +242,35 @@ def test_calls_hash_password():
 | PR metadata (branch, status, labels) | `gh pr view 123 --json headRefName,state,labels` |
 | Create/comment on PR/issue | `gh pr create`, `gh pr comment`, `gh issue list` |
 | Quick glance at a small PR diff | `gh pr diff 123` (acceptable for small/simple PRs) |
-| Substantial code exploration | **Local:** Read/Grep/Glob on `~/Development/<repo_name>` |
-| Multi-file review or repo navigation | **Local:** Glob/Grep/`git diff` on local checkout |
-| Understanding repo structure or context | **Local:** explore the full local codebase |
-
-```
-# ❌ Inefficient: reading code piecemeal through API
-gh api repos/acme/my-service/contents/src/main.py
-gh pr view 42 --json files  # then fetching each file via gh
-
-# ✅ Efficient: check PR branch, then explore locally
-gh pr view 42 --repo acme/my-service --json headRefName
-# → branch: feature/slack-events
-# → explore ~/Development/my-service/.worktrees/feature-slack-events/
-```
+| Code exploration, multi-file review, repo navigation | **Local:** Read/Grep/Glob/`git diff` on `~/Development/<repo_name>` |
 
 **Workflow when given PR URLs:**
 1. Run `gh pr view <num> --repo <org>/<repo> --json headRefName` to get the branch name
 2. Resolve local path: `~/Development/<repo_name>`
-3. Sanitize branch name (`/` `\` `:` → `-`), check for worktree: `~/Development/<repo_name>/.worktrees/<sanitized_branch>/`
+3. Sanitize branch name (`/\:` → `-`) → check `~/Development/<repo_name>/.worktrees/<sanitized_branch>/`
 4. If worktree exists, explore there
-5. If NO worktree, check the repo root:
-   - If already on the correct branch → explore directly
-   - If on a different branch AND working tree is **clean** (`git status` shows no changes) → `git checkout <branch>`, then explore
-   - If on a different branch AND working tree is **dirty** → do NOT checkout. Ask the user how to proceed (they may want to stash, create a worktree, or work from the current state)
+5. If NO worktree, check repo root: if on correct branch → explore; if on different branch and clean → `git checkout <branch>`; if dirty → ask user how to proceed
 6. Use Read, Grep, Glob, and `git diff` for all code exploration
 
-**Why:** Local filesystem reads are instant, support full-text search, and give access to the complete codebase -- not just the files changed in a PR. `gh` CLI returns small chunks and requires multiple API calls, making it inefficient for anything beyond quick metadata lookups or glancing at a small diff.
+**Why:** Local reads are instant with full-text search. `gh` is for metadata and small diffs only.
+
+### PR Maintenance After Pushing Commits
+
+**Rule:** After pushing commits to a branch with an existing open PR, always re-evaluate whether the PR title and description still accurately reflect the PR's content.
+
+**Mandatory workflow after every push to an existing PR:**
+1. Re-read: `gh pr view <number> --json title,body`
+2. Evaluate: does the title/description accurately describe ALL commits on the branch — not just the latest push?
+3. If stale, incomplete, or misleading: `gh pr edit <number> --title "..." --body "$(cat <<'EOF'...EOF)"`
+
+Updates are required when the PR's scope has materially changed — new direction, expanded scope, different approach. A minor fix already implied by the description probably doesn't need changes. But always evaluate; never skip the check.
+
+- ❌ Pushing 3 feedback-driven commits and moving on without checking the description
+- ✅ Re-reading, evaluating against the full commit set, editing if the description is now stale
+
+### PR Description Content
+
+**NEVER include a "Test Plan", "Testing", or "Test plan" section in PR descriptions.** CI passing is a gate, not a finding.
 
 ### Commit Messages
 **Rule:** Subject states WHAT changed. Body explains WHY -- the problem, motivation, or design decision. Never narrate what's visible in `git show --stat` or the diff itself.
@@ -303,8 +289,7 @@ gh pr view 42 --repo acme/my-service --json headRefName
 
 **Body (2-4 lines, skip if subject is self-explanatory):**
 - Describe the problem or motivation driving the change
-- Note design decisions, trade-offs, or alternatives considered
-- Mention relationship to larger effort when part of a series
+- Note design decisions, trade-offs, alternatives, or relationship to series
 - Call out non-obvious side effects or included bug fixes
 
 **Test:** Does the body add information a reviewer can't get from the diff? YES → keep it. NO → cut it.
@@ -313,11 +298,9 @@ gh pr view 42 --repo acme/my-service --json headRefName
 # ❌ PROHIBITED - Narrates the diff
 feat: extract DatabaseService from cli.py
 
-Extract db_stats command (lines 920-1017) into DatabaseService.
+Extract db_stats command into DatabaseService.
 Created services/database_service.py with get_stats() method.
-Added DatabaseStats schema to services/schemas.py.
 Updated CLI db_stats command to use service.
-Added 5 unit tests in tests/unit/test_database_service.py.
 All 421 tests pass (gained 5 new tests).
 
 # ✅ CORRECT - Explains WHY and provides context
@@ -329,7 +312,7 @@ establishes typed Pydantic return schema pattern.
 ```
 
 ```
-# ❌ PROHIBITED - Method inventory, test count, marketing language
+# ❌ PROHIBITED - Method inventory, marketing language
 feat: extract SessionService from cli.py
 
 Extract session business logic into SessionService with 6 methods
@@ -347,24 +330,7 @@ None-safety bug in statistics display (obstructive_apneas > 0
 crashed when value was None).
 ```
 
-```
-# ❌ PROHIBITED - CI status in commit message
-feat: implement LTTB downsampling utility
-
-Add Largest Triangle Three Buckets (LTTB) algorithm for time-series
-downsampling. Created services/lttb.py with lttb_downsample() function.
-Added 12 comprehensive unit tests in tests/unit/test_lttb.py.
-All 416 tests pass, type check and lint pass.
-
-# ✅ CORRECT - Motivation and technical context
-feat: add LTTB downsampling for waveform rendering
-
-CPAP waveforms have ~720k points per 8-hour session at 25Hz.
-LTTB (Steinarsson 2013) reduces to ~2000 points while preserving
-visual peaks and valleys. Required by upcoming WaveformService.
-```
-
-**Why:** Commit messages are permanent documentation. `git show --stat` already shows files changed. `git log --oneline` shows only the subject. The body's job is to capture context that will be lost once the author's working memory fades -- the problem, the reasoning, the trade-offs.
+**Why:** Commit messages are permanent docs. The body captures context that will be lost: problem, reasoning, trade-offs.
 
 ---
 
@@ -376,13 +342,11 @@ visual peaks and valleys. Required by upcoming WaveformService.
 ```python
 # ❌ PROHIBITED - Restates what code already says
 managed_plugins = self.load_managed_plugins()  # Load managed plugins
-orphaned = (installed - desired) & managed  # Get orphaned plugins
 for plugin in orphaned:  # Loop through orphaned plugins
     managed.discard(plugin)  # Remove from managed set
 
 # ✅ CORRECT - Self-documenting code needs no comments
 managed_plugins = self.load_managed_plugins()
-orphaned = (installed_keys - desired_keys) & managed_plugins
 for plugin in orphaned:
     managed_plugins.discard(plugin)
 
@@ -400,7 +364,7 @@ Remove ALL trailing whitespace | Blank lines have NO whitespace | Files end with
 Plain text only unless explicitly requested.
 
 ### Inline Code in Markdown
-**Rule:** Wrap all code identifiers in backticks in user-facing markdown (PR descriptions, docs, issue comments). Scope: env vars, function/class/method names, file paths, CLI flags, API endpoints, config keys, table/column names.
+**Rule:** Wrap all code identifiers in backticks in user-facing markdown (PR descriptions, docs, issue comments). Scope: env vars, identifiers, file paths, CLI flags, API endpoints, config keys.
 
 ```
 # ❌ Bare identifiers lost in prose
@@ -431,22 +395,28 @@ If the URL cannot be confidently determined from context, keep the bare ID rathe
 Applies to: opening paragraphs, context paragraphs, any flowing prose.
 Does NOT apply to: bullet list items, code blocks, tables.
 
-**Why:** Hard wrapping at ~80 chars makes PR descriptions fill only half the available browser viewport width.
+### Non-Breaking Spaces
+**Rule:** NEVER use `&nbsp;` (HTML entity) or U+00A0 (Unicode non-breaking space character) in any text output. Zero exceptions.
+
+Applies to ALL output: commit messages, PR descriptions, issue comments, markdown, prose, code comments, documentation, summaries, tables, chat responses — everything.
+
+Agents insert these to force line breaks at perceived terminal widths. This is always wrong — renderers reflow text, and these characters appear as literal `&nbsp;` strings in rendered output or create invisible spacing anomalies in plain text.
+
+- ❌ `Wire these into GooseConfigSchema&nbsp;so they flow through the typed API endpoints`
+- ✅ `Wire these into GooseConfigSchema so they flow through the typed API endpoints`
+
+Use regular space characters. Always.
 
 ### Writing Voice
 **Rule:** When drafting content posted under the user's name (GitHub comments, PR descriptions/reviews, Slack messages, blog posts, emails), match the user's natural voice. Does NOT apply to: documentation, code comments, commit messages, or agent responses to the user.
 
-**First person, casual tone.** Use "I think," "I opened," "I have" -- not impersonal/objective voice. Open with casual greetings ("hey @name"), not corporate pleasantries ("Thanks for pointing that out!").
-
-**Hedge to signal humility, not weakness.** "I think this is actually a different use case" not "This is a different use case." Softeners like "slightly," "I think," "it looks like" when disagreeing or correcting.
+**Casual, first-person, hedged.** Use "I think," "I opened," "I have" -- not impersonal/objective voice. Open with casual greetings ("hey @name"), not corporate pleasantries. Hedge disagreements: "I think this is actually..." with softeners like "slightly," "I think," "it looks like."
 
 **Narrative flow over structured exposition.** Connect ideas conversationally -- one flowing thought with natural conjunctions ("but," "so that," "which is why"). Don't break into bullet lists or bold headers for conversational prose.
 
 **Minimal formatting fuss.** Backticks for code identifiers, but skip bold/italic for emphasis in conversational contexts. Emoji sparingly and only for greetings or reactions, never decorative.
 
-**No performative gratitude or sign-offs.** Don't open with "Thanks for..." or "Great question!" Don't close with "Let me know if you have questions!" -- just state the case and stop.
-
-**Anchor in personal experience.** "This is coming from a specific need I have in..." not "This is driven by a concrete need in..." -- make it about the person, not the abstract.
+**No performative framing.** Don't open with "Thanks for..." or close with "Let me know if you have questions!" Anchor context in personal experience: "coming from a specific need I have" not "driven by a concrete need."
 
 ### Response Style
 **Rule:** How the agent responds to the user directly.
@@ -469,78 +439,3 @@ When corrected, acknowledge and move on — no apologies, no self-flagellation (
 ## Planning
 When generating plans, omit time estimates. Focus on what needs doing, not when.
 
----
-
-## Critical Constraints (End-of-Context Reinforcement)
-
-These rules are frequently ignored due to context window limitations. Placing them here leverages recency bias.
-
-### Code Comments - MANDATORY
-
-**NEVER add comments that:**
-1. Explain WHAT code does (the code already says that)
-2. Use "Step 1", "Step 2", "Step N" patterns (code reads sequentially)
-3. Narrate function flow (readers can follow the code)
-
-❌ PROHIBITED patterns:
-- `// Step 1: Set up the configuration`
-- `// Step 2: Process the request`
-- `plugins = load_plugins()  # Load plugins`
-- `for item in items:  # Loop through items`
-- `// Initialize the client`
-- `// Return the result`
-
-✅ ONLY write comments explaining WHY (non-obvious decisions):
-- `delay = 2 ** n  # Exponential backoff for Stripe rate limits`
-- `cache.clear()  # Prevent stale data after config reload`
-
-**Test:** Can a developer understand by reading the code? YES → No comment.
-
-### Test Quality - MANDATORY
-
-**NEVER write trivial tests.** Apply Test Value Framework:
-- **CRITICAL:** Business logic, security boundaries, data integrity
-- **SKIP:** Language features, framework code, implementation details
-
-### Commit Messages - MANDATORY
-
-**Body explains WHY, not WHAT.** The diff shows what changed. The body's job is context that will be lost: the problem, the motivation, the design decision.
-
-**NEVER include in commit messages:**
-1. Test/lint/format pass status (passing is a prerequisite, not an accomplishment)
-2. File names or line counts (`git show --stat` exists)
-3. Method/function/class inventories (the diff shows these)
-4. "Comprehensive", "complete", "full coverage" (marketing, not information)
-
-**ALWAYS use correct type prefix:**
-- `refactor:` when moving/restructuring existing code (NOT `feat:`)
-- `feat:` only for genuinely new functionality
-
-**Test:** Does the body help a developer understand WHY this change was made 6 months from now? YES → keep. NO → cut.
-
-### Writing Voice - MANDATORY
-
-When ghostwriting (GitHub comments, Slack, PR descriptions): casual first-person tone, hedge when disagreeing, narrative flow, no corporate pleasantries or sign-offs.
-
-### No Apologies - MANDATORY
-
-When the user corrects an error, acknowledge it and provide the correction. Do NOT say "I apologize," "I'm sorry," "my apologies," "you're right, I should have," or any variant. These phrases waste tokens and add no information.
-
-- ❌ "I apologize for the confusion. You're right, I should have..."
-- ✅ "Correct — here's the fix: ..."
-
-### No Fabrication - MANDATORY
-
-Do not fabricate plausible-sounding information — text, data, or numerical values. This includes:
-- Synthesizing fake results when a tool call, query, or API request fails
-- Confidently asserting capabilities or context access you don't have
-- Generating plausible-looking data (metrics, statistics, query results) instead of admitting uncertainty
-
-If an operation fails, stop and report the failure. If you don't know, say so.
-
-### PR Descriptions - MANDATORY
-
-**NEVER include a "Test Plan", "Testing", or "Test plan" section in PR descriptions.** This overrides Claude Code's default PR template. Applies to all PR creation paths.
-
-- ❌ `## Test plan` with checkbox items ("tests passing", "lint clean", "manual verification")
-- ✅ Omit the section entirely -- CI passing is a gate, not a finding

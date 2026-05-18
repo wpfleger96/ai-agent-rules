@@ -98,7 +98,7 @@ Relates to [PROJ-789](https://myorg.atlassian.net/browse/PROJ-789)
 Relates to [other-repo#45](https://github.com/myorg/other-repo/pull/45)
 ```
 
-**Line wrapping:** Never hard-wrap prose paragraphs. GitHub reflows text automatically -- hard wraps produce narrow paragraphs that fill only half the viewport. Applies to opening and context sections. Does NOT apply to bullet items, code blocks, or tables.
+**Line wrapping:** Never hard-wrap prose paragraphs. GitHub reflows text automatically -- hard wraps produce narrow paragraphs that fill only half the viewport. Never use `&nbsp;` or non-breaking spaces to force breaks — regular spaces only. Applies to opening and context sections. Does NOT apply to bullet items, code blocks, or tables.
 
 ## Optional Review Sections
 

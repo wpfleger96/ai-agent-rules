@@ -225,3 +225,164 @@ class TestParseSkillMd:
         result = SkillManager.parse_skill_md(d)
 
         assert result is None
+
+    def test_parses_disabled_true(self, tmp_path):
+        d = tmp_path / "my-skill"
+        d.mkdir()
+        (d / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: test\ndisabled: true\n---\n"
+        )
+
+        result = SkillManager.parse_skill_md(d)
+
+        assert result is not None
+        assert result.disabled is True
+
+    def test_parses_disabled_false(self, tmp_path):
+        d = tmp_path / "my-skill"
+        d.mkdir()
+        (d / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: test\ndisabled: false\n---\n"
+        )
+
+        result = SkillManager.parse_skill_md(d)
+
+        assert result is not None
+        assert result.disabled is False
+
+    def test_disabled_missing_defaults_false(self, tmp_path):
+        d = tmp_path / "my-skill"
+        d.mkdir()
+        (d / "SKILL.md").write_text("---\nname: my-skill\ndescription: test\n---\n")
+
+        result = SkillManager.parse_skill_md(d)
+
+        assert result is not None
+        assert result.disabled is False
+
+    def test_non_dict_frontmatter_returns_fallback(self, tmp_path):
+        d = tmp_path / "my-skill"
+        d.mkdir()
+        (d / "SKILL.md").write_text("---\n---\nBody")
+
+        result = SkillManager.parse_skill_md(d)
+
+        assert result is not None
+        assert result.name == "my-skill"
+        assert result.disabled is False
+
+    def test_disabled_quoted_string_not_truthy(self, tmp_path):
+        d = tmp_path / "my-skill"
+        d.mkdir()
+        (d / "SKILL.md").write_text(
+            '---\nname: my-skill\ndescription: test\ndisabled: "false"\n---\n'
+        )
+
+        result = SkillManager.parse_skill_md(d)
+
+        assert result is not None
+        assert result.disabled is False
+
+    def test_disabled_quoted_true_string_not_truthy(self, tmp_path):
+        d = tmp_path / "my-skill"
+        d.mkdir()
+        (d / "SKILL.md").write_text(
+            '---\nname: my-skill\ndescription: test\ndisabled: "true"\n---\n'
+        )
+
+        result = SkillManager.parse_skill_md(d)
+
+        assert result is not None
+        assert result.disabled is False
+
+
+@pytest.mark.unit
+class TestIsSkillDisabled:
+    def test_returns_true_for_disabled_skill(self, tmp_path):
+        d = tmp_path / "my-skill"
+        d.mkdir()
+        (d / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: test\ndisabled: true\n---\n"
+        )
+
+        assert SkillManager.is_skill_disabled(d) is True
+
+    def test_returns_false_for_enabled_skill(self, tmp_path):
+        d = tmp_path / "my-skill"
+        d.mkdir()
+        (d / "SKILL.md").write_text("---\nname: my-skill\ndescription: test\n---\n")
+
+        assert SkillManager.is_skill_disabled(d) is False
+
+    def test_returns_false_for_missing_skill_md(self, tmp_path):
+        d = tmp_path / "empty"
+        d.mkdir()
+
+        assert SkillManager.is_skill_disabled(d) is False
+
+
+@pytest.mark.unit
+class TestGetManagedSkillsDisabledFiltering:
+    def test_excludes_disabled_skills(self, tmp_path):
+        config_dir = tmp_path / "config"
+        skills_dir = config_dir / "skills"
+
+        enabled = skills_dir / "enabled-skill"
+        enabled.mkdir(parents=True)
+        (enabled / "SKILL.md").write_text(
+            "---\nname: enabled-skill\ndescription: test\n---\n"
+        )
+
+        disabled = skills_dir / "disabled-skill"
+        disabled.mkdir(parents=True)
+        (disabled / "SKILL.md").write_text(
+            "---\nname: disabled-skill\ndescription: test\ndisabled: true\n---\n"
+        )
+
+        manager = SkillManager(config_dir=config_dir, agent_id="")
+        result = manager._get_managed_skills()
+
+        assert "enabled-skill" in result
+        assert "disabled-skill" not in result
+
+
+@pytest.mark.unit
+class TestListBundledSkillsDisabled:
+    def test_excludes_disabled_by_default(self, tmp_path):
+        config_dir = tmp_path / "config"
+        skills_dir = config_dir / "skills"
+
+        for name, disabled in [("active", False), ("inactive", True)]:
+            d = skills_dir / name
+            d.mkdir(parents=True)
+            disabled_line = "\ndisabled: true" if disabled else ""
+            (d / "SKILL.md").write_text(
+                f"---\nname: {name}\ndescription: test{disabled_line}\n---\n"
+            )
+
+        manager = SkillManager(config_dir=config_dir, agent_id="")
+        results = manager.list_bundled_skills()
+
+        assert len(results) == 1
+        assert results[0].name == "active"
+
+    def test_includes_disabled_when_requested(self, tmp_path):
+        config_dir = tmp_path / "config"
+        skills_dir = config_dir / "skills"
+
+        for name, disabled in [("active", False), ("inactive", True)]:
+            d = skills_dir / name
+            d.mkdir(parents=True)
+            disabled_line = "\ndisabled: true" if disabled else ""
+            (d / "SKILL.md").write_text(
+                f"---\nname: {name}\ndescription: test{disabled_line}\n---\n"
+            )
+
+        manager = SkillManager(config_dir=config_dir, agent_id="")
+        results = manager.list_bundled_skills(include_disabled=True)
+
+        assert len(results) == 2
+        names = {s.name for s in results}
+        assert names == {"active", "inactive"}
+        disabled_skill = next(s for s in results if s.name == "inactive")
+        assert disabled_skill.disabled is True

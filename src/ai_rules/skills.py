@@ -18,6 +18,7 @@ class SkillMetadata:
 
     name: str
     description: str
+    disabled: bool = False
 
 
 @dataclass
@@ -83,14 +84,23 @@ class SkillManager:
             if len(parts) >= 3:
                 try:
                     frontmatter = yaml.safe_load(parts[1])
+                    if not isinstance(frontmatter, dict):
+                        return SkillMetadata(name=skill_dir.name, description="")
                     return SkillMetadata(
                         name=frontmatter.get("name", skill_dir.name),
                         description=frontmatter.get("description", ""),
+                        disabled=frontmatter.get("disabled", False) is True,
                     )
                 except yaml.YAMLError:
                     pass
 
         return SkillMetadata(name=skill_dir.name, description="")
+
+    @staticmethod
+    def is_skill_disabled(skill_dir: Path) -> bool:
+        """Check if a skill has disabled: true in its SKILL.md frontmatter."""
+        meta = SkillManager.parse_skill_md(skill_dir)
+        return meta is not None and meta.disabled
 
     def _get_managed_skills(self) -> dict[str, Path]:
         """Get all managed skills from config_dir."""
@@ -104,7 +114,7 @@ class SkillManager:
 
         result = {}
         for item in sorted(source_dir.glob("*")):
-            if item.is_dir():
+            if item.is_dir() and not self.is_skill_disabled(item):
                 result[item.name] = item
         return result
 
@@ -238,14 +248,27 @@ class SkillManager:
 
         return status
 
-    def list_bundled_skills(self) -> list[SkillMetadata]:
-        """List all bundled skills with their metadata."""
-        managed = self._get_managed_skills()
+    def list_bundled_skills(
+        self, *, include_disabled: bool = False
+    ) -> list[SkillMetadata]:
+        """List bundled skills with their metadata."""
+        if self.agent_id:
+            source_dir = self.config_dir / self.agent_id / "skills"
+        else:
+            source_dir = self.config_dir / "skills"
+
+        if not source_dir.exists():
+            return []
+
         results = []
-        for name, source_path in managed.items():
-            metadata = self.parse_skill_md(source_path)
+        for item in sorted(source_dir.glob("*")):
+            if not item.is_dir():
+                continue
+            metadata = self.parse_skill_md(item)
             if metadata is None:
-                metadata = SkillMetadata(name=name, description="")
+                continue
+            if metadata.disabled and not include_disabled:
+                continue
             results.append(metadata)
         return results
 

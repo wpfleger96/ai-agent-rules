@@ -61,7 +61,7 @@ Use structure from `references/templates.md`. Key principles:
 - Three sections: Opening (1-2 sentences), Context (1-3 sentences), Implementation (2-4 bullets)
 - Professional but conversational tone
 - Specific technical terms, no marketing language; backtick-wrap code identifiers (env vars, functions, paths, endpoints)
-- Plain bullets (`-`), no bold/headers in body; no hard line wraps in prose paragraphs
+- Plain bullets (`-`), no bold/headers in body; no hard line wraps in prose paragraphs; no `&nbsp;` or non-breaking spaces — regular spaces only
 - Issue refs at end with proper keywords; all external references as clickable markdown links (see `references/templates.md`)
 - Never include a "Test Plan" or "Testing" section -- leave test planning to humans
 
@@ -129,5 +129,7 @@ EOF
 **Branch Management:** Verify branch pushed before PR | Use `git push -u origin HEAD` if needed | Confirm base branch correct | Block PRs with PLAN files
 
 **Formatting:** Always use HEREDOC in `gh pr create --body` | Ensure proper line breaks/bullets | Blank line before issue refs
+
+**PR Maintenance:** This skill covers PR creation only. After pushing additional commits to an existing PR, follow the PR Maintenance rule in AGENTS.md: re-read the current title/description and evaluate whether they still accurately reflect all commits.
 
 Goal: Create PR descriptions making code review efficient and thorough, providing reviewers all context to understand and evaluate changes quickly.

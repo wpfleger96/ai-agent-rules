@@ -1,4 +1,5 @@
 {
+  "autoMemoryEnabled": false,
   "cleanupPeriodDays": 99999,
   "env": {
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",

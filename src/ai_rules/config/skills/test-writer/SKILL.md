@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: "This skill should be used when the user asks to 'write tests', 'add tests', 'create tests', 'update tests', 'improve tests', 'review tests', 'what should I test', 'how to test this', 'testing strategy', 'test approach', 'which tests to write', 'test coverage', 'verify the code', 'ensure test coverage', 'prevent regression', or after implementing features to add or update tests. Also triggers on mentions of pytest, jest, vitest, unittest, mocha, TDD, BDD, coverage, mocking, fixtures, test-driven development, or testing frameworks."
+description: Write, update, or review tests. Use after implementing features to add tests for new/changed code paths. Covers testing strategy, framework selection, and coverage analysis.
 ---
 
 # Test Writing Skill

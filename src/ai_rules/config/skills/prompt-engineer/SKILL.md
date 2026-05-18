@@ -1,6 +1,6 @@
 ---
 name: prompt-engineer
-description: "Provides expert guidance for writing and optimizing prompts for large language models. Use this skill when: (1) user mentions \"prompt\", \"prompting\", or \"prompt engineering\", (2) user requests to write, create, improve, optimize, or review any prompt, (3) user is creating or updating AGENTS.md, CLAUDE.md, .claude/commands/*.md, or .claude/skills/*/SKILL.md files, (4) user is writing system prompts, custom instructions, or LLM agent configurations."
+description: Expert guidance for writing and optimizing LLM prompts. Use when creating or updating AGENTS.md, CLAUDE.md, SKILL.md, system prompts, or custom instructions.
 ---
 
 # Prompt Engineering Skill

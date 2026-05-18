@@ -28,6 +28,13 @@ class TestSkillList:
         assert result.exit_code == 0
         assert "Bundled Skills" in result.output
 
+    def test_disabled_skill_shown_with_marker(self, runner):
+        result = runner.invoke(main, ["skill", "list"])
+
+        assert result.exit_code == 0
+        assert "prompt-critique" in result.output
+        assert "disabled" in result.output
+
 
 @pytest.mark.integration
 class TestSkillShow:

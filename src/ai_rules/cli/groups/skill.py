@@ -58,14 +58,15 @@ def skill_list(download_url: bool) -> None:
 
     config_dir = cli_facade.get_config_dir()
     manager = SkillManager(config_dir=config_dir, agent_id="")
-    skills = manager.list_bundled_skills()
+    skills = manager.list_bundled_skills(include_disabled=True)
 
     table = Table(title="Bundled Skills", show_header=True)
     table.add_column("Name", style="cyan")
     table.add_column("Description")
 
     for s in skills:
-        table.add_row(s.name, s.description)
+        name = f"{s.name} [dim](disabled)[/dim]" if s.disabled else s.name
+        table.add_row(name, s.description)
 
     console.print(table)
 

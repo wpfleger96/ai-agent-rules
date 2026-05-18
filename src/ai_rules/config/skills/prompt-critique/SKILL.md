@@ -1,6 +1,7 @@
 ---
 name: prompt-critique
 description: Analyze your historical Claude Code prompts and get personalized feedback on how to improve your prompting technique
+disabled: true
 disable-model-invocation: true
 allowed-tools: Bash, Glob, Grep, Read, Write, Skill, AskUserQuestion
 model: sonnet
