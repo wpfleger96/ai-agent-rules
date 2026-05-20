@@ -16,7 +16,7 @@ model: sonnet
 
 # Create GitHub Pull Request
 
-**Usage:** `/pr-creator` - Create regular PR | `/pr-creator draft` - Create draft PR
+**Usage:** `/pr-creator` - Create draft PR (default) | `/pr-creator open` - Create regular PR
 
 Expert software engineer creating high-quality PR descriptions that facilitate efficient code review.
 
@@ -31,7 +31,7 @@ Expert software engineer creating high-quality PR descriptions that facilitate e
 
 ### Step 1: Detect Mode & PR Type
 
-**Mode:** Check `$1` equals "draft" → draft PR, else regular PR
+**Mode:** Check `$1` equals "open" → regular PR, else draft PR
 
 **Classify PR type** via `git log origin/{base}..HEAD --format="%s"`:
 - **Feature:** feat:, add, implement, create, new functionality
@@ -67,19 +67,7 @@ Use structure from `references/templates.md`. Key principles:
 
 See `references/templates.md` for detailed structure and examples.
 
-### Step 4: Present Draft & STOP
-
-Present draft to user and **STOP**. Wait for explicit approval.
-
-When presenting:
-- Indicate draft/regular PR mode
-- Ask to proceed or revise
-
-## Stage 2: Create Pull Request
-
-**Only after explicit user approval.**
-
-### Verification
+### Step 4: Verify & Create
 
 **Check for PLAN files:**
 ```bash
@@ -100,18 +88,18 @@ git push -u origin HEAD
 
 **Create** (use HEREDOC for formatting):
 
-**Regular:**
+**Draft (default):**
 ```bash
-gh pr create --title "Title" --base {base} --body "$(cat <<'EOF'
-[Full approved description]
+gh pr create --title "Title" --base {base} --draft --body "$(cat <<'EOF'
+[Full description]
 EOF
 )"
 ```
 
-**Draft:**
+**Regular (`open` override):**
 ```bash
-gh pr create --title "Title" --base {base} --draft --body "$(cat <<'EOF'
-[Full approved description]
+gh pr create --title "Title" --base {base} --body "$(cat <<'EOF'
+[Full description]
 EOF
 )"
 ```
@@ -119,8 +107,6 @@ EOF
 **Display PR URL** upon success.
 
 ## Critical Requirements
-
-**Approval Gate:** NEVER skip user approval | ALWAYS present draft and wait | Accept revisions | Only proceed after clear approval
 
 **Accuracy:** Inspect actual commits via git | Review code changes via diff | Don't rely solely on commit messages | Verify issue refs exist | Derive URLs for external references from context (never hardcode base URLs)
 
