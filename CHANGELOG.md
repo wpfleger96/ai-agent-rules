@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.53.0 (2026-05-20)
+
+### Features
+
+- **agents**: Default PRs to draft, mandate implementation subagents
+  ([#49](https://github.com/wpfleger96/ai-agent-rules/pull/49),
+  [`8e7f1b7`](https://github.com/wpfleger96/ai-agent-rules/commit/8e7f1b7a95dcc6674e427200444ae203952f9d40))
+
+
 ## v0.52.1 (2026-05-18)
 
 ### Bug Fixes
