@@ -27,7 +27,7 @@
 
 | Stage | Action | Proceed when |
 |-------|--------|--------------|
-| 1. Implement | Write/modify code to meet requirements | Code written |
+| 1. Implement | Decompose work by file/concern; brief parallel implementation subagents with explicit file ownership (see Delegation section); verify all results before proceeding | All target files updated, results verified |
 | 2. Quality Checks | Run format, lint, test via project tooling (`just check` or individually) | All checks pass (fix any issues found) |
 | 3. Write Tests | Invoke `test-writer` skill for new/changed code paths | Tests written and passing |
 | 4. Review | Invoke `code-reviewer` skill via Agent tool (isolated subagent with fresh context) | Review findings returned |
@@ -43,19 +43,17 @@
 
 ### Delegation & Multi-Agent Orchestration
 
-**Rule:** For non-trivial tasks, proactively delegate to parallel subagents with fresh context windows rather than handling everything in a single conversation. Context contamination is a measured degradation — all frontier models lose quality as context grows, even with irrelevant content.
+**Rule:** Always delegate code implementation to parallel subagents. Never write code changes directly in the orchestrator context — implementation diffs bloat context and force compaction before review or revision can proceed. For non-implementation tasks, delegate when parallelism or context isolation provides clear benefit.
 
 **When to delegate (spawn subagents):**
-- Task spans 3+ files AND involves cross-cutting concerns (security + performance + correctness)
-- Task requires synthesizing multiple independent perspectives for quality
-- Accumulated context would exceed ~50% of effective window with all relevant code loaded
-- Task has clearly independent subtasks that can run in parallel (research, review lenses, test generation)
+- **Always:** Code implementation — split by file/concern; one subagent per file or per group of files sharing a broken intermediate state; sequence only when an interface is genuinely unknowable before upstream is written
+- Non-implementation tasks: when context would exceed ~50% of effective window with all relevant code loaded
+- Non-implementation tasks: when independent subtasks can run in parallel (research, review lenses, test generation)
 
 **When NOT to delegate (handle inline):**
-- Single-file, single-concern change
-- Highly sequential tasks where each step requires the previous step's actual output (not just a summary)
-- Ambiguously specified tasks — clarify scope first, then decide (ambiguity amplifies across N agents)
-- Task is simpler than the orchestration overhead justifies
+- Single-line mechanical changes (renaming a constant, fixing a typo in a string literal) — the only implementation exception
+- Highly sequential non-implementation tasks where each step requires the previous step's actual output
+- Ambiguously specified tasks — clarify scope first before spawning agents (ambiguity amplifies across N agents)
 
 **How to brief subagents (self-containment protocol):**
 Subagents have ZERO access to the parent conversation. Every briefing must include:
@@ -65,7 +63,12 @@ Subagents have ZERO access to the parent conversation. Every briefing must inclu
 4. **Scope boundaries** — explicit "do NOT research/review/implement X — another agent handles that"
 5. **Key questions** — 3-5 specific, answerable questions that serve as success criteria
 
-Implementation tasks: assign explicit file ownership per agent. Analysis tasks: `sonnet` for execution-heavy, `opus` for judgment-heavy.
+Implementation briefings additionally require:
+6. **File ownership list** — explicit list of files this agent may create or modify; prohibit touching any file not on the list
+7. **Plan context** — the relevant portion of the overall plan, including interfaces this file's changes must satisfy and what parallel agents are doing
+8. **Forbidden files** — explicitly name every file owned by another parallel agent
+
+Analysis tasks: `sonnet` for execution-heavy, `opus` for judgment-heavy.
 
 **How to synthesize subagent results:**
 - Organize output by theme, not by which agent produced it
@@ -75,7 +78,7 @@ Implementation tasks: assign explicit file ownership per agent. Analysis tasks: 
 
 **Anti-patterns (avoid):**
 - **Bag of agents**: Flat topology with no scope boundaries
-- **Over-delegation**: Spawning agents for tasks simpler than the coordination overhead
+- **Over-delegation**: Spawning multiple agents for a change with a single atomic unit of work (e.g., one two-line fix that only one file can own)
 - **Under-briefing**: Vague objectives or missing scope boundaries
 - **Open-loop execution**: No verification gate after synthesis — always validate before presenting results
 - **Echo chamber**: Same model for all perspectives — add diversity via external models when available
