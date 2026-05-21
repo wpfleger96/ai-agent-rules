@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.53.1 (2026-05-21)
+
+### Bug Fixes
+
+- **agents**: PR descriptions must be snapshots, not chronological narratives
+  ([`db79cfc`](https://github.com/wpfleger96/ai-agent-rules/commit/db79cfc6b5400c8054698ba93cc85f870790b3b7))
+
+
 ## v0.53.0 (2026-05-20)
 
 ### Features
