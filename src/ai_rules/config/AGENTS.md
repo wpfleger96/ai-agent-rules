@@ -259,21 +259,25 @@ def test_calls_hash_password():
 
 ### PR Maintenance After Pushing Commits
 
-**Rule:** After pushing commits to a branch with an existing open PR, always re-evaluate whether the PR title and description still accurately reflect the PR's content.
+**Rule:** After pushing commits to a branch with an existing open PR, re-evaluate the title and description. A PR description is a point-in-time snapshot of what this branch changes vs. main — never a timeline or narrative of how the PR evolved.
 
 **Mandatory workflow after every push to an existing PR:**
 1. Re-read: `gh pr view <number> --json title,body`
 2. Evaluate: does the title/description accurately describe ALL commits on the branch — not just the latest push?
-3. If stale, incomplete, or misleading: `gh pr edit <number> --title "..." --body "$(cat <<'EOF'...EOF)"`
+3. If stale: rewrite from scratch, then update via `gh pr edit <number> --title "..." --body "$(cat <<'EOF'...EOF)"`
 
-Updates are required when the PR's scope has materially changed — new direction, expanded scope, different approach. A minor fix already implied by the description probably doesn't need changes. But always evaluate; never skip the check.
+A minor fix already implied by the description probably doesn't need changes. But always evaluate; never skip the check.
 
-- ❌ Pushing 3 feedback-driven commits and moving on without checking the description
-- ✅ Re-reading, evaluating against the full commit set, editing if the description is now stale
+- ❌ Adding a "Review fixes" or "Consolidation" section that narrates what changed after feedback
+- ✅ Rewriting the full description to reflect what the branch currently does vs. main
 
 ### PR Description Content
 
 **NEVER include a "Test Plan", "Testing", or "Test plan" section in PR descriptions.** CI passing is a gate, not a finding.
+
+**NEVER narrate the development process** — no "after review," "following feedback," "consolidated from," or references to review rounds. Describe the final state only.
+
+**NEVER mention internal workflow tools** (code-reviewer, crossfire, test-writer, etc.) in PR descriptions.
 
 ### Commit Messages
 **Rule:** Subject states WHAT changed. Body explains WHY -- the problem, motivation, or design decision. Never narrate what's visible in `git show --stat` or the diff itself.

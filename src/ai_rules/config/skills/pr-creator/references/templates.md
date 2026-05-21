@@ -293,6 +293,30 @@ Currently, webhook failures are silently dropped, causing data sync issues for i
 
 ✅ **Omit test plan entirely** -- leave test planning to humans.
 
+---
+
+❌ **Chronological narrative (narrates review rounds):**
+```
+This PR adds rate limiting to the API.
+
+- Add `RateLimiter` middleware with `check_rate()` method
+
+## Review fixes
+- Renamed `check_rate()` to `enforce_limit()` per code-reviewer feedback
+- Moved config to `settings.py` after crossfire review
+- Added input validation (round 2 feedback)
+```
+
+✅ **Clean snapshot (describes final state vs. main):**
+```
+This PR adds rate limiting to the API to prevent abuse.
+
+Authentication overhead was allowing unbounded request rates.
+
+- Add `RateLimiter` middleware with configurable limits via `settings.py`
+- Expose `enforce_limit()` as the public interface
+```
+
 ## Brevity Principles
 
 1. **Every word must earn its place** - Reviewers skim descriptions

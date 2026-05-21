@@ -116,6 +116,6 @@ EOF
 
 **Formatting:** Always use HEREDOC in `gh pr create --body` | Ensure proper line breaks/bullets | Blank line before issue refs
 
-**PR Maintenance:** This skill covers PR creation only. After pushing additional commits to an existing PR, follow the PR Maintenance rule in AGENTS.md: re-read the current title/description and evaluate whether they still accurately reflect all commits.
+**PR Maintenance:** This skill covers PR creation only. After pushing additional commits to an existing PR, follow the PR Maintenance rule in AGENTS.md: rewrite the description from scratch as a snapshot of what the branch changes vs. main.
 
 Goal: Create PR descriptions making code review efficient and thorough, providing reviewers all context to understand and evaluate changes quickly.
