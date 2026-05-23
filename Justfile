@@ -45,18 +45,17 @@ test-unit:
 test-integration:
     uv run pytest -m integration
 
-validate-schemas:
-    uv run pytest -m schema
-
 # Build & Package
 build: sync
     uv build
 
 clean-build:
-    rm -rf dist/ build/ *.egg-info
+    rm -rf dist/ build/ src/*.egg-info
 
 rebuild: clean-build build
 
 # CI workflow (matches CI steps)
 ci: sync type-check lint-check format-check test
     @echo "CI checks passed"
+
+import? 'local.just'
