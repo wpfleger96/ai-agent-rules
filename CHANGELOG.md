@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.54.0 (2026-05-25)
+
+### Features
+
+- **research**: Add no-file flag to skip writing report to disk
+  ([`b6c17d9`](https://github.com/wpfleger96/ai-agent-rules/commit/b6c17d90f60dff658440816076af93f3ce883900))
+
+
 ## v0.53.2 (2026-05-25)
 
 ### Bug Fixes
