@@ -25,6 +25,10 @@ You coordinate and synthesize. You do NOT conduct primary research yourself (exc
 
 ## Phase 1: Assessment and classification
 
+**Flag detection:** Check if `${ARGS}` begins with `no-file ` (the literal string "no-file" followed by a space, or is exactly `no-file`):
+- If yes → set `write_to_file = false`; strip the `no-file ` prefix from `${ARGS}` before determining the research question
+- If no → set `write_to_file = true` (default)
+
 Determine the research question:
 - If `${ARGS}` contains a self-contained research question → use it directly
 - If `${ARGS}` is vague or references conversation context ("investigate this", "research the approach we discussed", "look into that") → derive the actual research question from the conversation history and state it explicitly before proceeding
@@ -95,7 +99,8 @@ Structure the final report per the format in `references/report-format.md`.
 
 **Write the Bottom Line section LAST** (after completing full synthesis), even though it appears first in the output.
 
-**Write the report to a file** (Standard+ tiers only — Simple tier outputs inline):
+**Write the report to a file** (Standard+ tiers only, unless `no-file` flag was set — Simple tier always outputs inline only):
+- Skip this step entirely if `write_to_file = false`
 - Path: `{working_directory}/research-report_{topic-slug}_{date}.md`
 - Topic slug: lowercase, hyphens, max ~40 chars derived from the research query
 - After writing, tell the user the file path so they can find the report
@@ -110,7 +115,7 @@ Structure the final report per the format in `references/report-format.md`.
 - **Synthesize, don't concatenate** — your job is connecting dots across findings, not pasting them together
 - **Epistemic honesty** — never paper over disagreements between sources or agents. If confidence is mixed, say so.
 - **Prefer the lower tier when uncertain** — once agents are launched in parallel, you cannot throttle mid-execution
-- **Simple tier outputs inline only** (no file). Standard+ tiers output inline AND write to a file for persistence.
+- **Simple tier outputs inline only** (no file). Standard+ tiers output inline AND write to a file for persistence, unless the `no-file` flag was set.
 
 ## Examples
 
@@ -118,3 +123,5 @@ Structure the final report per the format in `references/report-format.md`.
 - `/research state of WebAssembly adoption in 2026` — Standard, 2-3 agents (technical landscape, adoption data, limitations)
 - `/research compare React Server Components vs Astro Islands vs htmx` — Medium, 3-5 agents (one per technology + cross-cutting comparison)
 - `/research comprehensive analysis of LLM agent architectures for production use` — High, 5-8 agents with distinct angles
+- `/research no-file state of WebAssembly adoption in 2026` — Standard tier, inline output only (no file written)
+- `/research no-file compare React Server Components vs Astro Islands vs htmx` — Medium tier, inline output only (no file written)

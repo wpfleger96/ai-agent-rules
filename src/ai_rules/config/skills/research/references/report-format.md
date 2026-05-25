@@ -2,7 +2,7 @@
 
 Use this format for Standard, Medium, and High tier research output. Simple tier queries get a direct answer without this structure.
 
-**File output**: For Standard+ tiers, the orchestrator writes the final report to a file in the working directory: `research-report_{topic-slug}_{date}.md`. The topic slug is lowercase with hyphens, max ~40 chars. The file provides persistence — the report is also output inline in the conversation, but the file ensures it survives context compaction and is easy to reference later.
+**File output**: For Standard+ tiers, the orchestrator writes the final report to a file in the working directory: `research-report_{topic-slug}_{date}.md`, unless the user passed the `no-file` flag. The topic slug is lowercase with hyphens, max ~40 chars. The file provides persistence — the report is also output inline in the conversation, but the file ensures it survives context compaction and is easy to reference later.
 
 ---
 
