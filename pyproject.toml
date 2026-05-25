@@ -84,7 +84,7 @@ url = "https://pypi.org/simple"
 default = true
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 mypy_path = "src"
 namespace_packages = true
 explicit_package_bases = true
