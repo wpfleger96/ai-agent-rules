@@ -3,7 +3,7 @@
 ## Quick Reference Checklist
 
 **Before completing tasks:**
-☐ Read README & docs | ☐ Create TODO list (multi-step) | ☐ Explore before implementing | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ DRY & single responsibility | ☐ WHY comments only | ☐ Remove trailing whitespace | ☐ File ends with newline | ☐ Test behavior not implementation | ☐ AWS: --profile & --region | ☐ Keep simple | ☐ Ask clarifying questions | ☐ GitHub URLs: explore code locally
+☐ Worktree for code changes | ☐ Read README & docs | ☐ Create TODO list (multi-step) | ☐ Explore before implementing | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ DRY & single responsibility | ☐ WHY comments only | ☐ Remove trailing whitespace | ☐ File ends with newline | ☐ Test behavior not implementation | ☐ AWS: --profile & --region | ☐ Keep simple | ☐ Ask clarifying questions | ☐ GitHub URLs: explore code locally
 
 ---
 
@@ -40,6 +40,29 @@
 **Skip workflow when:** Changes are documentation-only, config/settings tweaks, typo fixes, or user explicitly requests "quick fix" or "no review needed."
 
 **Project tooling priority:** Always check for Justfile/Makefile first. Use `just <task>` or `make <task>` when available.
+
+### Mandatory Worktree for Code Changes
+
+**Rule:** Always create and work inside a git worktree before making any file changes. Never edit files directly in the repo root on the default branch.
+
+**Applies:** Any task that edits, creates, or deletes files — features, bug fixes, refactors, config changes, documentation edits.
+
+**Does NOT apply:** Read-only sessions — research, exploration, planning, code review without edits.
+
+**Setup (before touching any file):**
+
+| Agent | Method |
+|-------|--------|
+| Claude Code | Use `EnterWorktree` tool (creates worktree and switches session directory) |
+| Other agents | `git worktree add .worktrees/<worktree-name> -b <branch-name>` from repo root, then `cd` into it |
+
+**Branch naming:** `<username>/<descriptive-slug>` — e.g., `wpfleger/git-worktree-enforcement`, `wpfleger/fix-null-pointer`.
+
+**Worktree folder naming:** Derive from the branch name — replace `/`, `\`, `:` with `-`. This matches the `_wt_sanitize_dirname` convention used by the `wt` shell functions.
+- `wpfleger/git-worktree-enforcement` → `.worktrees/wpfleger-git-worktree-enforcement`
+- `wpfleger/fix-null-pointer` → `.worktrees/wpfleger-fix-null-pointer`
+
+**Why:** Multiple agents often run concurrently in the same repo on unrelated tasks. Without worktrees, their file changes collide — dirty working trees, conflicting edits, and broken intermediate states. Worktrees give each agent an isolated workspace so concurrent sessions never interfere with each other.
 
 ### Delegation & Multi-Agent Orchestration
 
