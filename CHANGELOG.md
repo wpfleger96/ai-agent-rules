@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.55.0 (2026-05-25)
+
+### Features
+
+- Require git worktrees for all code-change sessions
+  ([#54](https://github.com/wpfleger96/ai-agent-rules/pull/54),
+  [`aefc28b`](https://github.com/wpfleger96/ai-agent-rules/commit/aefc28b9a4a392211ded2a6f258f31c1fa6582db))
+
+
 ## v0.54.0 (2026-05-25)
 
 ### Features
