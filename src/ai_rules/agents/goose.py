@@ -58,7 +58,7 @@ class GooseAgent(Agent):
 
         return result
 
-    def get_mcp_manager(self) -> "MCPManager":
+    def get_mcp_manager(self) -> MCPManager:
         from ai_rules.mcp import GooseMCPManager
 
         return GooseMCPManager()

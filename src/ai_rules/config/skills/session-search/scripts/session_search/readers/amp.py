@@ -7,7 +7,7 @@ import json
 import re
 
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -34,9 +34,9 @@ def _epoch_ms_to_iso(epoch_ms: Any) -> str:
     if not isinstance(epoch_ms, (int, float)):
         return ""
     try:
-        dt = datetime.fromtimestamp(epoch_ms / 1000.0, tz=timezone.utc)
+        dt = datetime.fromtimestamp(epoch_ms / 1000.0, tz=UTC)
         return dt.isoformat()
-    except (OSError, OverflowError, ValueError):
+    except OSError, OverflowError, ValueError:
         return ""
 
 
@@ -61,7 +61,7 @@ def _extract_cwd(data: dict[str, Any]) -> str:
         if uri.startswith("file://"):
             return uri[len("file://") :]
         return uri
-    except (json.JSONDecodeError, AttributeError, TypeError, KeyError):
+    except json.JSONDecodeError, AttributeError, TypeError, KeyError:
         return ""
 
 
@@ -163,7 +163,7 @@ def iter_search_text(record: dict[str, Any], raw: str) -> Iterable[str]:
             if inp is not None:
                 try:
                     yield json.dumps(inp, ensure_ascii=False)
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     pass
 
         elif block_type == "tool_result":

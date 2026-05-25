@@ -50,7 +50,7 @@ except PackageNotFoundError:
     __version__ = "dev"
 
 
-def _get_plugin_status(config: "Config") -> tuple[Any, Any] | None:
+def _get_plugin_status(config: Config) -> tuple[Any, Any] | None:
     """Get plugin manager and status if CLI is available and plugins are configured."""
     if not (config.plugins or config.marketplaces):
         return None
@@ -68,7 +68,7 @@ def _get_plugin_status(config: "Config") -> tuple[Any, Any] | None:
     return (plugin_manager, plugin_status)
 
 
-def _display_pending_symlink_changes(targets: list["ConfigTarget"]) -> bool:
+def _display_pending_symlink_changes(targets: list[ConfigTarget]) -> bool:
     """Display what symlink changes will be made.
 
     Returns:
@@ -101,7 +101,7 @@ def _display_pending_symlink_changes(targets: list["ConfigTarget"]) -> bool:
                         diff_output = get_content_diff(actual, source)
                     elif status_code == "not_symlink":
                         diff_output = get_content_diff(target_path, source)
-                except (OSError, RuntimeError):
+                except OSError, RuntimeError:
                     pass
                 agent_changes.append(("update", target_path, source, diff_output))
 
@@ -118,7 +118,7 @@ def _display_pending_symlink_changes(targets: list["ConfigTarget"]) -> bool:
     return found_changes
 
 
-def _display_pending_plugin_changes(config: "Config") -> bool:
+def _display_pending_plugin_changes(config: Config) -> bool:
     """Display what plugin changes will be made.
 
     Returns:
@@ -154,14 +154,14 @@ def _display_pending_plugin_changes(config: "Config") -> bool:
     return found_changes
 
 
-def _display_pending_changes(ctx: "CliContext") -> bool:
+def _display_pending_changes(ctx: CliContext) -> bool:
     """Display pending changes across all component types. Returns True if any changes found."""
     has_symlink_changes = _display_pending_symlink_changes(list(ctx.selected_targets))
     has_plugin_changes = _display_pending_plugin_changes(ctx.config)
     return has_symlink_changes or has_plugin_changes
 
 
-def check_first_run(targets: list["ConfigTarget"], force: bool) -> bool:
+def check_first_run(targets: list[ConfigTarget], force: bool) -> bool:
     """Check if this is the first run and prompt user if needed.
 
     Returns:
@@ -279,7 +279,7 @@ def cli_entrypoint() -> None:
 
 
 def cleanup_deprecated_symlinks(
-    selected_targets: list["ConfigTarget"], config_dir: Path, dry_run: bool
+    selected_targets: list[ConfigTarget], config_dir: Path, dry_run: bool
 ) -> int:
     """Remove deprecated symlinks that point to our config files.
 

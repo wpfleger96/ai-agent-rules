@@ -109,16 +109,16 @@ class ClaudeAgent(Agent):
                     target = loc.resolve()
                     if is_managed_target(target, self.config_dir):
                         deprecated.append(loc)
-                except (OSError, RuntimeError):
+                except OSError, RuntimeError:
                     pass
         return deprecated
 
-    def get_mcp_manager(self) -> "MCPManager":
+    def get_mcp_manager(self) -> MCPManager:
         from ai_rules.mcp import ClaudeMCPManager
 
         return ClaudeMCPManager()
 
-    def get_extension_status(self) -> "ClaudeExtensionStatus":
+    def get_extension_status(self) -> ClaudeExtensionStatus:
         """Get status of Claude extensions (agents, commands, hooks).
 
         Returns:

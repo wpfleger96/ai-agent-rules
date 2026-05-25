@@ -7,6 +7,7 @@ import json
 import re
 
 from collections.abc import Iterable
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +42,7 @@ def _load_slug_map() -> dict[str, str]:
     try:
         with projects_path.open("r", encoding="utf-8", errors="replace") as fh:
             data = json.load(fh)
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         return {}
     projects = data.get("projects") if isinstance(data, dict) else None
     if not isinstance(projects, dict):
@@ -133,9 +134,9 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
                     mtime = path.stat().st_mtime
                 except OSError:
                     mtime = 0.0
-                from datetime import datetime, timezone
+                from datetime import datetime
 
-                dt = datetime.fromtimestamp(mtime, tz=timezone.utc)
+                dt = datetime.fromtimestamp(mtime, tz=UTC)
                 timestamp = dt.isoformat()
                 updated_at = ""
             else:
@@ -193,7 +194,7 @@ def iter_search_text(record: dict[str, Any], raw: str) -> Iterable[str]:
                 elif isinstance(args_val, dict):
                     try:
                         yield json.dumps(args_val, ensure_ascii=False)
-                    except (TypeError, ValueError):
+                    except TypeError, ValueError:
                         pass
 
 

@@ -9,7 +9,7 @@ import sys
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -48,9 +48,9 @@ def parse_iso(value: str) -> datetime | None:
 def date_key(value: str) -> datetime:
     parsed = parse_iso(value)
     if parsed is None:
-        return datetime.min.replace(tzinfo=timezone.utc)
+        return datetime.min.replace(tzinfo=UTC)
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)
+        return parsed.replace(tzinfo=UTC)
     return parsed
 
 
@@ -69,7 +69,7 @@ def git_root(cwd: Path) -> Path | None:
             stderr=subprocess.DEVNULL,
             check=True,
         )
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return None
     root = result.stdout.strip()
     return Path(root).resolve() if root else None
@@ -118,11 +118,11 @@ def repo_score(
 def in_date_window(session: Session, args: argparse.Namespace) -> bool:
     value = date_key(session.sort_time)
     if args.since:
-        since = datetime.fromisoformat(args.since).replace(tzinfo=timezone.utc)
+        since = datetime.fromisoformat(args.since).replace(tzinfo=UTC)
         if value < since:
             return False
     if args.until:
-        until = datetime.fromisoformat(args.until).replace(tzinfo=timezone.utc)
+        until = datetime.fromisoformat(args.until).replace(tzinfo=UTC)
         if value.date() > until.date():
             return False
     return True

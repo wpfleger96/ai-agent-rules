@@ -52,7 +52,7 @@ def get_schema(
         schema: dict[str, Any] = json.loads(data)
         _atomic_write(cache_file, data)
         return schema
-    except (urllib.error.URLError, OSError, json.JSONDecodeError):
+    except urllib.error.URLError, OSError, json.JSONDecodeError:
         if cache_file.exists():
             try:
                 stale: dict[str, Any] = json.loads(cache_file.read_text())

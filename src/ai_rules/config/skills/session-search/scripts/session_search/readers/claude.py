@@ -8,7 +8,7 @@ import os
 import re
 
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -77,7 +77,7 @@ def _read_head_record(path: Path) -> dict[str, Any]:
                     continue
                 try:
                     record: dict[str, Any] = json.loads(raw)
-                except (json.JSONDecodeError, ValueError):
+                except json.JSONDecodeError, ValueError:
                     continue
                 if not isinstance(record, dict):
                     continue
@@ -134,7 +134,7 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
     preliminary: list[Session] = []
     for hint_score, mtime, path, _ in candidates:
         session_id = path.stem
-        updated_at = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
+        updated_at = datetime.fromtimestamp(mtime, tz=UTC).isoformat()
         session = Session(
             id=session_id,
             agent=AGENT_NAME,

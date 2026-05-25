@@ -8,6 +8,7 @@ import re
 import shutil
 import sys
 import tempfile
+import tomllib
 
 from collections.abc import Callable
 from fnmatch import fnmatch
@@ -15,14 +16,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import yaml
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
-
 import tomli_w
+import yaml
 
 from ai_rules.utils import deep_merge
 
@@ -454,7 +449,7 @@ class ManagedFieldsTracker:
             with open(self.path) as f:
                 self._data = json.load(f)
                 return self._data
-        except (OSError, json.JSONDecodeError):
+        except OSError, json.JSONDecodeError:
             self._data = {"version": 1}
             return self._data
 

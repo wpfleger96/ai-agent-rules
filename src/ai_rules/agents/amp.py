@@ -54,7 +54,7 @@ class AmpAgent(Agent):
 
         return result
 
-    def get_mcp_manager(self) -> "MCPManager":
+    def get_mcp_manager(self) -> MCPManager:
         from ai_rules.mcp import AmpMCPManager
 
         return AmpMCPManager()

@@ -86,7 +86,7 @@ class ClaudeExtensionManager:
                 try:
                     source = item.resolve()
                     is_broken = not source.exists()
-                except (OSError, RuntimeError):
+                except OSError, RuntimeError:
                     source = None
                     is_broken = True
                 result[name] = (item, source, is_broken)
@@ -127,7 +127,7 @@ class ClaudeExtensionManager:
                 target = item.resolve()
                 if is_managed_target(target, self.config_dir) and not target.exists():
                     orphaned[item.stem] = item
-            except (OSError, RuntimeError):
+            except OSError, RuntimeError:
                 try:
                     raw_target = str(item.readlink())
                     if (
@@ -136,7 +136,7 @@ class ClaudeExtensionManager:
                         or "ai-rules" in raw_target
                     ):
                         orphaned[item.stem] = item
-                except (OSError, RuntimeError):
+                except OSError, RuntimeError:
                     pass
 
         return orphaned
@@ -201,7 +201,7 @@ class ClaudeExtensionManager:
                         target = hook_file.resolve()
                         if is_managed_target(target, self.config_dir):
                             orphaned[hook_file.stem] = hook_file
-                    except (OSError, RuntimeError):
+                    except OSError, RuntimeError:
                         pass
 
         return orphaned

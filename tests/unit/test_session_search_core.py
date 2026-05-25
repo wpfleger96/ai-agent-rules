@@ -2,7 +2,7 @@ import argparse
 import json
 import sys
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -112,7 +112,7 @@ def test_sort_time_falls_back_to_timestamp_when_updated_at_none():
 
 def test_parse_iso_z_suffix_returns_utc_datetime():
     result = parse_iso("2024-03-15T12:30:00Z")
-    assert result == datetime(2024, 3, 15, 12, 30, 0, tzinfo=timezone.utc)
+    assert result == datetime(2024, 3, 15, 12, 30, 0, tzinfo=UTC)
 
 
 def test_parse_iso_timezone_offset_returns_aware_datetime():
@@ -146,17 +146,17 @@ def test_date_key_valid_iso_returns_datetime():
 
 def test_date_key_empty_string_returns_min_utc():
     result = date_key("")
-    assert result == datetime.min.replace(tzinfo=timezone.utc)
+    assert result == datetime.min.replace(tzinfo=UTC)
 
 
 def test_date_key_invalid_string_returns_min_utc():
     result = date_key("garbage")
-    assert result == datetime.min.replace(tzinfo=timezone.utc)
+    assert result == datetime.min.replace(tzinfo=UTC)
 
 
 def test_date_key_naive_datetime_gets_utc():
     result = date_key("2024-03-15T12:00:00")
-    assert result.tzinfo == timezone.utc
+    assert result.tzinfo == UTC
 
 
 # ---------------------------------------------------------------------------
