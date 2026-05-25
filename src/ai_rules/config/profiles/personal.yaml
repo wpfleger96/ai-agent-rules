@@ -4,6 +4,8 @@ extends: default
 settings_overrides:
   claude:
     model: opusplan
+    env:
+      CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"
     hooks:
       Stop:
         - hooks:

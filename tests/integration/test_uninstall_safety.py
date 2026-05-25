@@ -53,11 +53,14 @@ class TestUninstallSafety:
         assert not target_path.exists()
 
     def test_complete_uninstall_cleanup(self, test_repo, mock_home):
+        from ai_rules.agents.shared import SharedAgent
+
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
+        shared = SharedAgent(test_repo, config)
 
-        for agent in [claude, goose]:
+        for agent in [claude, goose, shared]:
             for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, force=False, dry_run=False)
@@ -76,7 +79,7 @@ class TestUninstallSafety:
         for file in claude_files + goose_files:
             assert file.is_symlink()
 
-        for agent in [claude, goose]:
+        for agent in [claude, goose, shared]:
             for target, _source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 remove_symlink(target_path, force=True)

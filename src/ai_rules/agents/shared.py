@@ -34,12 +34,18 @@ class SharedAgent(Agent):
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of shared symlinks for agent-agnostic configurations."""
-        from ai_rules.config import AGENT_SKILLS_DIRS
+        from ai_rules.config import AGENT_AGENTS_DIRS, AGENT_SKILLS_DIRS
         from ai_rules.skills import SkillManager
 
         result = []
 
         result.append((Path("~/AGENTS.md"), self.config_dir / "AGENTS.md"))
+
+        agents_dir = self.config_dir / "agents"
+        if agents_dir.exists():
+            for agent_file in sorted(agents_dir.glob("*.md")):
+                for agent_agents_dir in AGENT_AGENTS_DIRS.values():
+                    result.append((agent_agents_dir / agent_file.name, agent_file))
 
         skills_dir = self.config_dir / "skills"
         if skills_dir.exists():

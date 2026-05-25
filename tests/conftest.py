@@ -132,14 +132,14 @@ def test_repo(tmp_path):
 
     (config_root / "AGENTS.md").write_text("# Shared Agent Rules\nTest content")
 
+    shared_agents = config_root / "agents"
+    shared_agents.mkdir()
+    (shared_agents / "test-agent.md").write_text("# Test Agent\nAgent content")
+
     claude_dir = config_root / "claude"
     claude_dir.mkdir()
     (claude_dir / "settings.json").write_text('{"test": "settings"}')
     (claude_dir / "CLAUDE.md").write_text("@~/AGENTS.md\n")
-
-    claude_agents = claude_dir / "agents"
-    claude_agents.mkdir()
-    (claude_agents / "test-agent.md").write_text("# Test Agent\nAgent content")
 
     claude_commands = claude_dir / "commands"
     claude_commands.mkdir()

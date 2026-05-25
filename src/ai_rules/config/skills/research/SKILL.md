@@ -6,7 +6,7 @@ description: >
   'what do we know about', or when a question requires synthesizing information
   from multiple sources. Scales from simple inline answers to 10 parallel
   research agents based on query complexity.
-allowed-tools: Agent, AskUserQuestion, Bash, Read, WebFetch, WebSearch, Write
+allowed-tools: Agent, AskUserQuestion, Bash, Read, SendMessage, TaskCreate, TaskGet, TaskList, TeamCreate, WebFetch, WebSearch, Write
 model: opus
 ---
 
@@ -68,6 +68,8 @@ Then build a subagent manifest. For each subagent, define:
 **Parallelizability**: Most agents should run in parallel. Only introduce sequencing dependencies when an agent genuinely needs another's output (rare — avoid unless truly necessary).
 
 ## Phase 3: Parallel execution
+
+**Teams optimization (optional):** If the `TeamCreate` tool is available, you may use agent teams instead of parallel Agent calls below. Create teammates using the `researcher` and `research-synthesizer` subagent types. Benefits: shared task list, peer messaging between researchers, and task dependencies for synthesis ordering. If `TeamCreate` is unavailable, proceed with Agent calls as described below.
 
 Load the subagent briefing template from `references/subagent-template.md` in this skill's directory.
 
