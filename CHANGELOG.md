@@ -2,6 +2,31 @@
 
 <!-- version list -->
 
+## v0.53.2 (2026-05-25)
+
+### Bug Fixes
+
+- **tests**: Drop SchemaStore permissionRule false-positive allowlist
+  ([#50](https://github.com/wpfleger96/ai-agent-rules/pull/50),
+  [`1e60549`](https://github.com/wpfleger96/ai-agent-rules/commit/1e605491f47e2e490e12346512d72130f4eeb683))
+
+### Chores
+
+- Sync Justfile
+  ([`29403bd`](https://github.com/wpfleger96/ai-agent-rules/commit/29403bda3e70b761f0f254cc8ff8dc1867f422a1))
+
+### Continuous Integration
+
+- Sync publish workflow
+  ([`709420f`](https://github.com/wpfleger96/ai-agent-rules/commit/709420f71f5d07b5f1ad59e9c265134e785f1acd))
+
+- Sync release workflow
+  ([`f2144da`](https://github.com/wpfleger96/ai-agent-rules/commit/f2144da5470f2fc265fe3ccf744587b08f26d342))
+
+- Sync shared files
+  ([`8c8609c`](https://github.com/wpfleger96/ai-agent-rules/commit/8c8609c6f130e5493d9f6a121e134e162570d6d2))
+
+
 ## v0.53.1 (2026-05-21)
 
 ### Bug Fixes
