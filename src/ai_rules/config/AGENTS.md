@@ -192,19 +192,6 @@ Three similar lines > premature abstraction | No helpers for one-time ops | Only
 
 **Why:** LLMs confidently generate plausible-sounding but incorrect assumptions. Explicit verification prevents wasted work.
 
-### Persistent Knowledge Base (recall)
-
-When the recall MCP is configured, it provides a persistent markdown knowledge base at `~/.recall/` with FTS5 full-text search and BM25 ranking. Knowledge persists across sessions, repos, and machines via git sync.
-
-**Write-back (mandatory when recall tools are available):** Persist to the KB when any of these occur:
-- You solved a non-obvious issue or synthesized a useful answer from multiple sources
-- The user corrected a false assumption you made (write with `[misconception]` tag)
-- The user says "remember this" or "save this"
-
-Search first (`search_notes`) to avoid duplicates. If a related note exists, `edit_note` to add the insight rather than rewriting the whole note. Invoke the `/kb` skill for formatting conventions.
-
-**Quality conventions:** Use `[GAP: ...]` annotations for unverified claims. Use `[misconception]` tags to document what is NOT true. Use `[promote]` to flag patterns worth promoting to AGENTS.md rules.
-
 ---
 
 ## Technical Standards

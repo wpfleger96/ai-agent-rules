@@ -230,20 +230,6 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
         logger.debug(f"Failed to get statusline version: {e}")
 
     try:
-        from ai_rules.bootstrap import get_tool_version, is_command_available
-
-        if is_command_available("recall"):
-            bm_version = get_tool_version("recall-mcp-server")
-            if bm_version:
-                console.print(f"recall, version {bm_version}")
-            else:
-                from ai_rules.cli.display import dim as _dim
-
-                console.print(f"recall, version {_dim('(installed, version unknown)')}")
-    except Exception as e:
-        logger.debug(f"Failed to get recall version: {e}")
-
-    try:
         from ai_rules.bootstrap import check_tool_updates, get_tool_by_id
 
         tool = get_tool_by_id("ai-agent-rules")

@@ -4,12 +4,7 @@ extends: default
 settings_overrides:
   claude:
     model: opusplan
-    hooks:
-      Stop:
-        - hooks:
-            - type: command
-              command: "python3 ~/.claude/hooks/recall_stop.py"
-              timeout: 30
+    hooks: {}
   statusline:
     terminal_title:
       enabled: true
@@ -21,12 +16,4 @@ plugins:
   - name: rust-analyzer-lsp
     marketplace: claude-plugins-official
 exclude_symlinks: []
-mcp_overrides:
-  recall:
-    type: stdio
-    command: recall
-    args:
-      - mcp
-      - stdio
-    name: recall
-    description: Persistent markdown knowledge base with FTS5 search and git sync
+mcp_overrides: {}
