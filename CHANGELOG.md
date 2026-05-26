@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v0.55.2 (2026-05-26)
+
+### Bug Fixes
+
+- Auto-detect Python version mismatch during upgrade
+  ([`979fc57`](https://github.com/wpfleger96/ai-agent-rules/commit/979fc57004abd6a3d99c0900465c6b49addccb55))
+
+### Chores
+
+- Sync Justfile
+  ([`6fd109f`](https://github.com/wpfleger96/ai-agent-rules/commit/6fd109fbaa90cbc3d3a69cda881bdbf3330f96fd))
+
+### Continuous Integration
+
+- Sync publish workflow
+  ([`f227bdd`](https://github.com/wpfleger96/ai-agent-rules/commit/f227bdd8a5deae0e41802c91dc44c491ed6174dd))
+
+- Sync shared files
+  ([`8b3f737`](https://github.com/wpfleger96/ai-agent-rules/commit/8b3f7370125069df5807f1240b8b4f4b5bf8b560))
+
+
 ## v0.55.1 (2026-05-26)
 
 ### Bug Fixes
