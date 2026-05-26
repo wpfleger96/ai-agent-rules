@@ -2,7 +2,7 @@
 name: code-reviewer
 description: Performs thorough code review on local changes or PRs. Use this skill proactively after implementing code changes to catch issues before commit/push. Also use when reviewing PRs from other engineers.
 agent: general-purpose
-allowed-tools: Agent, AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
+allowed-tools: Agent, AskUserQuestion, Bash, Glob, Grep, Read, SendMessage, TaskCreate, TaskGet, TaskList, TeamCreate, TodoWrite
 model: opus
 ---
 
@@ -141,6 +141,8 @@ For Small complexity diffs, execute the review inline using all four lenses sequ
 After applying all lenses, proceed directly to Phase 3.
 
 ### Phase 2B: Orchestrated Review (Medium/Large Diffs)
+
+**Teams optimization (optional):** If the `TeamCreate` tool is available, you may use agent teams instead of parallel Agent calls below. Create teammates using the `security-reviewer`, `test-coverage-reviewer`, and (when `performance_relevant = true`) `perf-reviewer` subagent types. Benefits: shared task list and peer messaging for cross-cutting concerns. If `TeamCreate` is unavailable, proceed with Agent calls as described below.
 
 For Medium and Large complexity diffs, spawn parallel Claude subagents — each with a fresh context window focused on a single review lens. This produces higher quality findings because each agent dedicates its full context to one concern without cross-lens contamination.
 

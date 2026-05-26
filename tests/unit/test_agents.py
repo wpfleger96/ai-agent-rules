@@ -22,24 +22,7 @@ class TestClaudeAgent:
         targets = [str(target) for target, _ in symlinks]
         assert "~/.claude/CLAUDE.md" in targets
         assert "~/.claude/settings.json" in targets
-        assert "~/.claude/agents/test-agent.md" in targets
         assert "~/.claude/commands/test-command.md" in targets
-
-    def test_dynamic_discovery_of_multiple_agents(self, test_repo):
-        agents_dir = test_repo / "claude" / "agents"
-        (agents_dir / "another-agent.md").write_text("# Another Agent")
-        (agents_dir / "third-agent.md").write_text("# Third Agent")
-
-        agent = ClaudeAgent(test_repo, Config(exclude_symlinks=[]))
-        symlinks = agent.symlinks
-
-        agent_targets = [
-            str(target) for target, _ in symlinks if "/agents/" in str(target)
-        ]
-        assert len(agent_targets) == 3
-        assert "~/.claude/agents/test-agent.md" in agent_targets
-        assert "~/.claude/agents/another-agent.md" in agent_targets
-        assert "~/.claude/agents/third-agent.md" in agent_targets
 
     def test_dynamic_discovery_of_multiple_commands(self, test_repo):
         commands_dir = test_repo / "claude" / "commands"
@@ -59,7 +42,6 @@ class TestClaudeAgent:
         config = Config(
             exclude_symlinks=[
                 "~/.claude/settings.json",
-                "~/.claude/agents/test-agent.md",
             ]
         )
         agent = ClaudeAgent(test_repo, config)
@@ -68,7 +50,6 @@ class TestClaudeAgent:
 
         targets = [str(target) for target, _ in symlinks]
         assert "~/.claude/settings.json" not in targets
-        assert "~/.claude/agents/test-agent.md" not in targets
         assert "~/.claude/CLAUDE.md" in targets
         assert "~/.claude/commands/test-command.md" in targets
 
@@ -219,7 +200,21 @@ class TestSharedAgent:
 
         targets = [str(target) for target, _ in symlinks]
         assert "~/AGENTS.md" in targets
-        assert len(targets) == 1
+        assert "~/.claude/agents/test-agent.md" in targets
+        assert "~/.gemini/agents/test-agent.md" in targets
+
+    def test_discovers_multiple_agent_definitions(self, test_repo):
+        agents_dir = test_repo / "agents"
+        (agents_dir / "another-agent.md").write_text("# Another Agent")
+
+        agent = SharedAgent(test_repo, Config(exclude_symlinks=[]))
+        symlinks = agent.symlinks
+
+        targets = [str(target) for target, _ in symlinks]
+        assert "~/.claude/agents/test-agent.md" in targets
+        assert "~/.claude/agents/another-agent.md" in targets
+        assert "~/.gemini/agents/test-agent.md" in targets
+        assert "~/.gemini/agents/another-agent.md" in targets
 
     def test_excludes_filtered_symlinks(self, test_repo):
         config = Config(exclude_symlinks=["~/AGENTS.md"])
@@ -229,4 +224,3 @@ class TestSharedAgent:
 
         targets = [str(target) for target, _ in symlinks]
         assert "~/AGENTS.md" not in targets
-        assert len(targets) == 0

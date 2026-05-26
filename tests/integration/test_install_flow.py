@@ -129,20 +129,22 @@ class TestInstallFlow:
             assert not (Path(str(path).replace("~", str(mock_home)))).exists()
 
     def test_install_with_multiple_agent_files(self, test_repo, mock_home):
-        agents_dir = test_repo / "claude" / "agents"
+        agents_dir = test_repo / "agents"
         (agents_dir / "agent1.md").write_text("# Agent 1")
         (agents_dir / "agent2.md").write_text("# Agent 2")
         (agents_dir / "agent3.md").write_text("# Agent 3")
 
-        config = Config(exclude_symlinks=[])
-        claude = ClaudeAgent(test_repo, config)
+        from ai_rules.agents.shared import SharedAgent
 
-        for target, source in claude.symlinks:
+        config = Config(exclude_symlinks=[])
+        shared = SharedAgent(test_repo, config)
+
+        for target, source in shared.symlinks:
             target_path = Path(str(target).replace("~", str(mock_home)))
             create_symlink(target_path, source, dry_run=False, force=False)
 
-        agent_dir = mock_home / ".claude" / "agents"
-        agent_files = list(agent_dir.glob("*.md"))
+        claude_agent_dir = mock_home / ".claude" / "agents"
+        agent_files = list(claude_agent_dir.glob("*.md"))
         assert len(agent_files) == 4
         assert all(f.is_symlink() for f in agent_files)
 

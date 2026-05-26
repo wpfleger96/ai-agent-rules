@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "Config",
+    "AGENT_AGENTS_DIRS",
     "AGENT_FORMATS",
     "FORMAT_CONFIG_FILES",
     "AGENT_SKILLS_DIRS",
@@ -54,6 +55,11 @@ FORMAT_CONFIG_FILES: dict[str, str] = {
     "json": "settings.json",
     "toml": "config.toml",
     "yaml": "config.yaml",
+}
+
+AGENT_AGENTS_DIRS = {
+    "claude": Path("~/.claude/agents"),
+    "gemini": Path("~/.gemini/agents"),
 }
 
 AGENT_SKILLS_DIRS = {

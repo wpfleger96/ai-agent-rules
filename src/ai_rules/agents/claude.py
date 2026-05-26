@@ -45,7 +45,7 @@ class ClaudeAgent(Agent):
 
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
-        """Cached list of all Claude Code symlinks including dynamic agents/commands."""
+        """Cached list of all Claude Code symlinks including dynamic commands."""
         result = []
 
         result.append(
@@ -58,16 +58,6 @@ class ClaudeAgent(Agent):
                 "claude", settings_file, force=bool(self._effective_preserved_fields)
             )
             result.append((Path("~/.claude/settings.json"), target_file))
-
-        agents_dir = self.config_dir / "claude" / "agents"
-        if agents_dir.exists():
-            for agent_file in sorted(agents_dir.glob("*.md")):
-                result.append(
-                    (
-                        Path(f"~/.claude/agents/{agent_file.name}"),
-                        agent_file,
-                    )
-                )
 
         commands_dir = self.config_dir / "claude" / "commands"
         if commands_dir.exists():
