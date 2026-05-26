@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v0.55.1 (2026-05-26)
+
+### Bug Fixes
+
+- Regenerate lockfile for Python 3.14 ([#56](https://github.com/wpfleger96/ai-agent-rules/pull/56),
+  [`88c9154`](https://github.com/wpfleger96/ai-agent-rules/commit/88c9154c82222c551a5c8a341da23f22b2590bc2))
+
+### Chores
+
+- Upgrade to Python 3.14 ([#56](https://github.com/wpfleger96/ai-agent-rules/pull/56),
+  [`88c9154`](https://github.com/wpfleger96/ai-agent-rules/commit/88c9154c82222c551a5c8a341da23f22b2590bc2))
+
+### Code Style
+
+- Apply ruff fixes for Python 3.14 target
+  ([#56](https://github.com/wpfleger96/ai-agent-rules/pull/56),
+  [`88c9154`](https://github.com/wpfleger96/ai-agent-rules/commit/88c9154c82222c551a5c8a341da23f22b2590bc2))
+
+
 ## v0.55.0 (2026-05-25)
 
 ### Features
