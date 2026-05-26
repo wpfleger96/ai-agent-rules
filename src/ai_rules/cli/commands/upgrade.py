@@ -166,7 +166,9 @@ def upgrade(
     for tool, update_info in tool_updates:
         with console.status(f"Upgrading {tool.display_name}..."):
             try:
-                success, msg, was_upgraded = perform_tool_upgrade(tool)
+                success, msg, was_upgraded = perform_tool_upgrade(
+                    tool, target_version=update_info.latest_version
+                )
             except Exception as e:
                 print_error(f"{tool.display_name} upgrade failed: {e}")
                 continue
@@ -179,8 +181,17 @@ def upgrade(
                     ai_rules_upgraded = True
             elif new_version == update_info.current_version:
                 print_warning(
-                    f"{tool.display_name} upgrade reported success but version unchanged ({new_version})"
+                    f"{tool.display_name} upgrade reported success but version "
+                    f"unchanged ({new_version})"
                 )
+                if msg and msg != "Upgrade successful":
+                    print_hint(msg)
+                else:
+                    print_hint(
+                        "This may be due to a Python version mismatch. Check the "
+                        "package's requires-python and try: "
+                        f"uv tool upgrade {tool.package_name} --python <version>"
+                    )
             else:
                 print_success(f"{tool.display_name} upgraded to {new_version}")
                 if tool.tool_id == "ai-agent-rules":
