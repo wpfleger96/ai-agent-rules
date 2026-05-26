@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.55.3 (2026-05-26)
+
+### Bug Fixes
+
+- Disable recall MCP integration ([#57](https://github.com/wpfleger96/ai-agent-rules/pull/57),
+  [`3f4e496`](https://github.com/wpfleger96/ai-agent-rules/commit/3f4e49699668523662309fa9cb13ec4606716676))
+
+
 ## v0.55.2 (2026-05-26)
 
 ### Bug Fixes
