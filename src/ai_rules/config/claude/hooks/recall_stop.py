@@ -134,7 +134,7 @@ def has_unaddressed_signal(messages: list[dict[str, Any]]) -> str | None:
 def main() -> None:
     try:
         hook_input = json.loads(sys.stdin.read())
-    except (json.JSONDecodeError, EOFError):
+    except json.JSONDecodeError, EOFError:
         sys.exit(0)
 
     if hook_input.get("stop_hook_active"):

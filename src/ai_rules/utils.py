@@ -39,5 +39,5 @@ def is_managed_target(target_path: Path, config_dir: Path) -> bool:
         target_resolved = target_path.resolve()
         config_resolved = config_dir.resolve()
         return target_resolved.is_relative_to(config_resolved)
-    except (ValueError, OSError, RuntimeError):
+    except ValueError, OSError, RuntimeError:
         return False

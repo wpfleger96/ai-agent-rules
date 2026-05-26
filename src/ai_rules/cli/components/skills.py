@@ -78,7 +78,7 @@ class SkillsComponent(Component):
                             continue
                         try:
                             link_target = existing.resolve()
-                        except (OSError, RuntimeError):
+                        except OSError, RuntimeError:
                             link_target = None
 
                         if link_target is None:
@@ -211,7 +211,7 @@ class SkillsComponent(Component):
                             continue
                         try:
                             link_target = existing.resolve()
-                        except (OSError, RuntimeError):
+                        except OSError, RuntimeError:
                             link_target = None
 
                         if link_target is None:
@@ -280,7 +280,7 @@ class SkillsComponent(Component):
                     try:
                         link_target = existing.resolve()
                         link_target.relative_to(config_skills_abs)
-                    except (ValueError, OSError, RuntimeError):
+                    except ValueError, OSError, RuntimeError:
                         continue
 
                     success, _msg = remove_symlink(existing, force=ctx.yes)

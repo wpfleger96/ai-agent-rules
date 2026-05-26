@@ -1,5 +1,3 @@
-import sys
-
 from pathlib import Path
 
 import pytest
@@ -1720,10 +1718,7 @@ class TestTomlSupport:
         assert cache_path is not None
         assert cache_path.exists()
 
-        if sys.version_info >= (3, 11):
-            import tomllib
-        else:
-            import tomli as tomllib
+        import tomllib
 
         with open(cache_path, "rb") as f:
             cached = tomllib.load(f)

@@ -8,7 +8,7 @@ import re
 import sqlite3
 
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +41,7 @@ def _conn(db: Path) -> sqlite3.Connection:
 
 
 def _ts_from_unix(unix: int) -> str:
-    return datetime.fromtimestamp(unix, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(unix, tz=UTC).isoformat()
 
 
 def iter_sessions(args: argparse.Namespace) -> list[Session]:
@@ -276,7 +276,7 @@ def _search_db_session(
                 role, content_json_raw, created_ts = row
                 try:
                     blocks = json.loads(content_json_raw)
-                except (json.JSONDecodeError, TypeError):
+                except json.JSONDecodeError, TypeError:
                     blocks = []
 
                 record = {"role": role, "content_json_parsed": blocks}

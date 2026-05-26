@@ -77,7 +77,7 @@ class PluginManager:
                 timeout=self.CLI_TIMEOUT,
             )
             return result.returncode == 0
-        except (FileNotFoundError, subprocess.TimeoutExpired):
+        except FileNotFoundError, subprocess.TimeoutExpired:
             return False
 
     def load_installed_plugins(self) -> dict[str, Any]:
@@ -89,7 +89,7 @@ class PluginManager:
             with open(self.INSTALLED_PLUGINS_PATH) as f:
                 data: dict[str, Any] = json.load(f)
                 return data
-        except (OSError, json.JSONDecodeError):
+        except OSError, json.JSONDecodeError:
             return {"version": 2, "plugins": {}}
 
     def load_known_marketplaces(self) -> list[str]:
@@ -101,7 +101,7 @@ class PluginManager:
             with open(self.KNOWN_MARKETPLACES_PATH) as f:
                 data = json.load(f)
                 return list(data.keys())
-        except (OSError, json.JSONDecodeError):
+        except OSError, json.JSONDecodeError:
             return []
 
     def load_managed_plugins(self) -> set[str]:
@@ -113,7 +113,7 @@ class PluginManager:
             with open(self.MANAGED_PLUGINS_PATH) as f:
                 data = json.load(f)
                 return set(data.get("plugins", []))
-        except (OSError, json.JSONDecodeError):
+        except OSError, json.JSONDecodeError:
             return set()
 
     def save_managed_plugins(self, plugins: set[str]) -> None:

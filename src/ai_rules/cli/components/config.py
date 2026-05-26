@@ -65,7 +65,7 @@ def _display_symlink_status(
             diff_output = get_content_diff(actual, source)
             if diff_output:
                 active_console.print(diff_output)
-        except (OSError, RuntimeError):
+        except OSError, RuntimeError:
             pass
 
         return False
@@ -76,7 +76,7 @@ def _display_symlink_status(
             diff_output = get_content_diff(target.expanduser(), source)
             if diff_output:
                 active_console.print(diff_output)
-        except (OSError, RuntimeError):
+        except OSError, RuntimeError:
             pass
 
         return False
@@ -311,7 +311,7 @@ class ConfigComponent(Component):
                             )
                         )
                         target_has_diff = True
-                    except (OSError, RuntimeError):
+                    except OSError, RuntimeError:
                         target_diffs.append(
                             (target_path, source, "broken", "Broken symlink", None)
                         )
@@ -319,7 +319,7 @@ class ConfigComponent(Component):
                 elif status_code == "not_symlink":
                     try:
                         diff_output = get_content_diff(target_path, source)
-                    except (OSError, RuntimeError):
+                    except OSError, RuntimeError:
                         diff_output = None
                     target_diffs.append(
                         (

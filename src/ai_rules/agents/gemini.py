@@ -58,7 +58,7 @@ class GeminiAgent(Agent):
 
         return result
 
-    def get_mcp_manager(self) -> "MCPManager":
+    def get_mcp_manager(self) -> MCPManager:
         from ai_rules.mcp import GeminiMCPManager
 
         return GeminiMCPManager()
