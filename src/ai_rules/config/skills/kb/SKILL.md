@@ -1,4 +1,5 @@
 ---
+disabled: true
 name: kb
 description: >-
   This skill should be used when recall MCP tools are available and the user
