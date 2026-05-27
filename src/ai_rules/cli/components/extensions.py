@@ -31,10 +31,10 @@ class ClaudeExtensionsComponent(Component):
             print_unchanged,
             print_update,
         )
-        from ai_rules.symlinks import SymlinkResult, create_symlink
+        from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
 
         ext_manager = ClaudeExtensionManager(ctx.config_dir)
-        created = updated = unchanged = skipped = errors = 0
+        created = updated = unchanged = skipped = errors = cleaned = 0
 
         ctx.console.print("\n[bold cyan]Claude Extensions[/bold cyan]")
         for ext_type in ClaudeExtensionManager.USER_DIRS:
@@ -75,15 +75,31 @@ class ClaudeExtensionsComponent(Component):
                     print_error(f"{target_path}: {message}", indent=2)
                     errors += 1
 
+        all_orphaned = ext_manager.get_all_orphaned()
+        for ext_type, orphaned in all_orphaned.items():
+            for name, orphan_path in sorted(orphaned.items()):
+                if ctx.dry_run:
+                    print_absent(
+                        f"{orphan_path} {dim('(would remove orphan)')}", indent=2
+                    )
+                else:
+                    success, message = remove_symlink(orphan_path, force=True)
+                    if success:
+                        print_success(
+                            f"Removed orphaned {ext_type[:-1]}: {name}", indent=2
+                        )
+                        cleaned += 1
+
         return ComponentResult(
             ok=errors == 0,
-            changed=bool(created or updated),
+            changed=bool(created or updated or cleaned),
             counts={
                 "created": created,
                 "updated": updated,
                 "unchanged": unchanged,
                 "skipped": skipped,
                 "errors": errors,
+                "cleaned": cleaned,
             },
         )
 
@@ -319,6 +335,8 @@ class ClaudeExtensionsComponent(Component):
                     console.print(f"  {name:<20} {dim('Unmanaged')}")
 
             for name in sorted(orphaned_hooks.keys()):
+                if name in all_orphaned.get("hooks", {}):
+                    continue
                 console.print(
                     f"  {name:<20} [yellow]No configuration[/yellow] {dim('(orphaned)')}"
                 )

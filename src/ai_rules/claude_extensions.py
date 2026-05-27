@@ -146,6 +146,7 @@ class ClaudeExtensionManager:
         return {
             "commands": self.get_orphaned_symlinks(Path("~/.claude/commands"), "*.md"),
             "agents": self.get_orphaned_symlinks(Path("~/.claude/agents"), "*.md"),
+            "hooks": self.get_orphaned_symlinks(Path("~/.claude/hooks"), "*.py"),
         }
 
     def _get_configured_hooks(self, settings: dict[str, Any]) -> set[str]:
