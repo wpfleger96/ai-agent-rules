@@ -429,7 +429,7 @@ def perform_tool_upgrade(
     else:
         if not _validate_package_name(tool.package_name):
             return False, f"Invalid package name: {tool.package_name}", False
-        cmd = ["uv", "tool", "upgrade", tool.package_name, "--no-cache"]
+        cmd = ["uv", "tool", "install", "--force", "--reinstall", tool.package_name]
 
         if index_url := get_configured_index_url():
             cmd.extend(["--default-index", index_url])
