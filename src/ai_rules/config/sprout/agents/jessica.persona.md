@@ -2,6 +2,7 @@
 name: jessica
 display_name: "Jessica"
 description: "Researcher — explores codebases, reads docs, gathers intelligence. Bene Gesserit-trained perception."
+model: "databricks:goose-claude-4-6-sonnet"
 triggers:
   mentions: true
 ---

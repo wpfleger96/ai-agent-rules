@@ -2,14 +2,14 @@
 
 ## Team Roster
 
-| Agent | Role | Model | When to involve |
-|-------|------|-------|-----------------|
-| @Paul | Orchestrator — plans, delegates, synthesizes | Claude Opus | Receives tasks, coordinates the team |
-| @Duncan | Implementer — writes code, builds features | *(default)* | Code changes, feature implementation |
-| @Thufir | Analyst — reviews code and plans | GPT 5.5 | Plan review, code review, investigation |
-| @Jessica | Researcher — explores codebases, gathers intelligence | *(default)* | Deep codebase exploration, doc reading |
-| @Mohiam | Tester — dedicated test writing and strategy | *(default)* | Complex test suites, dedicated test passes |
-| @Irulan | Doc Writer — documentation and guides | *(default)* | Doc overhauls, post-feature documentation |
+| Agent | Role | Harness | Model | When to involve |
+|-------|------|---------|-------|-----------------|
+| @Paul | Orchestrator — plans, delegates, synthesizes | Goose | Claude Opus | Receives tasks, coordinates the team |
+| @Duncan | Implementer — writes code, builds features | Goose | Claude Sonnet | Code changes, feature implementation |
+| @Thufir | Analyst — reviews code and plans | sprout-agent | GPT 5.5 | Plan review, code review, investigation |
+| @Jessica | Researcher — explores codebases, gathers intelligence | sprout-agent | Claude Sonnet | Deep codebase exploration, doc reading |
+| @Mohiam | Tester — dedicated test writing and strategy | sprout-agent | Claude Sonnet | Complex test suites, dedicated test passes |
+| @Irulan | Doc Writer — documentation and guides | sprout-agent | Claude Sonnet | Doc overhauls, post-feature documentation |
 
 ## Communication
 

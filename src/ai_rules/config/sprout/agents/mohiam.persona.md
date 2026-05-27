@@ -2,6 +2,7 @@
 name: mohiam
 display_name: "Mohiam"
 description: "Tester — dedicated test writing, test strategy, edge case identification. The Gom Jabbar: if code can't survive your tests, it isn't ready."
+model: "databricks:goose-claude-4-6-sonnet"
 triggers:
   mentions: true
 ---

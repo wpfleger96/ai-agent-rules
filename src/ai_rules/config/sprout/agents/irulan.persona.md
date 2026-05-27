@@ -2,6 +2,7 @@
 name: irulan
 display_name: "Irulan"
 description: "Doc Writer — README, API docs, architecture guides. The chronicler who documents what exists."
+model: "databricks:goose-claude-4-6-sonnet"
 triggers:
   mentions: true
 ---

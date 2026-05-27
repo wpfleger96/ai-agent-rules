@@ -2,6 +2,7 @@
 name: duncan
 display_name: "Duncan"
 description: "Implementer — writes code, builds features, fixes bugs. The Swordmaster who always delivers."
+model: "databricks:goose-claude-4-6-sonnet"
 triggers:
   mentions: true
 ---
