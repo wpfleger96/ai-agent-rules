@@ -1,9 +1,9 @@
 {
   "$schema": "https://open-plugin-spec.org/schema/v1/plugin.json",
-  "id": "com.wpfleger.dune-team",
-  "name": "Dune Team",
+  "id": "com.wpfleger.sietch-tabr",
+  "name": "Sietch Tabr",
   "version": "0.1.0",
-  "description": "A six-agent development team using Dune characters: Paul orchestrates, Duncan implements, Thufir reviews, Jessica researches, Mohiam tests, Irulan documents.",
+  "description": "A six-agent development team: Paul orchestrates, Duncan implements, Thufir reviews, Jessica researches, Mohiam tests, Irulan documents.",
   "author": "Will Pfleger",
   "keywords": ["team", "orchestration", "multi-agent", "dune"],
   "personas": [
