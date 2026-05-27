@@ -2,6 +2,31 @@
 
 <!-- version list -->
 
+## v0.55.6 (2026-05-27)
+
+### Bug Fixes
+
+- Restore orphaned hook cleanup lost in component refactor
+  ([#63](https://github.com/wpfleger96/ai-agent-rules/pull/63),
+  [`4ec40a3`](https://github.com/wpfleger96/ai-agent-rules/commit/4ec40a332c6388c9253a9e34ae98d4c757094fe4))
+
+### Chores
+
+- **deps**: Lock file maintenance ([#62](https://github.com/wpfleger96/ai-agent-rules/pull/62),
+  [`d168f2a`](https://github.com/wpfleger96/ai-agent-rules/commit/d168f2a61cc8452ba62ed8bd06f24ca933580596))
+
+### Continuous Integration
+
+- Sync release workflow
+  ([`58278e1`](https://github.com/wpfleger96/ai-agent-rules/commit/58278e13c317f842e0e27754c9ff6cb1a00b2942))
+
+- Sync shared files
+  ([`f23d070`](https://github.com/wpfleger96/ai-agent-rules/commit/f23d070878ab5db1900a26a19dd169ee4cec7f63))
+
+- Sync shared files
+  ([`66f033e`](https://github.com/wpfleger96/ai-agent-rules/commit/66f033ec7ef682a2650e42043e393c3ed7deb70d))
+
+
 ## v0.55.5 (2026-05-27)
 
 ### Bug Fixes
