@@ -16,7 +16,6 @@
   ],
   "pack_instructions": "instructions.md",
   "defaults": {
-    "model": "anthropic:claude-sonnet-4-20250514",
     "triggers": {
       "mentions": true,
       "keywords": [],

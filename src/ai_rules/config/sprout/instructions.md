@@ -2,14 +2,14 @@
 
 ## Team Roster
 
-| Agent | Role | Harness | When to involve |
-|-------|------|---------|-----------------|
-| @Paul | Orchestrator — plans, delegates, synthesizes | Claude (Opus) | Receives tasks, coordinates the team |
-| @Duncan | Implementer — writes code, builds features | Claude (Sonnet) | Code changes, feature implementation |
-| @Thufir | Analyst — reviews code and plans | Codex (GPT) | Plan review, code review, investigation |
-| @Jessica | Researcher — explores codebases, gathers intelligence | Goose (Sonnet) | Deep codebase exploration, doc reading |
-| @Mohiam | Tester — dedicated test writing and strategy | Claude (Sonnet) | Complex test suites, dedicated test passes |
-| @Irulan | Doc Writer — documentation and guides | Claude (Sonnet) | Doc overhauls, post-feature documentation |
+| Agent | Role | Model | When to involve |
+|-------|------|-------|-----------------|
+| @Paul | Orchestrator — plans, delegates, synthesizes | Claude Opus | Receives tasks, coordinates the team |
+| @Duncan | Implementer — writes code, builds features | *(default)* | Code changes, feature implementation |
+| @Thufir | Analyst — reviews code and plans | GPT 5.5 | Plan review, code review, investigation |
+| @Jessica | Researcher — explores codebases, gathers intelligence | *(default)* | Deep codebase exploration, doc reading |
+| @Mohiam | Tester — dedicated test writing and strategy | *(default)* | Complex test suites, dedicated test passes |
+| @Irulan | Doc Writer — documentation and guides | *(default)* | Doc overhauls, post-feature documentation |
 
 ## Communication
 
