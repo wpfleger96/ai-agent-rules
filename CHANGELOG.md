@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.55.4 (2026-05-27)
+
+### Bug Fixes
+
+- Filter disabled tools from reinstall prompt and warn on local installs
+  ([#58](https://github.com/wpfleger96/ai-agent-rules/pull/58),
+  [`f87cffa`](https://github.com/wpfleger96/ai-agent-rules/commit/f87cffaad37b9302009244767efd825de3caf189))
+
+
 ## v0.55.3 (2026-05-26)
 
 ### Bug Fixes
