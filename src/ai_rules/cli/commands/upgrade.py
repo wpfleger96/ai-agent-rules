@@ -50,6 +50,7 @@ def upgrade(
         ToolSource,
         check_tool_updates,
         get_effective_install_source,
+        get_tool_source,
         get_updatable_tools,
         perform_tool_upgrade,
     )
@@ -74,6 +75,8 @@ def upgrade(
     if resolved_only is None:
         tools = _filter_enabled(tools)
     missing_tools = [t for t in all_tools if not t.is_installed()]
+    if resolved_only is None:
+        missing_tools = _filter_enabled(missing_tools)
 
     for tool in missing_tools:
         print_warning(f"{tool.display_name} is not installed")
@@ -114,6 +117,14 @@ def upgrade(
             print_error(f"Could not get {tool.display_name} version: {e}")
             continue
 
+        if get_tool_source(tool.package_name) == ToolSource.LOCAL:
+            print_warning(
+                f"{tool.display_name} is installed from a local path — "
+                f"skipping update check. Reinstall from PyPI with: "
+                f"uv tool install {tool.package_name} --force"
+            )
+            continue
+
         with console.status(f"Checking {tool.display_name} for updates..."):
             try:
                 update_info = check_tool_updates(tool)
@@ -128,7 +139,7 @@ def upgrade(
 
     console.print()
 
-    if not tool_updates and not force:
+    if not tool_updates:
         print_success("All tools are up to date!")
         return
 

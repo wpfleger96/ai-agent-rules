@@ -453,6 +453,58 @@ class TestIsEnabledFiltering:
 
 @pytest.mark.unit
 @pytest.mark.bootstrap
+class TestMissingToolsFilterEnabled:
+    """Tests that missing_tools respects is_enabled filtering."""
+
+    @staticmethod
+    def _make_tool(
+        tool_id: str,
+        installed: bool = True,
+        is_enabled: Callable[[], bool] | None = None,
+    ) -> ToolSpec:
+        return ToolSpec(
+            tool_id=tool_id,
+            package_name=f"{tool_id}-pkg",
+            display_name=tool_id,
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: installed,
+            is_enabled=is_enabled,
+        )
+
+    def test_disabled_missing_tool_excluded(self):
+        from ai_rules.cli.commands.upgrade import _filter_enabled
+
+        all_tools = [
+            self._make_tool("recall", installed=False, is_enabled=lambda: False)
+        ]
+        missing_tools = [t for t in all_tools if not t.is_installed()]
+        missing_tools = _filter_enabled(missing_tools)
+        assert missing_tools == []
+
+    def test_enabled_missing_tool_included(self):
+        from ai_rules.cli.commands.upgrade import _filter_enabled
+
+        all_tools = [self._make_tool("statusline", installed=False, is_enabled=None)]
+        missing_tools = [t for t in all_tools if not t.is_installed()]
+        missing_tools = _filter_enabled(missing_tools)
+        assert len(missing_tools) == 1
+
+    def test_disabled_missing_tool_included_when_explicitly_targeted(self):
+        """--only=<tool> bypasses the is_enabled check for missing tools too."""
+        from ai_rules.cli.commands.upgrade import _filter_enabled
+
+        resolved_only = "recall"
+        all_tools = [
+            self._make_tool("recall", installed=False, is_enabled=lambda: False)
+        ]
+        missing_tools = [t for t in all_tools if not t.is_installed()]
+        if resolved_only is None:
+            missing_tools = _filter_enabled(missing_tools)
+        assert len(missing_tools) == 1
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
 class TestGetToolVenvPython:
     """Tests for _get_tool_venv_python helper."""
 
