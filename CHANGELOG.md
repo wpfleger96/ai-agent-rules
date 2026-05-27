@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.55.5 (2026-05-27)
+
+### Bug Fixes
+
+- Switch PyPI upgrade from uv tool upgrade to uv tool install --force
+  ([#59](https://github.com/wpfleger96/ai-agent-rules/pull/59),
+  [`b32e75a`](https://github.com/wpfleger96/ai-agent-rules/commit/b32e75a3ab07f98f347e34e4501d0c49baf70d73))
+
+
 ## v0.55.4 (2026-05-27)
 
 ### Bug Fixes
