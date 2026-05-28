@@ -160,7 +160,7 @@ def run_install_parallel(
 
     for component in infrastructure:
         plan = component.plan(ctx)
-        if plan.has_changes:
+        if plan.has_changes or ctx.force:
             result = component.apply(ctx, plan)
         else:
             result = ComponentResult()
@@ -194,7 +194,9 @@ def run_install_parallel(
     plans = run_components_parallel(semantic_list, "plan", ctx)
 
     apply_list = [
-        c for c in semantic_list if getattr(plans.get(c), "has_changes", False)
+        c
+        for c in semantic_list
+        if getattr(plans.get(c), "has_changes", False) or ctx.force
     ]
     results = run_components_parallel(apply_list, "apply", ctx, plans=plans)
 

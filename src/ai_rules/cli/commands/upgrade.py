@@ -226,6 +226,7 @@ def upgrade(
                     "ai-agent-rules",
                     "install",
                     "--rebuild-cache",
+                    "--force",
                     "-y",
                     "--profile",
                     current_profile,
@@ -240,11 +241,13 @@ def upgrade(
             else:
                 print_warning(f"Install failed with exit code {result.returncode}")
                 print_hint(
-                    "Run 'ai-agent-rules install --rebuild-cache' manually to retry"
+                    "Run 'ai-agent-rules install --rebuild-cache --force' manually to retry"
                 )
         except subprocess.TimeoutExpired:
             print_warning("Install timed out after 30 seconds")
-            print_hint("Run 'ai-agent-rules install --rebuild-cache' manually to retry")
+            print_hint(
+                "Run 'ai-agent-rules install --rebuild-cache --force' manually to retry"
+            )
         except Exception as e:
             print_warning(f"Could not run install: {e}")
             print_hint("Run 'ai-agent-rules install --rebuild-cache' manually")

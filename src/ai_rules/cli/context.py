@@ -40,6 +40,7 @@ class CliContext:
     dry_run: bool = False
     rebuild_cache: bool = False
     skip_completions: bool = False
+    force: bool = False
 
     @property
     def selected_agents(self) -> list[Agent]:
