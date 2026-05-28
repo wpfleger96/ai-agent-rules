@@ -40,6 +40,7 @@ class CliContext:
     dry_run: bool = False
     rebuild_cache: bool = False
     skip_completions: bool = False
+    force: bool = False
 
     @property
     def selected_agents(self) -> list[Agent]:
@@ -115,13 +116,9 @@ class SkillsPlan(ComponentPlan):
 
 
 @dataclass
-class OrphanSweepPlan(ComponentPlan):
-    orphans: list[Path] = field(default_factory=list)
-
-
-@dataclass
 class ClaudeExtensionsPlan(ComponentPlan):
     symlink_ops: list[tuple[str, Path, Path]] = field(default_factory=list)
+    cleanup_ops: list[tuple[str, str, Path]] = field(default_factory=list)
 
 
 @dataclass

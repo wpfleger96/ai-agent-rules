@@ -127,9 +127,17 @@ class ClaudeExtensionsComponent(Component):
                 target_path = user_dir / filename
                 symlink_ops.append((ext_type, target_path, source_path))
 
+        all_orphaned = ext_manager.get_all_orphaned()
+        cleanup_ops: list[tuple[str, str, Any]] = [
+            (ext_type, name, path)
+            for ext_type, orphaned in all_orphaned.items()
+            for name, path in orphaned.items()
+        ]
+
         return ClaudeExtensionsPlan(
-            has_changes=bool(symlink_ops),
+            has_changes=bool(symlink_ops or cleanup_ops),
             symlink_ops=symlink_ops,
+            cleanup_ops=cleanup_ops,
         )
 
     def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
@@ -179,15 +187,28 @@ class ClaudeExtensionsComponent(Component):
                 print_error(f"{target_path}: {message}", indent=2)
                 errors += 1
 
+        cleaned = 0
+        if not ctx.dry_run:
+            from ai_rules.symlinks import remove_symlink
+
+            for _ext_type, name, orphan_path in plan.cleanup_ops:
+                success, _message = remove_symlink(orphan_path, force=True)
+                if success:
+                    from ai_rules.cli.display import print_success
+
+                    print_success(f"Removed orphaned extension: {name}", indent=2)
+                    cleaned += 1
+
         return ComponentResult(
             ok=errors == 0,
-            changed=bool(created or updated),
+            changed=bool(created or updated or cleaned),
             counts={
                 "created": created,
                 "updated": updated,
                 "unchanged": unchanged,
                 "skipped": skipped,
                 "errors": errors,
+                "cleaned": cleaned,
             },
         )
 

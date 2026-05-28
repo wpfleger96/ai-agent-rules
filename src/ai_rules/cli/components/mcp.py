@@ -110,7 +110,7 @@ class MCPComponent(Component):
 
             # Dry-run detect to find what needs installing and what conflicts exist
             result, _message, conflicts = target.install_mcps(
-                force=ctx.yes, dry_run=True
+                force=ctx.yes or ctx.force, dry_run=True
             )
 
             if result == OperationResult.NOT_FOUND:
@@ -167,7 +167,7 @@ class MCPComponent(Component):
                 continue
 
             result, message, conflicts = target.install_mcps(
-                force=ctx.yes, dry_run=ctx.dry_run
+                force=ctx.yes or ctx.force, dry_run=ctx.dry_run
             )
 
             if result == OperationResult.UPDATED:

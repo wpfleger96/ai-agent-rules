@@ -51,7 +51,7 @@ class InfraComponent(Component):
 
 
 def make_context(
-    tmp_path: Path, *, yes: bool = False, dry_run: bool = False
+    tmp_path: Path, *, yes: bool = False, dry_run: bool = False, force: bool = False
 ) -> CliContext:
     return CliContext(
         console=Console(file=StringIO()),
@@ -62,6 +62,7 @@ def make_context(
         selected_targets=(),
         yes=yes,
         dry_run=dry_run,
+        force=force,
     )
 
 
@@ -580,3 +581,51 @@ def test_run_parallel_buffer_replay_preserves_definition_order(tmp_path: Path) -
 
     assert output.index("Alpha") < output.index("Beta")
     assert output.index("alpha-output") < output.index("Beta")
+
+
+@pytest.mark.unit
+def test_run_install_parallel_force_applies_no_change_semantic_components(
+    tmp_path: Path,
+) -> None:
+    no_change = PlanApplyComponent(
+        "no-change", plan_result=_SubclassPlan(has_changes=False)
+    )
+
+    result = run_install_parallel(
+        [], [no_change], make_context(tmp_path, yes=True, force=True)
+    )
+
+    assert no_change.apply_calls == 1
+    assert result.ok is True
+
+
+@pytest.mark.unit
+def test_run_install_parallel_without_force_skips_no_change_semantic_components(
+    tmp_path: Path,
+) -> None:
+    no_change = PlanApplyComponent(
+        "no-change", plan_result=_SubclassPlan(has_changes=False)
+    )
+
+    result = run_install_parallel(
+        [], [no_change], make_context(tmp_path, yes=True, force=False)
+    )
+
+    assert no_change.apply_calls == 0
+    assert result.ok is True
+
+
+@pytest.mark.unit
+def test_run_install_parallel_force_applies_no_change_infrastructure_components(
+    tmp_path: Path,
+) -> None:
+    no_change_infra = PlanApplyInfraComponent(
+        "no-change-infra", plan_result=_SubclassPlan(has_changes=False)
+    )
+
+    result = run_install_parallel(
+        [no_change_infra], [], make_context(tmp_path, yes=True, force=True)
+    )
+
+    assert no_change_infra.apply_calls == 1
+    assert result.ok is True

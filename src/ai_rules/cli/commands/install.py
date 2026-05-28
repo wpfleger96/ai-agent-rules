@@ -31,6 +31,11 @@ def _complete_components(
 @click.option("-y", "--yes", is_flag=True, help="Auto-confirm without prompting")
 @click.option("--dry-run", is_flag=True, help="Preview changes without applying")
 @click.option(
+    "--force",
+    is_flag=True,
+    help="Force apply all components even if no changes detected",
+)
+@click.option(
     "--rebuild-cache",
     is_flag=True,
     help="Rebuild merged settings cache (use after changing overrides)",
@@ -66,6 +71,7 @@ def _complete_components(
 def install(
     yes: bool,
     dry_run: bool,
+    force: bool,
     rebuild_cache: bool,
     agents: str | None,
     component_filter: str | None,
@@ -145,6 +151,7 @@ def install(
         dry_run=dry_run,
         rebuild_cache=rebuild_cache,
         skip_completions=skip_completions,
+        force=force,
     )
 
     if dry_run:
