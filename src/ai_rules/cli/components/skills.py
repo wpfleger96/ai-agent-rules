@@ -14,6 +14,7 @@ from ai_rules.cli.context import (
     ComponentResult,
     SkillsPlan,
 )
+from ai_rules.utils import is_managed_target
 
 
 def _enabled_skill_folders(skills_source_dir: Path) -> list[Path]:
@@ -84,19 +85,13 @@ class SkillsComponent(Component):
                         if link_target is None:
                             existing_raw = Path(os.readlink(existing))
                             if not existing_raw.is_absolute():
-                                existing_raw = (
-                                    existing.parent / existing_raw
-                                ).resolve()
-                            try:
-                                existing_raw.relative_to(config_skills_abs)
-                            except ValueError:
+                                existing_raw = existing.parent / existing_raw
+                            if not is_managed_target(existing_raw, config_skills_abs):
                                 continue
                             cleanup_ops.append(existing)
                             continue
 
-                        try:
-                            link_target.relative_to(config_skills_abs)
-                        except ValueError:
+                        if not is_managed_target(link_target, config_skills_abs):
                             continue
 
                         if not link_target.exists():
@@ -217,19 +212,13 @@ class SkillsComponent(Component):
                         if link_target is None:
                             existing_raw = Path(os.readlink(existing))
                             if not existing_raw.is_absolute():
-                                existing_raw = (
-                                    existing.parent / existing_raw
-                                ).resolve()
-                            try:
-                                existing_raw.relative_to(config_skills_abs)
-                            except ValueError:
+                                existing_raw = existing.parent / existing_raw
+                            if not is_managed_target(existing_raw, config_skills_abs):
                                 continue
                             remove_symlink(existing, force=True)
                             continue
 
-                        try:
-                            link_target.relative_to(config_skills_abs)
-                        except ValueError:
+                        if not is_managed_target(link_target, config_skills_abs):
                             continue
 
                         if not link_target.exists():
@@ -279,8 +268,14 @@ class SkillsComponent(Component):
                         continue
                     try:
                         link_target = existing.resolve()
-                        link_target.relative_to(config_skills_abs)
-                    except ValueError, OSError, RuntimeError:
+                    except OSError, RuntimeError:
+                        try:
+                            link_target = existing.readlink()
+                            if not link_target.is_absolute():
+                                link_target = existing.parent / link_target
+                        except OSError, RuntimeError:
+                            continue
+                    if not is_managed_target(link_target, config_skills_abs):
                         continue
 
                     success, _msg = remove_symlink(existing, force=ctx.yes)

@@ -20,6 +20,7 @@ def test_install_components_run_in_expected_order():
         "MCPs",
         "Claude Plugins",
         "Shell Completions",
+        "Orphan Sweep",
     ]
 
 
@@ -34,6 +35,7 @@ def test_status_components_cover_managed_lifecycle_surfaces():
         "Skills",
         "Optional Tools",
         "Shell Completions",
+        "Orphan Sweep",
     ]
 
 
