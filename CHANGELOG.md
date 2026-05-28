@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.56.1 (2026-05-28)
+
+### Bug Fixes
+
+- Detect orphaned symlinks across Python version changes
+  ([#65](https://github.com/wpfleger96/ai-agent-rules/pull/65),
+  [`33a45db`](https://github.com/wpfleger96/ai-agent-rules/commit/33a45dbee41699d01324184dfc161163aea3c75d))
+
+
 ## v0.56.0 (2026-05-28)
 
 ### Bug Fixes
