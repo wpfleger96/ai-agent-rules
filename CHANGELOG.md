@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.57.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.56.1...v0.57.0) (2026-05-28)
+
+
+### Features
+
+* **install:** add --force flag and fix orphan sweep race ([#66](https://github.com/wpfleger96/ai-agent-rules/issues/66)) ([a8bfcee](https://github.com/wpfleger96/ai-agent-rules/commit/a8bfceeed062793ce185edfb39fa2cd2e0d2a09c))
+
 ## v0.56.1 (2026-05-28)
 
 ### Bug Fixes
