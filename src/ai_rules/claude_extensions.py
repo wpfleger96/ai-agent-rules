@@ -125,19 +125,16 @@ class ClaudeExtensionManager:
 
             try:
                 target = item.resolve()
-                if is_managed_target(target, self.config_dir) and not target.exists():
-                    orphaned[item.stem] = item
             except OSError, RuntimeError:
                 try:
-                    raw_target = str(item.readlink())
-                    if (
-                        "ai_rules/config" in raw_target
-                        or "ai-agent-rules" in raw_target
-                        or "ai-rules" in raw_target
-                    ):
-                        orphaned[item.stem] = item
+                    target = item.readlink()
+                    if not target.is_absolute():
+                        target = item.parent / target
                 except OSError, RuntimeError:
-                    pass
+                    continue
+
+            if is_managed_target(target, self.config_dir) and not target.exists():
+                orphaned[item.stem] = item
 
         return orphaned
 

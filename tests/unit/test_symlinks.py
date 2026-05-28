@@ -12,6 +12,7 @@ from ai_rules.symlinks import (
     get_content_diff,
     remove_symlink,
 )
+from ai_rules.utils import is_managed_target
 
 
 @pytest.mark.unit
@@ -364,3 +365,62 @@ class TestGetContentDiffJsonNormalization:
 
         result = get_content_diff(file_a, file_b)
         assert result is not None
+
+
+@pytest.mark.unit
+class TestIsManagedTarget:
+    """Test is_managed_target() ownership detection, including cross-version fallback."""
+
+    def test_same_version_path_returns_true(self, tmp_path):
+        config_dir = tmp_path / "python3.14" / "site-packages" / "ai_rules" / "config"
+        config_dir.mkdir(parents=True)
+        target = config_dir / "hooks" / "foo.py"
+
+        assert is_managed_target(target, config_dir) is True
+
+    def test_cross_version_path_returns_true(self, tmp_path):
+        # config_dir moved to python3.14, symlink still points to python3.13
+        config_dir = tmp_path / "python3.14" / "site-packages" / "ai_rules" / "config"
+        old_target = (
+            tmp_path
+            / "python3.13"
+            / "site-packages"
+            / "ai-agent-rules"
+            / "ai_rules"
+            / "config"
+            / "hooks"
+            / "foo.py"
+        )
+
+        assert is_managed_target(old_target, config_dir) is True
+
+    def test_unrelated_path_returns_false(self, tmp_path):
+        config_dir = tmp_path / "ai_rules" / "config"
+        unrelated = Path("/usr/share/other-package/file.md")
+
+        assert is_managed_target(unrelated, config_dir) is False
+
+    def test_legacy_package_name_returns_true(self, tmp_path):
+        config_dir = tmp_path / "python3.14" / "site-packages" / "ai_rules" / "config"
+        # Old path with legacy package name "ai-rules" (no "ai-agent-rules")
+        legacy_target = (
+            tmp_path
+            / "python3.13"
+            / "site-packages"
+            / "ai-rules"
+            / "config"
+            / "hooks"
+            / "foo.py"
+        )
+
+        assert is_managed_target(legacy_target, config_dir) is True
+
+    def test_relative_path_with_markers_returns_true(self, tmp_path):
+        config_dir = tmp_path / "python3.14" / "site-packages" / "ai_rules" / "config"
+        # Raw readlink result — relative path containing the package marker
+        relative_target = Path(
+            "../../.local/share/uv/tools/ai-agent-rules/lib/python3.13"
+            "/site-packages/ai_rules/config/hooks/foo.py"
+        )
+
+        assert is_managed_target(relative_target, config_dir) is True

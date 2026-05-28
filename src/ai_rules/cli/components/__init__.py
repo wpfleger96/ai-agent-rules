@@ -7,6 +7,7 @@ from ai_rules.cli.components.config import ConfigComponent
 from ai_rules.cli.components.extensions import ClaudeExtensionsComponent
 from ai_rules.cli.components.mcp import MCPComponent
 from ai_rules.cli.components.optional_tools import OptionalToolsComponent
+from ai_rules.cli.components.orphan_sweep import OrphanSweepComponent
 from ai_rules.cli.components.plugins import ClaudePluginComponent
 from ai_rules.cli.components.settings import SettingsComponent
 from ai_rules.cli.components.skills import SkillsComponent
@@ -22,6 +23,7 @@ INSTALL_COMPONENTS: tuple[Component, ...] = (
     MCPComponent(),
     ClaudePluginComponent(),
     CompletionsComponent(),
+    OrphanSweepComponent(),
 )
 
 STATUS_COMPONENTS: tuple[Component, ...] = (
@@ -33,6 +35,7 @@ STATUS_COMPONENTS: tuple[Component, ...] = (
     SkillsComponent(),
     OptionalToolsComponent(),
     CompletionsComponent(),
+    OrphanSweepComponent(),
 )
 
 DIFF_COMPONENTS: tuple[Component, ...] = (

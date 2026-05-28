@@ -5,6 +5,14 @@ import copy
 from pathlib import Path
 from typing import Any
 
+# Substrings that identify a symlink target as belonging to this package,
+# regardless of which Python version's site-packages path it resolves under.
+PACKAGE_MARKERS: tuple[str, ...] = (
+    "ai_rules/config",
+    "ai-agent-rules",
+    "ai-rules",
+)
+
 
 def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Deep merge two dictionaries, with override values taking precedence.
@@ -29,15 +37,21 @@ def is_managed_target(target_path: Path, config_dir: Path) -> bool:
     """Check if a symlink target points to ai-rules managed location.
 
     Args:
-        target_path: Path that symlink points to
+        target_path: Path that symlink points to (resolved or raw readlink result)
         config_dir: ai-rules config directory
 
     Returns:
-        True if target is under the config directory
+        True if target is under the config directory or contains package-identifying markers
     """
     try:
         target_resolved = target_path.resolve()
         config_resolved = config_dir.resolve()
-        return target_resolved.is_relative_to(config_resolved)
+        if target_resolved.is_relative_to(config_resolved):
+            return True
     except ValueError, OSError, RuntimeError:
-        return False
+        pass
+
+    # Fallback: check raw path string for package markers. Catches symlinks
+    # pointing to a previous Python version's site-packages path.
+    target_str = str(target_path)
+    return any(marker in target_str for marker in PACKAGE_MARKERS)
