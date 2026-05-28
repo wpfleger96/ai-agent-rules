@@ -2,6 +2,51 @@
 
 <!-- version list -->
 
+## v0.56.0 (2026-05-28)
+
+### Bug Fixes
+
+- **sprout**: Add explicit model to all personas, split harnesses
+  ([#64](https://github.com/wpfleger96/ai-agent-rules/pull/64),
+  [`7d14555`](https://github.com/wpfleger96/ai-agent-rules/commit/7d145550ff9cc28fa4a38ee8151d3172ff58f953))
+
+- **sprout**: Remove databricks: prefix from model fields
+  ([#64](https://github.com/wpfleger96/ai-agent-rules/pull/64),
+  [`7d14555`](https://github.com/wpfleger96/ai-agent-rules/commit/7d145550ff9cc28fa4a38ee8151d3172ff58f953))
+
+- **sprout**: Replace avatars with user-selected in-character images
+  ([#64](https://github.com/wpfleger96/ai-agent-rules/pull/64),
+  [`7d14555`](https://github.com/wpfleger96/ai-agent-rules/commit/7d145550ff9cc28fa4a38ee8151d3172ff58f953))
+
+- **sprout**: Use Goose+Databricks for all agents, correct model strings
+  ([#64](https://github.com/wpfleger96/ai-agent-rules/pull/64),
+  [`7d14555`](https://github.com/wpfleger96/ai-agent-rules/commit/7d145550ff9cc28fa4a38ee8151d3172ff58f953))
+
+### Chores
+
+- **sprout**: Add source avatar PNGs for PR preview
+  ([#64](https://github.com/wpfleger96/ai-agent-rules/pull/64),
+  [`7d14555`](https://github.com/wpfleger96/ai-agent-rules/commit/7d145550ff9cc28fa4a38ee8151d3172ff58f953))
+
+- **sprout**: Rename persona pack to Sietch Tabr
+  ([#64](https://github.com/wpfleger96/ai-agent-rules/pull/64),
+  [`7d14555`](https://github.com/wpfleger96/ai-agent-rules/commit/7d145550ff9cc28fa4a38ee8151d3172ff58f953))
+
+### Features
+
+- **sprout**: Add in-character Dune film avatars to all 6 personas
+  ([#64](https://github.com/wpfleger96/ai-agent-rules/pull/64),
+  [`7d14555`](https://github.com/wpfleger96/ai-agent-rules/commit/7d145550ff9cc28fa4a38ee8151d3172ff58f953))
+
+- **sprout**: Replace coordinator/reviewer prompts with Dune persona pack
+  ([#64](https://github.com/wpfleger96/ai-agent-rules/pull/64),
+  [`7d14555`](https://github.com/wpfleger96/ai-agent-rules/commit/7d145550ff9cc28fa4a38ee8151d3172ff58f953))
+
+- **sprout**: Replace coordinator/reviewer prompts with Sietch Tabr persona pack
+  ([#64](https://github.com/wpfleger96/ai-agent-rules/pull/64),
+  [`7d14555`](https://github.com/wpfleger96/ai-agent-rules/commit/7d145550ff9cc28fa4a38ee8151d3172ff58f953))
+
+
 ## v0.55.6 (2026-05-27)
 
 ### Bug Fixes
