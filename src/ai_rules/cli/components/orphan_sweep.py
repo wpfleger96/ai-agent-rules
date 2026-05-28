@@ -11,7 +11,6 @@ from ai_rules.cli.context import (
     ComponentResult,
     OrphanSweepPlan,
 )
-from ai_rules.config import AGENT_SKILLS_DIRS
 from ai_rules.utils import is_managed_target
 
 _FILE_DIRS: list[tuple[Path, str]] = [
@@ -33,33 +32,6 @@ def _collect_orphans(config_dir: Path) -> list[Path]:
         for item in user_dir.glob(pattern):
             if not item.is_symlink() or item.is_dir():
                 continue
-
-            try:
-                target = item.resolve()
-            except OSError, RuntimeError:
-                try:
-                    target = item.readlink()
-                    if not target.is_absolute():
-                        target = item.parent / target
-                except OSError, RuntimeError:
-                    continue
-
-            if is_managed_target(target, config_dir) and not target.exists():
-                orphans.append(item)
-
-    for skills_dir_path in AGENT_SKILLS_DIRS.values():
-        user_dir = skills_dir_path.expanduser()
-        if not user_dir.exists():
-            continue
-
-        for item in user_dir.glob("*"):
-            if not item.is_symlink():
-                continue
-            # is_dir() follows symlinks — False for broken ones; check is_symlink+not exists
-            if item.is_dir() or not item.exists():
-                pass  # process both live dir symlinks and broken dir symlinks
-            else:
-                continue  # live non-directory symlink — not a skill dir, skip
 
             try:
                 target = item.resolve()

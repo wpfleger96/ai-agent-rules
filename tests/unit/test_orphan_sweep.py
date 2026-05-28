@@ -54,7 +54,6 @@ class TestOrphanSweepInstall:
         symlink.symlink_to(dangling_target)
 
         monkeypatch.setattr(orphan_sweep_mod, "_FILE_DIRS", [(hooks_dir, "*.py")])
-        monkeypatch.setattr(orphan_sweep_mod, "AGENT_SKILLS_DIRS", {})
 
         OrphanSweepComponent().install(ctx)
 
@@ -74,7 +73,6 @@ class TestOrphanSweepInstall:
         symlink.symlink_to(live_target)
 
         monkeypatch.setattr(orphan_sweep_mod, "_FILE_DIRS", [(hooks_dir, "*.py")])
-        monkeypatch.setattr(orphan_sweep_mod, "AGENT_SKILLS_DIRS", {})
 
         OrphanSweepComponent().install(ctx)
 
@@ -90,7 +88,6 @@ class TestOrphanSweepInstall:
         symlink.symlink_to(unmanaged_target)
 
         monkeypatch.setattr(orphan_sweep_mod, "_FILE_DIRS", [(hooks_dir, "*.py")])
-        monkeypatch.setattr(orphan_sweep_mod, "AGENT_SKILLS_DIRS", {})
 
         OrphanSweepComponent().install(ctx)
 
@@ -106,30 +103,10 @@ class TestOrphanSweepInstall:
         symlink.symlink_to(dangling_target)
 
         monkeypatch.setattr(orphan_sweep_mod, "_FILE_DIRS", [(hooks_dir, "*.py")])
-        monkeypatch.setattr(orphan_sweep_mod, "AGENT_SKILLS_DIRS", {})
 
         OrphanSweepComponent().install(ctx)
 
         assert symlink.is_symlink()
-
-    def test_removes_dangling_skill_dir_symlink(self, tmp_path, monkeypatch):
-        skills_dir = tmp_path / "skills"
-        skills_dir.mkdir()
-
-        ctx = make_context(tmp_path)
-        dangling_target = ctx.config_dir / "skills" / "old-skill"  # dir does not exist
-        symlink = skills_dir / "old-skill"
-        symlink.symlink_to(dangling_target)
-
-        monkeypatch.setattr(orphan_sweep_mod, "_FILE_DIRS", [])
-        monkeypatch.setattr(
-            orphan_sweep_mod, "AGENT_SKILLS_DIRS", {"claude": skills_dir}
-        )
-
-        OrphanSweepComponent().install(ctx)
-
-        assert not symlink.exists()
-        assert not symlink.is_symlink()
 
 
 @pytest.mark.unit
@@ -144,7 +121,6 @@ class TestOrphanSweepStatus:
         symlink.symlink_to(dangling_target)
 
         monkeypatch.setattr(orphan_sweep_mod, "_FILE_DIRS", [(hooks_dir, "*.py")])
-        monkeypatch.setattr(orphan_sweep_mod, "AGENT_SKILLS_DIRS", {})
 
         result = OrphanSweepComponent().status(ctx)
 
@@ -157,7 +133,6 @@ class TestOrphanSweepStatus:
         ctx = make_context(tmp_path)
 
         monkeypatch.setattr(orphan_sweep_mod, "_FILE_DIRS", [(hooks_dir, "*.py")])
-        monkeypatch.setattr(orphan_sweep_mod, "AGENT_SKILLS_DIRS", {})
 
         result = OrphanSweepComponent().status(ctx)
 
