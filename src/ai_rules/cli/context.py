@@ -116,13 +116,9 @@ class SkillsPlan(ComponentPlan):
 
 
 @dataclass
-class OrphanSweepPlan(ComponentPlan):
-    orphans: list[Path] = field(default_factory=list)
-
-
-@dataclass
 class ClaudeExtensionsPlan(ComponentPlan):
     symlink_ops: list[tuple[str, Path, Path]] = field(default_factory=list)
+    cleanup_ops: list[tuple[str, str, Path]] = field(default_factory=list)
 
 
 @dataclass
