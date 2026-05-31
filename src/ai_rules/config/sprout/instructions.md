@@ -7,7 +7,8 @@
 | @Paul | Orchestrator — plans, delegates, synthesizes | Goose | Claude Opus | Receives tasks, coordinates the team |
 | @Duncan | Implementer — writes code, builds features | Goose | Claude Sonnet | Code changes, feature implementation |
 | @Thufir | Analyst — reviews code and plans | sprout-agent | GPT 5.5 | Plan review, code review, investigation |
-| @Jessica | Researcher — explores codebases, gathers intelligence | sprout-agent | Claude Sonnet | Deep codebase exploration, doc reading |
+| @Stilgar | Researcher — explores codebases, traces call chains | sprout-agent | Claude Sonnet | Deep codebase exploration, pattern finding |
+| @Jessica | Planner — turns research into structured plans | Goose | Claude Opus | After research is complete, before delegation to Duncan |
 | @Mohiam | Tester — dedicated test writing and strategy | sprout-agent | Claude Sonnet | Complex test suites, dedicated test passes |
 | @Irulan | Doc Writer — documentation and guides | sprout-agent | Claude Sonnet | Doc overhauls, post-feature documentation |
 
