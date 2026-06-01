@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [0.58.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.57.0...v0.58.0) (2026-06-01)
+
+
+### Features
+
+* **sprout:** add Stilgar, promote Jessica to planner, add character flavor ([#71](https://github.com/wpfleger96/ai-agent-rules/issues/71)) ([ebfbf27](https://github.com/wpfleger96/ai-agent-rules/commit/ebfbf2703f541d7e82950827407b4679e44b2d17))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#72](https://github.com/wpfleger96/ai-agent-rules/issues/72)) ([d60037f](https://github.com/wpfleger96/ai-agent-rules/commit/d60037fdb3c755bacb14839b704a6fbcf56100a9))
+
+
+### Continuous Integration
+
+* sync CI workflow ([09c81bc](https://github.com/wpfleger96/ai-agent-rules/commit/09c81bc71633a648cae86cd0182cd60e67d13195))
+* sync release workflow ([3f48c0d](https://github.com/wpfleger96/ai-agent-rules/commit/3f48c0dc8a251fd4030b681977e0dc4a8372d001))
+
 ## [0.57.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.56.1...v0.57.0) (2026-05-28)
 
 
