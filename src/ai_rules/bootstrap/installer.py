@@ -564,22 +564,14 @@ def ensure_recall_installed(
         return "failed", None
 
 
-def ensure_recall_uninstalled(
+def ensure_tool_uninstalled(
+    command_name: str,
+    package_name: str,
     dry_run: bool = False,
 ) -> tuple[str, str | None]:
-    """Uninstall recall-mcp-server if it is installed.
-
-    Returns:
-        Tuple of (status, message) where status is:
-        "uninstalled", "not_installed", "would_uninstall", or "failed"
-    """
-    if not is_command_available("recall"):
+    if not is_command_available(command_name):
         return "not_installed", None
-
     if dry_run:
-        return "would_uninstall", "Would uninstall recall-mcp-server"
-
-    success, message = uninstall_tool("recall-mcp-server")
-    if success:
-        return "uninstalled", None
-    return "failed", message
+        return "would_uninstall", f"Would uninstall {package_name}"
+    success, message = uninstall_tool(package_name)
+    return ("uninstalled", None) if success else ("failed", message)

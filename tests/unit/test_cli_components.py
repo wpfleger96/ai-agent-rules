@@ -55,7 +55,7 @@ def test_validate_components_check_source_files():
 
 
 @pytest.mark.unit
-def test_uninstall_components_only_remove_symlinks_and_mcps():
+def test_uninstall_components_run_in_expected_order():
     assert [component.label for component in UNINSTALL_COMPONENTS] == [
         "Config Files",
         "Skills",

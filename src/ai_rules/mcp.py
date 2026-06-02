@@ -413,7 +413,9 @@ class GooseMCPManager(MCPManager):
 
     @property
     def _previously_managed_names(self) -> frozenset[str]:
-        return frozenset({"recall"})
+        from ai_rules.bootstrap.registry import get_deprecated_mcp_names
+
+        return get_deprecated_mcp_names()
 
     @property
     def mcp_settings_key(self) -> str | None:

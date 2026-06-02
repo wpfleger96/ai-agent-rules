@@ -16,7 +16,6 @@ from ai_rules.cli.context import (
 class SettingsComponent(Component):
     label = "Settings Cache"
     component_id = "settings"
-    filterable = False
 
     def plan(self, ctx: CliContext) -> SettingsPlan:
         stale_targets = []
@@ -168,20 +167,35 @@ class SettingsComponent(Component):
         )
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
-        import shutil
-
-        from ai_rules.cli.display import print_success
+        from ai_rules.cli.display import print_dim, print_success
         from ai_rules.config import Config, get_managed_fields_path
+
+        cache_dir = Config.get_cache_dir()
+        tracker_path = get_managed_fields_path()
+
+        if ctx.dry_run:
+            changed = False
+            if cache_dir.exists():
+                print_dim(f"Would remove settings cache: {cache_dir}", indent=2)
+                changed = True
+            if tracker_path.exists():
+                print_dim(
+                    f"Would remove managed fields tracker: {tracker_path}", indent=2
+                )
+                changed = True
+            return ComponentResult(changed=changed)
+
+        import shutil
 
         removed = 0
 
-        cache_dir = Config.get_cache_dir()
         if cache_dir.exists():
+            if not cache_dir.is_relative_to(Path.home()):
+                return ComponentResult()
             shutil.rmtree(cache_dir)
             print_success("Removed settings cache", indent=2)
             removed += 1
 
-        tracker_path = get_managed_fields_path()
         if tracker_path.exists():
             tracker_path.unlink()
             print_success("Removed managed fields tracker", indent=2)

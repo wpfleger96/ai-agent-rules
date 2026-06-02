@@ -15,13 +15,44 @@ class OptionalToolsComponent(Component):
     label = "Optional Tools"
     component_id = "tools"
 
+    def _remove_stale_tools(
+        self,
+        stale_tool_ids: list[str],
+        ctx: CliContext,
+    ) -> None:
+        from ai_rules.bootstrap.installer import ensure_tool_uninstalled
+        from ai_rules.bootstrap.registry import DEPRECATED_TOOLS
+        from ai_rules.cli.display import print_dim, print_success, print_warning
+
+        specs_by_id = {s.tool_id: s for s in DEPRECATED_TOOLS}
+        for tool_id in stale_tool_ids:
+            spec = specs_by_id.get(tool_id)
+            if spec is None:
+                continue
+            result, message = ensure_tool_uninstalled(
+                spec.command_name, spec.package_name, dry_run=ctx.dry_run
+            )
+            if result == "uninstalled":
+                print_success(f"Removed stale tool: {spec.tool_id}")
+                ctx.console.print()
+            elif result == "would_uninstall" and ctx.dry_run and message:
+                print_dim(message)
+                ctx.console.print()
+            elif result == "failed":
+                print_warning(f"Failed to remove {spec.tool_id}: {message}")
+                ctx.console.print()
+
     def plan(self, ctx: CliContext) -> OptionalToolsPlan:
         from ai_rules.bootstrap import is_command_available
-        from ai_rules.bootstrap.installer import _is_recall_configured
+        from ai_rules.bootstrap.registry import DEPRECATED_TOOLS
 
         stale: list[str] = []
-        if is_command_available("recall") and not _is_recall_configured(ctx.config):
-            stale.append("recall")
+        for spec in DEPRECATED_TOOLS:
+            if not is_command_available(spec.command_name):
+                continue
+            if spec.is_configured is not None and spec.is_configured(ctx.config):
+                continue
+            stale.append(spec.tool_id)
 
         return OptionalToolsPlan(has_changes=True, stale_tool_names=stale)
 
@@ -35,25 +66,12 @@ class OptionalToolsComponent(Component):
             ensure_statusline_installed,
             get_effective_install_source,
         )
-        from ai_rules.bootstrap.installer import ensure_recall_uninstalled
         from ai_rules.cli.display import print_dim, print_success, print_warning
         from ai_rules.cli.runner import get_console
 
         console = get_console(ctx)
 
-        # Remove stale tools first
-        for tool_name in plan.stale_tool_names:
-            if tool_name == "recall":
-                result, message = ensure_recall_uninstalled(dry_run=ctx.dry_run)
-                if result == "uninstalled":
-                    print_success("Removed stale tool: recall")
-                    console.print()
-                elif result == "would_uninstall" and ctx.dry_run and message:
-                    print_dim(message)
-                    console.print()
-                elif result == "failed":
-                    print_warning(f"Failed to remove recall: {message}")
-                    console.print()
+        self._remove_stale_tools(plan.stale_tool_names, ctx)
 
         recall_result, recall_message = ensure_recall_installed(
             dry_run=ctx.dry_run, config=ctx.config
@@ -107,24 +125,18 @@ class OptionalToolsComponent(Component):
             get_effective_install_source,
             is_command_available,
         )
-        from ai_rules.bootstrap.installer import (
-            _is_recall_configured,
-            ensure_recall_uninstalled,
-        )
+        from ai_rules.bootstrap.registry import DEPRECATED_TOOLS
         from ai_rules.cli.display import print_dim, print_success, print_warning
 
-        # Remove stale tools first
-        if is_command_available("recall") and not _is_recall_configured(ctx.config):
-            result, message = ensure_recall_uninstalled(dry_run=ctx.dry_run)
-            if result == "uninstalled":
-                print_success("Removed stale tool: recall")
-                ctx.console.print()
-            elif result == "would_uninstall" and ctx.dry_run and message:
-                print_dim(message)
-                ctx.console.print()
-            elif result == "failed":
-                print_warning(f"Failed to remove recall: {message}")
-                ctx.console.print()
+        # Detect and remove stale tools
+        stale: list[str] = []
+        for spec in DEPRECATED_TOOLS:
+            if not is_command_available(spec.command_name):
+                continue
+            if spec.is_configured is not None and spec.is_configured(ctx.config):
+                continue
+            stale.append(spec.tool_id)
+        self._remove_stale_tools(stale, ctx)
 
         recall_result, recall_message = ensure_recall_installed(
             dry_run=ctx.dry_run, config=ctx.config
@@ -171,46 +183,69 @@ class OptionalToolsComponent(Component):
         return ComponentResult()
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.bootstrap.installer import ensure_recall_uninstalled
-        from ai_rules.cli.display import print_success, print_unchanged, print_warning
+        from ai_rules.bootstrap.installer import ensure_tool_uninstalled
+        from ai_rules.bootstrap.registry import DEPRECATED_TOOLS
+        from ai_rules.cli.display import (
+            print_dim,
+            print_success,
+            print_unchanged,
+            print_warning,
+        )
 
-        result, message = ensure_recall_uninstalled(dry_run=ctx.dry_run)
-        if result == "uninstalled":
-            print_success("Removed recall", indent=2)
-        elif result == "failed":
-            print_warning(f"Failed to remove recall: {message}", indent=2)
-        elif result == "not_installed":
-            print_unchanged("recall not installed", indent=2)
+        removed = 0
+        for spec in DEPRECATED_TOOLS:
+            result, message = ensure_tool_uninstalled(
+                spec.command_name, spec.package_name, dry_run=ctx.dry_run
+            )
+            if result == "uninstalled":
+                print_success(f"Removed {spec.tool_id}", indent=2)
+                removed += 1
+            elif result == "would_uninstall" and message:
+                print_dim(message, indent=2)
+                removed += 1
+            elif result == "failed":
+                print_warning(f"Failed to remove {spec.tool_id}: {message}", indent=2)
+            elif result == "not_installed":
+                print_unchanged(f"{spec.tool_id} not installed", indent=2)
 
-        return ComponentResult(changed=(result == "uninstalled"))
+        return ComponentResult(changed=removed > 0)
 
     def status(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.bootstrap import is_command_available
-        from ai_rules.bootstrap.installer import _is_recall_configured
+        from ai_rules.bootstrap.registry import DEPRECATED_TOOLS
         from ai_rules.cli.display import print_absent, print_success, print_warning
         from ai_rules.cli.runner import get_console
 
         console = get_console(ctx)
         missing = 0
+        stale = 0
+
         if is_command_available("claude-statusline"):
             print_success("claude-statusline installed", indent=2)
         else:
             print_absent("claude-statusline not installed", indent=2)
             missing += 1
 
-        if _is_recall_configured(ctx.config):
-            if is_command_available("recall"):
-                print_success("recall installed", indent=2)
-            else:
-                print_absent("recall not installed", indent=2)
-                missing += 1
-        elif is_command_available("recall"):
-            # recall is installed but not configured — stale
-            print_warning(
-                "recall installed but not configured (will be removed on next install)",
-                indent=2,
+        for spec in DEPRECATED_TOOLS:
+            is_configured = spec.is_configured is not None and spec.is_configured(
+                ctx.config
             )
-            missing += 1
+            is_installed = is_command_available(spec.command_name)
+
+            if is_configured:
+                if is_installed:
+                    print_success(f"{spec.tool_id} installed", indent=2)
+                else:
+                    print_absent(f"{spec.tool_id} not installed", indent=2)
+                    missing += 1
+            elif is_installed:
+                print_warning(
+                    f"{spec.tool_id} installed but not configured (will be removed on next install)",
+                    indent=2,
+                )
+                stale += 1
 
         console.print()
-        return ComponentResult(counts={"optional_missing": missing})
+        return ComponentResult(
+            counts={"optional_missing": missing, "optional_stale": stale}
+        )
