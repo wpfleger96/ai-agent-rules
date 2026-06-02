@@ -126,7 +126,7 @@
       "Bash(gh pr merge:*)",
       "Bash(rm -r:*)"
     ],
-    "defaultMode": "plan"
+    "defaultMode": "bypassPermissions"
   },
   "model": "sonnet",
   "statusLine": {
