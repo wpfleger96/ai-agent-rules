@@ -10,7 +10,6 @@ import urllib.request
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 
@@ -309,8 +308,9 @@ def check_github_updates(
 
 def _get_tool_venv_python(package_name: str) -> str | None:
     """Read the Python version from a uv tool's virtual environment."""
-    data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
-    pyvenv_cfg = Path(data_home) / "uv" / "tools" / package_name / "pyvenv.cfg"
+    from ai_rules.platform import get_uv_tools_dir
+
+    pyvenv_cfg = get_uv_tools_dir() / package_name / "pyvenv.cfg"
     try:
         for line in pyvenv_cfg.read_text().splitlines():
             if line.startswith("version_info"):

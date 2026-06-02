@@ -37,6 +37,14 @@ class GeminiAgent(Agent):
     def settings_symlink_target(self) -> Path:
         return Path("~/.gemini/settings.json")
 
+    @property
+    def copy_mode_targets(self) -> set[Path]:
+        from ai_rules.platform import is_windows
+
+        if is_windows():
+            return {self.settings_symlink_target.expanduser()}
+        return set()
+
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of all Gemini CLI symlinks."""

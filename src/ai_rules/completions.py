@@ -29,9 +29,24 @@ class ShellConfig:
         return [home / cf for cf in self.config_files if (home / cf).exists()]
 
 
+@dataclass
+class PowerShellConfig(ShellConfig):
+    def get_config_candidates(self) -> list[Path]:
+        home = Path.home()
+        candidates = [
+            home / "Documents" / "PowerShell" / "Microsoft.PowerShell_profile.ps1",
+            home
+            / "Documents"
+            / "WindowsPowerShell"
+            / "Microsoft.PowerShell_profile.ps1",
+        ]
+        return [p for p in candidates if p.exists()]
+
+
 SHELL_REGISTRY: dict[str, ShellConfig] = {
     "bash": ShellConfig("bash", [".bashrc", ".bash_profile", ".profile"]),
     "zsh": ShellConfig("zsh", [".zshrc", ".zprofile"]),
+    "powershell": PowerShellConfig("powershell", []),
 }
 
 
@@ -46,6 +61,12 @@ def detect_shell() -> str | None:
     Returns:
         Shell name if supported, None otherwise
     """
+    from ai_rules.platform import is_windows
+
+    if is_windows():
+        if os.environ.get("PSModulePath"):
+            return "powershell"
+        return None
     shell_path = os.environ.get("SHELL", "")
     shell_name = Path(shell_path).name if shell_path else None
     return shell_name if shell_name in SHELL_REGISTRY else None
@@ -112,6 +133,9 @@ def is_legacy_completion_block(config_path: Path) -> bool:
     if _LEGACY_MARKER_START in content:
         return True
     if COMPLETION_MARKER_START in content and "command -v" not in content:
+        # PowerShell blocks use Get-Command, not command -v
+        if "Get-Command" in content:
+            return False
         return True
     return False
 
@@ -131,13 +155,41 @@ def generate_completion_script(shell: str) -> str:
     Raises:
         ValueError: If shell is not supported
     """
+    env_var = f"_{CANONICAL_CMD.upper().replace('-', '_')}_COMPLETE"
+
+    if shell == "powershell":
+        # bash_source mode: Click reads COMP_WORDS (space-separated command line)
+        # and COMP_CWORD (0-based index of current word) to return completions.
+        return f"""{COMPLETION_MARKER_START}
+if (Get-Command {CANONICAL_CMD} -ErrorAction SilentlyContinue) {{
+    Register-ArgumentCompleter -Native -CommandName '{CANONICAL_CMD}','{ALIAS_CMD}' -ScriptBlock {{
+        param($wordToComplete, $commandAst, $cursorPosition)
+        $words = $commandAst.CommandElements | ForEach-Object {{ $_.ToString() }}
+        $env:{env_var} = 'bash_source'
+        $env:COMP_WORDS = $words -join ' '
+        $env:COMP_CWORD = $words.Count - 1
+        try {{
+            $completions = & {CANONICAL_CMD} 2>$null
+            $completions | ForEach-Object {{
+                $parts = $_ -split '\\s+', 2
+                $text = $parts[0]
+                $desc = if ($parts.Count -gt 1) {{ $parts[1] }} else {{ $text }}
+                [System.Management.Automation.CompletionResult]::new($text, $text, 'ParameterValue', $desc)
+            }}
+        }} finally {{
+            Remove-Item Env:{env_var} -ErrorAction SilentlyContinue
+            Remove-Item Env:COMP_WORDS -ErrorAction SilentlyContinue
+            Remove-Item Env:COMP_CWORD -ErrorAction SilentlyContinue
+        }}
+    }}
+}}
+{COMPLETION_MARKER_END}"""
+
     from click.shell_completion import get_completion_class
 
     comp_cls = get_completion_class(shell)
     if comp_cls is None:
         raise ValueError(f"Unsupported shell: {shell}")
-
-    env_var = f"_{CANONICAL_CMD.upper().replace('-', '_')}_COMPLETE"
 
     if shell == "zsh":
         return f"""{COMPLETION_MARKER_START}
@@ -171,11 +223,23 @@ def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
 
     config_path = find_config_file(shell)
     if config_path is None:
-        return (
-            False,
-            f"No {shell} config file found. Expected one of: "
-            + ", ".join(str(p) for p in get_shell_config_candidates(shell)),
-        )
+        if shell == "powershell":
+            profile = (
+                Path.home()
+                / "Documents"
+                / "PowerShell"
+                / "Microsoft.PowerShell_profile.ps1"
+            )
+            if not dry_run:
+                profile.parent.mkdir(parents=True, exist_ok=True)
+                profile.touch()
+            config_path = profile
+        else:
+            return (
+                False,
+                f"No {shell} config file found. Expected one of: "
+                + ", ".join(str(p) for p in get_shell_config_candidates(shell)),
+            )
 
     if is_completion_installed(config_path):
         if is_legacy_completion_block(config_path):

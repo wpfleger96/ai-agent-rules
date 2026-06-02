@@ -230,3 +230,42 @@ class TestSharedAgent:
         targets = [str(target) for target, _ in symlinks]
         assert "~/AGENTS.md" not in targets
         assert len(targets) == 0
+
+
+@pytest.mark.unit
+@pytest.mark.agents
+class TestGeminiAgentWindowsCopyMode:
+    """Test Gemini agent Windows copy-mode behavior."""
+
+    def test_copy_mode_targets_nonempty_on_windows(self, test_repo, monkeypatch):
+        monkeypatch.setattr("ai_rules.platform.sys.platform", "win32")
+        monkeypatch.setenv("APPDATA", "C:\\Users\\test\\AppData\\Roaming")
+
+        agent = GeminiAgent(test_repo, Config(exclude_symlinks=[]))
+
+        assert len(agent.copy_mode_targets) > 0
+
+    def test_copy_mode_targets_empty_on_non_windows(self, test_repo, monkeypatch):
+        monkeypatch.setattr("ai_rules.platform.sys.platform", "linux")
+
+        agent = GeminiAgent(test_repo, Config(exclude_symlinks=[]))
+
+        assert agent.copy_mode_targets == set()
+
+
+@pytest.mark.unit
+@pytest.mark.agents
+class TestGooseAgentWindowsConfigDir:
+    """Test Goose agent uses platform-aware config dir on Windows."""
+
+    def test_settings_symlink_target_uses_appdata_on_windows(
+        self, test_repo, monkeypatch
+    ):
+        monkeypatch.setattr("ai_rules.platform.sys.platform", "win32")
+        monkeypatch.setenv("APPDATA", "C:\\Users\\test\\AppData\\Roaming")
+
+        agent = GooseAgent(test_repo, Config(exclude_symlinks=[]))
+
+        target_str = str(agent.settings_symlink_target)
+        assert "Block" in target_str
+        assert "goose" in target_str

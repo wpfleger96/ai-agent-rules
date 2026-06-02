@@ -704,6 +704,24 @@ class TestEnsureRecallInstalled:
         assert captured["local_path"] == "/tmp/recall"
 
 
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestGetToolConfigDirWindows:
+    def test_windows_uses_appdata(self, monkeypatch):
+        monkeypatch.setattr("ai_rules.platform.sys.platform", "win32")
+        monkeypatch.setenv("APPDATA", "C:\\Users\\test\\AppData\\Roaming")
+        monkeypatch.delenv("UV_TOOL_DIR", raising=False)
+        result = get_tool_config_dir("ai-agent-rules")
+        result_str = str(result)
+        assert "Lib" in result_str
+        assert "site-packages" in result_str
+
+    def test_uv_tool_dir_override(self, monkeypatch):
+        monkeypatch.setenv("UV_TOOL_DIR", "/custom/tools")
+        result = get_tool_config_dir("ai-agent-rules")
+        assert str(result).startswith("/custom/tools")
+
+
 class _MockTraversable:
     """Mock for importlib.resources traversable that returns empty mcps.json."""
 

@@ -442,3 +442,48 @@ class TestUninstallCompletion:
 
         assert success is False
         assert "not found" in message
+
+
+@pytest.mark.unit
+@pytest.mark.completions
+class TestPowerShellDetection:
+    def test_detect_powershell_on_windows(self, monkeypatch):
+        monkeypatch.setattr("ai_rules.platform.sys.platform", "win32")
+        monkeypatch.setenv("PSModulePath", "C:\\Program Files\\PowerShell\\Modules")
+        assert detect_shell() == "powershell"
+
+    def test_no_shell_on_windows_without_psmodulepath(self, monkeypatch):
+        monkeypatch.setattr("ai_rules.platform.sys.platform", "win32")
+        monkeypatch.delenv("PSModulePath", raising=False)
+        monkeypatch.delenv("SHELL", raising=False)
+        assert detect_shell() is None
+
+
+@pytest.mark.unit
+@pytest.mark.completions
+class TestPowerShellCompletion:
+    def test_generate_powershell_script(self):
+        script = generate_completion_script("powershell")
+        assert COMPLETION_MARKER_START in script
+        assert COMPLETION_MARKER_END in script
+        assert "Register-ArgumentCompleter" in script
+        assert "Get-Command" in script
+        assert "ai-agent-rules" in script
+        assert "ai-rules" in script
+
+    def test_install_creates_powershell_profile(self, tmp_path, monkeypatch):
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setattr("ai_rules.completions.Path.home", lambda: home)
+        # No existing profile files
+        success, message = install_completion("powershell", dry_run=False)
+        assert success is True
+        profile = home / "Documents" / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
+        assert profile.exists()
+        assert COMPLETION_MARKER_START in profile.read_text()
+
+    def test_powershell_block_not_flagged_as_legacy(self, tmp_path):
+        config = tmp_path / "profile.ps1"
+        script = generate_completion_script("powershell")
+        config.write_text(script)
+        assert not is_legacy_completion_block(config)

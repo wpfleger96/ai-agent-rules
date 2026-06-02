@@ -7,9 +7,12 @@ from ai_rules.cli import cleanup_deprecated_symlinks
 from ai_rules.config import Config
 from ai_rules.symlinks import (
     SymlinkResult,
+    check_file_copy,
     check_symlink,
+    create_file_copy,
     create_symlink,
     get_content_diff,
+    remove_file_copy,
     remove_symlink,
 )
 from ai_rules.utils import is_managed_target
@@ -424,3 +427,149 @@ class TestIsManagedTarget:
         )
 
         assert is_managed_target(relative_target, config_dir) is True
+
+
+@pytest.mark.unit
+class TestCreateFileCopy:
+    """Test file copy operations for Windows Gemini copy-mode."""
+
+    def test_creates_copy(self, tmp_path):
+        source = tmp_path / "source.json"
+        source.write_text('{"key": "value"}')
+        target = tmp_path / "target.json"
+
+        result, message = create_file_copy(target, source, force=False, dry_run=False)
+        assert result == SymlinkResult.CREATED
+        assert target.exists()
+        assert not target.is_symlink()
+        assert target.read_text() == '{"key": "value"}'
+
+    def test_already_correct(self, tmp_path):
+        source = tmp_path / "source.json"
+        source.write_text('{"key": "value"}')
+        target = tmp_path / "target.json"
+        target.write_text('{"key": "value"}')
+
+        result, message = create_file_copy(target, source, force=False, dry_run=False)
+        assert result == SymlinkResult.ALREADY_CORRECT
+
+    def test_replaces_stale_symlink(self, tmp_path):
+        source = tmp_path / "source.json"
+        source.write_text('{"key": "value"}')
+        old_source = tmp_path / "old.json"
+        old_source.write_text("old")
+        target = tmp_path / "target.json"
+        target.symlink_to(old_source)
+
+        result, message = create_file_copy(target, source, force=False, dry_run=False)
+        assert result == SymlinkResult.CREATED
+        assert not target.is_symlink()
+        assert target.read_text() == '{"key": "value"}'
+
+    def test_source_missing(self, tmp_path):
+        target = tmp_path / "target.json"
+        source = tmp_path / "nonexistent.json"
+
+        result, message = create_file_copy(target, source, force=False, dry_run=False)
+        assert result == SymlinkResult.ERROR
+
+    def test_dry_run(self, tmp_path):
+        source = tmp_path / "source.json"
+        source.write_text('{"key": "value"}')
+        target = tmp_path / "target.json"
+
+        result, message = create_file_copy(target, source, force=False, dry_run=True)
+        assert result == SymlinkResult.CREATED
+        assert not target.exists()
+
+
+@pytest.mark.unit
+class TestCheckFileCopy:
+    """Test file copy status checking."""
+
+    def test_correct(self, tmp_path):
+        source = tmp_path / "source.json"
+        source.write_text("content")
+        target = tmp_path / "target.json"
+        target.write_text("content")
+
+        status, message = check_file_copy(target, source)
+        assert status == "correct"
+
+    def test_stale(self, tmp_path):
+        source = tmp_path / "source.json"
+        source.write_text("new content")
+        target = tmp_path / "target.json"
+        target.write_text("old content")
+
+        status, message = check_file_copy(target, source)
+        assert status == "stale_copy"
+
+    def test_missing(self, tmp_path):
+        source = tmp_path / "source.json"
+        source.write_text("content")
+        target = tmp_path / "nonexistent.json"
+
+        status, message = check_file_copy(target, source)
+        assert status == "missing"
+
+    def test_is_symlink(self, tmp_path):
+        source = tmp_path / "source.json"
+        source.write_text("content")
+        target = tmp_path / "target.json"
+        target.symlink_to(source)
+
+        status, message = check_file_copy(target, source)
+        assert status == "not_copy"
+
+
+@pytest.mark.unit
+class TestRemoveFileCopy:
+    """Test file copy removal."""
+
+    def test_removes_file(self, tmp_path):
+        target = tmp_path / "target.json"
+        target.write_text("content")
+
+        success, message = remove_file_copy(target, force=True)
+        assert success is True
+        assert not target.exists()
+
+    def test_refuses_symlink(self, tmp_path):
+        source = tmp_path / "source.json"
+        source.write_text("content")
+        target = tmp_path / "target.json"
+        target.symlink_to(source)
+
+        success, message = remove_file_copy(target, force=True)
+        assert success is False
+        assert "symlink" in message.lower()
+
+    def test_nonexistent(self, tmp_path):
+        target = tmp_path / "nonexistent.json"
+
+        success, message = remove_file_copy(target, force=True)
+        assert success is False
+
+
+@pytest.mark.unit
+class TestWindowsPermissionError:
+    """Test Windows-specific symlink permission error messaging."""
+
+    def test_windows_permission_error_shows_developer_mode_hint(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr("ai_rules.platform.sys.platform", "win32")
+        from ai_rules.symlinks import SymlinkResult, _symlink_permission_error
+
+        result, message = _symlink_permission_error(PermissionError("test"))
+        assert result == SymlinkResult.ERROR
+        assert "Developer Mode" in message
+
+    def test_unix_permission_error_no_developer_mode(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("ai_rules.platform.sys.platform", "linux")
+        from ai_rules.symlinks import SymlinkResult, _symlink_permission_error
+
+        result, message = _symlink_permission_error(PermissionError("test"))
+        assert result == SymlinkResult.ERROR
+        assert "Developer Mode" not in message

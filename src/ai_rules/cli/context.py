@@ -107,6 +107,7 @@ class OptionalToolsPlan(ComponentPlan):
 class ConfigPlan(ComponentPlan):
     symlink_ops: list[tuple[Path, Path]] = field(default_factory=list)
     excluded_count: int = 0
+    copy_targets: set[Path] = field(default_factory=set)
 
 
 @dataclass
