@@ -274,6 +274,11 @@ class SkillsComponent(Component):
                             if not link_target.is_absolute():
                                 link_target = existing.parent / link_target
                         except OSError, RuntimeError:
+                            try:
+                                existing.unlink()
+                                removed += 1
+                            except OSError:
+                                skipped += 1
                             continue
                     if not is_managed_target(link_target, config_skills_abs):
                         continue

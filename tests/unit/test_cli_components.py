@@ -61,4 +61,7 @@ def test_uninstall_components_only_remove_symlinks_and_mcps():
         "Skills",
         "Claude Extensions",
         "MCPs",
+        "Claude Plugins",
+        "Optional Tools",
+        "Settings Cache",
     ]

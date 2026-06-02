@@ -165,5 +165,35 @@ class ClaudePluginComponent(Component):
 
         return ComponentResult(ok=all_correct, changed=not all_correct)
 
+    def uninstall(self, ctx: CliContext) -> ComponentResult:
+        if not self._claude_selected(ctx):
+            return ComponentResult()
+
+        from ai_rules.cli.display import print_success, print_warning
+        from ai_rules.plugins import OperationResult, PluginManager
+
+        plugin_manager = PluginManager()
+        managed = plugin_manager.load_managed_plugins()
+
+        if not managed:
+            return ComponentResult()
+
+        removed = 0
+        for plugin_key in list(managed):
+            result, message = plugin_manager.uninstall_plugin(
+                plugin_key, clean_cache=True
+            )
+            if result == OperationResult.SUCCESS:
+                print_success(f"Removed plugin: {plugin_key}", indent=2)
+                removed += 1
+            elif result == OperationResult.ERROR:
+                print_warning(
+                    f"Failed to remove plugin {plugin_key}: {message}", indent=2
+                )
+
+        plugin_manager.save_managed_plugins(set())
+
+        return ComponentResult(changed=removed > 0, counts={"removed": removed})
+
     def diff(self, ctx: CliContext) -> ComponentResult:
         return self.status(ctx)
