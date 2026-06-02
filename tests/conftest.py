@@ -80,6 +80,19 @@ def clear_config_cache():
         Config._load_cached.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def mock_platform_for_tests(monkeypatch):
+    from ai_rules.platform import Platform, detect_platform
+
+    detect_platform.cache_clear()
+    monkeypatch.setattr(
+        "ai_rules.platform.detect_platform",
+        lambda: Platform.LINUX,
+    )
+    yield
+    detect_platform.cache_clear()
+
+
 def pytest_configure(config):
     """Register custom test markers to make testing and iterating easier on the developer."""
     config.addinivalue_line(

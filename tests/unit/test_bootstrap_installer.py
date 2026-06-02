@@ -708,7 +708,8 @@ class TestEnsureRecallInstalled:
 @pytest.mark.bootstrap
 class TestGetToolConfigDirWindows:
     def test_windows_uses_appdata(self, monkeypatch):
-        monkeypatch.setattr("ai_rules.platform.sys.platform", "win32")
+        from ai_rules.platform import Platform
+        monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.WINDOWS)
         monkeypatch.setenv("APPDATA", "C:\\Users\\test\\AppData\\Roaming")
         monkeypatch.delenv("UV_TOOL_DIR", raising=False)
         result = get_tool_config_dir("ai-agent-rules")

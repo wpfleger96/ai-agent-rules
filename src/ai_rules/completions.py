@@ -32,15 +32,28 @@ class ShellConfig:
 @dataclass
 class PowerShellConfig(ShellConfig):
     def get_config_candidates(self) -> list[Path]:
-        home = Path.home()
-        candidates = [
-            home / "Documents" / "PowerShell" / "Microsoft.PowerShell_profile.ps1",
-            home
-            / "Documents"
-            / "WindowsPowerShell"
-            / "Microsoft.PowerShell_profile.ps1",
-        ]
-        return [p for p in candidates if p.exists()]
+        profile = _get_powershell_profile_path()
+        if profile and profile.exists():
+            return [profile]
+        return []
+
+
+def _get_powershell_profile_path() -> Path | None:
+    import subprocess
+
+    for exe in ("pwsh", "powershell"):
+        try:
+            result = subprocess.run(
+                [exe, "-NoProfile", "-Command", "Write-Output $PROFILE"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return Path(result.stdout.strip())
+        except FileNotFoundError, subprocess.TimeoutExpired:
+            continue
+    return None
 
 
 SHELL_REGISTRY: dict[str, ShellConfig] = {
@@ -61,15 +74,17 @@ def detect_shell() -> str | None:
     Returns:
         Shell name if supported, None otherwise
     """
-    from ai_rules.platform import is_windows
+    try:
+        import shellingham
 
-    if is_windows():
-        if os.environ.get("PSModulePath"):
+        name, _ = shellingham.detect_shell()
+        if name in ("pwsh", "powershell"):
             return "powershell"
-        return None
-    shell_path = os.environ.get("SHELL", "")
-    shell_name = Path(shell_path).name if shell_path else None
-    return shell_name if shell_name in SHELL_REGISTRY else None
+        return name if name in SHELL_REGISTRY else None
+    except Exception:
+        shell_path = os.environ.get("SHELL", "")
+        name = Path(shell_path).name if shell_path else None
+        return name if name in SHELL_REGISTRY else None
 
 
 def get_shell_config_candidates(shell: str) -> list[Path]:
@@ -224,12 +239,12 @@ def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
     config_path = find_config_file(shell)
     if config_path is None:
         if shell == "powershell":
-            profile = (
-                Path.home()
-                / "Documents"
-                / "PowerShell"
-                / "Microsoft.PowerShell_profile.ps1"
-            )
+            profile = _get_powershell_profile_path()
+            if profile is None:
+                return (
+                    False,
+                    "PowerShell is not installed (neither pwsh nor powershell found)",
+                )
             if not dry_run:
                 profile.parent.mkdir(parents=True, exist_ok=True)
                 profile.touch()

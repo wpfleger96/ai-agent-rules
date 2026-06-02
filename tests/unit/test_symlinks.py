@@ -559,7 +559,8 @@ class TestWindowsPermissionError:
     def test_windows_permission_error_shows_developer_mode_hint(
         self, tmp_path, monkeypatch
     ):
-        monkeypatch.setattr("ai_rules.platform.sys.platform", "win32")
+        from ai_rules.platform import Platform
+        monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.WINDOWS)
         from ai_rules.symlinks import SymlinkResult, _symlink_permission_error
 
         result, message = _symlink_permission_error(PermissionError("test"))
@@ -567,7 +568,8 @@ class TestWindowsPermissionError:
         assert "Developer Mode" in message
 
     def test_unix_permission_error_no_developer_mode(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("ai_rules.platform.sys.platform", "linux")
+        from ai_rules.platform import Platform
+        monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.LINUX)
         from ai_rules.symlinks import SymlinkResult, _symlink_permission_error
 
         result, message = _symlink_permission_error(PermissionError("test"))

@@ -1,4 +1,3 @@
-import os
 
 from unittest.mock import patch
 
@@ -26,21 +25,36 @@ from ai_rules.completions import (
 class TestDetectShell:
     """Test shell detection from environment."""
 
-    def test_detect_bash(self):
-        with patch.dict(os.environ, {"SHELL": "/bin/bash"}):
-            assert detect_shell() == "bash"
+    def test_detect_bash(self, monkeypatch):
+        import shellingham
 
-    def test_detect_zsh(self):
-        with patch.dict(os.environ, {"SHELL": "/usr/bin/zsh"}):
-            assert detect_shell() == "zsh"
+        monkeypatch.setattr(shellingham, "detect_shell", lambda: ("bash", "/bin/bash"))
+        assert detect_shell() == "bash"
 
-    def test_unsupported_shell(self):
-        with patch.dict(os.environ, {"SHELL": "/bin/fish"}):
-            assert detect_shell() is None
+    def test_detect_zsh(self, monkeypatch):
+        import shellingham
 
-    def test_no_shell_env(self):
-        with patch.dict(os.environ, {}, clear=True):
-            assert detect_shell() is None
+        monkeypatch.setattr(
+            shellingham, "detect_shell", lambda: ("zsh", "/usr/bin/zsh")
+        )
+        assert detect_shell() == "zsh"
+
+    def test_unsupported_shell(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(shellingham, "detect_shell", lambda: ("fish", "/bin/fish"))
+        assert detect_shell() is None
+
+    def test_no_shell_env(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(
+            shellingham,
+            "detect_shell",
+            lambda: (_ for _ in ()).throw(shellingham.ShellDetectionFailure()),
+        )
+        monkeypatch.delenv("SHELL", raising=False)
+        assert detect_shell() is None
 
 
 @pytest.mark.unit
@@ -447,14 +461,41 @@ class TestUninstallCompletion:
 @pytest.mark.unit
 @pytest.mark.completions
 class TestPowerShellDetection:
-    def test_detect_powershell_on_windows(self, monkeypatch):
-        monkeypatch.setattr("ai_rules.platform.sys.platform", "win32")
-        monkeypatch.setenv("PSModulePath", "C:\\Program Files\\PowerShell\\Modules")
+    def test_detect_powershell_via_shellingham_pwsh(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(
+            shellingham, "detect_shell", lambda: ("pwsh", "/usr/bin/pwsh")
+        )
         assert detect_shell() == "powershell"
 
-    def test_no_shell_on_windows_without_psmodulepath(self, monkeypatch):
-        monkeypatch.setattr("ai_rules.platform.sys.platform", "win32")
-        monkeypatch.delenv("PSModulePath", raising=False)
+    def test_detect_powershell_via_shellingham_powershell(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(
+            shellingham, "detect_shell", lambda: ("powershell", "C:\\powershell.exe")
+        )
+        assert detect_shell() == "powershell"
+
+    def test_fallback_to_shell_env(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(
+            shellingham,
+            "detect_shell",
+            lambda: (_ for _ in ()).throw(shellingham.ShellDetectionFailure()),
+        )
+        monkeypatch.setenv("SHELL", "/bin/zsh")
+        assert detect_shell() == "zsh"
+
+    def test_no_shell_detected(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(
+            shellingham,
+            "detect_shell",
+            lambda: (_ for _ in ()).throw(shellingham.ShellDetectionFailure()),
+        )
         monkeypatch.delenv("SHELL", raising=False)
         assert detect_shell() is None
 
@@ -474,11 +515,13 @@ class TestPowerShellCompletion:
     def test_install_creates_powershell_profile(self, tmp_path, monkeypatch):
         home = tmp_path / "home"
         home.mkdir()
+        profile = home / "Documents" / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
+        monkeypatch.setattr(
+            "ai_rules.completions._get_powershell_profile_path", lambda: profile
+        )
         monkeypatch.setattr("ai_rules.completions.Path.home", lambda: home)
-        # No existing profile files
         success, message = install_completion("powershell", dry_run=False)
         assert success is True
-        profile = home / "Documents" / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
         assert profile.exists()
         assert COMPLETION_MARKER_START in profile.read_text()
 

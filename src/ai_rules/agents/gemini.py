@@ -39,9 +39,9 @@ class GeminiAgent(Agent):
 
     @property
     def copy_mode_targets(self) -> set[Path]:
-        from ai_rules.platform import is_windows
+        from ai_rules.platform import Platform, is_platform
 
-        if is_windows():
+        if is_platform(Platform.WINDOWS):
             return {self.settings_symlink_target.expanduser()}
         return set()
 

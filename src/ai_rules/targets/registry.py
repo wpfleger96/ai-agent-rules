@@ -27,11 +27,11 @@ TARGET_CLASSES: tuple[type[ConfigTarget], ...] = (
 
 def get_targets(config_dir: Path, config: Config) -> list[ConfigTarget]:
     """Instantiate all configured targets in lifecycle order."""
-    from ai_rules.platform import is_windows
+    from ai_rules.platform import Platform, is_platform
 
     targets = []
     for target_class in TARGET_CLASSES:
-        if is_windows() and target_class is AmpAgent:
+        if is_platform(Platform.WINDOWS) and target_class is AmpAgent:
             continue
         targets.append(target_class(config_dir, config))
     return targets

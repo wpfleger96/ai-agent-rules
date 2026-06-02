@@ -4,6 +4,7 @@ import pytest
 
 from ai_rules.agents.amp import AmpAgent
 from ai_rules.config import Config
+from ai_rules.platform import Platform
 from ai_rules.targets.registry import TARGET_CLASSES, get_targets
 
 
@@ -11,7 +12,7 @@ from ai_rules.targets.registry import TARGET_CLASSES, get_targets
 def test_target_registry_returns_unique_targets_in_lifecycle_order(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("ai_rules.platform.sys.platform", "linux")
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.LINUX)
     config = Config()
 
     target_ids = [target.target_id for target in get_targets(tmp_path, config)]
@@ -33,7 +34,7 @@ def test_target_registry_returns_unique_targets_in_lifecycle_order(
 def test_get_targets_excludes_amp_on_windows(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("ai_rules.platform.sys.platform", "win32")
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.WINDOWS)
     config = Config()
 
     targets = get_targets(tmp_path, config)

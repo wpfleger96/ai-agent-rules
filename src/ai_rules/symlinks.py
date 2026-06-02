@@ -128,9 +128,9 @@ def create_symlink(
 
 def _symlink_permission_error(e: Exception) -> tuple[SymlinkResult, str]:
     """Build a PermissionError result with platform-appropriate hints."""
-    from ai_rules.platform import is_windows
+    from ai_rules.platform import Platform, is_platform
 
-    if is_windows():
+    if is_platform(Platform.WINDOWS):
         return (
             SymlinkResult.ERROR,
             f"Permission denied creating symlink: {e}\n"
