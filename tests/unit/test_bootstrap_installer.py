@@ -730,7 +730,7 @@ class TestGetToolConfigDirWindows:
     def test_uv_tool_dir_override(self, monkeypatch):
         monkeypatch.setenv("UV_TOOL_DIR", "/custom/tools")
         result = get_tool_config_dir("ai-agent-rules")
-        assert str(result).startswith("/custom/tools")
+        assert result.as_posix().startswith("/custom/tools")
 
 
 class _MockTraversable:

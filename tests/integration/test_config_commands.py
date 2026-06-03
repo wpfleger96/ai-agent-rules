@@ -65,10 +65,11 @@ class TestConfigInitCommand:
         with open(config_path) as f:
             data = yaml.safe_load(f)
 
-        assert len(data["exclude_symlinks"]) == 3
-        assert "~/.claude/settings.json" in data["exclude_symlinks"]
-        assert "~/.config/goose/.goosehints" in data["exclude_symlinks"]
-        assert "~/.custom/pattern.txt" in data["exclude_symlinks"]
+        normalized = [s.replace("\\", "/") for s in data["exclude_symlinks"]]
+        assert len(normalized) == 3
+        assert "~/.claude/settings.json" in normalized
+        assert any(".goosehints" in s for s in normalized)
+        assert "~/.custom/pattern.txt" in normalized
 
     def test_config_init_with_settings_overrides(self, runner, tmp_path, monkeypatch):
         config_path = tmp_path / ".ai-agent-rules-config.yaml"

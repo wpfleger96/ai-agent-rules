@@ -112,6 +112,7 @@ def _patch_home_from_env(monkeypatch):
         return original_home()
 
     monkeypatch.setattr(Path, "home", staticmethod(_home))
+    monkeypatch.setenv("PYTHONUTF8", "1")
 
 
 def pytest_configure(config):
