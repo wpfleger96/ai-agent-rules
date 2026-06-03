@@ -21,6 +21,7 @@ just                          # Lint, format, and type check
 just test                     # Run tests
 just test-unit                # Run unit tests only
 just test-integration         # Run integration tests only
+just test-e2e                         # Run E2E tests (subprocess, real CLI, all 3 OSes in CI)
 uv run ai-agent-rules <cmd>         # Run CLI
 
 # GitHub installation
@@ -84,7 +85,8 @@ src/ai_rules/
 │   ├── goose.py        # GooseAgent (config, hints, MCPs)
 │   └── shared.py       # SharedAgent (AGENTS.md, shared skills)
 ├── bootstrap/          # GitHub install utilities
-│   ├── installer.py    # Tool installation (PyPI and GitHub)
+│   ├── registry.py     # Tool lifecycle registry (DEPRECATED_TOOLS, ACTIVE_TOOLS) — single source of truth
+│   ├── installer.py    # Generic install/uninstall (ensure_tool_installed, ensure_tool_uninstalled)
 │   ├── updater.py      # Update checking
 │   └── version.py      # Version parsing
 └── config/             # Source configs (bundled in package)
@@ -105,7 +107,8 @@ src/ai_rules/
 tests/
 ├── fixtures/           # Test fixture files
 ├── unit/               # No filesystem side effects
-└── integration/        # Modifies files/symlinks
+├── integration/        # Modifies files/symlinks
+└── e2e/                # Subprocess tests invoking real CLI binary (zero mocking)
 ```
 
 ## Key Patterns
@@ -147,6 +150,9 @@ uv run pytest -m bootstrap      # Bootstrap tests only
 uv run pytest -m completions    # Shell completion tests only
 uv run pytest -m config         # Config tests only
 uv run pytest -m state          # State management tests only
+just test-e2e                   # E2E only — runs real CLI as subprocess, no mocking
+                                # E2E isolation: tmp_path, HOME/USERPROFILE/APPDATA/XDG all redirected
+                                # Use run_cli / run_cli_with_config fixtures (see tests/e2e/conftest.py)
 ```
 
 ## Code Style
@@ -198,7 +204,20 @@ uv run pytest -m state          # State management tests only
    - Fails silently on network errors (still proceeds with upgrade)
    - Auto-forces install (no double prompt)
 
-9. **Gemini skill directory** - Gemini discovers skills from `~/.agents/skills/` (the Codex directory) via a built-in alias:
+9. **Optional tool registry** — Adding/retiring an optional tool requires ONE registry entry in `bootstrap/registry.py`. Never add per-tool functions:
+   ```python
+   # ✅ Add to DEPRECATED_TOOLS to retire a tool (cleanup on next install)
+   DeprecatedToolSpec(tool_id="foo", package_name="foo-pkg", command_name="foo", is_mcp=False)
+   # ✅ Add to ACTIVE_TOOLS to manage a new tool
+   ActiveToolSpec(tool_id="bar", command_name="bar-cli", get_install_spec=lambda: BarTool.INSTALL_SPEC)
+   # ❌ Do NOT add ensure_foo_installed() / ensure_foo_uninstalled() functions
+   ```
+   - `DeprecatedToolSpec.is_still_in_use` — True means "skip cleanup" (user still wants it)
+   - `ActiveToolSpec.is_configured` — True means "install it" (different semantics!)
+   - `ActiveToolSpec.get_install_spec` is a `Callable[[], ToolSpec]` — always call it: `active.get_install_spec()`. Storing the result at module level causes circular imports.
+   - `ensure_tool_installed(..., skip_update_check=True)` in `_install_active_tools` — install is a fast presence-check; upgrade checks belong in the `upgrade` command
+
+10. **Gemini skill directory** - Gemini discovers skills from `~/.agents/skills/` (the Codex directory) via a built-in alias:
    - Do NOT add a `~/.gemini/skills/` directory — it causes "Skill conflict detected" warnings in headless invocations
    - This is why `AGENT_SKILLS_DIRS` in `config.py` intentionally excludes Gemini
 
@@ -214,6 +233,7 @@ uv run pytest -m state          # State management tests only
 | Task | Files |
 |------|-------|
 | Add CLI command | `cli/commands/` (one module per command) or `cli/groups/` (subcommand groups), then register in `cli/__init__.py::_register_commands` |
+| Add/retire optional tool | `bootstrap/registry.py` — one entry in `ACTIVE_TOOLS` or `DEPRECATED_TOOLS` only; no other files needed |
 | Add skill | Create subdir in `config/skills/` with `SKILL.md` (shared) |
 | Config loading | `config.py` (Config class, load_config) |
 | Profile management | `profiles.py`, `state.py`, `cli/groups/profile.py` |
