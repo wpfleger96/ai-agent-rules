@@ -15,10 +15,8 @@ from pathlib import Path
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 
 from .installer import (
-    RECALL_GITHUB_REPO,
     UV_NOT_FOUND_ERROR,
     ToolSource,
-    _is_recall_configured,
     _validate_package_name,
     get_tool_source,
     get_tool_version,
@@ -488,19 +486,6 @@ def perform_tool_upgrade(
         return False, f"Unexpected error: {e}", False
 
 
-def _is_recall_configured_for_active_profile() -> bool:
-    """Check if recall is configured for the currently active profile."""
-    try:
-        from ai_rules.config import Config
-        from ai_rules.state import get_active_profile
-
-        profile = get_active_profile() or "default"
-        config = Config.load(profile=profile)
-        return _is_recall_configured(config)
-    except Exception:
-        return False
-
-
 _SELF_SPEC = ToolSpec(
     tool_id="ai-agent-rules",
     package_name="ai-agent-rules",
@@ -510,22 +495,12 @@ _SELF_SPEC = ToolSpec(
     github_repo=_SELF_GITHUB_REPO,
 )
 
-_RECALL_SPEC = ToolSpec(
-    tool_id="recall",
-    package_name="recall-mcp-server",
-    display_name="recall",
-    get_version=lambda: get_tool_version("recall-mcp-server"),
-    is_installed=lambda: is_command_available("recall"),
-    github_repo=RECALL_GITHUB_REPO,
-    is_enabled=lambda: _is_recall_configured_for_active_profile(),
-)
-
 
 def get_updatable_tools() -> list[ToolSpec]:
     """Get all updatable tool specs, deriving from registered Tool classes."""
     from ai_rules.tools.statusline import StatuslineTool
 
-    tools: list[ToolSpec] = [_SELF_SPEC, StatuslineTool.INSTALL_SPEC, _RECALL_SPEC]
+    tools: list[ToolSpec] = [_SELF_SPEC, StatuslineTool.INSTALL_SPEC]
     return tools
 
 

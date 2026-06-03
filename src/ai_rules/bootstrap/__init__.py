@@ -10,8 +10,7 @@ Designed to be self-contained and easily extractable for use in other projects.
 from .installer import (
     UV_NOT_FOUND_ERROR,
     ToolSource,
-    ensure_recall_installed,
-    ensure_statusline_installed,
+    ensure_tool_installed,
     ensure_tool_uninstalled,
     get_effective_install_source,
     get_tool_config_dir,
@@ -32,8 +31,7 @@ from .updater import (
 __all__ = [
     "UV_NOT_FOUND_ERROR",
     "ToolSource",
-    "ensure_recall_installed",
-    "ensure_statusline_installed",
+    "ensure_tool_installed",
     "ensure_tool_uninstalled",
     "get_effective_install_source",
     "get_tool_config_dir",
