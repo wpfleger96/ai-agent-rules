@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.59.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.58.0...v0.59.0) (2026-06-03)
+
+
+### Features
+
+* **claude:** set defaultMode to bypassPermissions ([d34acd4](https://github.com/wpfleger96/ai-agent-rules/commit/d34acd406f110d789cf8374a09ced3e82ee8aa01))
+
+
+### Documentation
+
+* **agents:** add infrastructure awareness, quality gate, git-pull rule, PR cross-referencing; compress 32% ([#77](https://github.com/wpfleger96/ai-agent-rules/issues/77)) ([68d7a32](https://github.com/wpfleger96/ai-agent-rules/commit/68d7a326de5797e99ab8f8ca88f4b16f7884d7c9))
+
 ## [0.58.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.57.0...v0.58.0) (2026-06-01)
 
 

@@ -446,6 +446,7 @@ class TestGeminiReader:
         home = self._gemini_home(tmp_path)
         (home / ".gemini" / "tmp").mkdir(parents=True)
         monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setenv("USERPROFILE", str(home))
         return home
 
     def test_gemini_detect_returns_false_when_no_tmp_dir(self, tmp_path, monkeypatch):

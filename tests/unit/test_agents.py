@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from ai_rules.agents.amp import AmpAgent
@@ -7,6 +9,7 @@ from ai_rules.agents.gemini import GeminiAgent
 from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent
 from ai_rules.config import Config
+from ai_rules.platform import Platform
 
 
 @pytest.mark.unit
@@ -19,7 +22,7 @@ class TestClaudeAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.claude/CLAUDE.md" in targets
         assert "~/.claude/settings.json" in targets
         assert "~/.claude/agents/test-agent.md" in targets
@@ -34,7 +37,9 @@ class TestClaudeAgent:
         symlinks = agent.symlinks
 
         agent_targets = [
-            str(target) for target, _ in symlinks if "/agents/" in str(target)
+            Path(target).as_posix()
+            for target, _ in symlinks
+            if "/agents/" in Path(target).as_posix()
         ]
         assert len(agent_targets) == 3
         assert "~/.claude/agents/test-agent.md" in agent_targets
@@ -49,7 +54,9 @@ class TestClaudeAgent:
         symlinks = agent.symlinks
 
         command_targets = [
-            str(target) for target, _ in symlinks if "/commands/" in str(target)
+            Path(target).as_posix()
+            for target, _ in symlinks
+            if "/commands/" in Path(target).as_posix()
         ]
         assert len(command_targets) == 2
         assert "~/.claude/commands/test-command.md" in command_targets
@@ -66,7 +73,7 @@ class TestClaudeAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.claude/settings.json" not in targets
         assert "~/.claude/agents/test-agent.md" not in targets
         assert "~/.claude/CLAUDE.md" in targets
@@ -83,7 +90,7 @@ class TestCodexAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.codex/AGENTS.md" in targets
         assert "~/.codex/config.toml" in targets
         assert len(targets) == 2
@@ -104,7 +111,7 @@ class TestCodexAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.codex/config.toml" not in targets
         assert "~/.codex/AGENTS.md" in targets
 
@@ -119,7 +126,7 @@ class TestAmpAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.config/amp/AGENTS.md" in targets
         assert "~/.config/amp/settings.json" in targets
         assert len(targets) == 2
@@ -140,7 +147,7 @@ class TestAmpAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.config/amp/settings.json" not in targets
         assert "~/.config/amp/AGENTS.md" in targets
 
@@ -155,7 +162,7 @@ class TestGeminiAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.gemini/GEMINI.md" in targets
         assert "~/.gemini/settings.json" in targets
         assert len(targets) == 2
@@ -176,7 +183,7 @@ class TestGeminiAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.gemini/settings.json" not in targets
         assert "~/.gemini/GEMINI.md" in targets
 
@@ -191,7 +198,7 @@ class TestGooseAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.config/goose/.goosehints" in targets
         assert "~/.config/goose/config.yaml" in targets
         assert len(targets) == 2
@@ -202,7 +209,7 @@ class TestGooseAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.config/goose/config.yaml" not in targets
         assert "~/.config/goose/.goosehints" in targets
 
@@ -217,7 +224,7 @@ class TestSharedAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/AGENTS.md" in targets
         assert len(targets) == 1
 
@@ -227,6 +234,49 @@ class TestSharedAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/AGENTS.md" not in targets
         assert len(targets) == 0
+
+
+@pytest.mark.unit
+@pytest.mark.agents
+class TestGeminiAgentWindowsCopyMode:
+    """Test Gemini agent Windows copy-mode behavior."""
+
+    def test_copy_mode_targets_nonempty_on_windows(self, test_repo, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.platform.detect_platform", lambda: Platform.WINDOWS
+        )
+        monkeypatch.setenv("APPDATA", "C:\\Users\\test\\AppData\\Roaming")
+
+        agent = GeminiAgent(test_repo, Config(exclude_symlinks=[]))
+
+        assert len(agent.copy_mode_targets) > 0
+
+    def test_copy_mode_targets_empty_on_non_windows(self, test_repo, monkeypatch):
+        monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.LINUX)
+
+        agent = GeminiAgent(test_repo, Config(exclude_symlinks=[]))
+
+        assert agent.copy_mode_targets == set()
+
+
+@pytest.mark.unit
+@pytest.mark.agents
+class TestGooseAgentWindowsConfigDir:
+    """Test Goose agent uses platform-aware config dir on Windows."""
+
+    def test_settings_symlink_target_uses_appdata_on_windows(
+        self, test_repo, monkeypatch
+    ):
+        monkeypatch.setattr(
+            "ai_rules.platform.detect_platform", lambda: Platform.WINDOWS
+        )
+        monkeypatch.setenv("APPDATA", "C:\\Users\\test\\AppData\\Roaming")
+
+        agent = GooseAgent(test_repo, Config(exclude_symlinks=[]))
+
+        target_str = str(agent.settings_symlink_target)
+        assert "Block" in target_str
+        assert "goose" in target_str

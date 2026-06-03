@@ -1,6 +1,5 @@
 """Tool installation utilities."""
 
-import os
 import re
 import shutil
 import subprocess
@@ -71,17 +70,14 @@ def get_tool_config_dir(package_name: str = "ai-agent-rules") -> Path:
         Path to the config directory in the uv tools location
     """
 
-    data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
+    from ai_rules.platform import get_lib_path_fragment, get_uv_tools_dir
+
     python_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
 
     return (
-        Path(data_home)
-        / "uv"
-        / "tools"
+        get_uv_tools_dir()
         / package_name
-        / "lib"
-        / python_version
-        / "site-packages"
+        / get_lib_path_fragment(python_version)
         / "ai_rules"
         / "config"
     )
@@ -99,8 +95,9 @@ def get_tool_source(package_name: str) -> ToolSource | None:
         ToolSource.LOCAL if installed from a local path
         None if tool not installed or receipt file not found
     """
-    data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
-    receipt_path = Path(data_home) / "uv" / "tools" / package_name / "uv-receipt.toml"
+    from ai_rules.platform import get_uv_tools_dir
+
+    receipt_path = get_uv_tools_dir() / package_name / "uv-receipt.toml"
 
     if not receipt_path.exists():
         return None

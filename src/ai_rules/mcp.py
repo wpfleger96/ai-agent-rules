@@ -423,7 +423,9 @@ class GooseMCPManager(MCPManager):
 
     @property
     def _config_path(self) -> Path:
-        return Path.home() / ".config" / "goose" / "config.yaml"
+        from ai_rules.platform import get_goose_config_dir
+
+        return get_goose_config_dir().expanduser() / "config.yaml"
 
     def _load_full_config(self) -> dict[str, Any]:
         if not self._config_path.exists():

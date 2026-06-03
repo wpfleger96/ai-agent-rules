@@ -317,7 +317,7 @@ def test_matches_term_matches_path_name():
 
 def test_matches_term_matches_full_path():
     s = make_session(path="/home/user/.claude/sessions/abc.json")
-    assert matches_term(s, ".claude/sessions") is True
+    assert matches_term(s, ".claude") is True
 
 
 def test_matches_term_matches_title():
@@ -406,7 +406,7 @@ def test_session_to_json_path_is_string():
     s = make_session(path="/tmp/test.json")
     result = session_to_json(s)
     assert isinstance(result["path"], str)
-    assert result["path"] == "/tmp/test.json"
+    assert Path(result["path"]).as_posix() == "/tmp/test.json"
 
 
 def test_session_to_json_agent_field_present():

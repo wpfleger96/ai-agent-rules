@@ -74,16 +74,21 @@ def _display_pending_symlink_changes(targets: list[ConfigTarget]) -> bool:
     Returns:
         True if changes were found and displayed, False otherwise
     """
+    from ai_rules.cli.components.config import _get_copy_mode_targets
     from ai_rules.cli.display import console, print_add, print_update
-    from ai_rules.symlinks import check_symlink, get_content_diff
+    from ai_rules.symlinks import check_file_copy, check_symlink, get_content_diff
 
     found_changes = False
+    copy_targets = _get_copy_mode_targets(targets)
 
     for agent in targets:
         agent_changes: list[tuple[str, Path, Path, str | None]] = []
         for target, source in agent.get_filtered_symlinks():
             target_path = target.expanduser()
-            status_code, _ = check_symlink(target_path, source)
+            if target_path in copy_targets:
+                status_code, _ = check_file_copy(target_path, source)
+            else:
+                status_code, _ = check_symlink(target_path, source)
 
             if status_code == "correct":
                 continue
@@ -93,13 +98,18 @@ def _display_pending_symlink_changes(targets: list[ConfigTarget]) -> bool:
                 agent_changes.append(("create", target_path, source, None))
             elif status_code == "broken":
                 agent_changes.append(("update", target_path, source, None))
-            elif status_code in ["wrong_target", "not_symlink"]:
+            elif status_code in [
+                "wrong_target",
+                "not_symlink",
+                "stale_copy",
+                "not_copy",
+            ]:
                 diff_output = None
                 try:
                     if status_code == "wrong_target":
                         actual = target_path.resolve()
                         diff_output = get_content_diff(actual, source)
-                    elif status_code == "not_symlink":
+                    elif status_code in ("not_symlink", "stale_copy"):
                         diff_output = get_content_diff(target_path, source)
                 except OSError, RuntimeError:
                     pass
@@ -167,13 +177,17 @@ def check_first_run(targets: list[ConfigTarget], force: bool) -> bool:
     Returns:
         True if should continue, False if should abort
     """
+    from ai_rules.cli.components.config import _get_copy_mode_targets
     from ai_rules.cli.display import console, print_warning
 
     existing_files = []
+    copy_targets = _get_copy_mode_targets(targets)
 
     for agent in targets:
         for target, _ in agent.get_filtered_symlinks():
             target_path = target.expanduser()
+            if target_path in copy_targets:
+                continue
             if target_path.exists() and not target_path.is_symlink():
                 existing_files.append((agent.name, target_path))
 

@@ -56,15 +56,25 @@ FORMAT_CONFIG_FILES: dict[str, str] = {
     "yaml": "config.yaml",
 }
 
-AGENT_SKILLS_DIRS = {
-    "amp": Path("~/.config/agents/skills"),
-    "claude": Path("~/.claude/skills"),
-    "codex": Path("~/.agents/skills"),
-    # Gemini CLI not listed here — it discovers skills from ~/.agents/skills/ via
-    # built-in alias. Adding ~/.gemini/skills/ would cause "Skill conflict detected"
-    # warnings that break headless invocations (e.g., crossfire code review).
-    "goose": Path("~/.config/goose/skills"),
-}
+
+def _get_agent_skills_dirs() -> dict[str, Path]:
+    from ai_rules.platform import Platform, get_goose_config_dir, is_platform
+
+    dirs = {
+        "amp": Path("~/.config/agents/skills"),
+        "claude": Path("~/.claude/skills"),
+        "codex": Path("~/.agents/skills"),
+        # Gemini CLI not listed here — it discovers skills from ~/.agents/skills/ via
+        # built-in alias. Adding ~/.gemini/skills/ would cause "Skill conflict detected"
+        # warnings that break headless invocations (e.g., crossfire code review).
+        "goose": get_goose_config_dir() / "skills",
+    }
+    if is_platform(Platform.WINDOWS):
+        dirs.pop("amp", None)
+    return dirs
+
+
+AGENT_SKILLS_DIRS = _get_agent_skills_dirs()
 
 _CONFIG_FILE_NAME = ".ai-agent-rules-config.yaml"
 _LEGACY_CONFIG_FILE_NAME = ".ai-rules-config.yaml"

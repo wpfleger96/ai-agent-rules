@@ -80,6 +80,40 @@ def clear_config_cache():
         Config._load_cached.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def mock_platform_for_tests(monkeypatch):
+    from ai_rules.platform import Platform, detect_platform
+
+    detect_platform.cache_clear()
+    monkeypatch.setattr(
+        "ai_rules.platform.detect_platform",
+        lambda: Platform.LINUX,
+    )
+    yield
+    detect_platform.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _patch_home_from_env(monkeypatch):
+    """Make Path.home() follow the HOME env var on all platforms.
+
+    On Windows, Path.home() reads USERPROFILE, not HOME. This fixture
+    ensures Path.home() always returns the HOME env var value, so tests
+    that only set HOME still get correct isolation on all platforms.
+    The HOME value is read lazily at call time so test-level monkeypatches
+    to HOME are visible to Path.home() invocations inside the test.
+    """
+    original_home = Path.home
+
+    def _home() -> Path:
+        env_home = os.environ.get("HOME")
+        if env_home:
+            return Path(env_home)
+        return original_home()
+
+    monkeypatch.setattr(Path, "home", staticmethod(_home))
+
+
 def pytest_configure(config):
     """Register custom test markers to make testing and iterating easier on the developer."""
     config.addinivalue_line(
@@ -110,6 +144,7 @@ def mock_home(tmp_path, monkeypatch):
     home_dir.mkdir()
     monkeypatch.setenv("HOME", str(home_dir))
     monkeypatch.setenv("USERPROFILE", str(home_dir))
+    monkeypatch.setenv("APPDATA", str(home_dir / "AppData" / "Roaming"))
     monkeypatch.setattr(Path, "home", staticmethod(lambda: home_dir))
     return home_dir
 

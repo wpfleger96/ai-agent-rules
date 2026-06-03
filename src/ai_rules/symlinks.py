@@ -1,6 +1,7 @@
 """Symlink operations with safety checks."""
 
 import os
+import shutil
 
 from datetime import datetime
 from enum import Enum
@@ -101,14 +102,10 @@ def create_symlink(
 
     try:
         rel_source = os.path.relpath(source, target.parent)
-        target.symlink_to(rel_source)
+        target.symlink_to(rel_source, target_is_directory=source.is_dir())
         return (SymlinkResult.CREATED, "Created")
     except PermissionError as e:
-        return (
-            SymlinkResult.ERROR,
-            f"Permission denied: {e}\n"
-            f"  {dim('Tip: Check file permissions and ownership. You may need to remove existing files manually.')}",
-        )
+        return _symlink_permission_error(e)
     except FileExistsError as e:
         return (
             SymlinkResult.ERROR,
@@ -117,20 +114,136 @@ def create_symlink(
         )
     except (OSError, ValueError) as e:
         try:
-            target.symlink_to(source)
+            target.symlink_to(source, target_is_directory=source.is_dir())
             return (SymlinkResult.CREATED, "Created (absolute path)")
         except PermissionError:
-            return (
-                SymlinkResult.ERROR,
-                f"Permission denied: {e}\n"
-                f"  {dim('Tip: Check file permissions and ownership.')}",
-            )
+            return _symlink_permission_error(e)
         except Exception as e2:
             return (
                 SymlinkResult.ERROR,
                 f"Failed to create symlink: {e2}\n"
                 f"  {dim('Tip: Check that the target directory exists and is writable.')}",
             )
+
+
+def _symlink_permission_error(e: Exception) -> tuple[SymlinkResult, str]:
+    """Build a PermissionError result with platform-appropriate hints."""
+    from ai_rules.platform import Platform, is_platform
+
+    if is_platform(Platform.WINDOWS):
+        return (
+            SymlinkResult.ERROR,
+            f"Permission denied creating symlink: {e}\n"
+            f"  {dim('Windows requires Developer Mode for symlinks.')}\n"
+            f"  {dim('Enable: Settings > System > For developers > Developer Mode')}\n"
+            f"  {dim('Then re-run: ai-agent-rules install')}",
+        )
+    return (
+        SymlinkResult.ERROR,
+        f"Permission denied: {e}\n"
+        f"  {dim('Tip: Check file permissions and ownership.')}",
+    )
+
+
+def create_file_copy(
+    target_path: Path,
+    source_path: Path,
+    force: bool = False,
+    dry_run: bool = False,
+) -> tuple[SymlinkResult, str]:
+    """Copy a file instead of symlinking.
+
+    Used for agents that destroy symlinks (e.g., Gemini CLI on Windows).
+    """
+    target = target_path.expanduser()
+    source = source_path.absolute()
+
+    if not source.exists():
+        return (SymlinkResult.ERROR, f"Source file does not exist: {source}")
+
+    if target.exists() or target.is_symlink():
+        if target.is_symlink():
+            if dry_run:
+                pass  # will be reported as CREATED below
+            else:
+                target.unlink()
+        else:
+            try:
+                if target.read_bytes() == source.read_bytes():
+                    return (SymlinkResult.ALREADY_CORRECT, "Already correct (copy)")
+            except OSError:
+                pass
+            if not force:
+                response = console.input(
+                    f"[yellow]?[/yellow] File {target} exists\n  Overwrite with copy? (y/N): "
+                )
+                if response.lower() != "y":
+                    return (SymlinkResult.SKIPPED, "Skipped by user")
+            if not dry_run:
+                backup = create_backup_path(target)
+                shutil.copy2(target, backup)
+                console.print(f"  {dim(f'Backed up to {backup}')}")
+
+    if dry_run:
+        return (SymlinkResult.CREATED, f"Would copy: {source} -> {target}")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copy2(source, target)
+        return (SymlinkResult.CREATED, "Copied")
+    except PermissionError as e:
+        return (SymlinkResult.ERROR, f"Permission denied: {e}")
+    except OSError as e:
+        return (SymlinkResult.ERROR, f"Failed to copy: {e}")
+
+
+def check_file_copy(target_path: Path, expected_source: Path) -> tuple[str, str]:
+    """Check if a managed file copy is correct (content matches source).
+
+    Returns same status format as check_symlink() for consistency.
+    """
+    target = target_path.expanduser()
+    expected = expected_source.absolute()
+
+    if not target.exists():
+        return ("missing", "Not installed")
+
+    if target.is_symlink():
+        return ("not_copy", "Expected a managed copy but found a symlink")
+
+    try:
+        if target.read_bytes() == expected.read_bytes():
+            return ("correct", str(expected))
+        else:
+            return ("stale_copy", f"Content differs from {expected}")
+    except OSError:
+        return ("error", "Could not read file for comparison")
+
+
+def remove_file_copy(target_path: Path, force: bool = False) -> tuple[bool, str]:
+    """Remove a managed file copy. Refuses to remove symlinks."""
+    target = target_path.expanduser()
+
+    if not target.exists():
+        return (False, "Does not exist")
+
+    if target.is_symlink():
+        return (False, "Is a symlink, not a managed copy (refusing to delete)")
+
+    if not force:
+        response = console.input(
+            f"[yellow]?[/yellow] Remove managed copy {target}? (y/N): "
+        )
+        if response.lower() != "y":
+            return (False, "Skipped by user")
+
+    try:
+        target.unlink()
+        return (True, "Removed")
+    except PermissionError as e:
+        return (False, f"Permission denied: {e}")
+    except OSError as e:
+        return (False, f"Error removing file: {e}")
 
 
 def check_symlink(target_path: Path, expected_source: Path) -> tuple[str, str]:

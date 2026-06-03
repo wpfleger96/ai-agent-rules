@@ -1,5 +1,3 @@
-import os
-
 from unittest.mock import patch
 
 import pytest
@@ -26,21 +24,36 @@ from ai_rules.completions import (
 class TestDetectShell:
     """Test shell detection from environment."""
 
-    def test_detect_bash(self):
-        with patch.dict(os.environ, {"SHELL": "/bin/bash"}):
-            assert detect_shell() == "bash"
+    def test_detect_bash(self, monkeypatch):
+        import shellingham
 
-    def test_detect_zsh(self):
-        with patch.dict(os.environ, {"SHELL": "/usr/bin/zsh"}):
-            assert detect_shell() == "zsh"
+        monkeypatch.setattr(shellingham, "detect_shell", lambda: ("bash", "/bin/bash"))
+        assert detect_shell() == "bash"
 
-    def test_unsupported_shell(self):
-        with patch.dict(os.environ, {"SHELL": "/bin/fish"}):
-            assert detect_shell() is None
+    def test_detect_zsh(self, monkeypatch):
+        import shellingham
 
-    def test_no_shell_env(self):
-        with patch.dict(os.environ, {}, clear=True):
-            assert detect_shell() is None
+        monkeypatch.setattr(
+            shellingham, "detect_shell", lambda: ("zsh", "/usr/bin/zsh")
+        )
+        assert detect_shell() == "zsh"
+
+    def test_unsupported_shell(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(shellingham, "detect_shell", lambda: ("fish", "/bin/fish"))
+        assert detect_shell() is None
+
+    def test_no_shell_env(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(
+            shellingham,
+            "detect_shell",
+            lambda: (_ for _ in ()).throw(shellingham.ShellDetectionFailure()),
+        )
+        monkeypatch.delenv("SHELL", raising=False)
+        assert detect_shell() is None
 
 
 @pytest.mark.unit
@@ -442,3 +455,77 @@ class TestUninstallCompletion:
 
         assert success is False
         assert "not found" in message
+
+
+@pytest.mark.unit
+@pytest.mark.completions
+class TestPowerShellDetection:
+    def test_detect_powershell_via_shellingham_pwsh(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(
+            shellingham, "detect_shell", lambda: ("pwsh", "/usr/bin/pwsh")
+        )
+        assert detect_shell() == "powershell"
+
+    def test_detect_powershell_via_shellingham_powershell(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(
+            shellingham, "detect_shell", lambda: ("powershell", "C:\\powershell.exe")
+        )
+        assert detect_shell() == "powershell"
+
+    def test_fallback_to_shell_env(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(
+            shellingham,
+            "detect_shell",
+            lambda: (_ for _ in ()).throw(shellingham.ShellDetectionFailure()),
+        )
+        monkeypatch.setenv("SHELL", "/bin/zsh")
+        assert detect_shell() == "zsh"
+
+    def test_no_shell_detected(self, monkeypatch):
+        import shellingham
+
+        monkeypatch.setattr(
+            shellingham,
+            "detect_shell",
+            lambda: (_ for _ in ()).throw(shellingham.ShellDetectionFailure()),
+        )
+        monkeypatch.delenv("SHELL", raising=False)
+        assert detect_shell() is None
+
+
+@pytest.mark.unit
+@pytest.mark.completions
+class TestPowerShellCompletion:
+    def test_generate_powershell_script(self):
+        script = generate_completion_script("powershell")
+        assert COMPLETION_MARKER_START in script
+        assert COMPLETION_MARKER_END in script
+        assert "Register-ArgumentCompleter" in script
+        assert "Get-Command" in script
+        assert "ai-agent-rules" in script
+        assert "ai-rules" in script
+
+    def test_install_creates_powershell_profile(self, tmp_path, monkeypatch):
+        home = tmp_path / "home"
+        home.mkdir()
+        profile = home / "Documents" / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
+        monkeypatch.setattr(
+            "ai_rules.completions._get_powershell_profile_path", lambda: profile
+        )
+        monkeypatch.setattr("ai_rules.completions.Path.home", lambda: home)
+        success, message = install_completion("powershell", dry_run=False)
+        assert success is True
+        assert profile.exists()
+        assert COMPLETION_MARKER_START in profile.read_text()
+
+    def test_powershell_block_not_flagged_as_legacy(self, tmp_path):
+        config = tmp_path / "profile.ps1"
+        script = generate_completion_script("powershell")
+        config.write_text(script)
+        assert not is_legacy_completion_block(config)
