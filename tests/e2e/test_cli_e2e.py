@@ -102,6 +102,62 @@ class TestCompletionsStatus:
 
 
 @pytest.mark.e2e
+class TestRegistryLifecycle:
+    def test_install_dry_run_completes_successfully(self, run_cli_with_config):
+        run, home_dir, config_dir = run_cli_with_config
+        result = run(["install", "--dry-run", "-y", "--config-dir", str(config_dir)])
+        output = strip_ansi(result.stdout + result.stderr)
+        assert result.returncode == 0
+        assert "Dry run" in output
+
+    def test_status_shows_optional_tools(self, run_cli):
+        result = run_cli(["status"])
+        output = strip_ansi(result.stdout + result.stderr)
+        assert "Optional Tools" in output
+        assert "statusline" in output
+
+    def test_uninstall_shows_optional_tools(self, run_cli):
+        result = run_cli(["uninstall", "-y"])
+        output = strip_ansi(result.stdout + result.stderr)
+        assert "Optional Tools" in output
+        assert "statusline" in output
+
+    def test_install_only_filter_accepts_settings(self, run_cli_with_config):
+        run, home_dir, config_dir = run_cli_with_config
+        result = run(
+            [
+                "install",
+                "--dry-run",
+                "-y",
+                "--only",
+                "settings",
+                "--config-dir",
+                str(config_dir),
+            ]
+        )
+        output = strip_ansi(result.stdout + result.stderr)
+        assert result.returncode == 0
+        assert "Invalid component ID" not in output
+
+    def test_install_only_filter_rejects_invalid(self, run_cli_with_config):
+        run, home_dir, config_dir = run_cli_with_config
+        result = run(
+            [
+                "install",
+                "--dry-run",
+                "-y",
+                "--only",
+                "nonexistent",
+                "--config-dir",
+                str(config_dir),
+            ]
+        )
+        output = strip_ansi(result.stdout + result.stderr)
+        assert result.returncode == 1
+        assert "Invalid component ID" in output
+
+
+@pytest.mark.e2e
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only")
 class TestWindowsSpecific:
     def test_powershell_in_completions(self, run_cli):

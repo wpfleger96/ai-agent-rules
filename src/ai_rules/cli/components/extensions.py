@@ -255,6 +255,13 @@ class ClaudeExtensionsComponent(Component):
                     print_absent(f"{target_path} {dim(f'({message})')}", indent=2)
                     skipped += 1
 
+        orphaned = ext_manager.get_all_orphaned()
+        for _ext_type, orphan_dict in orphaned.items():
+            for _name, symlink_path in orphan_dict.items():
+                success, _msg = remove_symlink(symlink_path, force=ctx.yes)
+                if success:
+                    removed += 1
+
         return ComponentResult(
             changed=removed > 0,
             counts={"removed": removed, "skipped": skipped},

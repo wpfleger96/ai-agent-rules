@@ -39,7 +39,7 @@ def setup(
     """
     from ai_rules.bootstrap import (
         ToolSource,
-        ensure_statusline_installed,
+        ensure_tool_installed,
         get_effective_install_source,
         get_tool_config_dir,
         install_tool,
@@ -64,9 +64,13 @@ def setup(
     statusline_source, statusline_local_path = get_effective_install_source(
         "statusline", cli_github_flag=github
     )
-    statusline_result, statusline_message = ensure_statusline_installed(
+
+    from ai_rules.tools.statusline import StatuslineTool
+
+    statusline_result, statusline_message = ensure_tool_installed(
+        StatuslineTool.INSTALL_SPEC,
         dry_run=dry_run,
-        from_github=statusline_source == ToolSource.GITHUB,
+        source=statusline_source,
         local_path=statusline_local_path,
         allow_source_switch=True,
     )

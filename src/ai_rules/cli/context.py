@@ -100,7 +100,7 @@ class SettingsPlan(ComponentPlan):
 
 @dataclass
 class OptionalToolsPlan(ComponentPlan):
-    pass
+    stale_tool_names: list[str] = field(default_factory=list)
 
 
 @dataclass

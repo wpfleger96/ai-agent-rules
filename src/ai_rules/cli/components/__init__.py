@@ -49,6 +49,9 @@ UNINSTALL_COMPONENTS: tuple[Component, ...] = (
     SkillsComponent(),
     ClaudeExtensionsComponent(),
     MCPComponent(),
+    ClaudePluginComponent(),
+    OptionalToolsComponent(),
+    SettingsComponent(),
 )
 
 VALIDATE_COMPONENTS: tuple[Component, ...] = (SourceFilesComponent(),)

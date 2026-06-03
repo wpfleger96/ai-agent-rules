@@ -8,7 +8,11 @@ import tomllib
 
 from enum import Enum, auto
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    from ai_rules.bootstrap.updater import ToolSpec
 
 
 class ToolSource(Enum):
@@ -32,7 +36,6 @@ def make_github_install_url(repo: str) -> str:
 
 
 UV_NOT_FOUND_ERROR = "uv not found in PATH. Install from https://docs.astral.sh/uv/"
-RECALL_GITHUB_REPO = "wpfleger96/recall"
 
 
 def _validate_package_name(package_name: str) -> bool:
@@ -325,20 +328,24 @@ def get_effective_install_source(
     return ToolSource.PYPI, None
 
 
-def ensure_statusline_installed(
+def ensure_tool_installed(
+    spec: ToolSpec,
     dry_run: bool = False,
-    from_github: bool = False,
+    source: ToolSource = ToolSource.PYPI,
     local_path: str | None = None,
     allow_source_switch: bool = False,
+    skip_update_check: bool = False,
 ) -> tuple[str, str | None]:
-    """Install or upgrade claude-code-statusline if needed. Fails open.
+    """Install or upgrade a tool if needed. Fails open.
 
     Args:
+        spec: Tool specification describing how to install the tool
         dry_run: If True, show what would be done without executing
-        from_github: Install from GitHub instead of PyPI
-        local_path: Local filesystem path to install from (takes priority)
+        source: Desired install source (PYPI, GITHUB, or LOCAL)
+        local_path: Local filesystem path to install from (required when source=LOCAL)
         allow_source_switch: If True and the installed source differs from desired,
-            uninstall and reinstall from the correct source (only setup should pass True)
+            uninstall and reinstall from the correct source
+        skip_update_check: If True, skip the PyPI/GitHub upgrade check for already-installed tools
 
     Returns:
         Tuple of (status, message) where status is one of:
@@ -346,33 +353,22 @@ def ensure_statusline_installed(
         "source_switched", "source_switch_needed", "failed"
         Message is only provided in dry_run mode or when upgraded/switched
     """
-    from ai_rules.tools.statusline import StatuslineTool
+    from_github = source == ToolSource.GITHUB
 
-    statusline_spec = StatuslineTool.INSTALL_SPEC
-
-    if local_path:
-        desired_source = ToolSource.LOCAL
-    elif from_github:
-        desired_source = ToolSource.GITHUB
-    else:
-        desired_source = ToolSource.PYPI
-
-    if is_command_available("claude-statusline"):
+    if spec.is_installed():
         if allow_source_switch:
-            current_source = get_tool_source(statusline_spec.package_name)
-            if current_source is not None and current_source != desired_source:
+            current_source = get_tool_source(spec.package_name)
+            if current_source is not None and current_source != source:
                 if dry_run:
                     return (
                         "source_switch_needed",
-                        f"Would switch statusline from {current_source.name} to {desired_source.name}",
+                        f"Would switch {spec.display_name} from {current_source.name} to {source.name}",
                     )
-                uninstall_success, _ = uninstall_tool(statusline_spec.package_name)
+                uninstall_success, _ = uninstall_tool(spec.package_name)
                 if uninstall_success:
-                    github_url = (
-                        statusline_spec.github_install_url if from_github else None
-                    )
+                    github_url = spec.github_install_url if from_github else None
                     success, _ = install_tool(
-                        statusline_spec.package_name,
+                        spec.package_name,
                         from_github=from_github,
                         github_url=github_url,
                         local_path=local_path,
@@ -381,154 +377,14 @@ def ensure_statusline_installed(
                     if success:
                         return (
                             "source_switched",
-                            f"{current_source.name} → {desired_source.name}",
+                            f"{current_source.name} → {source.name}",
                         )
                 return "failed", None
 
-        try:
-            from ai_rules.bootstrap.updater import (
-                check_tool_updates,
-                perform_tool_upgrade,
-            )
-
-            update_info = check_tool_updates(statusline_spec, timeout=10)
-            if update_info and update_info.has_update:
-                if dry_run:
-                    return (
-                        "upgrade_available",
-                        f"Would upgrade statusline {update_info.current_version} → {update_info.latest_version}",
-                    )
-                success, msg, _ = perform_tool_upgrade(statusline_spec)
-                if success:
-                    return (
-                        "upgraded",
-                        f"{update_info.current_version} → {update_info.latest_version}",
-                    )
-        except Exception:
-            pass
-        return "already_installed", None
-
-    try:
-        github_url = statusline_spec.github_install_url if from_github else None
-        success, message = install_tool(
-            statusline_spec.package_name,
-            from_github=from_github,
-            github_url=github_url,
-            local_path=local_path,
-            force=False,
-            dry_run=dry_run,
-        )
-        if success:
-            return "installed", message if dry_run else None
-        else:
-            return "failed", None
-    except Exception:
-        return "failed", None
-
-
-def _is_recall_configured(config: object) -> bool:
-    """Check if recall is configured in the merged MCP config."""
-    if hasattr(config, "mcp_overrides") and "recall" in config.mcp_overrides:
-        return True
-
-    try:
-        import importlib.resources
-
-        config_pkg = importlib.resources.files("ai_rules") / "config"
-        for mcps_path in [
-            config_pkg / "mcps.json",
-            config_pkg / "claude" / "mcps.json",
-        ]:
-            traversable = mcps_path
-            if hasattr(traversable, "is_file") and traversable.is_file():
-                import json
-
-                data = json.loads(traversable.read_text())
-                if "recall" in data:
-                    return True
-    except Exception:
-        pass
-
-    return False
-
-
-def ensure_recall_installed(
-    dry_run: bool = False,
-    config: object | None = None,
-) -> tuple[str, str | None]:
-    """Install or upgrade recall if needed. Fails open.
-
-    Args:
-        dry_run: If True, show what would be done without executing
-        config: Config object; if provided and recall is not configured, skip
-
-    Returns:
-        Tuple of (status, message) where status is:
-        "already_installed", "installed", "upgraded", "upgrade_available",
-        "source_switched", "source_switch_needed", "failed", or "skipped"
-    """
-    if config is not None and not _is_recall_configured(config):
-        return "skipped", None
-
-    source, local_path = get_effective_install_source("recall", config=config)
-    from_github = source == ToolSource.GITHUB
-
-    if is_command_available("recall"):
-        if source != ToolSource.LOCAL:
-            try:
-                from ai_rules.bootstrap.updater import (
-                    check_tool_updates,
-                    get_tool_by_id,
-                    perform_tool_upgrade,
-                )
-
-                recall_tool = get_tool_by_id("recall")
-                if recall_tool:
-                    current_source = get_tool_source(recall_tool.package_name)
-                    if current_source is not None and current_source != source:
-                        if dry_run:
-                            return (
-                                "source_switch_needed",
-                                f"Would switch recall from {current_source.name} to {source.name}",
-                            )
-                        uninstall_success, _ = uninstall_tool(recall_tool.package_name)
-                        if uninstall_success:
-                            github_url = (
-                                recall_tool.github_install_url if from_github else None
-                            )
-                            success, _ = install_tool(
-                                recall_tool.package_name,
-                                from_github=from_github,
-                                github_url=github_url,
-                                local_path=local_path,
-                                force=True,
-                            )
-                            if success:
-                                return (
-                                    "source_switched",
-                                    f"{current_source.name} → {source.name}",
-                                )
-                        return "failed", None
-
-                    update_info = check_tool_updates(recall_tool, timeout=10)
-                    if update_info and update_info.has_update:
-                        if dry_run:
-                            return (
-                                "upgrade_available",
-                                f"Would upgrade recall {update_info.current_version} → {update_info.latest_version}",
-                            )
-                        success, msg, _ = perform_tool_upgrade(recall_tool)
-                        if success:
-                            return (
-                                "upgraded",
-                                f"{update_info.current_version} → {update_info.latest_version}",
-                            )
-            except Exception:
-                pass
-        else:
+        if source == ToolSource.LOCAL:
             # LOCAL source: always reinstall to pick up latest local changes
             success, message = install_tool(
-                "recall-mcp-server",
+                spec.package_name,
                 local_path=local_path,
                 force=True,
                 dry_run=dry_run,
@@ -539,14 +395,34 @@ def ensure_recall_installed(
                 return "upgraded", "reinstalled from local path"
             return "failed", None
 
+        if not skip_update_check:
+            try:
+                from ai_rules.bootstrap.updater import (
+                    check_tool_updates,
+                    perform_tool_upgrade,
+                )
+
+                update_info = check_tool_updates(spec, timeout=10)
+                if update_info and update_info.has_update:
+                    if dry_run:
+                        return (
+                            "upgrade_available",
+                            f"Would upgrade {spec.display_name} {update_info.current_version} → {update_info.latest_version}",
+                        )
+                    success, msg, _ = perform_tool_upgrade(spec)
+                    if success:
+                        return (
+                            "upgraded",
+                            f"{update_info.current_version} → {update_info.latest_version}",
+                        )
+            except Exception:
+                pass
         return "already_installed", None
 
     try:
-        github_url = (
-            make_github_install_url(RECALL_GITHUB_REPO) if from_github else None
-        )
+        github_url = spec.github_install_url if from_github else None
         success, message = install_tool(
-            "recall-mcp-server",
+            spec.package_name,
             from_github=from_github,
             github_url=github_url,
             local_path=local_path,
@@ -559,3 +435,29 @@ def ensure_recall_installed(
             return "failed", None
     except Exception:
         return "failed", None
+
+
+def ensure_tool_uninstalled(
+    command_name: str,
+    package_name: str,
+    dry_run: bool = False,
+) -> tuple[str, str | None]:
+    """Remove a tool installed via uv if present.
+
+    Args:
+        command_name: Command to check for presence (e.g. "recall").
+        package_name: The uv package name to uninstall (e.g. "recall-mcp-server").
+        dry_run: If True, return what would happen without executing.
+
+    Returns:
+        Tuple of (status, message) where status is one of:
+        "not_installed", "would_uninstall", "uninstalled", "failed"
+    """
+    uv_managed = get_tool_source(package_name) is not None
+    cmd_present = is_command_available(command_name)
+    if not uv_managed and not cmd_present:
+        return "not_installed", None
+    if dry_run:
+        return "would_uninstall", f"Would uninstall {package_name}"
+    success, message = uninstall_tool(package_name)
+    return ("uninstalled", None) if success else ("failed", message)

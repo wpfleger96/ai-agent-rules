@@ -433,6 +433,7 @@ class ConfigComponent(Component):
         return ComponentResult(ok=not found_differences, changed=found_differences)
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli import cleanup_deprecated_symlinks
         from ai_rules.cli.display import (
             dim,
             print_absent,
@@ -466,6 +467,10 @@ class ConfigComponent(Component):
                 else:
                     print_absent(f"{tgt} {dim(f'({message})')}", indent=2)
                     total_skipped += 1
+
+        cleanup_deprecated_symlinks(
+            list(ctx.selected_targets), ctx.config_dir, ctx.dry_run
+        )
 
         return ComponentResult(
             changed=total_removed > 0,

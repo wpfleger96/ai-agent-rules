@@ -82,6 +82,16 @@ class MCPManager(ABC):
         """Key for the managed-names tracking section, if any."""
         return None
 
+    @property
+    def _previously_managed_names(self) -> frozenset[str]:
+        """Names of MCPs historically managed by ai-agent-rules.
+
+        Entries matching these names are eligible for cleanup even without
+        the managed-by marker — handles cases where entries were added
+        externally or predate marker-stamping.
+        """
+        return frozenset()
+
     def get_native_mcps(self, config_dir: Path, config: Config) -> dict[str, Any]:
         """Load managed MCPs, translate to native format, and stamp marker."""
         managed = self.load_managed_mcps(config_dir, config)
@@ -205,7 +215,12 @@ class MCPManager(ABC):
             for name, cfg in current_mcps.items()
             if is_managed_value(cfg.get(self._marker_field))
         }
-        removed_mcps = tracked_mcps - set(native_mcps.keys())
+        unmarked_orphans = {
+            name
+            for name in self._previously_managed_names
+            if name in current_mcps and name not in native_mcps
+        }
+        removed_mcps = (tracked_mcps - set(native_mcps.keys())) | unmarked_orphans
 
         if not native_mcps and not removed_mcps:
             return (OperationResult.NOT_FOUND, "No MCPs to install or remove", [])
@@ -251,16 +266,20 @@ class MCPManager(ABC):
             for name, cfg in current_mcps.items()
             if is_managed_value(cfg.get(self._marker_field))
         }
+        previously_managed = {
+            name for name in self._previously_managed_names if name in current_mcps
+        }
+        all_to_remove = tracked_mcps | previously_managed
 
-        if not tracked_mcps:
+        if not all_to_remove:
             return (OperationResult.NOT_FOUND, "No tracked MCPs found")
 
-        for name in tracked_mcps:
+        for name in all_to_remove:
             current_mcps.pop(name, None)
 
         self._write_installed(current_mcps)
 
-        return (OperationResult.REMOVED, f"Removed {len(tracked_mcps)} MCPs")
+        return (OperationResult.REMOVED, f"Removed {len(all_to_remove)} MCPs")
 
     def get_status(self, config_dir: Path, config: Config) -> MCPStatus:
         """Get status of managed and unmanaged MCPs."""
@@ -292,7 +311,10 @@ class MCPManager(ABC):
                 else:
                     status.stale_mcps[name] = mcp_config
             else:
-                status.unmanaged_mcps[name] = mcp_config
+                if name in self._previously_managed_names and name not in native_mcps:
+                    status.stale_mcps[name] = mcp_config
+                else:
+                    status.unmanaged_mcps[name] = mcp_config
 
         for name, mcp_config in native_mcps.items():
             if name not in installed_mcps:
@@ -388,6 +410,12 @@ class GooseMCPManager(MCPManager):
     @property
     def _marker_field(self) -> str:
         return "_managed_by"
+
+    @property
+    def _previously_managed_names(self) -> frozenset[str]:
+        from ai_rules.bootstrap.registry import get_deprecated_mcp_names
+
+        return get_deprecated_mcp_names()
 
     @property
     def mcp_settings_key(self) -> str | None:
@@ -530,9 +558,12 @@ class CodexMCPManager(MCPManager):
 
         doc["mcp_servers"] = mcp_table
 
-        mgmt_section = tomlkit.table()
-        mgmt_section["names"] = managed_names
-        doc[self._MANAGED_SECTION] = mgmt_section
+        if managed_names:
+            mgmt_section = tomlkit.table()
+            mgmt_section["names"] = managed_names
+            doc[self._MANAGED_SECTION] = mgmt_section
+        elif self._MANAGED_SECTION in doc:
+            del doc[self._MANAGED_SECTION]
 
         if self._LEGACY_MANAGED_SECTION in doc:
             del doc[self._LEGACY_MANAGED_SECTION]
