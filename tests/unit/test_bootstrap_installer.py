@@ -300,41 +300,44 @@ class TestUninstallTool:
 class TestGetToolConfigDir:
     """Tests for get_tool_config_dir function."""
 
-    def test_returns_expected_path_structure(self):
+    def test_returns_expected_path_structure(self, monkeypatch):
         """Test that get_tool_config_dir returns correct path structure."""
+        monkeypatch.delenv("UV_TOOL_DIR", raising=False)
         result = get_tool_config_dir("ai-agent-rules")
         python_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
 
-        path_str = str(result)
-        assert "uv/tools/ai-agent-rules" in path_str
-        assert python_version in path_str
-        assert path_str.endswith("ai_rules/config")
+        path_posix = result.as_posix()
+        assert "uv/tools/ai-agent-rules" in path_posix
+        assert python_version in path_posix
+        assert path_posix.endswith("ai_rules/config")
 
     def test_respects_xdg_data_home(self, monkeypatch, tmp_path):
         """Test that XDG_DATA_HOME environment variable is respected."""
         custom_data_home = tmp_path / "custom_data"
         monkeypatch.setenv("XDG_DATA_HOME", str(custom_data_home))
+        monkeypatch.delenv("UV_TOOL_DIR", raising=False)
 
         result = get_tool_config_dir("ai-agent-rules")
 
-        assert str(result).startswith(str(custom_data_home))
-        assert "uv/tools/ai-agent-rules" in str(result)
+        assert result.as_posix().startswith(custom_data_home.as_posix())
+        assert "uv/tools/ai-agent-rules" in result.as_posix()
 
     def test_uses_default_data_home_when_xdg_not_set(self, monkeypatch):
         """Test that ~/.local/share is used when XDG_DATA_HOME is not set."""
         monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+        monkeypatch.delenv("UV_TOOL_DIR", raising=False)
 
         result = get_tool_config_dir("ai-agent-rules")
 
-        path_str = str(result)
-        assert ".local/share" in path_str or ".local\\share" in path_str
+        assert ".local/share" in result.as_posix()
 
-    def test_custom_package_name(self):
+    def test_custom_package_name(self, monkeypatch):
         """Test that custom package names are handled correctly."""
+        monkeypatch.delenv("UV_TOOL_DIR", raising=False)
         result = get_tool_config_dir("my-custom-package")
 
-        assert "my-custom-package" in str(result)
-        assert "ai_rules/config" in str(result)
+        assert "my-custom-package" in result.as_posix()
+        assert "ai_rules/config" in result.as_posix()
 
 
 @pytest.mark.unit
@@ -344,46 +347,50 @@ class TestGetToolSource:
 
     def test_detects_pypi_installation(self, tmp_path, monkeypatch):
         """Test that PyPI installations are detected."""
-        tools_dir = tmp_path / "uv" / "tools" / "test-package"
+        tools_dir = tmp_path / "test-package"
         tools_dir.mkdir(parents=True)
         receipt = tools_dir / "uv-receipt.toml"
         receipt.write_text(
             '[tool]\nrequirements = [{ name = "test-package", version = "1.0.0" }]\n'
         )
 
-        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path))
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
         result = get_tool_source("test-package")
         assert result == ToolSource.PYPI
 
     def test_returns_none_when_not_installed(self, tmp_path, monkeypatch):
         """Test that None is returned for tools that aren't installed."""
-        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path))
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
         result = get_tool_source("nonexistent-package")
         assert result is None
 
     def test_detects_local_installation(self, tmp_path, monkeypatch):
         """Test that local path installations are detected."""
-        tools_dir = tmp_path / "uv" / "tools" / "test-package"
+        tools_dir = tmp_path / "test-package"
         tools_dir.mkdir(parents=True)
         receipt = tools_dir / "uv-receipt.toml"
         receipt.write_text(
             '[tool]\nrequirements = [{ name = "test-package", path = "/home/user/dev/test-package" }]\n'
         )
 
-        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path))
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
         result = get_tool_source("test-package")
         assert result == ToolSource.LOCAL
 
     def test_detects_local_directory_installation(self, tmp_path, monkeypatch):
         """Test that local directory installations are detected."""
-        tools_dir = tmp_path / "uv" / "tools" / "test-package"
+        tools_dir = tmp_path / "test-package"
         tools_dir.mkdir(parents=True)
         receipt = tools_dir / "uv-receipt.toml"
         receipt.write_text(
             '[tool]\nrequirements = [{ name = "test-package", directory = "/home/user/dev/test-package" }]\n'
         )
 
-        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path))
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
         result = get_tool_source("test-package")
         assert result == ToolSource.LOCAL
 

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from ai_rules.agents.amp import AmpAgent
@@ -20,7 +22,7 @@ class TestClaudeAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.claude/CLAUDE.md" in targets
         assert "~/.claude/settings.json" in targets
         assert "~/.claude/agents/test-agent.md" in targets
@@ -35,7 +37,9 @@ class TestClaudeAgent:
         symlinks = agent.symlinks
 
         agent_targets = [
-            str(target) for target, _ in symlinks if "/agents/" in str(target)
+            Path(target).as_posix()
+            for target, _ in symlinks
+            if "/agents/" in Path(target).as_posix()
         ]
         assert len(agent_targets) == 3
         assert "~/.claude/agents/test-agent.md" in agent_targets
@@ -50,7 +54,9 @@ class TestClaudeAgent:
         symlinks = agent.symlinks
 
         command_targets = [
-            str(target) for target, _ in symlinks if "/commands/" in str(target)
+            Path(target).as_posix()
+            for target, _ in symlinks
+            if "/commands/" in Path(target).as_posix()
         ]
         assert len(command_targets) == 2
         assert "~/.claude/commands/test-command.md" in command_targets
@@ -67,7 +73,7 @@ class TestClaudeAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.claude/settings.json" not in targets
         assert "~/.claude/agents/test-agent.md" not in targets
         assert "~/.claude/CLAUDE.md" in targets
@@ -84,7 +90,7 @@ class TestCodexAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.codex/AGENTS.md" in targets
         assert "~/.codex/config.toml" in targets
         assert len(targets) == 2
@@ -105,7 +111,7 @@ class TestCodexAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.codex/config.toml" not in targets
         assert "~/.codex/AGENTS.md" in targets
 
@@ -120,7 +126,7 @@ class TestAmpAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.config/amp/AGENTS.md" in targets
         assert "~/.config/amp/settings.json" in targets
         assert len(targets) == 2
@@ -141,7 +147,7 @@ class TestAmpAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.config/amp/settings.json" not in targets
         assert "~/.config/amp/AGENTS.md" in targets
 
@@ -156,7 +162,7 @@ class TestGeminiAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.gemini/GEMINI.md" in targets
         assert "~/.gemini/settings.json" in targets
         assert len(targets) == 2
@@ -177,7 +183,7 @@ class TestGeminiAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.gemini/settings.json" not in targets
         assert "~/.gemini/GEMINI.md" in targets
 
@@ -192,7 +198,7 @@ class TestGooseAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.config/goose/.goosehints" in targets
         assert "~/.config/goose/config.yaml" in targets
         assert len(targets) == 2
@@ -203,7 +209,7 @@ class TestGooseAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/.config/goose/config.yaml" not in targets
         assert "~/.config/goose/.goosehints" in targets
 
@@ -218,7 +224,7 @@ class TestSharedAgent:
 
         symlinks = agent.symlinks
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/AGENTS.md" in targets
         assert len(targets) == 1
 
@@ -228,7 +234,7 @@ class TestSharedAgent:
 
         symlinks = agent.get_filtered_symlinks()
 
-        targets = [str(target) for target, _ in symlinks]
+        targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/AGENTS.md" not in targets
         assert len(targets) == 0
 
