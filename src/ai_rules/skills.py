@@ -77,7 +77,7 @@ class SkillManager:
         if not skill_file.exists():
             return None
 
-        content = skill_file.read_text()
+        content = skill_file.read_text(encoding="utf-8")
 
         if content.startswith("---"):
             parts = content.split("---", 2)
@@ -284,7 +284,7 @@ class SkillManager:
         skill_file = managed[name] / "SKILL.md"
         if not skill_file.exists():
             return None
-        return skill_file.read_text()
+        return skill_file.read_text(encoding="utf-8")
 
     @staticmethod
     def _get_repo_url() -> str | None:
