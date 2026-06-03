@@ -20,6 +20,7 @@ from ai_rules.bootstrap.installer import (
     uninstall_tool,
 )
 from ai_rules.bootstrap.registry import _is_recall_configured
+from ai_rules.bootstrap.updater import ToolSpec
 
 
 @pytest.mark.unit
@@ -569,15 +570,14 @@ class TestIsRecallConfigured:
         assert _is_recall_configured(config) is False
 
 
-def _make_spec(installed=True):
-    return SimpleNamespace(
+def _make_spec(installed: bool = True) -> ToolSpec:
+    return ToolSpec(
         tool_id="test-tool",
         package_name="test-pkg",
         display_name="Test Tool",
         get_version=lambda: "0.1.0",
         is_installed=lambda: installed,
         github_repo="owner/test-tool",
-        github_install_url="git+ssh://git@github.com/owner/test-tool.git",
         is_enabled=lambda: True,
     )
 
@@ -650,14 +650,19 @@ class TestEnsureToolInstalled:
             dry_run=True,
         )
         assert status == "upgrade_available"
+        assert message is not None
         assert "0.1.0" in message
         assert "0.2.0" in message
 
     def test_skip_update_check_returns_already_installed(self, monkeypatch):
-        called = []
+        called: list[bool] = []
+
+        def _tracking_stub(spec: object, timeout: int = 10) -> None:
+            called.append(True)
+
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.check_tool_updates",
-            lambda spec, timeout=10: called.append(True) or None,
+            _tracking_stub,
         )
         result = ensure_tool_installed(
             _make_spec(installed=True),

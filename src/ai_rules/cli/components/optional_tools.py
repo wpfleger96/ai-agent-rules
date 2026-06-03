@@ -157,20 +157,22 @@ class OptionalToolsComponent(Component):
             elif result == "not_installed":
                 print_unchanged(f"{active.tool_id} not installed", indent=2)
 
-        for spec in DEPRECATED_TOOLS:
+        for deprecated in DEPRECATED_TOOLS:
             result, message = ensure_tool_uninstalled(
-                spec.command_name, spec.package_name, dry_run=ctx.dry_run
+                deprecated.command_name, deprecated.package_name, dry_run=ctx.dry_run
             )
             if result == "uninstalled":
-                print_success(f"Removed {spec.tool_id}", indent=2)
+                print_success(f"Removed {deprecated.tool_id}", indent=2)
                 removed += 1
             elif result == "would_uninstall" and message:
                 print_dim(message, indent=2)
                 removed += 1
             elif result == "failed":
-                print_warning(f"Failed to remove {spec.tool_id}: {message}", indent=2)
+                print_warning(
+                    f"Failed to remove {deprecated.tool_id}: {message}", indent=2
+                )
             elif result == "not_installed":
-                print_unchanged(f"{spec.tool_id} not installed", indent=2)
+                print_unchanged(f"{deprecated.tool_id} not installed", indent=2)
 
         return ComponentResult(changed=removed > 0)
 
