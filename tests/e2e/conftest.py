@@ -87,7 +87,7 @@ def run_cli(e2e_home):
         return subprocess.run(
             [sys.executable, "-m", "ai_rules.cli", *args],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
             check=False,
             cwd=repo_root,
             env=base_env,
@@ -116,7 +116,7 @@ def run_cli_with_config(e2e_home, e2e_config_dir):
         return subprocess.run(
             [sys.executable, "-m", "ai_rules.cli", *args],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
             check=False,
             cwd=repo_root,
             env=base_env,
