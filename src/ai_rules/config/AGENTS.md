@@ -3,7 +3,20 @@
 ## Quick Reference Checklist
 
 **Before completing tasks:**
-☐ Worktree for code changes | ☐ Read README & docs | ☐ Create TODO list (multi-step) | ☐ Explore before implementing | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ DRY & single responsibility | ☐ WHY comments only | ☐ Remove trailing whitespace | ☐ File ends with newline | ☐ Test behavior not implementation | ☐ AWS: --profile & --region | ☐ Keep simple | ☐ Ask clarifying questions | ☐ GitHub URLs: explore code locally
+☐ Worktree for code changes | ☐ Read README & docs | ☐ Create TODO list (multi-step) | ☐ Explore before implementing | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ DRY & single responsibility | ☐ WHY comments only | ☐ Remove trailing whitespace | ☐ File ends with newline | ☐ Test behavior not implementation | ☐ AWS: --profile & --region | ☐ Keep simple (9/10 minimalism/elegance/correctness) | ☐ Ask clarifying questions | ☐ GitHub: git pull, then explore locally | ☐ Cross-reference stacked/related PRs | ☐ Config issues → Personal Infrastructure table
+
+---
+
+## Personal Infrastructure
+
+**Rule:** When debugging config, shell, git, editor, or agent behavior issues, check the relevant source repo before guessing or asking the user.
+
+| Issue area | Source repo | Path | Deployment |
+|------------|-------------|------|------------|
+| AI agent configs (AGENTS.md, settings, MCP servers, hooks, skills, profiles) | `ai-rules` | `~/Development/Personal/ai-rules` | Symlinks — editing the live file modifies the source directly. CLI: `ai-agent-rules`. |
+| Shell/terminal, git global config, editor settings (VS Code, Cursor), SSH signing, AI agent binary installs | `shell-configs` | `~/Development/Personal/shell-configs` | Managed section injection — NOT symlinks. Delimited blocks inside config files are overwritten on `shell-configs install`; content outside blocks persists. CLI: `shell-configs`. |
+| Claude Code statusline (model, tokens, cost, git branch bar) | `claude-code-status-line` | `~/Development/Personal/claude-code-status-line` | Wired into `~/.claude/settings.json`. |
+| GitHub repo settings (branch protection, merge rules, labels, Renovate) | `github-config` | `~/Development/Personal/github-config` | Declarative YAML manifests applied via `gh-infra`. |
 
 ---
 
@@ -14,32 +27,8 @@
 **Stage 1:** Implement functional requirements
 **Stage 2:** Security checklist: Input validation | SQL injection prevention (parameterized queries) | XSS blocking (output encoding) | Auth/authz checks | Rate limiting | Sanitized errors | No secrets | Audit logging
 
-**Why:** LLMs produce vulnerable code without explicit security prompting.
-
 ### Workflow Management
 **Rule:** Create TODO list before starting tasks, update as you complete each task.
-
-### Autonomous Coding Workflow
-
-**Trigger:** After non-trivial code changes (features, bug fixes, behavior-altering refactors), execute before presenting results.
-
-**Stages:**
-
-| Stage | Action | Proceed when |
-|-------|--------|--------------|
-| 1. Implement | Decompose work by file/concern; brief parallel implementation subagents with explicit file ownership (see Delegation section); verify all results before proceeding | All target files updated, results verified |
-| 2. Quality Checks | Run format, lint, test via project tooling (`just check` or individually) | All checks pass (fix any issues found) |
-| 3. Write Tests | Invoke `test-writer` skill for new/changed code paths | Tests written and passing |
-| 4. Review | Invoke `code-reviewer` skill via Agent tool (isolated subagent with fresh context) | Review findings returned |
-| 5. Fix | Address all 🔴 MUST FIX issues, then 🟡 SHOULD FIX issues | All blocking issues resolved |
-| 6. Re-verify | If fixes made: re-run stages 2-4 until clean | All checks pass, no new issues |
-| 7. Draft Commit | Generate conventional commit message for the changes | Message ready for user review |
-
-**Stop condition:** Do NOT stage files, commit, or create PR. Present the draft commit message and wait for user instruction.
-
-**Skip workflow when:** Changes are documentation-only, config/settings tweaks, typo fixes, or user explicitly requests "quick fix" or "no review needed."
-
-**Project tooling priority:** Always check for Justfile/Makefile first. Use `just <task>` or `make <task>` when available.
 
 ### Mandatory Worktree for Code Changes
 
@@ -56,57 +45,27 @@
 | Claude Code | Use `EnterWorktree` tool (creates worktree and switches session directory) |
 | Other agents | `git worktree add .worktrees/<worktree-name> -b <branch-name>` from repo root, then `cd` into it |
 
-**Branch naming:** `<username>/<descriptive-slug>` — e.g., `wpfleger/git-worktree-enforcement`, `wpfleger/fix-null-pointer`.
+**Branch naming:** `<username>/<descriptive-slug>` — e.g., `wpfleger/git-worktree-enforcement`.
 
-**Worktree folder naming:** Derive from the branch name — replace `/`, `\`, `:` with `-`. This matches the `_wt_sanitize_dirname` convention used by the `wt` shell functions.
-- `wpfleger/git-worktree-enforcement` → `.worktrees/wpfleger-git-worktree-enforcement`
-- `wpfleger/fix-null-pointer` → `.worktrees/wpfleger-fix-null-pointer`
+**Worktree folder naming:** Derive from branch name — replace `/`, `\`, `:` with `-` (matches `_wt_sanitize_dirname`).
 
-**Why:** Multiple agents often run concurrently in the same repo on unrelated tasks. Without worktrees, their file changes collide — dirty working trees, conflicting edits, and broken intermediate states. Worktrees give each agent an isolated workspace so concurrent sessions never interfere with each other.
+**Why:** Concurrent agents need isolated workspaces to avoid conflicting edits.
 
 ### Delegation & Multi-Agent Orchestration
 
-**Rule:** Always delegate code implementation to parallel subagents. Never write code changes directly in the orchestrator context — implementation diffs bloat context and force compaction before review or revision can proceed. For non-implementation tasks, delegate when parallelism or context isolation provides clear benefit.
+**Rule:** Always delegate code implementation to parallel subagents — never write implementation diffs in the orchestrator context. Split by file/concern; one subagent per file or group of files sharing a broken intermediate state.
 
-**When to delegate (spawn subagents):**
-- **Always:** Code implementation — split by file/concern; one subagent per file or per group of files sharing a broken intermediate state; sequence only when an interface is genuinely unknowable before upstream is written
-- Non-implementation tasks: when context would exceed ~50% of effective window with all relevant code loaded
-- Non-implementation tasks: when independent subtasks can run in parallel (research, review lenses, test generation)
+**Delegate:** All code implementation | Non-implementation when context would exceed ~50% of window | Independent parallel subtasks
+**Handle inline:** Single-line mechanical changes | Highly sequential tasks needing prior step's output | Ambiguous tasks (clarify first)
 
-**When NOT to delegate (handle inline):**
-- Single-line mechanical changes (renaming a constant, fixing a typo in a string literal) — the only implementation exception
-- Highly sequential non-implementation tasks where each step requires the previous step's actual output
-- Ambiguously specified tasks — clarify scope first before spawning agents (ambiguity amplifies across N agents)
-
-**How to brief subagents (self-containment protocol):**
+**Subagent briefing (self-containment protocol):**
 Subagents have ZERO access to the parent conversation. Every briefing must include:
-1. **One atomic objective** — a single question to answer or task to complete (never multiple)
-2. **Output format** — the expected structure of the result
-3. **Tool guidance** — which tools and sources to prioritize
-4. **Scope boundaries** — explicit "do NOT research/review/implement X — another agent handles that"
-5. **Key questions** — 3-5 specific, answerable questions that serve as success criteria
-
-Implementation briefings additionally require:
-6. **File ownership list** — explicit list of files this agent may create or modify; prohibit touching any file not on the list
-7. **Plan context** — the relevant portion of the overall plan, including interfaces this file's changes must satisfy and what parallel agents are doing
-8. **Forbidden files** — explicitly name every file owned by another parallel agent
+- One atomic objective | Output format | Tool guidance | Scope boundaries ("do NOT implement X — another agent handles that")
+- Implementation briefings additionally: file ownership list (prohibit touching unlisted files), plan context with interfaces to satisfy, forbidden files owned by parallel agents
 
 Analysis tasks: `sonnet` for execution-heavy, `opus` for judgment-heavy.
 
-**How to synthesize subagent results:**
-- Organize output by theme, not by which agent produced it
-- Surface conflicts explicitly — never silently pick one side
-- Weight by confidence: convergent findings from multiple agents = strong evidence; further passes on the same angle unlikely to yield new insight
-- Write the summary/bottom-line last, after completing full synthesis
-
-**Anti-patterns (avoid):**
-- **Bag of agents**: Flat topology with no scope boundaries
-- **Over-delegation**: Spawning multiple agents for a change with a single atomic unit of work (e.g., one two-line fix that only one file can own)
-- **Under-briefing**: Vague objectives or missing scope boundaries
-- **Open-loop execution**: No verification gate after synthesis — always validate before presenting results
-- **Echo chamber**: Same model for all perspectives — add diversity via external models when available
-
-**Why:** Context isolation eliminates "lost in the middle" degradation. Explicit scope boundaries prevent the primary failure mode in production multi-agent systems.
+**Synthesizing results:** Organize by theme not by agent. Surface conflicts explicitly. Convergent findings = strong evidence. Write summary last.
 
 ### Documentation First
 **Rule:** Read README.md, CONTRIBUTING.md, docs/, .github/, Makefile/Justfile before actions.
@@ -122,14 +81,6 @@ Analysis tasks: `sonnet` for execution-heavy, `opus` for judgment-heavy.
 4. **pyproject.toml exists?** → Use `uv run <tool>` (NEVER direct tool invocation)
 5. **Cargo.toml exists?** → Use `cargo <command>`
 
-**Common mistakes that MUST be avoided:**
-
-| ❌ WRONG (bypasses tooling) | ✅ CORRECT (uses tooling) |
-|------------------------------|---------------------------|
-| `ruff .` or `ruff check .` | `just lint` or `uv run ruff check .` |
-| `pytest` | `just test` or `uv run pytest` |
-| `cargo test` | Check Justfile first → `just test` if exists, else `cargo test` |
-
 **Why:** Direct tool invocation bypasses project configuration. The #1 agent mistake.
 
 ### Software Engineering Standards
@@ -140,31 +91,18 @@ Analysis tasks: `sonnet` for execution-heavy, `opus` for judgment-heavy.
 **Error Handling:** At boundaries only, specific exceptions
 **Input Validation:** Validate ALL user input and external API responses at system boundaries
 
-**Why:** Reduces bugs 60%, improves maintainability.
-
 ### Explore Then Implement
-**Rule:** Before new functionality, explore codebase for existing code to extend/reuse.
-
-1. Search for similar patterns/abstractions
-2. Extend existing (80%+ coverage) vs create new
-3. Document why if truly novel
-
-```python
-# ❌ fork_session(sid, mid): duplicates validation/state management
-# ✅ edit_message(mid, content, fork=False): extends existing, adds param
-```
-
-**Why:** LLMs default to clean new code rather than integrating with existing code.
+**Rule:** Before new functionality, search for existing code to extend/reuse. Extend existing (80%+ coverage) vs create new. LLMs default to clean new code rather than integrating with existing code.
 
 ### Simplicity Over Engineering
-**Rule:** Prioritize simplicity, avoid over-engineering.
+**Rule:** Three similar lines > premature abstraction | No helpers for one-time ops | Only requested features | Design for NOW
 
-Three similar lines > premature abstraction | No helpers for one-time ops | Only requested features | Design for NOW
+**Quality gate (internal — do not print scores):** Before finalizing any implementation, evaluate your work on three dimensions:
+- **Minimalism:** Is every line, parameter, and abstraction load-bearing? Try to remove something — if you can without losing correctness, the score is below 9.
+- **Elegance:** Does the structure reveal intent on first read? If a senior engineer would need to re-read any part to understand the design, the score is below 9.
+- **Correctness:** Are all edge cases handled? Walk through at least two non-happy-path scenarios — if either breaks, the score is below 9.
 
-```python
-# ✅ Simple: for p in payments: validate(p); charge(p)
-# ❌ Over-engineered: class PaymentProcessor with factory/strategy patterns for single use
-```
+Iterate until all three are genuinely 9/10. A 9 means you actively tried to find a flaw and could not. If you can still see a way to improve, the score is lower — fix it before proceeding.
 
 ### Collaboration Protocol
 
@@ -182,53 +120,17 @@ Three similar lines > premature abstraction | No helpers for one-time ops | Only
 - **User environment and business logic:** NEVER assume local setup, installed tools, or domain constraints. Ask or check.
 - **Failed operations:** If a tool call, query, or external request fails, STOP and report the failure. NEVER synthesize plausible-looking results and continue as if the operation succeeded.
 
-**When uncertain, ask.** Format questions specifically:
-- ❌ "Should I proceed?" (too vague)
-- ✅ "The Stripe API docs don't mention webhook retry limits. Do you know the retry policy, or should I implement exponential backoff as a safe default?"
-
-**Challenge when you see:** Unclear requirements | Security gaps | Performance concerns | Unverifiable assumptions | High maintenance cost
-
-**Do NOT challenge:** Clear decisions already made | Style preferences | Technology choices already decided
-
-**Why:** LLMs confidently generate plausible-sounding but incorrect assumptions. Explicit verification prevents wasted work.
+**When uncertain, ask** — with specific, actionable questions (not "should I proceed?").
 
 ---
 
 ## Technical Standards
-
-### Python
-**Tooling:** Follow Project Tooling hierarchy above. Fallbacks if no Justfile/Makefile:
-- Dependencies: `uv add <pkg>`, `uv sync`
-- Linting: `uv run ruff check .`
-- Formatting: `uv run ruff format .`
-- Testing: `uv run pytest`
-
-**Testing framework:** `pytest` (not unittest)
-
-### Rust
-**Tooling:** Follow Project Tooling hierarchy above. Fallbacks if no Justfile/Makefile:
-- Build: `cargo build`
-- Test: `cargo test`
-- Format: `cargo fmt`
-- Lint: `cargo clippy`
 
 ### Testing Standards
 **Rule:** Test behavior, NOT implementation.
 
 **Test:** Business logic with branches | Error conditions | Integration points | Security controls | Public APIs
 **Skip:** Getters/setters | Framework code | Trivial types | Private details
-
-```python
-# ✅ Behavior
-def test_duplicate_email_fails():
-    db.save(User(email="test@x.com"))
-    assert not register_user("test@x.com", "pass").success
-
-# ❌ Implementation
-def test_calls_hash_password():
-    mock = Mock(); register_user("a", "b"); mock.assert_called()  # Who cares?
-```
-
 **Structure:** Arrange-act-assert | Names: `test_<scenario>_<result>` | Independent | Deterministic
 
 ### AWS CLI
@@ -240,46 +142,28 @@ def test_calls_hash_password():
 
 **Rule:** When given a GitHub URL (PR, issue, repo), **prefer exploring code locally** over reading it through `gh` CLI. Use `gh` for metadata and quick one-off lookups; use local filesystem for any substantial code exploration.
 
+**Sync before exploring (CRITICAL):** Run `git pull` (or `git fetch origin` + check) in any local repo clone before reading code. GitHub's default branch is the single source of truth — your local clone is a cache that may be days or weeks stale. Skip only when the user explicitly says "look at my local changes" or you are working in your own worktree with in-progress changes.
+
+**Stale clone failure mode:** Without `git pull`, you may spend an entire session investigating a bug that was already fixed on `main`, or proposing changes that conflict with recently merged work. This is the most expensive class of wasted session — always sync first.
+
 **Path resolution:** `github.com/<org>/<repo_name>` → `~/Development/<repo_name>`
-
-**Worktree awareness:** Code may live in a git worktree instead of the repo root.
-- Worktree path: `~/Development/<repo_name>/.worktrees/<sanitized_branch>/`
-- Branch name sanitization: replace `/`, `\`, `:` with `-`
-  - `feature/auth` → `feature-auth`
-  - `user/jsmith/fix-bug` → `user-jsmith-fix-bug`
-
-**`gh` CLI: appropriate vs. preferred-local:**
-
-| Task | Approach |
-|------|----------|
-| PR metadata (branch, status, labels) | `gh pr view 123 --json headRefName,state,labels` |
-| Create/comment on PR/issue | `gh pr create`, `gh pr comment`, `gh issue list` |
-| Quick glance at a small PR diff | `gh pr diff 123` (acceptable for small/simple PRs) |
-| Code exploration, multi-file review, repo navigation | **Local:** Read/Grep/Glob/`git diff` on `~/Development/<repo_name>` |
 
 **Workflow when given PR URLs:**
 1. Run `gh pr view <num> --repo <org>/<repo> --json headRefName` to get the branch name
 2. Resolve local path: `~/Development/<repo_name>`
-3. Sanitize branch name (`/\:` → `-`) → check `~/Development/<repo_name>/.worktrees/<sanitized_branch>/`
-4. If worktree exists, explore there
-5. If NO worktree, check repo root: if on correct branch → explore; if on different branch and clean → `git checkout <branch>`; if dirty → ask user how to proceed
-6. Use Read, Grep, Glob, and `git diff` for all code exploration
+3. **`git pull`** in the repo root — sync with remote before any exploration
+4. Sanitize branch name (`/\:` → `-`) → check `~/Development/<repo_name>/.worktrees/<sanitized_branch>/`
+5. If worktree exists, explore there
+6. If NO worktree, check repo root: if on correct branch → explore; if on different branch and clean → `git checkout <branch>`; if dirty → ask user how to proceed
+7. Use Read, Grep, Glob, and `git diff` for all code exploration
 
 **Why:** Local reads are instant with full-text search. `gh` is for metadata and small diffs only.
 
 ### PR Maintenance After Pushing Commits
 
-**Rule:** After pushing commits to a branch with an existing open PR, re-evaluate the title and description. A PR description is a point-in-time snapshot of what this branch changes vs. main — never a timeline or narrative of how the PR evolved.
+**Rule:** After pushing to an open PR, re-evaluate title and description. A PR description is a snapshot of what this branch changes vs. main — never a timeline of how it evolved.
 
-**Mandatory workflow after every push to an existing PR:**
-1. Re-read: `gh pr view <number> --json title,body`
-2. Evaluate: does the title/description accurately describe ALL commits on the branch — not just the latest push?
-3. If stale: rewrite from scratch, then update via `gh pr edit <number> --title "..." --body "$(cat <<'EOF'...EOF)"`
-
-A minor fix already implied by the description probably doesn't need changes. But always evaluate; never skip the check.
-
-- ❌ Adding a "Review fixes" or "Consolidation" section that narrates what changed after feedback
-- ✅ Rewriting the full description to reflect what the branch currently does vs. main
+After every push: `gh pr view <number> --json title,body` → evaluate if title/description covers ALL commits (not just latest push) → if stale, rewrite from scratch via `gh pr edit`. Never add "Review fixes" sections — rewrite the full description.
 
 ### PR Description Content
 
@@ -288,6 +172,27 @@ A minor fix already implied by the description probably doesn't need changes. Bu
 **NEVER narrate the development process** — no "after review," "following feedback," "consolidated from," or references to review rounds. Describe the final state only.
 
 **NEVER mention internal workflow tools** (code-reviewer, crossfire, test-writer, etc.) in PR descriptions.
+
+### PR Cross-Referencing
+
+**Rule:** Every PR that is part of a stack or has related PRs (same repo or cross-repo) must explicitly reference all related PRs. No PR description may contain a placeholder, TODO, or "TBD" for a cross-reference when the session ends.
+
+**Stacked PRs (same repo):** Include a stack line showing position:
+`Stack: #1 → #2 → this PR → #4`
+
+**Related PRs (cross-repo):** Use fully qualified links:
+`Related: [other-repo#45](https://github.com/org/other-repo/pull/45)`
+
+**Sequential creation (critical — agents routinely fail this):**
+When creating PRs one at a time, PR 1 cannot reference not-yet-created PR 2. After creating all PRs, go back and edit every earlier PR to add the now-known references:
+1. Create PR 1 (full description, no forward references yet)
+2. Create PR 2 (include backward reference to PR 1)
+3. Edit PR 1 via `gh pr edit <number> --body "..."` to add forward reference to PR 2
+4. Repeat for any additional PRs in the set
+
+This applies identically to cross-repo PR sets — after opening PR 2 in Repo B, go back and edit PR 1 in Repo A.
+
+**Why:** Reviewers and CI systems navigate between related PRs. Missing cross-references cause PRs to merge without reviewers seeing the full picture.
 
 ### Commit Messages
 **Rule:** Subject states WHAT changed. Body explains WHY -- the problem, motivation, or design decision. Never narrate what's visible in `git show --stat` or the diff itself.
@@ -304,38 +209,15 @@ A minor fix already implied by the description probably doesn't need changes. Bu
 | `docs:` | Documentation-only changes | Code changes with doc updates (use primary type) |
 | `chore:` | Dependencies, CI, config, tooling | Anything touching application logic |
 
-**Body (2-4 lines, skip if subject is self-explanatory):**
-- Describe the problem or motivation driving the change
-- Note design decisions, trade-offs, alternatives, or relationship to series
-- Call out non-obvious side effects or included bug fixes
-
-**Test:** Does the body add information a reviewer can't get from the diff? YES → keep it. NO → cut it.
+**Body (2-4 lines, skip if self-explanatory):** Problem/motivation, design decisions, non-obvious side effects. Test: does the body add info a reviewer can't get from the diff?
 
 ```
-# ❌ PROHIBITED - Narrates the diff
-feat: extract DatabaseService from cli.py
-
-Extract db_stats command into DatabaseService.
-Created services/database_service.py with get_stats() method.
-Updated CLI db_stats command to use service.
-All 421 tests pass (gained 5 new tests).
-
-# ✅ CORRECT - Explains WHY and provides context
-refactor: extract db_stats logic into DatabaseService
-
-cli.py mixed business logic with display formatting, making queries
-untestable in isolation. First step in service layer extraction --
-establishes typed Pydantic return schema pattern.
-```
-
-```
-# ❌ PROHIBITED - Method inventory, marketing language
+# ❌ PROHIBITED - Method inventory, narrates the diff
 feat: extract SessionService from cli.py
 
 Extract session business logic into SessionService with 6 methods
 covering list/show/delete/enable/disable/resolve operations.
 Service layer complete with full test coverage.
-[...12 more lines listing every method and schema...]
 
 # ✅ CORRECT - Problem, decision, noteworthy side-effect
 refactor: extract session operations from cli.py into SessionService
@@ -347,8 +229,6 @@ None-safety bug in statistics display (obstructive_apneas > 0
 crashed when value was None).
 ```
 
-**Why:** Commit messages are permanent docs. The body captures context that will be lost: problem, reasoning, trade-offs.
-
 ---
 
 ## Style & Formatting
@@ -357,22 +237,9 @@ crashed when value was None).
 **Rule:** Only WHY comments explaining non-obvious rationale. NEVER WHAT comments restating code.
 
 ```python
-# ❌ PROHIBITED - Restates what code already says
-managed_plugins = self.load_managed_plugins()  # Load managed plugins
-for plugin in orphaned:  # Loop through orphaned plugins
-    managed.discard(plugin)  # Remove from managed set
-
-# ✅ CORRECT - Self-documenting code needs no comments
-managed_plugins = self.load_managed_plugins()
-for plugin in orphaned:
-    managed_plugins.discard(plugin)
-
-# ✅ REQUIRED - Explains WHY (non-obvious context)
 delay = 2 ** retry_count  # Exponential backoff for Stripe rate limits
 managed.discard(plugin)  # Prevent re-pruning user-installed plugins
 ```
-
-**Ask:** Can a developer understand this by reading the code? If yes, no comment. If no, explain WHY.
 
 ### Whitespace
 Remove ALL trailing whitespace | Blank lines have NO whitespace | Files end with single newline
@@ -404,8 +271,6 @@ Set `SESSION_ID_MAP_CACHE_MAXSIZE` and call `configure_goose()` before `POST /re
 
 If the URL cannot be confidently determined from context, keep the bare ID rather than guessing.
 
-**Why:** Clickable links save reviewer time and reduce context-switching to external systems.
-
 ### Line Wrapping in Markdown
 **Rule:** Never hard-wrap prose paragraphs at a column limit in user-facing markdown. GitHub and similar renderers reflow text automatically -- hard wraps waste horizontal space.
 
@@ -413,27 +278,14 @@ Applies to: opening paragraphs, context paragraphs, any flowing prose.
 Does NOT apply to: bullet list items, code blocks, tables.
 
 ### Non-Breaking Spaces
-**Rule:** NEVER use `&nbsp;` (HTML entity) or U+00A0 (Unicode non-breaking space character) in any text output. Zero exceptions.
-
-Applies to ALL output: commit messages, PR descriptions, issue comments, markdown, prose, code comments, documentation, summaries, tables, chat responses — everything.
-
-Agents insert these to force line breaks at perceived terminal widths. This is always wrong — renderers reflow text, and these characters appear as literal `&nbsp;` strings in rendered output or create invisible spacing anomalies in plain text.
-
-- ❌ `Wire these into GooseConfigSchema&nbsp;so they flow through the typed API endpoints`
-- ✅ `Wire these into GooseConfigSchema so they flow through the typed API endpoints`
-
-Use regular space characters. Always.
+**Rule:** NEVER use `&nbsp;` or U+00A0 in any output. Zero exceptions. Use regular space characters. Always.
 
 ### Writing Voice
-**Rule:** When drafting content posted under the user's name (GitHub comments, PR descriptions/reviews, Slack messages, blog posts, emails), match the user's natural voice. Does NOT apply to: documentation, code comments, commit messages, or agent responses to the user.
+**Rule:** When drafting content posted under the user's name (GitHub comments, PR descriptions/reviews, Slack messages, emails), match the user's natural voice. Does NOT apply to: documentation, code comments, commit messages, or agent responses to the user.
 
-**Casual, first-person, hedged.** Use "I think," "I opened," "I have" -- not impersonal/objective voice. Open with casual greetings ("hey @name"), not corporate pleasantries. Hedge disagreements: "I think this is actually..." with softeners like "slightly," "I think," "it looks like."
+**Casual, first-person, hedged.** "I think," "I opened" — not impersonal voice. Casual greetings ("hey @name"), hedge disagreements with softeners. Narrative flow with natural conjunctions, not bullet lists or bold headers for conversational prose.
 
-**Narrative flow over structured exposition.** Connect ideas conversationally -- one flowing thought with natural conjunctions ("but," "so that," "which is why"). Don't break into bullet lists or bold headers for conversational prose.
-
-**Minimal formatting fuss.** Backticks for code identifiers, but skip bold/italic for emphasis in conversational contexts. Emoji sparingly and only for greetings or reactions, never decorative.
-
-**No performative framing.** Don't open with "Thanks for..." or close with "Let me know if you have questions!" Anchor context in personal experience: "coming from a specific need I have" not "driven by a concrete need."
+**Minimal formatting.** Backticks for code identifiers, skip bold/italic for emphasis. No performative framing ("Thanks for...", "Let me know if you have questions!").
 
 ### Response Style
 **Rule:** How the agent responds to the user directly.
@@ -441,15 +293,6 @@ Use regular space characters. Always.
 Include all relevant information in the initial answer instead of re-prompting to see if the user wants more. Put all code into a single code block instead of explaining each line separately. Get right to the point; be practical above all. Give in-depth explanations with deep technical details.
 
 When corrected, acknowledge and move on — no apologies, no self-flagellation ("I'm sorry," "I apologize," "my mistake," "you're right, I should have"). Acknowledgment wastes no tokens; performative apology wastes many.
-
----
-
-## Model-Specific Optimizations
-
-**Claude 4.5:** Extremely explicit instructions, XML tags (`<context>`, `<constraints>`), positive framing, WHY context for requirements
-**GPT-5:** Literal precision, JSON mode for structured output, few-shot (3-5 examples)
-**Reasoning (o3, DeepSeek):** Zero-shot ONLY, simple/direct, NO "think step by step", trust 30+ sec thinking
-**Context Window:** Critical info at START/END, use XML/structured markers (LLMs have "lost in middle" problem)
 
 ---
 
