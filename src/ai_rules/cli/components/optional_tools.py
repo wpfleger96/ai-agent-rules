@@ -61,7 +61,11 @@ class OptionalToolsComponent(Component):
             )
 
             result, message = ensure_tool_installed(
-                spec, dry_run=ctx.dry_run, source=source, local_path=local_path
+                spec,
+                dry_run=ctx.dry_run,
+                source=source,
+                local_path=local_path,
+                skip_update_check=True,
             )
             self._emit_install_result(active.tool_id, result, message, ctx)
 
@@ -93,18 +97,21 @@ class OptionalToolsComponent(Component):
             print_warning(f"Failed to install {tool_id} (continuing anyway)")
             ctx.console.print()
 
-    def plan(self, ctx: CliContext) -> OptionalToolsPlan:
+    def _compute_stale_tool_ids(self, ctx: CliContext) -> list[str]:
         from ai_rules.bootstrap import is_command_available
         from ai_rules.bootstrap.registry import DEPRECATED_TOOLS
 
-        stale: list[str] = []
-        for spec in DEPRECATED_TOOLS:
-            if not is_command_available(spec.command_name):
-                continue
-            if spec.is_configured is not None and spec.is_configured(ctx.config):
-                continue
-            stale.append(spec.tool_id)
+        return [
+            spec.tool_id
+            for spec in DEPRECATED_TOOLS
+            if is_command_available(spec.command_name)
+            and not (
+                spec.is_still_in_use is not None and spec.is_still_in_use(ctx.config)
+            )
+        ]
 
+    def plan(self, ctx: CliContext) -> OptionalToolsPlan:
+        stale = self._compute_stale_tool_ids(ctx)
         return OptionalToolsPlan(has_changes=True, stale_tool_names=stale)
 
     def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
@@ -117,25 +124,14 @@ class OptionalToolsComponent(Component):
         return ComponentResult()
 
     def install(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.bootstrap import is_command_available
-        from ai_rules.bootstrap.registry import DEPRECATED_TOOLS
-
-        stale: list[str] = []
-        for spec in DEPRECATED_TOOLS:
-            if not is_command_available(spec.command_name):
-                continue
-            if spec.is_configured is not None and spec.is_configured(ctx.config):
-                continue
-            stale.append(spec.tool_id)
+        stale = self._compute_stale_tool_ids(ctx)
         self._remove_stale_tools(stale, ctx)
-
         self._install_active_tools(ctx)
-
         return ComponentResult()
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.bootstrap.installer import ensure_tool_uninstalled
-        from ai_rules.bootstrap.registry import DEPRECATED_TOOLS
+        from ai_rules.bootstrap.registry import ACTIVE_TOOLS, DEPRECATED_TOOLS
         from ai_rules.cli.display import (
             print_dim,
             print_success,
@@ -144,6 +140,23 @@ class OptionalToolsComponent(Component):
         )
 
         removed = 0
+
+        for active in ACTIVE_TOOLS:
+            spec = active.get_install_spec()
+            result, message = ensure_tool_uninstalled(
+                active.command_name, spec.package_name, dry_run=ctx.dry_run
+            )
+            if result == "uninstalled":
+                print_success(f"Removed {active.tool_id}", indent=2)
+                removed += 1
+            elif result == "would_uninstall" and message:
+                print_dim(message, indent=2)
+                removed += 1
+            elif result == "failed":
+                print_warning(f"Failed to remove {active.tool_id}: {message}", indent=2)
+            elif result == "not_installed":
+                print_unchanged(f"{active.tool_id} not installed", indent=2)
+
         for spec in DEPRECATED_TOOLS:
             result, message = ensure_tool_uninstalled(
                 spec.command_name, spec.package_name, dry_run=ctx.dry_run
@@ -181,17 +194,22 @@ class OptionalToolsComponent(Component):
 
         for deprecated in DEPRECATED_TOOLS:
             is_configured = (
-                deprecated.is_configured is not None
-                and deprecated.is_configured(ctx.config)
+                deprecated.is_still_in_use is not None
+                and deprecated.is_still_in_use(ctx.config)
             )
             is_installed = is_command_available(deprecated.command_name)
 
             if is_configured:
                 if is_installed:
-                    print_success(f"{deprecated.tool_id} installed", indent=2)
+                    print_success(
+                        f"{deprecated.tool_id} installed (deprecated, user-managed)",
+                        indent=2,
+                    )
                 else:
-                    print_absent(f"{deprecated.tool_id} not installed", indent=2)
-                    missing += 1
+                    print_warning(
+                        f"{deprecated.tool_id} not installed (deprecated — install manually if needed)",
+                        indent=2,
+                    )
             elif is_installed:
                 print_warning(
                     f"{deprecated.tool_id} installed but not configured (will be removed on next install)",

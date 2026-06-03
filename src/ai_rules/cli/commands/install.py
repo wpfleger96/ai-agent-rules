@@ -142,7 +142,7 @@ def install(
         c for c in INSTALL_COMPONENTS if not isinstance(c, SettingsComponent)
     )
 
-    parsed_filter = cli_facade.select_components(semantic, component_filter)
+    parsed_filter = cli_facade.select_components(INSTALL_COMPONENTS, component_filter)
 
     cli_ctx = CliContext(
         console=console,

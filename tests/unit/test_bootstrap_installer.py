@@ -11,13 +11,15 @@ import pytest
 from ai_rules.bootstrap.installer import (
     UV_NOT_FOUND_ERROR,
     ToolSource,
-    _is_recall_configured,
+    ensure_tool_installed,
+    ensure_tool_uninstalled,
     get_effective_install_source,
     get_tool_config_dir,
     get_tool_source,
     install_tool,
     uninstall_tool,
 )
+from ai_rules.bootstrap.registry import _is_recall_configured
 
 
 @pytest.mark.unit
@@ -558,6 +560,161 @@ class TestIsRecallConfigured:
             lambda pkg: _MockTraversable({}),
         )
         assert _is_recall_configured(config) is False
+
+
+def _make_spec(installed=True):
+    return SimpleNamespace(
+        tool_id="test-tool",
+        package_name="test-pkg",
+        display_name="Test Tool",
+        get_version=lambda: "0.1.0",
+        is_installed=lambda: installed,
+        github_repo="owner/test-tool",
+        github_install_url="git+ssh://git@github.com/owner/test-tool.git",
+        is_enabled=lambda: True,
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestEnsureToolInstalled:
+    """Tests for ensure_tool_installed function."""
+
+    def test_already_installed_no_update_returns_already_installed(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.check_tool_updates",
+            lambda spec, timeout=10: None,
+        )
+        result = ensure_tool_installed(_make_spec(installed=True))
+        assert result == ("already_installed", None)
+
+    def test_fresh_install_success_returns_installed(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.install_tool",
+            lambda *args, **kwargs: (True, "ok"),
+        )
+        result = ensure_tool_installed(_make_spec(installed=False))
+        assert result == ("installed", None)
+
+    def test_fresh_install_failure_returns_failed(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.install_tool",
+            lambda *args, **kwargs: (False, "err"),
+        )
+        result = ensure_tool_installed(_make_spec(installed=False))
+        assert result == ("failed", None)
+
+    def test_local_source_reinstall_returns_upgraded(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.install_tool",
+            lambda *args, **kwargs: (True, "ok"),
+        )
+        result = ensure_tool_installed(
+            _make_spec(installed=True),
+            source=ToolSource.LOCAL,
+            local_path="/tmp/test",
+        )
+        assert result == ("upgraded", "reinstalled from local path")
+
+    def test_local_source_failure_returns_failed(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.install_tool",
+            lambda *args, **kwargs: (False, "err"),
+        )
+        result = ensure_tool_installed(
+            _make_spec(installed=True),
+            source=ToolSource.LOCAL,
+            local_path="/tmp/test",
+        )
+        assert result == ("failed", None)
+
+    def test_upgrade_available_dry_run(self, monkeypatch):
+        update_info = SimpleNamespace(
+            has_update=True,
+            current_version="0.1.0",
+            latest_version="0.2.0",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.check_tool_updates",
+            lambda spec, timeout=10: update_info,
+        )
+        status, message = ensure_tool_installed(
+            _make_spec(installed=True),
+            dry_run=True,
+        )
+        assert status == "upgrade_available"
+        assert "0.1.0" in message
+        assert "0.2.0" in message
+
+    def test_skip_update_check_returns_already_installed(self, monkeypatch):
+        called = []
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.check_tool_updates",
+            lambda spec, timeout=10: called.append(True) or None,
+        )
+        result = ensure_tool_installed(
+            _make_spec(installed=True),
+            skip_update_check=True,
+        )
+        assert result == ("already_installed", None)
+        assert called == []
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestEnsureToolUninstalled:
+    """Tests for ensure_tool_uninstalled function."""
+
+    def test_not_installed_returns_not_installed(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: False
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.get_tool_source", lambda pkg: None
+        )
+        result = ensure_tool_uninstalled("test-tool", "test-pkg")
+        assert result == ("not_installed", None)
+
+    def test_dry_run_returns_would_uninstall(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.get_tool_source",
+            lambda pkg: ToolSource.PYPI,
+        )
+        result = ensure_tool_uninstalled("test-tool", "test-pkg", dry_run=True)
+        assert result == ("would_uninstall", "Would uninstall test-pkg")
+
+    def test_uninstall_success_returns_uninstalled(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.get_tool_source",
+            lambda pkg: ToolSource.PYPI,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.uninstall_tool",
+            lambda pkg: (True, "ok"),
+        )
+        result = ensure_tool_uninstalled("test-tool", "test-pkg")
+        assert result == ("uninstalled", None)
+
+    def test_uninstall_failure_returns_failed(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.get_tool_source",
+            lambda pkg: ToolSource.PYPI,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.uninstall_tool",
+            lambda pkg: (False, "uv error"),
+        )
+        result = ensure_tool_uninstalled("test-tool", "test-pkg")
+        assert result == ("failed", "uv error")
 
 
 class _MockTraversable:

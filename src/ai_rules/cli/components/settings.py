@@ -189,9 +189,7 @@ class SettingsComponent(Component):
 
         removed = 0
 
-        if cache_dir.exists():
-            if not cache_dir.is_relative_to(Path.home()):
-                return ComponentResult()
+        if cache_dir.exists() and cache_dir.is_relative_to(Path.home()):
             shutil.rmtree(cache_dir)
             print_success("Removed settings cache", indent=2)
             removed += 1

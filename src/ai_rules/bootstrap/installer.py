@@ -337,6 +337,7 @@ def ensure_tool_installed(
     source: ToolSource = ToolSource.PYPI,
     local_path: str | None = None,
     allow_source_switch: bool = False,
+    skip_update_check: bool = False,
 ) -> tuple[str, str | None]:
     """Install or upgrade a tool if needed. Fails open.
 
@@ -347,6 +348,7 @@ def ensure_tool_installed(
         local_path: Local filesystem path to install from (required when source=LOCAL)
         allow_source_switch: If True and the installed source differs from desired,
             uninstall and reinstall from the correct source
+        skip_update_check: If True, skip the PyPI/GitHub upgrade check for already-installed tools
 
     Returns:
         Tuple of (status, message) where status is one of:
@@ -396,27 +398,28 @@ def ensure_tool_installed(
                 return "upgraded", "reinstalled from local path"
             return "failed", None
 
-        try:
-            from ai_rules.bootstrap.updater import (
-                check_tool_updates,
-                perform_tool_upgrade,
-            )
+        if not skip_update_check:
+            try:
+                from ai_rules.bootstrap.updater import (
+                    check_tool_updates,
+                    perform_tool_upgrade,
+                )
 
-            update_info = check_tool_updates(spec, timeout=10)
-            if update_info and update_info.has_update:
-                if dry_run:
-                    return (
-                        "upgrade_available",
-                        f"Would upgrade {spec.display_name} {update_info.current_version} → {update_info.latest_version}",
-                    )
-                success, msg, _ = perform_tool_upgrade(spec)
-                if success:
-                    return (
-                        "upgraded",
-                        f"{update_info.current_version} → {update_info.latest_version}",
-                    )
-        except Exception:
-            pass
+                update_info = check_tool_updates(spec, timeout=10)
+                if update_info and update_info.has_update:
+                    if dry_run:
+                        return (
+                            "upgrade_available",
+                            f"Would upgrade {spec.display_name} {update_info.current_version} → {update_info.latest_version}",
+                        )
+                    success, msg, _ = perform_tool_upgrade(spec)
+                    if success:
+                        return (
+                            "upgraded",
+                            f"{update_info.current_version} → {update_info.latest_version}",
+                        )
+            except Exception:
+                pass
         return "already_installed", None
 
     try:
@@ -437,38 +440,25 @@ def ensure_tool_installed(
         return "failed", None
 
 
-def _is_recall_configured(config: object) -> bool:
-    """Check if recall is configured in the merged MCP config."""
-    if hasattr(config, "mcp_overrides") and "recall" in config.mcp_overrides:
-        return True
-
-    try:
-        import importlib.resources
-
-        config_pkg = importlib.resources.files("ai_rules") / "config"
-        for mcps_path in [
-            config_pkg / "mcps.json",
-            config_pkg / "claude" / "mcps.json",
-        ]:
-            traversable = mcps_path
-            if hasattr(traversable, "is_file") and traversable.is_file():
-                import json
-
-                data = json.loads(traversable.read_text())
-                if "recall" in data:
-                    return True
-    except Exception:
-        pass
-
-    return False
-
-
 def ensure_tool_uninstalled(
     command_name: str,
     package_name: str,
     dry_run: bool = False,
 ) -> tuple[str, str | None]:
-    if not is_command_available(command_name):
+    """Remove a tool installed via uv if present.
+
+    Args:
+        command_name: Command to check for presence (e.g. "recall").
+        package_name: The uv package name to uninstall (e.g. "recall-mcp-server").
+        dry_run: If True, return what would happen without executing.
+
+    Returns:
+        Tuple of (status, message) where status is one of:
+        "not_installed", "would_uninstall", "uninstalled", "failed"
+    """
+    uv_managed = get_tool_source(package_name) is not None
+    cmd_present = is_command_available(command_name)
+    if not uv_managed and not cmd_present:
         return "not_installed", None
     if dry_run:
         return "would_uninstall", f"Would uninstall {package_name}"

@@ -396,6 +396,63 @@ def test_goose_install_and_uninstall(mock_home, test_repo):
     assert "recall" not in data.get("extensions", {})
 
 
+def test_goose_install_removes_unmarked_recall_orphan(mock_home, test_repo):
+    """install_mcps removes a recall entry that has no _managed_by marker (pre-marker migration)."""
+    config_path = mock_home / ".config" / "goose"
+    config_path.mkdir(parents=True)
+    orphan_config = {
+        "extensions": {
+            "recall": {
+                "cmd": "uvx",
+                "args": ["recall-mcp-server"],
+            }
+        }
+    }
+    (config_path / "config.yaml").write_text(
+        yaml.safe_dump(orphan_config, default_flow_style=False, sort_keys=True)
+    )
+
+    shared_file = test_repo / "mcps.json"
+    shared_file.write_text("{}")
+
+    result, _message, _conflicts = GooseMCPManager().install_mcps(test_repo, Config())
+    assert result == OperationResult.UPDATED
+
+    with open(config_path / "config.yaml") as f:
+        data = yaml.safe_load(f)
+    assert "recall" not in data.get("extensions", {})
+
+
+def test_goose_install_preserves_unmarked_entry_not_in_previously_managed(
+    mock_home, test_repo, monkeypatch
+):
+    """install_mcps does not remove unmarked entries whose name is not in _previously_managed_names."""
+    config_path = mock_home / ".config" / "goose"
+    config_path.mkdir(parents=True)
+    user_config = {
+        "extensions": {
+            "custom-tool": {
+                "cmd": "uvx",
+                "args": ["custom-tool-server"],
+            }
+        }
+    }
+    (config_path / "config.yaml").write_text(
+        yaml.safe_dump(user_config, default_flow_style=False, sort_keys=True)
+    )
+
+    shared_file = test_repo / "mcps.json"
+    shared_file.write_text("{}")
+
+    result, _message, _conflicts = GooseMCPManager().install_mcps(test_repo, Config())
+    # Empty mcps.json + no orphans to remove → nothing to do
+    assert result == OperationResult.NOT_FOUND
+
+    with open(config_path / "config.yaml") as f:
+        data = yaml.safe_load(f)
+    assert "custom-tool" in data["extensions"]
+
+
 def test_goose_preserves_non_extension_keys(mock_home, test_repo):
     """Goose install does not clobber GOOSE_MODEL or other existing config keys."""
     config_path = mock_home / ".config" / "goose"
