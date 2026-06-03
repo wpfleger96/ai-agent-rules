@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [0.60.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.59.0...v0.60.0) (2026-06-03)
+
+
+### Features
+
+* add native Windows support ([#74](https://github.com/wpfleger96/ai-agent-rules/issues/74)) ([fb08b2e](https://github.com/wpfleger96/ai-agent-rules/commit/fb08b2e40b23c9bd6c6533028cb20daa07d2fb53))
+* **testing:** add cross-platform E2E test suite ([#78](https://github.com/wpfleger96/ai-agent-rules/issues/78)) ([11835b2](https://github.com/wpfleger96/ai-agent-rules/commit/11835b2a60c16a156d67853e367d5717d8d5ad80))
+
+
+### Refactoring
+
+* centralize optional tools lifecycle with registry-driven install and cleanup ([#76](https://github.com/wpfleger96/ai-agent-rules/issues/76)) ([05f9585](https://github.com/wpfleger96/ai-agent-rules/commit/05f9585d50d3b6c0e8de322caa1b3be92f140916))
+
 ## [0.59.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.58.0...v0.59.0) (2026-06-03)
 
 
