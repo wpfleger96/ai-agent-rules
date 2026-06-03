@@ -7,6 +7,7 @@ from pathlib import Path
 
 from ai_rules.bootstrap.installer import get_tool_version, is_command_available
 from ai_rules.bootstrap.updater import ToolSpec
+from ai_rules.platform import get_statusline_config_dir
 from ai_rules.tools.base import Tool
 
 
@@ -29,7 +30,7 @@ class StatuslineTool(Tool):
 
     @property
     def settings_symlink_target(self) -> Path:
-        return Path("~/.config/claude-statusline/config.yaml")
+        return get_statusline_config_dir() / "config.yaml"
 
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
@@ -39,4 +40,4 @@ class StatuslineTool(Tool):
         target_file = self.config.get_settings_file_for_symlink(
             "statusline", config_file, force=bool(self._effective_preserved_fields)
         )
-        return [(Path("~/.config/claude-statusline/config.yaml"), target_file)]
+        return [(get_statusline_config_dir() / "config.yaml", target_file)]

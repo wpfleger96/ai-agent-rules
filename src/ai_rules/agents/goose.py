@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ai_rules.agents.base import Agent
+from ai_rules.platform import get_goose_config_dir
 
 if TYPE_CHECKING:
     from ai_rules.mcp import MCPManager
@@ -35,7 +36,7 @@ class GooseAgent(Agent):
 
     @property
     def settings_symlink_target(self) -> Path:
-        return Path("~/.config/goose/config.yaml")
+        return get_goose_config_dir() / "config.yaml"
 
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
@@ -44,7 +45,7 @@ class GooseAgent(Agent):
 
         result.append(
             (
-                Path("~/.config/goose/.goosehints"),
+                get_goose_config_dir() / ".goosehints",
                 self.config_dir / "goose" / ".goosehints",
             )
         )
@@ -54,7 +55,7 @@ class GooseAgent(Agent):
             target_file = self.config.get_settings_file_for_symlink(
                 "goose", config_file, force=bool(self._effective_preserved_fields)
             )
-            result.append((Path("~/.config/goose/config.yaml"), target_file))
+            result.append((get_goose_config_dir() / "config.yaml", target_file))
 
         return result
 

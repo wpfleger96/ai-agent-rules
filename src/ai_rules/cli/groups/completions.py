@@ -65,6 +65,26 @@ def completions_zsh() -> None:
         sys.exit(1)
 
 
+@completions.command(name="powershell")
+def completions_powershell() -> None:
+    """Output PowerShell completion script for manual installation."""
+    from ai_rules.cli.display import console
+    from ai_rules.completions import generate_completion_script
+
+    try:
+        script = generate_completion_script("powershell")
+        console.print(script)
+        console.print()
+        print_hint(
+            "To install: Add the above to your PowerShell profile or run: ai-agent-rules completions install"
+        )
+    except Exception as e:
+        from ai_rules.cli.display import print_error
+
+        print_error(f"Error generating completion script: {e}")
+        sys.exit(1)
+
+
 @completions.command(name="install")
 @click.option(
     "--shell",

@@ -97,7 +97,7 @@ def repo_score(
 ) -> tuple[int, str]:
     if not session_cwd:
         return 0, ""
-    session_path = str(Path(session_cwd).expanduser())
+    session_path = Path(session_cwd).expanduser().as_posix()
     if session_path == current_cwd or session_path == current_root:
         return 3, "exact-cwd"
     if current_root and session_path.startswith(current_root.rstrip("/") + "/"):

@@ -88,6 +88,15 @@ class ConfigTarget(ABC):
             self._effective_preserved_fields
         )
 
+    @property
+    def copy_mode_targets(self) -> set[Path]:
+        """Set of expanded target paths to manage as file copies instead of symlinks.
+
+        Override in agents where the agent destroys symlinks (e.g., Gemini on Windows).
+        Default: empty set (all files use symlinks).
+        """
+        return set()
+
     @cached_property
     @abstractmethod
     def symlinks(self) -> list[tuple[Path, Path]]:
@@ -224,6 +233,22 @@ class ConfigTarget(ABC):
                     existing = load_config_file(cache_path, config_format)
                 except CONFIG_PARSE_ERRORS:
                     existing = None
+
+            # For copy-mode agents (e.g. Gemini on Windows), read preserved
+            # fields from the live target file so edits made by the agent
+            # (after it destroyed the symlink and rewrote the file) survive.
+            if self.copy_mode_targets and self.settings_symlink_target:
+                live_target = self.settings_symlink_target.expanduser()
+                if live_target.exists() and not live_target.is_symlink():
+                    try:
+                        live_settings = load_config_file(live_target, config_format)
+                        if existing is None:
+                            existing = {}
+                        for field in self._effective_preserved_fields:
+                            if field in live_settings:
+                                existing[field] = live_settings[field]
+                    except CONFIG_PARSE_ERRORS:
+                        pass
 
             source_preserved = {
                 f: merged.get(f)

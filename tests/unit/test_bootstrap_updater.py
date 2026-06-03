@@ -517,18 +517,21 @@ class TestGetToolVenvPython:
             "version_info = 3.13.3\n"
             "include-system-site-packages = false\n"
         )
-        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path / "uv" / "tools"))
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
         assert _get_tool_venv_python("test-pkg") == "3.13.3"
 
     def test_returns_none_when_file_missing(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path / "uv" / "tools"))
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
         assert _get_tool_venv_python("nonexistent-pkg") is None
 
     def test_returns_none_when_no_version_info(self, tmp_path, monkeypatch):
         pyvenv_cfg = tmp_path / "uv" / "tools" / "test-pkg" / "pyvenv.cfg"
         pyvenv_cfg.parent.mkdir(parents=True)
         pyvenv_cfg.write_text("home = /usr/bin\n")
-        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path / "uv" / "tools"))
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
         assert _get_tool_venv_python("test-pkg") is None
 
 

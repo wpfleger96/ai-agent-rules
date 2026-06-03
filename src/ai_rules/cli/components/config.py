@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from rich.console import Console
 
+    from ai_rules.targets.base import ConfigTarget
+
 from ai_rules.cli.context import (
     CliContext,
     Component,
@@ -20,8 +22,16 @@ SPECIALIZED_PATH_PARTS = ("/agents/", "/commands/", "/skills/", "/hooks/")
 
 
 def _is_specialized_path(target: Path) -> bool:
-    target_str = str(target)
+    target_str = target.as_posix()
     return any(part in target_str for part in SPECIALIZED_PATH_PARTS)
+
+
+def _get_copy_mode_targets(agents: list[ConfigTarget]) -> set[Path]:
+    """Collect expanded copy-mode target paths from all agents."""
+    result: set[Path] = set()
+    for agent in agents:
+        result.update(agent.copy_mode_targets)
+    return result
 
 
 def _display_symlink_status(
@@ -80,6 +90,26 @@ def _display_symlink_status(
             pass
 
         return False
+    if status_code == "stale_copy":
+        print_warning(f"{target_display} {dim('(copy out of date)')}", indent=2)
+
+        try:
+            diff_output = get_content_diff(target.expanduser(), source)
+            if diff_output:
+                active_console.print(diff_output)
+        except OSError, RuntimeError:
+            pass
+
+        return False
+    if status_code == "not_copy":
+        print_warning(
+            f"{target_display} {dim('(expected managed copy, found symlink)')}",
+            indent=2,
+        )
+        return False
+    if status_code == "error":
+        print_error(f"{target_display} {dim(f'({message})')}", indent=2)
+        return False
     return True
 
 
@@ -102,10 +132,13 @@ class ConfigComponent(Component):
             ]
             symlink_ops.extend(config_symlinks)
 
+        copy_targets = _get_copy_mode_targets(list(ctx.selected_targets))
+
         return ConfigPlan(
             has_changes=bool(symlink_ops),
             symlink_ops=symlink_ops,
             excluded_count=excluded_count,
+            copy_targets=copy_targets,
         )
 
     def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
@@ -121,14 +154,17 @@ class ConfigComponent(Component):
             print_unchanged,
             print_update,
         )
-        from ai_rules.symlinks import SymlinkResult, create_symlink
+        from ai_rules.symlinks import SymlinkResult, create_file_copy, create_symlink
 
         created = updated = unchanged = skipped = excluded = errors = 0
 
         excluded = plan.excluded_count
 
         for target, source in plan.symlink_ops:
-            result, message = create_symlink(target, source, True, ctx.dry_run)
+            if target.expanduser() in plan.copy_targets:
+                result, message = create_file_copy(target, source, True, ctx.dry_run)
+            else:
+                result, message = create_symlink(target, source, True, ctx.dry_run)
 
             if result == SymlinkResult.CREATED:
                 print_success(f"{target} → {source}", indent=2)
@@ -174,10 +210,11 @@ class ConfigComponent(Component):
             print_unchanged,
             print_update,
         )
-        from ai_rules.symlinks import SymlinkResult, create_symlink
+        from ai_rules.symlinks import SymlinkResult, create_file_copy, create_symlink
 
         created = updated = unchanged = skipped = excluded = errors = 0
         effective_force = ctx.yes or not ctx.dry_run
+        copy_targets = _get_copy_mode_targets(list(ctx.selected_targets))
 
         for agent in ctx.selected_targets:
             ctx.console.print(f"\n[bold]{agent.name}[/bold]")
@@ -196,9 +233,14 @@ class ConfigComponent(Component):
                 excluded += user_excluded_count
 
             for target, source in config_symlinks:
-                result, message = create_symlink(
-                    target, source, effective_force, ctx.dry_run
-                )
+                if target.expanduser() in copy_targets:
+                    result, message = create_file_copy(
+                        target, source, effective_force, ctx.dry_run
+                    )
+                else:
+                    result, message = create_symlink(
+                        target, source, effective_force, ctx.dry_run
+                    )
 
                 if result == SymlinkResult.CREATED:
                     print_success(f"{target} → {source}", indent=2)
@@ -237,10 +279,11 @@ class ConfigComponent(Component):
     def status(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.cli.display import dim, print_skipped
         from ai_rules.cli.runner import get_console
-        from ai_rules.symlinks import check_symlink
+        from ai_rules.symlinks import check_file_copy, check_symlink
 
         console = get_console(ctx)
         all_correct = True
+        copy_targets = _get_copy_mode_targets(list(ctx.selected_targets))
 
         for target in ctx.selected_targets:
             console.print(f"[bold]{target.name}[/bold]")
@@ -256,7 +299,10 @@ class ConfigComponent(Component):
                 if _is_specialized_path(tgt):
                     continue
 
-                status_code, message = check_symlink(tgt, source)
+                if tgt.expanduser() in copy_targets:
+                    status_code, message = check_file_copy(tgt, source)
+                else:
+                    status_code, message = check_symlink(tgt, source)
                 is_correct = _display_symlink_status(
                     status_code, tgt, source, message, console
                 )
@@ -272,10 +318,11 @@ class ConfigComponent(Component):
     def diff(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.cli.display import print_dim, print_error, print_warning
         from ai_rules.cli.runner import get_console
-        from ai_rules.symlinks import check_symlink, get_content_diff
+        from ai_rules.symlinks import check_file_copy, check_symlink, get_content_diff
 
         console = get_console(ctx)
         found_differences = False
+        copy_targets = _get_copy_mode_targets(list(ctx.selected_targets))
 
         for target in ctx.selected_targets:
             target_has_diff = False
@@ -285,7 +332,10 @@ class ConfigComponent(Component):
                 if _is_specialized_path(tgt):
                     continue
                 target_path = tgt.expanduser()
-                status_code, message = check_symlink(target_path, source)
+                if target_path in copy_targets:
+                    status_code, message = check_file_copy(target_path, source)
+                else:
+                    status_code, message = check_symlink(target_path, source)
 
                 if status_code == "missing":
                     target_diffs.append(
@@ -316,18 +366,34 @@ class ConfigComponent(Component):
                             (target_path, source, "broken", "Broken symlink", None)
                         )
                         target_has_diff = True
-                elif status_code == "not_symlink":
+                elif status_code in ("not_symlink", "stale_copy"):
                     try:
                         diff_output = get_content_diff(target_path, source)
                     except OSError, RuntimeError:
                         diff_output = None
+                    desc = (
+                        "Copy out of date"
+                        if status_code == "stale_copy"
+                        else "Regular file (not symlink)"
+                    )
                     target_diffs.append(
                         (
                             target_path,
                             source,
                             "file",
-                            "Regular file (not symlink)",
+                            desc,
                             diff_output,
+                        )
+                    )
+                    target_has_diff = True
+                elif status_code == "not_copy":
+                    target_diffs.append(
+                        (
+                            target_path,
+                            source,
+                            "file",
+                            "Expected managed copy, found symlink",
+                            None,
                         )
                     )
                     target_has_diff = True
@@ -374,11 +440,12 @@ class ConfigComponent(Component):
             print_unchanged,
         )
         from ai_rules.cli.runner import get_console
-        from ai_rules.symlinks import remove_symlink
+        from ai_rules.symlinks import remove_file_copy, remove_symlink
 
         console = get_console(ctx)
         total_removed = 0
         total_skipped = 0
+        copy_targets = _get_copy_mode_targets(list(ctx.selected_targets))
 
         for target in ctx.selected_targets:
             console.print(f"\n[bold]{target.name}[/bold]")
@@ -386,7 +453,10 @@ class ConfigComponent(Component):
             for tgt, _source in target.get_filtered_symlinks():
                 if _is_specialized_path(tgt):
                     continue
-                success, message = remove_symlink(tgt, ctx.yes)
+                if tgt.expanduser() in copy_targets:
+                    success, message = remove_file_copy(tgt, ctx.yes)
+                else:
+                    success, message = remove_symlink(tgt, ctx.yes)
 
                 if success:
                     print_success(f"{tgt} removed", indent=2)

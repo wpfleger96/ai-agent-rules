@@ -132,7 +132,9 @@ def config_edit() -> None:
     from ai_rules.cli.display import print_success
 
     user_config_path = cli_facade.get_user_config_path()
-    editor = os.environ.get("EDITOR", "vi")
+    from ai_rules.platform import get_default_editor
+
+    editor = os.environ.get("EDITOR", get_default_editor())
 
     if not user_config_path.exists():
         user_config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -149,11 +151,17 @@ def config_edit() -> None:
         sys.exit(1)
 
 
-_COMMON_RULES_EXCLUSIONS: list[tuple[str, str, bool]] = [
-    ("~/.gemini/GEMINI.md", "Gemini rules", True),
-    ("~/.config/goose/.goosehints", "Goose hints", True),
-    ("~/AGENTS.md", "Shared agents file", False),
-]
+def _build_common_rules_exclusions() -> list[tuple[str, str, bool]]:
+    from ai_rules.platform import get_goose_config_dir
+
+    return [
+        ("~/.gemini/GEMINI.md", "Gemini rules", True),
+        (str(get_goose_config_dir() / ".goosehints"), "Goose hints", True),
+        ("~/AGENTS.md", "Shared agents file", False),
+    ]
+
+
+_COMMON_RULES_EXCLUSIONS: list[tuple[str, str, bool]] = _build_common_rules_exclusions()
 
 
 def _get_common_exclusions() -> list[tuple[str, str, bool]]:

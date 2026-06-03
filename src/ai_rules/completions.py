@@ -29,9 +29,37 @@ class ShellConfig:
         return [home / cf for cf in self.config_files if (home / cf).exists()]
 
 
+@dataclass
+class PowerShellConfig(ShellConfig):
+    def get_config_candidates(self) -> list[Path]:
+        profile = _get_powershell_profile_path()
+        if profile and profile.exists():
+            return [profile]
+        return []
+
+
+def _get_powershell_profile_path() -> Path | None:
+    import subprocess
+
+    for exe in ("pwsh", "powershell"):
+        try:
+            result = subprocess.run(
+                [exe, "-NoProfile", "-Command", "Write-Output $PROFILE"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return Path(result.stdout.strip())
+        except FileNotFoundError, subprocess.TimeoutExpired:
+            continue
+    return None
+
+
 SHELL_REGISTRY: dict[str, ShellConfig] = {
     "bash": ShellConfig("bash", [".bashrc", ".bash_profile", ".profile"]),
     "zsh": ShellConfig("zsh", [".zshrc", ".zprofile"]),
+    "powershell": PowerShellConfig("powershell", []),
 }
 
 
@@ -46,9 +74,17 @@ def detect_shell() -> str | None:
     Returns:
         Shell name if supported, None otherwise
     """
-    shell_path = os.environ.get("SHELL", "")
-    shell_name = Path(shell_path).name if shell_path else None
-    return shell_name if shell_name in SHELL_REGISTRY else None
+    try:
+        import shellingham
+
+        name, _ = shellingham.detect_shell()
+        if name in ("pwsh", "powershell"):
+            return "powershell"
+        return name if name in SHELL_REGISTRY else None
+    except Exception:
+        shell_path = os.environ.get("SHELL", "")
+        name = Path(shell_path).name if shell_path else None
+        return name if name in SHELL_REGISTRY else None
 
 
 def get_shell_config_candidates(shell: str) -> list[Path]:
@@ -112,6 +148,9 @@ def is_legacy_completion_block(config_path: Path) -> bool:
     if _LEGACY_MARKER_START in content:
         return True
     if COMPLETION_MARKER_START in content and "command -v" not in content:
+        # PowerShell blocks use Get-Command, not command -v
+        if "Get-Command" in content:
+            return False
         return True
     return False
 
@@ -131,13 +170,45 @@ def generate_completion_script(shell: str) -> str:
     Raises:
         ValueError: If shell is not supported
     """
+    env_var = f"_{CANONICAL_CMD.upper().replace('-', '_')}_COMPLETE"
+
+    if shell == "powershell":
+        # bash_source mode: Click reads COMP_WORDS (space-separated command line)
+        # and COMP_CWORD (0-based index of current word) to return completions.
+        return f"""{COMPLETION_MARKER_START}
+if (Get-Command {CANONICAL_CMD} -ErrorAction SilentlyContinue) {{
+    Register-ArgumentCompleter -Native -CommandName '{CANONICAL_CMD}','{ALIAS_CMD}' -ScriptBlock {{
+        param($wordToComplete, $commandAst, $cursorPosition)
+        $words = $commandAst.CommandElements | ForEach-Object {{ $_.ToString() }}
+        $env:{env_var} = 'bash_complete'
+        $env:COMP_WORDS = $words -join ' '
+        if ($wordToComplete -eq '') {{
+            $env:COMP_CWORD = $words.Count
+        }} else {{
+            $env:COMP_CWORD = $words.Count - 1
+        }}
+        try {{
+            $completions = & {CANONICAL_CMD} 2>$null
+            $completions | ForEach-Object {{
+                $parts = $_ -split ',', 2
+                $text = if ($parts.Count -gt 1) {{ $parts[1] }} else {{ $parts[0] }}
+                $desc = $text
+                [System.Management.Automation.CompletionResult]::new($text, $text, 'ParameterValue', $desc)
+            }}
+        }} finally {{
+            Remove-Item Env:{env_var} -ErrorAction SilentlyContinue
+            Remove-Item Env:COMP_WORDS -ErrorAction SilentlyContinue
+            Remove-Item Env:COMP_CWORD -ErrorAction SilentlyContinue
+        }}
+    }}
+}}
+{COMPLETION_MARKER_END}"""
+
     from click.shell_completion import get_completion_class
 
     comp_cls = get_completion_class(shell)
     if comp_cls is None:
         raise ValueError(f"Unsupported shell: {shell}")
-
-    env_var = f"_{CANONICAL_CMD.upper().replace('-', '_')}_COMPLETE"
 
     if shell == "zsh":
         return f"""{COMPLETION_MARKER_START}
@@ -155,6 +226,25 @@ fi
 {COMPLETION_MARKER_END}"""
 
 
+def _resolve_config_path(shell: str) -> tuple[Path | None, str | None]:
+    """Resolve config path for a shell, with PowerShell profile fallback.
+
+    Returns (path, error_message). On success error_message is None.
+    """
+    config_path = find_config_file(shell)
+    if config_path is None and shell == "powershell":
+        profile = _get_powershell_profile_path()
+        if profile is None:
+            return (
+                None,
+                "PowerShell is not installed (neither pwsh nor powershell found)",
+            )
+        config_path = profile
+    if config_path is None:
+        return None, f"No {shell} config file found"
+    return config_path, None
+
+
 def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
     """Install completion to shell config file.
 
@@ -169,13 +259,18 @@ def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
         supported = ", ".join(get_supported_shells())
         return False, f"Unsupported shell: {shell}. Supported: {supported}"
 
-    config_path = find_config_file(shell)
+    config_path, err = _resolve_config_path(shell)
+    if err:
+        return False, err
     if config_path is None:
         return (
             False,
             f"No {shell} config file found. Expected one of: "
             + ", ".join(str(p) for p in get_shell_config_candidates(shell)),
         )
+    if shell == "powershell" and not config_path.exists() and not dry_run:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.touch()
 
     if is_completion_installed(config_path):
         if is_legacy_completion_block(config_path):
@@ -200,9 +295,9 @@ def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
 
 def update_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
     """Replace existing completion block with a freshly generated one."""
-    config_path = find_config_file(shell)
-    if config_path is None:
-        return False, f"No {shell} config file found"
+    config_path, err = _resolve_config_path(shell)
+    if err or config_path is None:
+        return False, err or f"No {shell} config file found"
     if not is_completion_installed(config_path):
         return install_completion(shell, dry_run=dry_run)
 
