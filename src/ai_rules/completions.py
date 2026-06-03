@@ -180,15 +180,19 @@ if (Get-Command {CANONICAL_CMD} -ErrorAction SilentlyContinue) {{
     Register-ArgumentCompleter -Native -CommandName '{CANONICAL_CMD}','{ALIAS_CMD}' -ScriptBlock {{
         param($wordToComplete, $commandAst, $cursorPosition)
         $words = $commandAst.CommandElements | ForEach-Object {{ $_.ToString() }}
-        $env:{env_var} = 'bash_source'
+        $env:{env_var} = 'bash_complete'
         $env:COMP_WORDS = $words -join ' '
-        $env:COMP_CWORD = $words.Count - 1
+        if ($wordToComplete -eq '') {{
+            $env:COMP_CWORD = $words.Count
+        }} else {{
+            $env:COMP_CWORD = $words.Count - 1
+        }}
         try {{
             $completions = & {CANONICAL_CMD} 2>$null
             $completions | ForEach-Object {{
-                $parts = $_ -split '\\s+', 2
-                $text = $parts[0]
-                $desc = if ($parts.Count -gt 1) {{ $parts[1] }} else {{ $text }}
+                $parts = $_ -split ',', 2
+                $text = if ($parts.Count -gt 1) {{ $parts[1] }} else {{ $parts[0] }}
+                $desc = $text
                 [System.Management.Automation.CompletionResult]::new($text, $text, 'ParameterValue', $desc)
             }}
         }} finally {{
@@ -222,6 +226,25 @@ fi
 {COMPLETION_MARKER_END}"""
 
 
+def _resolve_config_path(shell: str) -> tuple[Path | None, str | None]:
+    """Resolve config path for a shell, with PowerShell profile fallback.
+
+    Returns (path, error_message). On success error_message is None.
+    """
+    config_path = find_config_file(shell)
+    if config_path is None and shell == "powershell":
+        profile = _get_powershell_profile_path()
+        if profile is None:
+            return (
+                None,
+                "PowerShell is not installed (neither pwsh nor powershell found)",
+            )
+        config_path = profile
+    if config_path is None:
+        return None, f"No {shell} config file found"
+    return config_path, None
+
+
 def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
     """Install completion to shell config file.
 
@@ -236,25 +259,18 @@ def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
         supported = ", ".join(get_supported_shells())
         return False, f"Unsupported shell: {shell}. Supported: {supported}"
 
-    config_path = find_config_file(shell)
+    config_path, err = _resolve_config_path(shell)
+    if err:
+        return False, err
     if config_path is None:
-        if shell == "powershell":
-            profile = _get_powershell_profile_path()
-            if profile is None:
-                return (
-                    False,
-                    "PowerShell is not installed (neither pwsh nor powershell found)",
-                )
-            if not dry_run:
-                profile.parent.mkdir(parents=True, exist_ok=True)
-                profile.touch()
-            config_path = profile
-        else:
-            return (
-                False,
-                f"No {shell} config file found. Expected one of: "
-                + ", ".join(str(p) for p in get_shell_config_candidates(shell)),
-            )
+        return (
+            False,
+            f"No {shell} config file found. Expected one of: "
+            + ", ".join(str(p) for p in get_shell_config_candidates(shell)),
+        )
+    if shell == "powershell" and not config_path.exists() and not dry_run:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.touch()
 
     if is_completion_installed(config_path):
         if is_legacy_completion_block(config_path):
@@ -279,9 +295,9 @@ def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
 
 def update_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
     """Replace existing completion block with a freshly generated one."""
-    config_path = find_config_file(shell)
-    if config_path is None:
-        return False, f"No {shell} config file found"
+    config_path, err = _resolve_config_path(shell)
+    if err or config_path is None:
+        return False, err or f"No {shell} config file found"
     if not is_completion_installed(config_path):
         return install_completion(shell, dry_run=dry_run)
 

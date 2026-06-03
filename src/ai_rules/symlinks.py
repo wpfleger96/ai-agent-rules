@@ -163,14 +163,26 @@ def create_file_copy(
 
     if target.exists() or target.is_symlink():
         if target.is_symlink():
-            if not dry_run:
+            if dry_run:
+                pass  # will be reported as CREATED below
+            else:
                 target.unlink()
-        elif not dry_run:
+        else:
             try:
                 if target.read_bytes() == source.read_bytes():
                     return (SymlinkResult.ALREADY_CORRECT, "Already correct (copy)")
             except OSError:
                 pass
+            if not force:
+                response = console.input(
+                    f"[yellow]?[/yellow] File {target} exists\n  Overwrite with copy? (y/N): "
+                )
+                if response.lower() != "y":
+                    return (SymlinkResult.SKIPPED, "Skipped by user")
+            if not dry_run:
+                backup = create_backup_path(target)
+                shutil.copy2(target, backup)
+                console.print(f"  {dim(f'Backed up to {backup}')}")
 
     if dry_run:
         return (SymlinkResult.CREATED, f"Would copy: {source} -> {target}")

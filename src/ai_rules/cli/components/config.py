@@ -30,7 +30,7 @@ def _get_copy_mode_targets(agents: list[ConfigTarget]) -> set[Path]:
     """Collect expanded copy-mode target paths from all agents."""
     result: set[Path] = set()
     for agent in agents:
-        result.update(getattr(agent, "copy_mode_targets", set()))
+        result.update(agent.copy_mode_targets)
     return result
 
 

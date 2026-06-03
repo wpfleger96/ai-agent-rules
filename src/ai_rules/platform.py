@@ -50,11 +50,11 @@ def is_platform(target: Platform) -> bool:
 
 
 def get_appdata_dir() -> Path:
-    """Return %APPDATA% on Windows. Raises RuntimeError if unset."""
+    """Return %APPDATA% on Windows, falling back to the standard default if unset."""
     appdata = os.environ.get("APPDATA")
-    if not appdata:
-        raise RuntimeError("APPDATA environment variable not set")
-    return Path(appdata)
+    if appdata:
+        return Path(appdata)
+    return Path.home() / "AppData" / "Roaming"
 
 
 def get_uv_tools_dir() -> Path:

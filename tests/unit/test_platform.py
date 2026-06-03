@@ -1,4 +1,3 @@
-
 import pytest
 
 from ai_rules.platform import (
@@ -111,10 +110,12 @@ class TestGetAppdataDir:
 
         assert get_appdata_dir() == Path("C:\\Users\\test\\AppData\\Roaming")
 
-    def test_raises_if_unset(self, monkeypatch):
+    def test_falls_back_to_home_when_unset(self, monkeypatch):
         monkeypatch.delenv("APPDATA", raising=False)
-        with pytest.raises(RuntimeError, match="APPDATA"):
-            get_appdata_dir()
+        from pathlib import Path
+
+        result = get_appdata_dir()
+        assert result == Path.home() / "AppData" / "Roaming"
 
 
 @pytest.mark.unit

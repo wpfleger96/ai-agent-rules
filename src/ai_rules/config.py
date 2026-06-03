@@ -58,9 +58,9 @@ FORMAT_CONFIG_FILES: dict[str, str] = {
 
 
 def _get_agent_skills_dirs() -> dict[str, Path]:
-    from ai_rules.platform import get_goose_config_dir
+    from ai_rules.platform import Platform, get_goose_config_dir, is_platform
 
-    return {
+    dirs = {
         "amp": Path("~/.config/agents/skills"),
         "claude": Path("~/.claude/skills"),
         "codex": Path("~/.agents/skills"),
@@ -69,6 +69,9 @@ def _get_agent_skills_dirs() -> dict[str, Path]:
         # warnings that break headless invocations (e.g., crossfire code review).
         "goose": get_goose_config_dir() / "skills",
     }
+    if is_platform(Platform.WINDOWS):
+        dirs.pop("amp", None)
+    return dirs
 
 
 AGENT_SKILLS_DIRS = _get_agent_skills_dirs()

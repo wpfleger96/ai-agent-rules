@@ -239,7 +239,9 @@ class TestGeminiAgentWindowsCopyMode:
     """Test Gemini agent Windows copy-mode behavior."""
 
     def test_copy_mode_targets_nonempty_on_windows(self, test_repo, monkeypatch):
-        monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.WINDOWS)
+        monkeypatch.setattr(
+            "ai_rules.platform.detect_platform", lambda: Platform.WINDOWS
+        )
         monkeypatch.setenv("APPDATA", "C:\\Users\\test\\AppData\\Roaming")
 
         agent = GeminiAgent(test_repo, Config(exclude_symlinks=[]))
@@ -262,7 +264,9 @@ class TestGooseAgentWindowsConfigDir:
     def test_settings_symlink_target_uses_appdata_on_windows(
         self, test_repo, monkeypatch
     ):
-        monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.WINDOWS)
+        monkeypatch.setattr(
+            "ai_rules.platform.detect_platform", lambda: Platform.WINDOWS
+        )
         monkeypatch.setenv("APPDATA", "C:\\Users\\test\\AppData\\Roaming")
 
         agent = GooseAgent(test_repo, Config(exclude_symlinks=[]))

@@ -709,7 +709,10 @@ class TestEnsureRecallInstalled:
 class TestGetToolConfigDirWindows:
     def test_windows_uses_appdata(self, monkeypatch):
         from ai_rules.platform import Platform
-        monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.WINDOWS)
+
+        monkeypatch.setattr(
+            "ai_rules.platform.detect_platform", lambda: Platform.WINDOWS
+        )
         monkeypatch.setenv("APPDATA", "C:\\Users\\test\\AppData\\Roaming")
         monkeypatch.delenv("UV_TOOL_DIR", raising=False)
         result = get_tool_config_dir("ai-agent-rules")
