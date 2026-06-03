@@ -94,10 +94,11 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=ai_rules --cov-report=term-missing -n auto"
+addopts = "-v --cov=ai_rules --cov-report=term-missing -n auto --ignore=tests/e2e"
 markers = [
     "unit: marks tests as unit tests",
     "integration: marks tests as integration tests",
+    "e2e: End-to-end subprocess tests that run the real CLI binary",
     "agents: marks tests for agent functionality",
     "bootstrap: marks tests for bootstrap functionality",
     "completions: marks tests for shell completion functionality",
