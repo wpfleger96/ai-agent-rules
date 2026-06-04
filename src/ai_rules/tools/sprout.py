@@ -35,7 +35,7 @@ class SproutTool(Tool):
             data = json.loads(manifest.read_text())
             pack_id = data.get("id")
             return pack_id if isinstance(pack_id, str) and pack_id else None
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             return None
 
     @cached_property
