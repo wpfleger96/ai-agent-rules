@@ -132,14 +132,19 @@ def install(
     all_targets = cli_facade.get_targets(config_dir, config)
     selected_targets = cli_facade.select_targets(all_targets, agents)
 
+    from ai_rules.cli.components.agents_md import AgentsMdComponent
     from ai_rules.cli.components.settings import SettingsComponent
 
-    # SettingsComponent always runs first (cache must exist before symlinks are created)
+    # SettingsComponent and AgentsMdComponent always run first (cache must exist before symlinks are created)
     infrastructure = tuple(
-        c for c in INSTALL_COMPONENTS if isinstance(c, SettingsComponent)
+        c
+        for c in INSTALL_COMPONENTS
+        if isinstance(c, (SettingsComponent, AgentsMdComponent))
     )
     semantic = tuple(
-        c for c in INSTALL_COMPONENTS if not isinstance(c, SettingsComponent)
+        c
+        for c in INSTALL_COMPONENTS
+        if not isinstance(c, (SettingsComponent, AgentsMdComponent))
     )
 
     parsed_filter = cli_facade.select_components(INSTALL_COMPONENTS, component_filter)

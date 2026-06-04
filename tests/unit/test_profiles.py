@@ -475,3 +475,91 @@ managed_tools: "should be a dict"
         loader = ProfileLoader(profiles_dir=profiles_dir)
         with pytest.raises(Exception, match="managed_tools must be a dict"):
             loader.load_profile("bad")
+
+
+@pytest.mark.unit
+class TestAgentsMdInheritance:
+    """Tests for agents_md field loading and inheritance in profiles."""
+
+    def test_agents_md_loads_from_profile(self, profiles_dir):
+        (profiles_dir / "work.yaml").write_text("""\
+name: work
+agents_md: "Use strict mode."
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("work")
+
+        assert profile.agents_md == "Use strict mode."
+
+    def test_agents_md_accumulates_through_three_level_inheritance(self, profiles_dir):
+        (profiles_dir / "grandparent.yaml").write_text("""\
+name: grandparent
+agents_md: "A"
+""")
+        (profiles_dir / "parent.yaml").write_text("""\
+name: parent
+extends: grandparent
+agents_md: "B"
+""")
+        (profiles_dir / "child.yaml").write_text("""\
+name: child
+extends: parent
+agents_md: "C"
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert profile.agents_md == "A\n\nB\n\nC"
+
+    def test_agents_md_parent_has_content_child_does_not(self, profiles_dir):
+        (profiles_dir / "parent.yaml").write_text("""\
+name: parent
+agents_md: "Parent content"
+""")
+        (profiles_dir / "child.yaml").write_text("""\
+name: child
+extends: parent
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert profile.agents_md == "Parent content"
+
+    def test_agents_md_child_has_content_parent_does_not(self, profiles_dir):
+        (profiles_dir / "parent.yaml").write_text("""\
+name: parent
+""")
+        (profiles_dir / "child.yaml").write_text("""\
+name: child
+extends: parent
+agents_md: "Child only"
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert profile.agents_md == "Child only"
+
+    def test_agents_md_invalid_type_raises_profile_error(self, profiles_dir):
+        (profiles_dir / "bad.yaml").write_text("""\
+name: bad
+agents_md: 42
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        with pytest.raises(ProfileError, match="agents_md must be a string"):
+            loader.load_profile("bad")
+
+    def test_agents_md_empty_string_treated_as_no_content(self, profiles_dir):
+        (profiles_dir / "parent.yaml").write_text("""\
+name: parent
+agents_md: "Parent content"
+""")
+        (profiles_dir / "child.yaml").write_text("""\
+name: child
+extends: parent
+agents_md: ""
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        # Empty string on child is falsy — parent content carries through unchanged
+        assert profile.agents_md == "Parent content"

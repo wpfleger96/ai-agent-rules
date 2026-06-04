@@ -332,6 +332,10 @@ settings_overrides:
     model: opus
 plugins: []
 marketplaces: []
+managed_tools:             # Optional tool install sources
+  install_sources: {}
+agents_md: |               # Appended to base AGENTS.md (accumulates through inheritance)
+  Extra agent hints here
 exclude_symlinks: []
 mcp_overrides: {}
 ```

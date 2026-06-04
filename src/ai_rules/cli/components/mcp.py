@@ -52,7 +52,8 @@ class MCPComponent(Component):
                     installed = installed_mcps.get(conflict_name, {})
                     if expected and installed:
                         diff = mgr.format_diff(conflict_name, expected, installed)
-                        ctx.console.print(f"\n{diff}\n")
+                        if diff:
+                            ctx.console.print(f"\n{diff}\n")
 
                 if not ctx.dry_run and not click.confirm(
                     "Overwrite local changes?", default=False
@@ -189,7 +190,7 @@ class MCPComponent(Component):
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.cli.display import dim, print_dim
+        from ai_rules.cli.display import dim
         from ai_rules.cli.runner import get_console
 
         console = get_console(ctx)
@@ -231,11 +232,7 @@ class MCPComponent(Component):
                     installed_config = mcp_status.managed_mcps.get(name, {})
                     diff = mgr.format_diff(name, expected, installed_config)
                     if diff:
-                        for line in diff.split("\n"):
-                            if line.startswith("MCP"):
-                                continue
-                            if line.strip():
-                                print_dim(line, indent=4)
+                        console.print(diff)
                     all_correct = False
             for name in sorted(mcp_status.pending_mcps.keys()):
                 has_override = mcp_status.has_overrides.get(name, False)

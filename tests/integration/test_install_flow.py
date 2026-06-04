@@ -6,6 +6,7 @@ from ai_rules.agents.claude import ClaudeAgent
 from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent
 from ai_rules.config import Config
+from ai_rules.profiles import ProfileLoader
 from ai_rules.symlinks import create_symlink
 
 
@@ -181,3 +182,72 @@ class TestInstallFlow:
         new_mtime = target_path.lstat().st_mtime
         assert result.name == "ALREADY_CORRECT"
         assert original_mtime == new_mtime
+
+    def test_install_with_agents_md_profile_symlinks_to_cache(
+        self, test_repo, mock_home, tmp_path, monkeypatch
+    ):
+        profiles_dir = tmp_path / "profiles"
+        profiles_dir.mkdir()
+        (profiles_dir / "with-agents-md.yaml").write_text(
+            "name: with-agents-md\nagents_md: |\n  ## Profile Rules\n  Extra content\n"
+        )
+
+        monkeypatch.setattr(
+            "ai_rules.profiles.ProfileLoader._profiles_dir",
+            profiles_dir,
+            raising=False,
+        )
+        original_init = ProfileLoader.__init__
+
+        def patched_init(self, profiles_dir=None):
+            original_init(self, profiles_dir=profiles_dir or tmp_path / "profiles")
+
+        monkeypatch.setattr(ProfileLoader, "__init__", patched_init)
+
+        config = Config.load(profile="with-agents-md")
+        shared = SharedAgent(test_repo, config)
+        shared.build_merged_agents_md()
+
+        for target, source in shared.symlinks:
+            target_path = Path(str(target).replace("~", str(mock_home)))
+            create_symlink(target_path, source, dry_run=False, force=False)
+
+        agents_md = mock_home / "AGENTS.md"
+        assert agents_md.is_symlink()
+
+        expected_cache = (
+            mock_home / ".ai-agent-rules" / "cache" / "shared" / "AGENTS.md"
+        )
+        assert agents_md.resolve() == expected_cache.resolve()
+
+        cache_content = expected_cache.read_text(encoding="utf-8")
+        base_content = (test_repo / "AGENTS.md").read_text(encoding="utf-8")
+        assert cache_content.startswith(base_content.rstrip("\n"))
+        assert "\n\n" in cache_content
+        assert "Extra content" in cache_content
+
+    def test_install_without_agents_md_profile_symlinks_to_base_config(
+        self, test_repo, mock_home, tmp_path, monkeypatch
+    ):
+        profiles_dir = tmp_path / "profiles"
+        profiles_dir.mkdir()
+        original_init = ProfileLoader.__init__
+
+        def patched_init(self, profiles_dir=None):
+            original_init(self, profiles_dir=profiles_dir or tmp_path / "profiles")
+
+        monkeypatch.setattr(ProfileLoader, "__init__", patched_init)
+
+        config = Config.load(profile="default")
+        shared = SharedAgent(test_repo, config)
+
+        for target, source in shared.symlinks:
+            target_path = Path(str(target).replace("~", str(mock_home)))
+            create_symlink(target_path, source, dry_run=False, force=False)
+
+        agents_md = mock_home / "AGENTS.md"
+        assert agents_md.is_symlink()
+        assert agents_md.resolve() == (test_repo / "AGENTS.md").resolve()
+
+        cache_file = mock_home / ".ai-agent-rules" / "cache" / "shared" / "AGENTS.md"
+        assert not cache_file.exists()

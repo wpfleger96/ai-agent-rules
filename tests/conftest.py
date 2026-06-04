@@ -185,6 +185,7 @@ def test_repo(tmp_path):
     (codex_dir / "config.toml").write_text(
         'model = "gpt-5.2-codex"\napproval_policy = "on-request"\n'
     )
+    (codex_dir / "AGENTS.md").write_text("@~/AGENTS.md\n")
 
     gemini_dir = config_root / "gemini"
     gemini_dir.mkdir()

@@ -137,3 +137,8 @@ class PluginPlan(ComponentPlan):
 class CompletionsPlan(ComponentPlan):
     shell: str | None = None
     needs_install: bool = False
+
+
+@dataclass
+class AgentsMdPlan(ComponentPlan):
+    needs_rebuild: bool = False

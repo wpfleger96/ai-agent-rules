@@ -18,5 +18,27 @@ settings_overrides:
     security:
       auth:
         selectedType: "gemini-api-key"
+agents_md: |
+  ## Work Laptop: uv Package Resolution in Personal Repos
+
+  When working in `~/Development/Personal/*` repos, `uv sync` or `uv lock` may fail with
+  metadata errors (e.g., "Metadata field Name not found") because the corporate WARP VPN
+  intercepts traffic to `pypi.org` and routes it through Artifactory, which can't process
+  modern Python wheel metadata (Metadata-Version 2.4+).
+
+  **The fix is a simple VPN toggle — nothing else.** The package metadata is NOT broken.
+  The local uv cache is NOT corrupted. Do NOT attempt to clear caches, reinstall packages,
+  debug metadata, or investigate package build configurations. Just disconnect the VPN,
+  run the uv command, and reconnect:
+
+  ```bash
+  warp-cli disconnect
+  uv sync  # or uv lock, uv pip install, etc.
+  warp-cli connect
+  ```
+
+  Always reconnect immediately after — WARP is the corporate VPN and must stay active for
+  work network resources. This only affects personal repos; work repos use Artifactory
+  intentionally.
 exclude_symlinks:
   - ~/.config/goose/config.yaml

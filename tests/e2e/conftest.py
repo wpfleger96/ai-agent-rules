@@ -43,6 +43,7 @@ def e2e_config_dir(tmp_path):
     codex_dir = config_dir / "codex"
     codex_dir.mkdir()
     (codex_dir / "config.toml").write_text('model = "test-model"\n')
+    (codex_dir / "AGENTS.md").write_text("@~/AGENTS.md\n")
 
     gemini_dir = config_dir / "gemini"
     gemini_dir.mkdir()

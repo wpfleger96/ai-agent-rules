@@ -23,6 +23,7 @@ class Profile:
     plugins: list[dict[str, str]] = field(default_factory=list)
     marketplaces: list[dict[str, str]] = field(default_factory=list)
     managed_tools: dict[str, Any] = field(default_factory=dict)
+    agents_md: str = ""
 
 
 class ProfileError(Exception):
@@ -127,6 +128,7 @@ class ProfileLoader:
             plugins=data.get("plugins", []),
             marketplaces=data.get("marketplaces", []),
             managed_tools=data.get("managed_tools", {}),
+            agents_md=data.get("agents_md", ""),
         )
 
         if profile.extends:
@@ -183,6 +185,8 @@ class ProfileLoader:
             raise ProfileError(
                 f"Profile '{profile_name}': managed_tools must be a dict"
             )
+        if "agents_md" in data and not isinstance(data["agents_md"], str):
+            raise ProfileError(f"Profile '{profile_name}': agents_md must be a string")
 
     def _merge_profiles(self, parent: Profile, child: Profile) -> Profile:
         """Merge parent profile into child, with child taking precedence."""
@@ -208,6 +212,15 @@ class ProfileLoader:
 
         merged_managed_tools = deep_merge(parent.managed_tools, child.managed_tools)
 
+        parent_md = parent.agents_md.rstrip("\n")
+        child_md = child.agents_md.rstrip("\n")
+        if parent_md and child_md:
+            merged_agents_md = parent_md + "\n\n" + child_md
+        elif parent_md:
+            merged_agents_md = parent_md
+        else:
+            merged_agents_md = child_md
+
         return Profile(
             name=child.name,
             description=child.description,
@@ -218,6 +231,7 @@ class ProfileLoader:
             plugins=merged_plugins,
             marketplaces=merged_marketplaces,
             managed_tools=merged_managed_tools,
+            agents_md=merged_agents_md,
         )
 
     def get_profile_info(self, name: str) -> dict[str, Any]:
