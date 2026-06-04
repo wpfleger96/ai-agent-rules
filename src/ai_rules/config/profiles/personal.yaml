@@ -4,6 +4,8 @@ extends: default
 settings_overrides:
   claude:
     model: opusplan
+    permissions:
+      defaultMode: bypassPermissions
   statusline:
     terminal_title:
       enabled: true
