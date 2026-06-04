@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [0.61.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.60.0...v0.61.0) (2026-06-04)
+
+
+### Features
+
+* add agents_md profile field for AGENTS.md content appending ([9a314a4](https://github.com/wpfleger96/ai-agent-rules/commit/9a314a432a6e81fe9f8c983ba112d70ec3355a4a))
+* add Sprout persona pack symlink management ([#84](https://github.com/wpfleger96/ai-agent-rules/issues/84)) ([fb43a64](https://github.com/wpfleger96/ai-agent-rules/commit/fb43a64efe50069e9f3ff91028a5f3513f5239f6))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#83](https://github.com/wpfleger96/ai-agent-rules/issues/83)) ([09ee3fe](https://github.com/wpfleger96/ai-agent-rules/commit/09ee3fef226b164e7919e85bca966667ede009d1))
+
+
+### Refactoring
+
+* remove null overrides and consolidate profile/base config ([#80](https://github.com/wpfleger96/ai-agent-rules/issues/80)) ([494c28d](https://github.com/wpfleger96/ai-agent-rules/commit/494c28d2be01e59f22ad0a9251aac8166b422983))
+
 ## [0.60.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.59.0...v0.60.0) (2026-06-03)
 
 
