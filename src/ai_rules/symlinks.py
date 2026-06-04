@@ -317,6 +317,45 @@ def remove_symlink(target_path: Path, force: bool = False) -> tuple[bool, str]:
         )
 
 
+def format_unified_diff(
+    current_lines: list[str],
+    expected_lines: list[str],
+    from_label: str,
+    to_label: str,
+) -> str | None:
+    """Format a unified diff with Rich markup.
+
+    Returns:
+        Formatted diff string with Rich markup, or None if no differences.
+    """
+    import difflib
+
+    diff = difflib.unified_diff(
+        current_lines,
+        expected_lines,
+        fromfile=from_label,
+        tofile=to_label,
+        lineterm="",
+    )
+
+    diff_lines = []
+    for line in diff:
+        line = line.rstrip("\n")
+        if line.startswith("---") or line.startswith("+++") or line.startswith("@@"):
+            diff_lines.append(f"[dim]    {line}[/dim]")
+        elif line.startswith("+"):
+            diff_lines.append(f"[green]    {line}[/green]")
+        elif line.startswith("-"):
+            diff_lines.append(f"[red]    {line}[/red]")
+        else:
+            diff_lines.append(f"[dim]    {line}[/dim]")
+
+    if not diff_lines:
+        return None
+
+    return "\n".join(diff_lines)
+
+
 def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
     """Get a unified diff between two files.
 
@@ -327,8 +366,6 @@ def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
     Returns:
         Formatted diff string with Rich markup, or None if identical/error
     """
-    import difflib
-
     if actual_path.is_dir() and expected_path.is_dir():
         diffs = []
         actual_files = {
@@ -398,27 +435,6 @@ def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
         except json.JSONDecodeError, ValueError:
             pass
 
-    diff = difflib.unified_diff(
-        actual_lines,
-        expected_lines,
-        fromfile=str(actual_path),
-        tofile=str(expected_path),
-        lineterm="",
+    return format_unified_diff(
+        actual_lines, expected_lines, str(actual_path), str(expected_path)
     )
-
-    diff_lines = []
-    for line in diff:
-        line = line.rstrip("\n")
-        if line.startswith("---") or line.startswith("+++") or line.startswith("@@"):
-            diff_lines.append(f"[dim]    {line}[/dim]")
-        elif line.startswith("+"):
-            diff_lines.append(f"[green]    {line}[/green]")
-        elif line.startswith("-"):
-            diff_lines.append(f"[red]    {line}[/red]")
-        else:
-            diff_lines.append(f"[dim]    {line}[/dim]")
-
-    if not diff_lines:
-        return None
-
-    return "\n".join(diff_lines)

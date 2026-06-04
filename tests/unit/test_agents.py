@@ -103,7 +103,7 @@ class TestCodexAgent:
 
         assert len(agents_md_entries) == 1
         _, source = agents_md_entries[0]
-        assert source == test_repo / "AGENTS.md"
+        assert source == test_repo / "codex" / "AGENTS.md"
 
     def test_excludes_filtered_symlinks(self, test_repo):
         config = Config(exclude_symlinks=["~/.codex/config.toml"])
@@ -237,6 +237,96 @@ class TestSharedAgent:
         targets = [Path(target).as_posix() for target, _ in symlinks]
         assert "~/AGENTS.md" not in targets
         assert len(targets) == 0
+
+    def test_symlinks_agents_md_points_to_config_dir_when_no_agents_md(self, test_repo):
+        agent = SharedAgent(test_repo, Config(agents_md=""))
+
+        symlinks = agent.symlinks
+        agents_md_entries = [(t, s) for t, s in symlinks if "AGENTS.md" in str(t)]
+
+        assert len(agents_md_entries) == 1
+        _, source = agents_md_entries[0]
+        assert source == test_repo / "AGENTS.md"
+
+    def test_symlinks_agents_md_points_to_cache_when_agents_md_set(
+        self, test_repo, mock_home
+    ):
+        config = Config(agents_md="## Extra content")
+        agent = SharedAgent(test_repo, config)
+
+        symlinks = agent.symlinks
+        agents_md_entries = [(t, s) for t, s in symlinks if "AGENTS.md" in str(t)]
+
+        assert len(agents_md_entries) == 1
+        _, source = agents_md_entries[0]
+        assert source == config.get_merged_agents_md_path()
+
+    def test_needs_agents_md_cache_true_when_agents_md_set(self, test_repo):
+        agent = SharedAgent(test_repo, Config(agents_md="## Extra content"))
+
+        assert agent.needs_agents_md_cache is True
+
+    def test_needs_agents_md_cache_false_when_agents_md_empty(self, test_repo):
+        agent = SharedAgent(test_repo, Config(agents_md=""))
+
+        assert agent.needs_agents_md_cache is False
+
+    def test_build_merged_agents_md_writes_base_plus_appended_content(
+        self, test_repo, mock_home
+    ):
+        config = Config(agents_md="## Extra content")
+        agent = SharedAgent(test_repo, config)
+
+        cache_path = agent.build_merged_agents_md()
+
+        assert cache_path is not None
+        assert cache_path.exists()
+        content = cache_path.read_text(encoding="utf-8")
+        assert content == "# Shared Agent Rules\nTest content\n\n## Extra content\n"
+
+    def test_build_merged_agents_md_ends_with_single_newline(
+        self, test_repo, mock_home
+    ):
+        config = Config(agents_md="## Extra")
+        agent = SharedAgent(test_repo, config)
+
+        cache_path = agent.build_merged_agents_md()
+
+        assert cache_path is not None
+        content = cache_path.read_text(encoding="utf-8")
+        assert content.endswith("\n")
+        assert not content.endswith("\n\n")
+
+    def test_build_merged_agents_md_returns_none_when_no_agents_md(
+        self, test_repo, mock_home
+    ):
+        agent = SharedAgent(test_repo, Config(agents_md=""))
+
+        result = agent.build_merged_agents_md()
+
+        assert result is None
+
+    def test_is_agents_md_cache_stale_true_when_cache_missing(
+        self, test_repo, mock_home
+    ):
+        config = Config(agents_md="## Extra content")
+        agent = SharedAgent(test_repo, config)
+
+        # Cache file does not exist yet
+        assert agent.is_agents_md_cache_stale() is True
+
+    def test_is_agents_md_cache_stale_false_when_content_matches(
+        self, test_repo, mock_home
+    ):
+        config = Config(agents_md="## Extra content")
+        agent = SharedAgent(test_repo, config)
+
+        # Build the cache so content is up to date
+        agent.build_merged_agents_md()
+        # Clear cached_property so symlinks and staleness checks re-evaluate
+        agent.__dict__.pop("symlinks", None)
+
+        assert agent.is_agents_md_cache_stale() is False
 
 
 @pytest.mark.unit

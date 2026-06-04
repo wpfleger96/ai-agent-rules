@@ -2061,3 +2061,114 @@ class TestManagedToolsConfig:
         # Next load should reflect the new value
         config_after = Config.load()
         assert config_after.get_tool_install_source("statusline") == "github"
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestAgentsMdConfig:
+    """Tests for agents_md field in Config."""
+
+    def _make_home(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+        Config._load_cached.cache_clear()
+        return home
+
+    def test_config_stores_agents_md_default_is_empty(self):
+        config = Config()
+        assert config.agents_md == ""
+
+    def test_config_stores_agents_md_from_constructor(self):
+        config = Config(agents_md="# Rules\n\nFollow them.")
+        assert config.agents_md == "# Rules\n\nFollow them."
+
+    def test_get_merged_agents_md_path_returns_none_when_empty(
+        self, tmp_path, monkeypatch
+    ):
+        home = self._make_home(tmp_path, monkeypatch)
+        monkeypatch.setattr(
+            "ai_rules.state.get_state_dir",
+            lambda: home / ".ai-agent-rules",
+        )
+        config = Config(agents_md="")
+        assert config.get_merged_agents_md_path() is None
+
+    def test_get_merged_agents_md_path_returns_shared_agents_md_when_truthy(
+        self, tmp_path, monkeypatch
+    ):
+        home = self._make_home(tmp_path, monkeypatch)
+        monkeypatch.setattr(
+            "ai_rules.state.get_state_dir",
+            lambda: home / ".ai-agent-rules",
+        )
+        config = Config(agents_md="# Rules")
+        result = config.get_merged_agents_md_path()
+        assert result is not None
+        assert result.name == "AGENTS.md"
+        assert result.parent.name == "shared"
+
+    def test_cleanup_orphaned_cache_preserves_shared_when_agents_md_set(
+        self, tmp_path, monkeypatch
+    ):
+        home = self._make_home(tmp_path, monkeypatch)
+        monkeypatch.setattr(
+            "ai_rules.state.get_state_dir",
+            lambda: home / ".ai-agent-rules",
+        )
+        cache_dir = home / ".ai-agent-rules" / "cache"
+        shared_dir = cache_dir / "shared"
+        shared_dir.mkdir(parents=True)
+        (shared_dir / "AGENTS.md").write_text("# Rules")
+
+        config = Config(agents_md="# Rules")
+        # "shared" is NOT in the provided set — but agents_md being set should protect it
+        removed = config.cleanup_orphaned_cache(agents_needing_cache=set())
+        assert "shared" not in removed
+        assert shared_dir.exists()
+
+    def test_cleanup_orphaned_cache_removes_shared_when_agents_md_empty(
+        self, tmp_path, monkeypatch
+    ):
+        home = self._make_home(tmp_path, monkeypatch)
+        monkeypatch.setattr(
+            "ai_rules.state.get_state_dir",
+            lambda: home / ".ai-agent-rules",
+        )
+        cache_dir = home / ".ai-agent-rules" / "cache"
+        shared_dir = cache_dir / "shared"
+        shared_dir.mkdir(parents=True)
+        (shared_dir / "AGENTS.md").write_text("# Rules")
+
+        config = Config(agents_md="")
+        removed = config.cleanup_orphaned_cache(agents_needing_cache=set())
+        assert "shared" in removed
+        assert not shared_dir.exists()
+
+    def test_user_config_agents_md_appends_after_profile_content(
+        self, tmp_path, monkeypatch
+    ):
+        home = self._make_home(tmp_path, monkeypatch)
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            'version: 1\nagents_md: "User rules"\n'
+        )
+
+        profiles_dir = tmp_path / "profiles"
+        profiles_dir.mkdir()
+        (profiles_dir / "work.yaml").write_text(
+            'name: work\nagents_md: "Profile rules"\n'
+        )
+
+        from ai_rules.profiles import ProfileLoader
+
+        original_init = ProfileLoader.__init__
+
+        def mock_init(self, profiles_dir_arg=None):
+            original_init(self, profiles_dir=profiles_dir_arg or profiles_dir)
+
+        monkeypatch.setattr(ProfileLoader, "__init__", mock_init)
+
+        config = Config.load(profile="work")
+
+        assert config.agents_md == "Profile rules\n\nUser rules"
