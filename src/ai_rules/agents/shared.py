@@ -115,7 +115,9 @@ class SharedAgent(Agent):
         result = []
 
         if self.needs_agents_md_cache:
-            agents_md_source = self.config.get_merged_agents_md_path()
+            cache_path = self.config.get_merged_agents_md_path()
+            assert cache_path is not None
+            agents_md_source = cache_path
         else:
             agents_md_source = self.config_dir / "AGENTS.md"
         result.append((Path("~/AGENTS.md"), agents_md_source))
