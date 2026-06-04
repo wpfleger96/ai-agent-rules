@@ -92,16 +92,7 @@ class AgentsMdComponent(Component):
             )
             from_label = "Base (current)"
 
-        base_path = shared.config_dir / "AGENTS.md"
-        base_content = (
-            base_path.read_text(encoding="utf-8") if base_path.exists() else ""
-        )
-        expected_text = (
-            base_content.rstrip("\n")
-            + "\n\n"
-            + shared.config.agents_md.strip()
-            + "\n"
-        )
+        expected_text = shared.get_expected_agents_md_content()
 
         from ai_rules.symlinks import format_unified_diff
 

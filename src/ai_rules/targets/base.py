@@ -405,9 +405,7 @@ class ConfigTarget(ABC):
 
         from ai_rules.symlinks import format_unified_diff
 
-        return format_unified_diff(
-            current_lines, expected_lines, from_label, to_label
-        )
+        return format_unified_diff(current_lines, expected_lines, from_label, to_label)
 
     def get_filtered_symlinks(self) -> list[tuple[Path, Path]]:
         """Get symlinks filtered by config exclusions."""

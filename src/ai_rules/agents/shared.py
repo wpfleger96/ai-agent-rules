@@ -39,6 +39,22 @@ class SharedAgent(Agent):
     def agents_md_cache_path(self) -> Path | None:
         return self.config.get_merged_agents_md_path()
 
+    def get_expected_agents_md_content(self) -> str:
+        """Compute what the merged AGENTS.md content should be."""
+        base_path = self.config_dir / "AGENTS.md"
+        base_content = (
+            base_path.read_text(encoding="utf-8") if base_path.exists() else ""
+        )
+        base_stripped = base_content.rstrip("\n")
+        appended = self.config.agents_md.strip()
+        if base_stripped and appended:
+            return base_stripped + "\n\n" + appended + "\n"
+        if base_stripped:
+            return base_stripped + "\n"
+        if appended:
+            return appended + "\n"
+        return ""
+
     def build_merged_agents_md(self, force_rebuild: bool = False) -> Path | None:
         """Write base AGENTS.md + profile agents_md content to cache."""
         if not self.needs_agents_md_cache:
@@ -52,14 +68,7 @@ class SharedAgent(Agent):
             if not self.is_agents_md_cache_stale():
                 return cache_path
 
-        base_path = self.config_dir / "AGENTS.md"
-        base_content = (
-            base_path.read_text(encoding="utf-8") if base_path.exists() else ""
-        )
-
-        merged = (
-            base_content.rstrip("\n") + "\n\n" + self.config.agents_md.strip() + "\n"
-        )
+        merged = self.get_expected_agents_md_content()
 
         from ai_rules.config import write_file_atomic
 
@@ -76,33 +85,7 @@ class SharedAgent(Agent):
         if not cache_path or not cache_path.exists():
             return True
 
-        cache_mtime = cache_path.stat().st_mtime
-
-        from ai_rules.config import get_user_config_path
-
-        user_config_path = get_user_config_path()
-        if user_config_path.exists() and user_config_path.stat().st_mtime > cache_mtime:
-            return True
-
-        if self.config.profile_name and self.config.profile_name != "default":
-            from ai_rules.profiles import ProfileLoader
-
-            loader = ProfileLoader()
-            profile_path = loader._profiles_dir / f"{self.config.profile_name}.yaml"
-            if profile_path.exists() and profile_path.stat().st_mtime > cache_mtime:
-                return True
-
-        base_path = self.config_dir / "AGENTS.md"
-        if base_path.exists() and base_path.stat().st_mtime > cache_mtime:
-            return True
-
-        # Content comparison fallback
-        base_content = (
-            base_path.read_text(encoding="utf-8") if base_path.exists() else ""
-        )
-        expected = (
-            base_content.rstrip("\n") + "\n\n" + self.config.agents_md.strip() + "\n"
-        )
+        expected = self.get_expected_agents_md_content()
         actual = cache_path.read_text(encoding="utf-8")
         return actual != expected
 

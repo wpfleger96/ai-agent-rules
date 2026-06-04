@@ -162,12 +162,15 @@ class MCPManager(ABC):
         expected_json = json.dumps(expected, indent=2, sort_keys=True)
         installed_json = json.dumps(installed, indent=2, sort_keys=True)
 
-        return format_unified_diff(
-            expected_json.splitlines(keepends=True),
+        diff = format_unified_diff(
             installed_json.splitlines(keepends=True),
-            "Expected (repo)",
+            expected_json.splitlines(keepends=True),
             "Installed (local)",
+            "Expected (repo)",
         )
+        if diff is None:
+            return None
+        return f"    MCP '{name}' has been modified locally:\n{diff}"
 
     def format_pending(self, name: str, expected: dict[str, Any]) -> str:
         """Format expected MCP config for pending installation."""

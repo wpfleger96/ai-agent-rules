@@ -228,10 +228,11 @@ def test_format_diff(manager):
 
     diff = manager.format_diff("test-mcp", expected, installed)
     assert diff is not None
+    assert "test-mcp" in diff
     assert "mcp_test@latest" in diff
     assert "mcp_test@0.2.0" in diff
-    assert "Expected (repo)" in diff
     assert "Installed (local)" in diff
+    assert "Expected (repo)" in diff
 
 
 def test_detect_conflicts(manager):

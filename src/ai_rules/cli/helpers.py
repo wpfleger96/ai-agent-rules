@@ -91,6 +91,10 @@ def select_targets(
     }
     selected = [target for target in all_targets if target.target_id in requested_ids]
 
+    shared_target = next((t for t in all_targets if t.target_id == "shared"), None)
+    if shared_target and shared_target not in selected:
+        selected.insert(0, shared_target)
+
     if not selected:
         invalid_ids = requested_ids - {target.target_id for target in all_targets}
         available_ids = [target.target_id for target in all_targets]
