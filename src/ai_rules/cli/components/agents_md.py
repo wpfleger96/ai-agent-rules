@@ -80,6 +80,40 @@ class AgentsMdComponent(Component):
         console = get_console(ctx)
         console.print("[bold]AGENTS.md Cache[/bold]")
         print_warning("Cached AGENTS.md is stale", indent=2)
+
+        cache_path = shared.agents_md_cache_path
+        if cache_path and cache_path.exists():
+            current_text = cache_path.read_text(encoding="utf-8")
+            from_label = "Cached (current)"
+        else:
+            base_path = shared.config_dir / "AGENTS.md"
+            current_text = (
+                base_path.read_text(encoding="utf-8") if base_path.exists() else ""
+            )
+            from_label = "Base (current)"
+
+        base_path = shared.config_dir / "AGENTS.md"
+        base_content = (
+            base_path.read_text(encoding="utf-8") if base_path.exists() else ""
+        )
+        expected_text = (
+            base_content.rstrip("\n")
+            + "\n\n"
+            + shared.config.agents_md.strip()
+            + "\n"
+        )
+
+        from ai_rules.symlinks import format_unified_diff
+
+        diff_output = format_unified_diff(
+            current_text.splitlines(keepends=True),
+            expected_text.splitlines(keepends=True),
+            from_label,
+            "Expected (merged)",
+        )
+        if diff_output:
+            console.print(diff_output)
+
         console.print()
 
         return ComponentResult(ok=False, changed=True, counts={"cache_stale": 1})

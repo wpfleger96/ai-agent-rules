@@ -227,7 +227,7 @@ def test_format_diff(manager):
     installed = {"type": "stdio", "command": "uvx", "args": ["mcp_test@0.2.0"]}
 
     diff = manager.format_diff("test-mcp", expected, installed)
-    assert "test-mcp" in diff
+    assert diff is not None
     assert "mcp_test@latest" in diff
     assert "mcp_test@0.2.0" in diff
     assert "Expected (repo)" in diff

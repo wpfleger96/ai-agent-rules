@@ -155,22 +155,19 @@ class MCPManager(ABC):
 
     def format_diff(
         self, name: str, expected: dict[str, Any], installed: dict[str, Any]
-    ) -> str:
+    ) -> str | None:
         """Format a unified diff between expected and installed MCP config."""
-        import difflib
+        from ai_rules.symlinks import format_unified_diff
 
         expected_json = json.dumps(expected, indent=2, sort_keys=True)
         installed_json = json.dumps(installed, indent=2, sort_keys=True)
 
-        diff = difflib.unified_diff(
+        return format_unified_diff(
             expected_json.splitlines(keepends=True),
             installed_json.splitlines(keepends=True),
-            fromfile="Expected (repo)",
-            tofile="Installed (local)",
-            lineterm="",
+            "Expected (repo)",
+            "Installed (local)",
         )
-
-        return f"MCP '{name}' has been modified locally:\n" + "".join(diff)
 
     def format_pending(self, name: str, expected: dict[str, Any]) -> str:
         """Format expected MCP config for pending installation."""
