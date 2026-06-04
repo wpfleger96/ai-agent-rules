@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ai_rules.cli.components.agents_md import AgentsMdComponent
 from ai_rules.cli.components.completions import CompletionsComponent
 from ai_rules.cli.components.config import ConfigComponent
 from ai_rules.cli.components.extensions import ClaudeExtensionsComponent
@@ -15,6 +16,7 @@ from ai_rules.cli.context import Component
 
 INSTALL_COMPONENTS: tuple[Component, ...] = (
     SettingsComponent(),
+    AgentsMdComponent(),
     OptionalToolsComponent(),
     ConfigComponent(),
     SkillsComponent(),
@@ -27,6 +29,7 @@ INSTALL_COMPONENTS: tuple[Component, ...] = (
 STATUS_COMPONENTS: tuple[Component, ...] = (
     ConfigComponent(),
     SettingsComponent(),
+    AgentsMdComponent(),
     MCPComponent(),
     ClaudePluginComponent(),
     ClaudeExtensionsComponent(),
@@ -38,6 +41,7 @@ STATUS_COMPONENTS: tuple[Component, ...] = (
 DIFF_COMPONENTS: tuple[Component, ...] = (
     ConfigComponent(),
     SettingsComponent(),
+    AgentsMdComponent(),
     MCPComponent(),
     ClaudePluginComponent(),
     ClaudeExtensionsComponent(),
@@ -51,6 +55,7 @@ UNINSTALL_COMPONENTS: tuple[Component, ...] = (
     MCPComponent(),
     ClaudePluginComponent(),
     OptionalToolsComponent(),
+    AgentsMdComponent(),
     SettingsComponent(),
 )
 
