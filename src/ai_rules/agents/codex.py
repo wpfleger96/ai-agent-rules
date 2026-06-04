@@ -45,7 +45,7 @@ class CodexAgent(Agent):
         result.append(
             (
                 Path("~/.codex/AGENTS.md"),
-                self.config_dir / "AGENTS.md",
+                self.config_dir / "codex" / "AGENTS.md",
             )
         )
 

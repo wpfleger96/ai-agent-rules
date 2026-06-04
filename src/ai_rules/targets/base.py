@@ -323,8 +323,6 @@ class ConfigTarget(ABC):
         Returns:
             Formatted diff string with Rich markup, or None if no diff
         """
-        import difflib
-
         import tomli_w
         import yaml
 
@@ -405,34 +403,9 @@ class ConfigTarget(ABC):
         current_lines = current_text.splitlines(keepends=True)
         expected_lines = expected_text.splitlines(keepends=True)
 
-        diff = difflib.unified_diff(
-            current_lines,
-            expected_lines,
-            fromfile=from_label,
-            tofile=to_label,
-            lineterm="",
-        )
+        from ai_rules.symlinks import format_unified_diff
 
-        diff_lines = []
-        for line in diff:
-            line = line.rstrip("\n")
-            if (
-                line.startswith("---")
-                or line.startswith("+++")
-                or line.startswith("@@")
-            ):
-                diff_lines.append(f"[dim]    {line}[/dim]")
-            elif line.startswith("+"):
-                diff_lines.append(f"[green]    {line}[/green]")
-            elif line.startswith("-"):
-                diff_lines.append(f"[red]    {line}[/red]")
-            else:
-                diff_lines.append(f"[dim]    {line}[/dim]")
-
-        if not diff_lines:
-            return None
-
-        return "\n".join(diff_lines)
+        return format_unified_diff(current_lines, expected_lines, from_label, to_label)
 
     def get_filtered_symlinks(self) -> list[tuple[Path, Path]]:
         """Get symlinks filtered by config exclusions."""

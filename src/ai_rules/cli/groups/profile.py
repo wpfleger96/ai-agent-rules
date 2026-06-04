@@ -110,6 +110,10 @@ def profile_show(name: str, resolved: bool) -> None:
                     console.print(
                         f"  - {marketplace.get('name', '?')} (source: {marketplace.get('source', '?')})"
                     )
+
+            if profile.agents_md:
+                console.print("\n[bold]AGENTS.md Append:[/bold]")
+                console.print(profile.agents_md.rstrip())
         else:
             import yaml
 

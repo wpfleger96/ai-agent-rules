@@ -595,6 +595,7 @@ class Config:
         plugins: list[dict[str, str]] | None = None,
         marketplaces: list[dict[str, str]] | None = None,
         managed_tools: dict[str, Any] | None = None,
+        agents_md: str = "",
     ):
         self.exclude_symlinks = set(exclude_symlinks or [])
         self.settings_overrides = settings_overrides or {}
@@ -603,6 +604,7 @@ class Config:
         self.plugins = plugins or []
         self.marketplaces = marketplaces or []
         self.managed_tools = managed_tools or {}
+        self.agents_md = agents_md
 
     def get_plugin_configs(self) -> list[PluginConfig]:
         """Convert plugin dicts to PluginConfig objects."""
@@ -669,6 +671,7 @@ class Config:
         plugins = copy.deepcopy(profile_data.plugins)
         marketplaces = copy.deepcopy(profile_data.marketplaces)
         managed_tools = copy.deepcopy(profile_data.managed_tools)
+        agents_md = profile_data.agents_md
 
         user_config_path = get_user_config_path()
         if user_config_path.exists():
@@ -702,6 +705,13 @@ class Config:
             if user_managed_tools:
                 managed_tools = deep_merge(managed_tools, user_managed_tools)
 
+            user_agents_md = user_data.get("agents_md", "")
+            if user_agents_md and isinstance(user_agents_md, str):
+                if agents_md:
+                    agents_md = agents_md.rstrip("\n") + "\n\n" + user_agents_md.strip()
+                else:
+                    agents_md = user_agents_md.strip()
+
         return cls(
             exclude_symlinks=exclude_symlinks,
             settings_overrides=settings_overrides,
@@ -710,6 +720,7 @@ class Config:
             plugins=plugins,
             marketplaces=marketplaces,
             managed_tools=managed_tools,
+            agents_md=agents_md,
         )
 
     def get_tool_install_source(self, tool_id: str) -> str | None:
@@ -782,6 +793,12 @@ class Config:
         from ai_rules.state import get_state_dir
 
         return get_state_dir() / "cache"
+
+    def get_merged_agents_md_path(self) -> Path | None:
+        """Return cache path for merged AGENTS.md, or None if no agents_md content."""
+        if not self.agents_md:
+            return None
+        return self.get_cache_dir() / "shared" / "AGENTS.md"
 
     def merge_settings(
         self, agent: str, base_settings: dict[str, Any]
@@ -886,6 +903,10 @@ class Config:
         Returns:
             List of agent IDs whose caches were removed
         """
+        effective = set(agents_needing_cache)
+        if self.agents_md:
+            effective.add("shared")
+
         removed: list[str] = []
         cache_dir = self.get_cache_dir()
         if not cache_dir.exists():
@@ -894,7 +915,7 @@ class Config:
         for agent_dir in cache_dir.iterdir():
             if agent_dir.is_dir():
                 agent_id = agent_dir.name
-                if agent_id not in agents_needing_cache:
+                if agent_id not in effective:
                     shutil.rmtree(agent_dir)
                     removed.append(agent_id)
 

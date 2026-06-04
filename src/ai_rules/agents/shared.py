@@ -31,6 +31,64 @@ class SharedAgent(Agent):
     def config_file_format(self) -> str:
         return ""
 
+    @property
+    def needs_agents_md_cache(self) -> bool:
+        return bool(self.config.agents_md)
+
+    @property
+    def agents_md_cache_path(self) -> Path | None:
+        return self.config.get_merged_agents_md_path()
+
+    def get_expected_agents_md_content(self) -> str:
+        """Compute what the merged AGENTS.md content should be."""
+        base_path = self.config_dir / "AGENTS.md"
+        base_content = (
+            base_path.read_text(encoding="utf-8") if base_path.exists() else ""
+        )
+        base_stripped = base_content.rstrip("\n")
+        appended = self.config.agents_md.strip()
+        if base_stripped and appended:
+            return base_stripped + "\n\n" + appended + "\n"
+        if base_stripped:
+            return base_stripped + "\n"
+        if appended:
+            return appended + "\n"
+        return ""
+
+    def build_merged_agents_md(self, force_rebuild: bool = False) -> Path | None:
+        """Write base AGENTS.md + profile agents_md content to cache."""
+        if not self.needs_agents_md_cache:
+            return None
+
+        cache_path = self.config.get_merged_agents_md_path()
+        if cache_path is None:
+            return None
+
+        if not force_rebuild and cache_path.exists():
+            if not self.is_agents_md_cache_stale():
+                return cache_path
+
+        merged = self.get_expected_agents_md_content()
+
+        from ai_rules.config import write_file_atomic
+
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        write_file_atomic(cache_path, lambda f: f.write(merged))
+        return cache_path
+
+    def is_agents_md_cache_stale(self) -> bool:
+        """Check if cached merged AGENTS.md is stale."""
+        if not self.needs_agents_md_cache:
+            return False
+
+        cache_path = self.config.get_merged_agents_md_path()
+        if not cache_path or not cache_path.exists():
+            return True
+
+        expected = self.get_expected_agents_md_content()
+        actual = cache_path.read_text(encoding="utf-8")
+        return actual != expected
+
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of shared symlinks for agent-agnostic configurations."""
@@ -39,7 +97,13 @@ class SharedAgent(Agent):
 
         result = []
 
-        result.append((Path("~/AGENTS.md"), self.config_dir / "AGENTS.md"))
+        if self.needs_agents_md_cache:
+            cache_path = self.config.get_merged_agents_md_path()
+            assert cache_path is not None
+            agents_md_source = cache_path
+        else:
+            agents_md_source = self.config_dir / "AGENTS.md"
+        result.append((Path("~/AGENTS.md"), agents_md_source))
 
         skills_dir = self.config_dir / "skills"
         if skills_dir.exists():
