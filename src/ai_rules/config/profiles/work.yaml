@@ -26,4 +26,3 @@ settings_overrides:
       useFullWidth: true
 exclude_symlinks:
   - ~/.config/goose/config.yaml
-mcp_overrides: {}
