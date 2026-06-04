@@ -4,7 +4,8 @@ extends: default
 settings_overrides:
   claude:
     model: opusplan
-    hooks: {}
+    permissions:
+      defaultMode: bypassPermissions
   statusline:
     terminal_title:
       enabled: true
@@ -15,5 +16,3 @@ plugins:
     marketplace: claude-plugins-official
   - name: rust-analyzer-lsp
     marketplace: claude-plugins-official
-exclude_symlinks: []
-mcp_overrides: {}

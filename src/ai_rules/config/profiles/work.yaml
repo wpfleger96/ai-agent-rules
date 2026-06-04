@@ -7,10 +7,6 @@ managed_tools:
     statusline: github
 settings_overrides:
   claude:
-    env:
-      ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-4-6[1m]"
-      CLAUDE_CODE_SUBAGENT_MODEL: "claude-sonnet-4-6[1m]"
-      ANTHROPIC_DEFAULT_OPUS_MODEL: "claude-opus-4-6[1m]"
     model: "opus[1m]"
   codex:
     service_tier: "fast"
@@ -22,8 +18,5 @@ settings_overrides:
     security:
       auth:
         selectedType: "gemini-api-key"
-    ui:
-      useFullWidth: true
 exclude_symlinks:
   - ~/.config/goose/config.yaml
-mcp_overrides: {}
