@@ -27,7 +27,9 @@ def test_target_registry_returns_unique_targets_in_lifecycle_order(
         "statusline",
     ]
     assert len(target_ids) == len(set(target_ids))
-    assert len(TARGET_CLASSES) == len(target_ids)
+    # SproutTool is macOS-only, so TARGET_CLASSES has one more entry than the
+    # Linux-filtered list.
+    assert len(TARGET_CLASSES) == len(target_ids) + 1
 
 
 @pytest.mark.unit
@@ -41,3 +43,15 @@ def test_get_targets_excludes_amp_on_windows(
     target_classes = [type(t) for t in targets]
 
     assert AmpAgent not in target_classes
+
+
+@pytest.mark.unit
+def test_get_targets_includes_sprout_on_macos(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.MACOS)
+    config = Config()
+
+    target_ids = [target.target_id for target in get_targets(tmp_path, config)]
+
+    assert "sprout" in target_ids

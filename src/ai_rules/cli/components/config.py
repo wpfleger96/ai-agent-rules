@@ -21,7 +21,11 @@ from ai_rules.cli.context import (
 SPECIALIZED_PATH_PARTS = ("/agents/", "/commands/", "/skills/", "/hooks/")
 
 
-def _is_specialized_path(target: Path) -> bool:
+def _is_specialized_path(target_owner: ConfigTarget, target: Path) -> bool:
+    from ai_rules.agents.base import Agent
+
+    if not isinstance(target_owner, Agent):
+        return False
     target_str = target.as_posix()
     return any(part in target_str for part in SPECIALIZED_PATH_PARTS)
 
@@ -128,7 +132,7 @@ class ConfigComponent(Component):
             config_symlinks = [
                 (tgt, src)
                 for tgt, src in filtered_symlinks
-                if not _is_specialized_path(tgt)
+                if not _is_specialized_path(agent, tgt)
             ]
             symlink_ops.extend(config_symlinks)
 
@@ -225,7 +229,7 @@ class ConfigComponent(Component):
             config_symlinks = [
                 (tgt, src)
                 for tgt, src in filtered_symlinks
-                if not _is_specialized_path(tgt)
+                if not _is_specialized_path(agent, tgt)
             ]
 
             if user_excluded_count > 0:
@@ -296,7 +300,7 @@ class ConfigComponent(Component):
             ]
 
             for tgt, source in filtered_symlinks:
-                if _is_specialized_path(tgt):
+                if _is_specialized_path(target, tgt):
                     continue
 
                 if tgt.expanduser() in copy_targets:
@@ -329,7 +333,7 @@ class ConfigComponent(Component):
             target_diffs: list[tuple[Path, Path, str, str, str | None]] = []
 
             for tgt, source in target.get_filtered_symlinks():
-                if _is_specialized_path(tgt):
+                if _is_specialized_path(target, tgt):
                     continue
                 target_path = tgt.expanduser()
                 if target_path in copy_targets:
@@ -452,7 +456,7 @@ class ConfigComponent(Component):
             console.print(f"\n[bold]{target.name}[/bold]")
 
             for tgt, _source in target.get_filtered_symlinks():
-                if _is_specialized_path(tgt):
+                if _is_specialized_path(target, tgt):
                     continue
                 if tgt.expanduser() in copy_targets:
                     success, message = remove_file_copy(tgt, ctx.yes)

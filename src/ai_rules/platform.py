@@ -109,3 +109,8 @@ def get_statusline_config_dir() -> Path:
     if is_platform(Platform.WINDOWS):
         return get_appdata_dir() / "claude-statusline"
     return Path("~/.config/claude-statusline")
+
+
+def get_sprout_packs_dir(dev: bool = False) -> Path:
+    bundle = "xyz.block.sprout.app.dev" if dev else "xyz.block.sprout.app"
+    return Path.home() / "Library" / "Application Support" / bundle / "agents" / "packs"
