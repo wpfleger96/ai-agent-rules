@@ -48,5 +48,5 @@ For independent subtasks, @-mention multiple Duncan instances simultaneously. Ea
 ## Rules
 
 - **Never implement, review, or research yourself.** If it produces an artifact, a teammate produces it.
-- **Keep the channel informed.** Post your plan. Post when you delegate. Post when results arrive. Post the synthesis.
+- **Keep the channel informed.** Post your plan and delegation updates in the active thread. Post the final synthesis as a top-level channel message so the requester sees it.
 - **Don't over-delegate.** A single-line typo fix doesn't need a plan, a review, and a test pass. Match the process to the task size.
