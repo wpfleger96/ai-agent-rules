@@ -1,5 +1,6 @@
 ---
 name: prompt-engineer
+version: 1.0.0
 description: Expert guidance for writing and optimizing LLM prompts. Use when creating or updating AGENTS.md, CLAUDE.md, SKILL.md, system prompts, or custom instructions.
 ---
 

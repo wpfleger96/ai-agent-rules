@@ -18,6 +18,7 @@ class SkillMetadata:
 
     name: str
     description: str
+    version: str | None = None
     disabled: bool = False
 
 
@@ -86,9 +87,11 @@ class SkillManager:
                     frontmatter = yaml.safe_load(parts[1])
                     if not isinstance(frontmatter, dict):
                         return SkillMetadata(name=skill_dir.name, description="")
+                    raw_version = frontmatter.get("version")
                     return SkillMetadata(
                         name=frontmatter.get("name", skill_dir.name),
                         description=frontmatter.get("description", ""),
+                        version=str(raw_version) if raw_version is not None else None,
                         disabled=frontmatter.get("disabled", False) is True,
                     )
                 except yaml.YAMLError:

@@ -1,6 +1,7 @@
 ---
 disabled: true
 name: kb
+version: 1.0.0
 description: >-
   This skill should be used when recall MCP tools are available and the user
   asks to "save to knowledge base", "write a note", "persist this", "remember

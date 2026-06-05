@@ -36,6 +36,7 @@ jobs:
             skill_name="${skill_dir%/}"
             zip -r "${{ github.workspace }}/${skill_name}.zip" "$skill_name" -x "*/__pycache__/*"
           done
+          zip -r "${{ github.workspace }}/all-skills.zip" */ -x "*/__pycache__/*"
 
       - name: Upload skill ZIPs to release
         env:
@@ -60,13 +61,18 @@ jobs:
             echo ""
             echo "### Skills Downloads"
             echo ""
-            echo "Each ZIP is directly uploadable to Claude Desktop (Customize > Skills > +) or Codex Desktop."
+            skill_count=$(ls -d src/ai_rules/config/skills/*/ | wc -l | tr -d ' ')
+            echo "**[Download all ${skill_count} skills (all-skills.zip)](https://github.com/${REPO}/releases/download/${TAG}/all-skills.zip)** — one ZIP, ready to import"
             echo ""
-            echo "| Skill | Download |"
-            echo "|-------|----------|"
+            echo "Or download individual skills:"
+            echo ""
+            echo "| Skill | Version | Download |"
+            echo "|-------|---------|----------|"
             for skill_dir in src/ai_rules/config/skills/*/; do
               skill_name=$(basename "$skill_dir")
-              echo "| \`${skill_name}\` | [${skill_name}.zip](https://github.com/${REPO}/releases/download/${TAG}/${skill_name}.zip) |"
+              version=$(grep -m1 "^version:" "${skill_dir}SKILL.md" 2>/dev/null \
+                | sed 's/version:[[:space:]]*//' | tr -d '"' || echo "—")
+              echo "| \`${skill_name}\` | ${version} | [${skill_name}.zip](https://github.com/${REPO}/releases/download/${TAG}/${skill_name}.zip) |"
             done
             echo ""
             echo "**[Browse skill source on GitHub](https://github.com/${REPO}/tree/${TAG}/src/ai_rules/config/skills)**"

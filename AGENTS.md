@@ -223,10 +223,11 @@ just test-e2e                   # E2E only — runs real CLI as subprocess, no m
 
 ## Skills
 
-**Skills:** Explore `config/skills/*/SKILL.md` for available skills (10 total: agents-md, code-reviewer, continue-crash, crossfire, dev-docs, doc-writer, pr-creator, prompt-critique, prompt-engineer, test-writer).
+**Skills:** Explore `config/skills/*/SKILL.md` for available skills (13 total: agents-md, code-reviewer, continue-crash, crossfire, dev-docs, doc-writer, kb, pr-creator, prompt-critique, prompt-engineer, research, session-search, test-writer).
 - **SHARED across agents** - symlinked to `~/.claude/skills/`, `~/.config/goose/skills/`, `~/.config/agents/skills/` (Amp), `~/.agents/skills/` (Codex)
 - Managed by SharedAgent (displays under "Shared:" in status)
 - To add a skill: Create subdir in `config/skills/` with `SKILL.md`
+- **Skill versioning**: Each SKILL.md has a `version` field in its frontmatter. Bump it when changing a skill's behavior — patch (1.0.x) for tweaks/fixes, minor (1.x.0) for new capabilities, major (x.0.0) for breaking prompt changes
 
 ## Key Files by Task
 

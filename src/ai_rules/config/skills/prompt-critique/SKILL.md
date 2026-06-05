@@ -1,5 +1,6 @@
 ---
 name: prompt-critique
+version: 1.0.0
 description: Analyze your historical Claude Code prompts and get personalized feedback on how to improve your prompting technique
 disabled: true
 disable-model-invocation: true

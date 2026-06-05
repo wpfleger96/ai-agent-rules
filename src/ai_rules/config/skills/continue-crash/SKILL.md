@@ -1,5 +1,6 @@
 ---
 name: continue-crash
+version: 1.0.0
 description: Continues after a session crash while working on a task
 disable-model-invocation: true
 allowed-tools: Bash, Glob, Grep, Read, TodoWrite

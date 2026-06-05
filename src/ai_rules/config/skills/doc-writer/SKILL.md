@@ -1,5 +1,6 @@
 ---
 name: doc-writer
+version: 1.0.0
 description: Write, update, or review documentation (README, ARCHITECTURE.md, API docs, guides). Use after implementing features to document new APIs, CLI commands, or behavior changes.
 model: sonnet
 ---

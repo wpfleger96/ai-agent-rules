@@ -295,6 +295,40 @@ class TestParseSkillMd:
         assert result is not None
         assert result.disabled is False
 
+    def test_parses_version_field(self, tmp_path):
+        d = tmp_path / "my-skill"
+        d.mkdir()
+        (d / "SKILL.md").write_text(
+            "---\nname: my-skill\nversion: 1.0.0\ndescription: test\n---\n"
+        )
+
+        result = SkillManager.parse_skill_md(d)
+
+        assert result is not None
+        assert result.version == "1.0.0"
+
+    def test_version_missing_defaults_none(self, tmp_path):
+        d = tmp_path / "my-skill"
+        d.mkdir()
+        (d / "SKILL.md").write_text("---\nname: my-skill\ndescription: test\n---\n")
+
+        result = SkillManager.parse_skill_md(d)
+
+        assert result is not None
+        assert result.version is None
+
+    def test_version_numeric_coerced_to_string(self, tmp_path):
+        d = tmp_path / "my-skill"
+        d.mkdir()
+        (d / "SKILL.md").write_text(
+            "---\nname: my-skill\nversion: 1.0\ndescription: test\n---\n"
+        )
+
+        result = SkillManager.parse_skill_md(d)
+
+        assert result is not None
+        assert result.version == "1.0"
+
 
 @pytest.mark.unit
 class TestIsSkillDisabled:
