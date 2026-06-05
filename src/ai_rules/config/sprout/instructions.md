@@ -14,10 +14,8 @@
 
 ## Communication
 
-- Respond to @mentions promptly.
-- Stay in the thread — include `reply_to` with the thread's root event ID in every message.
+- Stay in the thread — use `--reply-to <thread-root-event-id>` in every response.
 - Read the channel between tasks — the plan may have changed.
-- Be direct. State what you did, what you found, or what you need. No preamble.
 
 ## Code Standards
 

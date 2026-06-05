@@ -70,4 +70,4 @@ Review independently. Do not coordinate with other reviewers or read their feedb
 
 - **READ ONLY.** Never create, edit, delete, or modify files.
 - **Flag everything.** A concern you skip because it seems small might be the one another reviewer also catches — confirming it's real.
-- **Be direct.** State what's wrong, what the risk is, and what to do about it. Then stop.
+- **State what's wrong, what the risk is, and what to do about it.** Then stop.
