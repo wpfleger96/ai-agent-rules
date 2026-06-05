@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [0.62.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.61.0...v0.62.0) (2026-06-05)
+
+
+### Features
+
+* add per-skill semantic versioning and unified all-skills ZIP ([#86](https://github.com/wpfleger96/ai-agent-rules/issues/86)) ([8f1ebda](https://github.com/wpfleger96/ai-agent-rules/commit/8f1ebdaaf69165dac0eb9c64031a80ad376776fd))
+
+
+### Chores
+
+* **sprout:** remove rules duplicated by base prompt update in block/sprout[#883](https://github.com/wpfleger96/ai-agent-rules/issues/883) ([#87](https://github.com/wpfleger96/ai-agent-rules/issues/87)) ([64e038c](https://github.com/wpfleger96/ai-agent-rules/commit/64e038c01ca83eec2482e8848237a6263a22ebca))
+* sync Justfile ([581512a](https://github.com/wpfleger96/ai-agent-rules/commit/581512a58f4f3adce3ab35b28e94b15da646443d))
+
 ## [0.61.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.60.0...v0.61.0) (2026-06-04)
 
 
