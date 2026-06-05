@@ -2,18 +2,20 @@
   "$schema": "https://open-plugin-spec.org/schema/v1/plugin.json",
   "id": "com.wpfleger.sietch-tabr",
   "name": "Sietch Tabr",
-  "version": "0.2.0",
-  "description": "A seven-agent development team: Paul orchestrates, Duncan implements, Thufir reviews, Stilgar researches, Jessica plans, Mohiam tests, Irulan documents.",
+  "version": "0.3.0",
+  "description": "A four-agent development team: Paul orchestrates and plans, Duncan executes, Thufir reviews, Alia handles quick tasks.",
   "author": "Will Pfleger",
-  "keywords": ["team", "orchestration", "multi-agent", "dune"],
+  "keywords": [
+    "team",
+    "orchestration",
+    "multi-agent",
+    "dune"
+  ],
   "personas": [
     "agents/paul.persona.md",
     "agents/duncan.persona.md",
     "agents/thufir.persona.md",
-    "agents/stilgar.persona.md",
-    "agents/jessica.persona.md",
-    "agents/mohiam.persona.md",
-    "agents/irulan.persona.md"
+    "agents/alia.persona.md"
   ],
   "pack_instructions": "instructions.md",
   "defaults": {
