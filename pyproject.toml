@@ -51,7 +51,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-ai_rules = ["config/**/*", "config/**/.*"]
+ai_rules = ["config/**/*", "config/**/.*", "config/**/.*/*"]
 
 [tool.ruff.lint]
 select = ["I", "F", "UP", "B"]  # isort, pyflakes, pyupgrade, bugbear
