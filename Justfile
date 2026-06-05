@@ -49,7 +49,7 @@ test-integration:
     uv run pytest -m integration
 
 test-e2e:
-    uv run pytest tests/e2e -m e2e --no-cov -n 0
+    uv run pytest tests/e2e -m e2e --no-cov
 
 # Build & Package
 build: sync
