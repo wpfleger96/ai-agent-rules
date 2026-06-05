@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.62.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.62.0...v0.62.1) (2026-06-05)
+
+
+### Bug Fixes
+
+* **sprout:** include .plugin/ contents in wheel ([#88](https://github.com/wpfleger96/ai-agent-rules/issues/88)) ([eabf191](https://github.com/wpfleger96/ai-agent-rules/commit/eabf191adf646b4103761e1f13218e5c80eafca3))
+
 ## [0.62.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.61.0...v0.62.0) (2026-06-05)
 
 
