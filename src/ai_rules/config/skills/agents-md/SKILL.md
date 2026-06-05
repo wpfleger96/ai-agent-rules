@@ -1,5 +1,6 @@
 ---
 name: agents-md
+version: 1.0.0
 description: Create or update AGENTS.md with repo-specific patterns, conventions, commands, and gotchas for LLM coding agents. Use after implementing features that introduce new patterns worth documenting.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, TodoWrite
 model: sonnet

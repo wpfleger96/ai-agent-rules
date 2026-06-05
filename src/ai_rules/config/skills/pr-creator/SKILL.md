@@ -1,5 +1,6 @@
 ---
 name: pr-creator
+version: 1.0.0
 description: Creates GitHub pull requests with comprehensive descriptions by analyzing git history and code changes
 allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 model: sonnet

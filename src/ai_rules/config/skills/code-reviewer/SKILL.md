@@ -1,5 +1,6 @@
 ---
 name: code-reviewer
+version: 1.0.0
 description: Performs thorough code review on local changes or PRs. Use this skill proactively after implementing code changes to catch issues before commit/push. Also use when reviewing PRs from other engineers.
 agent: general-purpose
 allowed-tools: Agent, AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite

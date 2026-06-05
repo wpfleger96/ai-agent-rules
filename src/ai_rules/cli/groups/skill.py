@@ -62,11 +62,13 @@ def skill_list(download_url: bool) -> None:
 
     table = Table(title="Bundled Skills", show_header=True)
     table.add_column("Name", style="cyan")
+    table.add_column("Version", style="dim")
     table.add_column("Description")
 
     for s in skills:
         name = f"{s.name} [dim](disabled)[/dim]" if s.disabled else s.name
-        table.add_row(name, s.description)
+        version_str = s.version if s.version is not None else "—"
+        table.add_row(name, version_str, s.description)
 
     console.print(table)
 

@@ -1,5 +1,6 @@
 ---
 name: session-search
+version: 1.0.0
 description: >
   Use this skill to find, locate, or search previous coding agent sessions or
   conversations. Triggers on requests to search session transcripts or

@@ -35,6 +35,13 @@ class TestSkillList:
         assert "prompt-critique" in result.output
         assert "disabled" in result.output
 
+    def test_version_column_displayed(self, runner):
+        result = runner.invoke(main, ["skill", "list"])
+
+        assert result.exit_code == 0
+        assert "Version" in result.output
+        assert "1.0.0" in result.output
+
 
 @pytest.mark.integration
 class TestSkillShow:

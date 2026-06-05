@@ -1,5 +1,6 @@
 ---
 name: dev-docs
+version: 1.0.0
 description: Creates or updates PLAN.md based on session - auto-detects create vs update mode
 allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, TodoWrite, Write
 model: sonnet
