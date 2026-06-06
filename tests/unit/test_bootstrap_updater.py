@@ -14,14 +14,22 @@ import pytest
 from ai_rules.bootstrap.installer import UV_NOT_FOUND_ERROR, ToolSource
 from ai_rules.bootstrap.updater import (
     ToolSpec,
+    UpdateInfo,
     _compute_required_python,
     _fetch_requires_python,
     _get_tool_venv_python,
+    check_github_updates,
     check_index_updates,
     check_tool_updates,
     get_configured_index_url,
     perform_tool_upgrade,
 )
+
+
+def _track(tracker: list[int], result: Any) -> Any:
+    """Append to tracker and return result — typed alternative to (list.append(), val)[-1]."""
+    tracker.append(1)
+    return result
 
 
 def _mock_urlopen(body: bytes) -> Callable[..., Any]:
@@ -765,3 +773,334 @@ class TestPerformToolUpgradeWithPythonSwitch:
         assert "3.14" in captured_cmd
         assert "--force" in captured_cmd
         assert "--reinstall" in captured_cmd
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestCheckToolUpdatesSourceResolution:
+    """Tests that check_tool_updates consults config when receipt doesn't match."""
+
+    def test_receipt_pypi_config_github_uses_github_check(self, monkeypatch):
+        """receipt=PYPI + config=GITHUB → check_github_updates is called."""
+        tool = ToolSpec(
+            tool_id="test",
+            package_name="test-package",
+            display_name="test",
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+            github_repo="owner/test-package",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.PYPI,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.GITHUB, None),
+        )
+        github_called = []
+        index_called = []
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.check_github_updates",
+            lambda repo, cur, timeout: _track(github_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="github")),
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.check_index_updates",
+            lambda pkg, cur, timeout, repo=None: _track(index_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="index")),
+        )
+        result = check_tool_updates(tool)
+        assert result is not None
+        assert len(github_called) == 1
+        assert len(index_called) == 0
+
+    def test_receipt_pypi_config_pypi_uses_index_check(self, monkeypatch):
+        """receipt=PYPI + config=PYPI → check_index_updates is called (regression guard)."""
+        tool = ToolSpec(
+            tool_id="test",
+            package_name="test-package",
+            display_name="test",
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+            github_repo="owner/test-package",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.PYPI,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.PYPI, None),
+        )
+        github_called = []
+        index_called = []
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.check_github_updates",
+            lambda repo, cur, timeout: _track(github_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="github")),
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.check_index_updates",
+            lambda pkg, cur, timeout, repo=None: _track(index_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="index")),
+        )
+        result = check_tool_updates(tool)
+        assert result is not None
+        assert len(index_called) == 1
+        assert len(github_called) == 0
+
+    def test_receipt_none_config_github_uses_github_check(self, monkeypatch):
+        """receipt=None + config=GITHUB → check_github_updates is called."""
+        tool = ToolSpec(
+            tool_id="test",
+            package_name="test-package",
+            display_name="test",
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+            github_repo="owner/test-package",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: None,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.GITHUB, None),
+        )
+        github_called = []
+        index_called = []
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.check_github_updates",
+            lambda repo, cur, timeout: _track(github_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="github")),
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.check_index_updates",
+            lambda pkg, cur, timeout, repo=None: _track(index_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="index")),
+        )
+        result = check_tool_updates(tool)
+        assert result is not None
+        assert len(github_called) == 1
+        assert len(index_called) == 0
+
+    def test_receipt_local_config_github_returns_none(self, monkeypatch):
+        """receipt=LOCAL → returns None regardless of config (LOCAL receipt is sticky)."""
+        tool = ToolSpec(
+            tool_id="test",
+            package_name="test-package",
+            display_name="test",
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+            github_repo="owner/test-package",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.LOCAL,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.GITHUB, None),
+        )
+        result = check_tool_updates(tool)
+        assert result is None
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestPerformToolUpgradeSourceResolution:
+    """Tests that perform_tool_upgrade uses the config-derived source for install."""
+
+    def test_receipt_pypi_config_github_uses_github_url(self, monkeypatch):
+        """receipt=PYPI + config=GITHUB → cmd contains github_install_url, not package name."""
+        tool = ToolSpec(
+            tool_id="test",
+            package_name="test-package",
+            display_name="test",
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+            github_repo="owner/test-package",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.PYPI,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.GITHUB, None),
+        )
+
+        captured_cmd = []
+
+        def mock_run(*args, **kwargs):
+            captured_cmd.extend(args[0])
+
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = "Installed 1 executable: test-package"
+
+            return Result()
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+        success, message, was_upgraded = perform_tool_upgrade(tool)
+        assert success is True
+        assert tool.github_install_url in captured_cmd
+        assert "test-package" not in [
+            arg for arg in captured_cmd if arg == "test-package"
+        ]
+
+    def test_receipt_pypi_config_pypi_uses_package_name(self, monkeypatch):
+        """receipt=PYPI + config=PYPI → cmd contains plain package name (regression)."""
+        tool = ToolSpec(
+            tool_id="test",
+            package_name="test-package",
+            display_name="test",
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+            github_repo="owner/test-package",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.PYPI,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.PYPI, None),
+        )
+
+        captured_cmd = []
+
+        def mock_run(*args, **kwargs):
+            captured_cmd.extend(args[0])
+
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = "Upgraded test-package from 1.0.0 to 1.1.0"
+
+            return Result()
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+        success, message, was_upgraded = perform_tool_upgrade(tool)
+        assert success is True
+        assert "test-package" in captured_cmd
+        assert tool.github_install_url not in captured_cmd
+
+    def test_receipt_local_config_github_returns_early(self, monkeypatch):
+        """receipt=LOCAL → returns early with success=True, was_upgraded=False, no subprocess."""
+        tool = ToolSpec(
+            tool_id="test",
+            package_name="test-package",
+            display_name="test",
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+            github_repo="owner/test-package",
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.LOCAL,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.GITHUB, None),
+        )
+
+        subprocess_called = []
+
+        def mock_run(*args, **kwargs):
+            subprocess_called.append(args)
+
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+
+            return Result()
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+        success, message, was_upgraded = perform_tool_upgrade(tool)
+        assert success is True
+        assert was_upgraded is False
+        assert not subprocess_called
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestCheckFailedPropagation:
+    """Tests that check_failed is set correctly on UpdateInfo."""
+
+    def test_index_check_returncode_error_sets_check_failed(self, monkeypatch):
+        """Non-zero returncode from subprocess → check_failed=True."""
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
+
+        def mock_run(*args, **kwargs):
+            class Result:
+                returncode = 1
+                stdout = ""
+                stderr = "Network error"
+
+            return Result()
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+        result = check_index_updates("test-package", "1.0.0")
+        assert result.check_failed is True
+
+    def test_index_check_timeout_sets_check_failed(self, monkeypatch):
+        """TimeoutExpired from subprocess → check_failed=True."""
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
+
+        def mock_run(*args, **kwargs):
+            raise subprocess.TimeoutExpired("uvx", 30)
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+        result = check_index_updates("test-package", "1.0.0")
+        assert result.check_failed is True
+
+    def test_index_check_success_no_update_check_failed_false(self, monkeypatch):
+        """Successful parse with no update → check_failed=False."""
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
+
+        def mock_run(*args, **kwargs):
+            class Result:
+                returncode = 0
+                stdout = "test-package (1.0.0)\nAvailable versions: 1.0.0"
+                stderr = ""
+
+            return Result()
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+        result = check_index_updates("test-package", "1.0.0")
+        assert result.check_failed is False
+
+    def test_github_check_network_error_sets_check_failed(self, monkeypatch):
+        """URLError from urlopen → check_failed=True."""
+
+        def _raise(*args, **kwargs):
+            raise urllib.error.URLError("connection refused")
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.urllib.request.urlopen", _raise)
+        result = check_github_updates("owner/test-package", "1.0.0")
+        assert result.check_failed is True
+
+    def test_github_check_success_check_failed_false(self, monkeypatch):
+        """Successful GitHub tags response → check_failed=False."""
+        import json
+
+        payload = json.dumps([{"name": "v1.0.0"}]).encode()
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.urllib.request.urlopen",
+            _mock_urlopen(payload),
+        )
+        result = check_github_updates("owner/test-package", "1.0.0")
+        assert result.check_failed is False

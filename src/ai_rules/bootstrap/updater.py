@@ -17,6 +17,7 @@ from .installer import (
     UV_NOT_FOUND_ERROR,
     ToolSource,
     _validate_package_name,
+    get_effective_install_source,
     get_tool_source,
     get_tool_version,
     is_command_available,
@@ -56,6 +57,7 @@ class UpdateInfo:
     latest_version: str
     source: str
     changelog_entries: list[tuple[str, str]] | None = None
+    check_failed: bool = False
 
 
 @dataclass
@@ -198,6 +200,7 @@ def check_index_updates(
                 current_version=current_version,
                 latest_version=current_version,
                 source="index",
+                check_failed=True,
             )
 
         output = result.stdout.strip()
@@ -234,6 +237,7 @@ def check_index_updates(
             current_version=current_version,
             latest_version=current_version,
             source="index",
+            check_failed=True,
         )
     except Exception as e:
         logger.debug(f"Index check failed: {e}")
@@ -242,6 +246,7 @@ def check_index_updates(
             current_version=current_version,
             latest_version=current_version,
             source="index",
+            check_failed=True,
         )
 
 
@@ -301,6 +306,7 @@ def check_github_updates(
             current_version=current_version,
             latest_version=current_version,
             source="github",
+            check_failed=True,
         )
 
 
@@ -404,15 +410,22 @@ def perform_tool_upgrade(
     if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR, False
 
-    source = get_tool_source(tool.package_name)
+    receipt_source = get_tool_source(tool.package_name)
+
+    if receipt_source == ToolSource.LOCAL:
+        return True, "Local install — upgrade manually", False
+
+    config_source, _ = get_effective_install_source(tool.tool_id)
+    if config_source in (ToolSource.GITHUB, ToolSource.LOCAL):
+        source: ToolSource = config_source
+    else:
+        source = receipt_source or ToolSource.PYPI
 
     if source == ToolSource.LOCAL:
         return True, "Local install — upgrade manually", False
 
-    # Pre-check: detect if the target version needs a newer Python than the venv has.
-    # Workaround for https://github.com/astral-sh/uv/issues/18083
     python_flag: str | None = None
-    if target_version and source is not None:
+    if target_version:
         python_flag = _compute_required_python(tool, target_version, source)
 
     if source == ToolSource.GITHUB and tool.github_install_url:
@@ -521,10 +534,19 @@ def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:
     if current is None:
         return None
 
-    source = get_tool_source(tool.package_name)
+    receipt_source = get_tool_source(tool.package_name)
+
+    if receipt_source == ToolSource.LOCAL:
+        return None
+
+    config_source, _ = get_effective_install_source(tool.tool_id)
+    if config_source in (ToolSource.GITHUB, ToolSource.LOCAL):
+        source: ToolSource = config_source
+    else:
+        source = receipt_source or ToolSource.PYPI
 
     if source == ToolSource.LOCAL:
-        return None  # Local installs don't have a remote version to check
+        return None
 
     if source == ToolSource.GITHUB and tool.github_repo:
         return check_github_updates(tool.github_repo, current, timeout)
