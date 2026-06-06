@@ -257,9 +257,7 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
             elif update_info and update_info.check_failed:
                 from ai_rules.cli.display import dim
 
-                console.print(
-                    f"\n{dim('Could not check for updates')}"
-                )
+                console.print(f"\n{dim('Could not check for updates')}")
     except Exception as e:
         logger.debug(f"Failed to check for updates in version callback: {e}")
 

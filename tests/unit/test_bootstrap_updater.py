@@ -802,11 +802,27 @@ class TestCheckToolUpdatesSourceResolution:
         index_called = []
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.check_github_updates",
-            lambda repo, cur, timeout: _track(github_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="github")),
+            lambda repo, cur, timeout: _track(
+                github_called,
+                UpdateInfo(
+                    has_update=False,
+                    current_version=cur,
+                    latest_version=cur,
+                    source="github",
+                ),
+            ),
         )
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.check_index_updates",
-            lambda pkg, cur, timeout, repo=None: _track(index_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="index")),
+            lambda pkg, cur, timeout, repo=None: _track(
+                index_called,
+                UpdateInfo(
+                    has_update=False,
+                    current_version=cur,
+                    latest_version=cur,
+                    source="index",
+                ),
+            ),
         )
         result = check_tool_updates(tool)
         assert result is not None
@@ -835,11 +851,27 @@ class TestCheckToolUpdatesSourceResolution:
         index_called = []
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.check_github_updates",
-            lambda repo, cur, timeout: _track(github_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="github")),
+            lambda repo, cur, timeout: _track(
+                github_called,
+                UpdateInfo(
+                    has_update=False,
+                    current_version=cur,
+                    latest_version=cur,
+                    source="github",
+                ),
+            ),
         )
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.check_index_updates",
-            lambda pkg, cur, timeout, repo=None: _track(index_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="index")),
+            lambda pkg, cur, timeout, repo=None: _track(
+                index_called,
+                UpdateInfo(
+                    has_update=False,
+                    current_version=cur,
+                    latest_version=cur,
+                    source="index",
+                ),
+            ),
         )
         result = check_tool_updates(tool)
         assert result is not None
@@ -868,11 +900,27 @@ class TestCheckToolUpdatesSourceResolution:
         index_called = []
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.check_github_updates",
-            lambda repo, cur, timeout: _track(github_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="github")),
+            lambda repo, cur, timeout: _track(
+                github_called,
+                UpdateInfo(
+                    has_update=False,
+                    current_version=cur,
+                    latest_version=cur,
+                    source="github",
+                ),
+            ),
         )
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.check_index_updates",
-            lambda pkg, cur, timeout, repo=None: _track(index_called, UpdateInfo(has_update=False, current_version=cur, latest_version=cur, source="index")),
+            lambda pkg, cur, timeout, repo=None: _track(
+                index_called,
+                UpdateInfo(
+                    has_update=False,
+                    current_version=cur,
+                    latest_version=cur,
+                    source="index",
+                ),
+            ),
         )
         result = check_tool_updates(tool)
         assert result is not None

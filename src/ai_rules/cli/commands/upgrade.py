@@ -121,9 +121,7 @@ def upgrade(
 
         receipt_src = get_tool_source(tool.package_name)
         config_src, _ = get_effective_install_source(tool.tool_id)
-        if receipt_src == ToolSource.LOCAL and config_src not in (
-            ToolSource.GITHUB,
-        ):
+        if receipt_src == ToolSource.LOCAL and config_src not in (ToolSource.GITHUB,):
             print_warning(
                 f"{tool.display_name} is installed from a local path — "
                 f"skipping update check. Reinstall from PyPI with: "
@@ -141,9 +139,7 @@ def upgrade(
         if update_info and (update_info.has_update or force):
             tool_updates.append((tool, update_info))
         elif update_info and update_info.check_failed:
-            print_warning(
-                f"Could not check {tool.display_name} for updates"
-            )
+            print_warning(f"Could not check {tool.display_name} for updates")
         elif update_info and not update_info.has_update:
             print_success(f"{tool.display_name} is already up to date!")
 
