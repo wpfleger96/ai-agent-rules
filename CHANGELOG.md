@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.62.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.62.1...v0.62.2) (2026-06-06)
+
+
+### Refactoring
+
+* **sprout:** consolidate Sietch Tabr pack from 7 agents to 4 ([#90](https://github.com/wpfleger96/ai-agent-rules/issues/90)) ([8f452ca](https://github.com/wpfleger96/ai-agent-rules/commit/8f452cae1791441b3c92504b31a98d3c6ab1eb7b))
+
 ## [0.62.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.62.0...v0.62.1) (2026-06-05)
 
 
