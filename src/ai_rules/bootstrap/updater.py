@@ -391,6 +391,15 @@ def _compute_required_python(
     return None
 
 
+def _resolve_effective_source(tool: ToolSpec) -> ToolSource:
+    """Resolve install source by consulting config, falling back to receipt."""
+    receipt_source = get_tool_source(tool.package_name)
+    config_source, _ = get_effective_install_source(tool.tool_id)
+    if config_source in (ToolSource.GITHUB, ToolSource.LOCAL):
+        return config_source
+    return receipt_source or ToolSource.PYPI
+
+
 def perform_tool_upgrade(
     tool: ToolSpec,
     target_version: str | None = None,
@@ -410,16 +419,7 @@ def perform_tool_upgrade(
     if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR, False
 
-    receipt_source = get_tool_source(tool.package_name)
-
-    if receipt_source == ToolSource.LOCAL:
-        return True, "Local install — upgrade manually", False
-
-    config_source, _ = get_effective_install_source(tool.tool_id)
-    if config_source in (ToolSource.GITHUB, ToolSource.LOCAL):
-        source: ToolSource = config_source
-    else:
-        source = receipt_source or ToolSource.PYPI
+    source = _resolve_effective_source(tool)
 
     if source == ToolSource.LOCAL:
         return True, "Local install — upgrade manually", False
@@ -534,16 +534,7 @@ def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:
     if current is None:
         return None
 
-    receipt_source = get_tool_source(tool.package_name)
-
-    if receipt_source == ToolSource.LOCAL:
-        return None
-
-    config_source, _ = get_effective_install_source(tool.tool_id)
-    if config_source in (ToolSource.GITHUB, ToolSource.LOCAL):
-        source: ToolSource = config_source
-    else:
-        source = receipt_source or ToolSource.PYPI
+    source = _resolve_effective_source(tool)
 
     if source == ToolSource.LOCAL:
         return None

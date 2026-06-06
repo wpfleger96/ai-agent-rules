@@ -638,6 +638,7 @@ class TestEnsureToolInstalled:
     def test_upgrade_available_dry_run(self, monkeypatch):
         update_info = SimpleNamespace(
             has_update=True,
+            check_failed=False,
             current_version="0.1.0",
             latest_version="0.2.0",
         )

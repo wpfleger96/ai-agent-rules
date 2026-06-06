@@ -50,7 +50,6 @@ def upgrade(
         ToolSource,
         check_tool_updates,
         get_effective_install_source,
-        get_tool_source,
         get_updatable_tools,
         perform_tool_upgrade,
     )
@@ -117,11 +116,9 @@ def upgrade(
             print_error(f"Could not get {tool.display_name} version: {e}")
             continue
 
-        from ai_rules.bootstrap.installer import get_effective_install_source
+        from ai_rules.bootstrap.updater import _resolve_effective_source
 
-        receipt_src = get_tool_source(tool.package_name)
-        config_src, _ = get_effective_install_source(tool.tool_id)
-        if receipt_src == ToolSource.LOCAL and config_src not in (ToolSource.GITHUB,):
+        if _resolve_effective_source(tool) == ToolSource.LOCAL:
             print_warning(
                 f"{tool.display_name} is installed from a local path — "
                 f"skipping update check. Reinstall from PyPI with: "
@@ -137,6 +134,10 @@ def upgrade(
                 continue
 
         if update_info and (update_info.has_update or force):
+            if update_info.check_failed and force:
+                print_warning(
+                    f"Update check failed for {tool.display_name}, forcing upgrade"
+                )
             tool_updates.append((tool, update_info))
         elif update_info and update_info.check_failed:
             print_warning(f"Could not check {tool.display_name} for updates")

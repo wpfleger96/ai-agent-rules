@@ -366,6 +366,10 @@ class TestCheckToolUpdatesLocalSource:
             "ai_rules.bootstrap.updater.get_tool_source",
             lambda pkg: ToolSource.LOCAL,
         )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.LOCAL, None),
+        )
         result = check_tool_updates(tool)
         assert result is None
 
@@ -383,6 +387,10 @@ class TestPerformToolUpgradeLocalSource:
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.get_tool_source",
             lambda pkg: ToolSource.LOCAL,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.LOCAL, None),
         )
 
         subprocess_called = []
@@ -927,8 +935,8 @@ class TestCheckToolUpdatesSourceResolution:
         assert len(github_called) == 1
         assert len(index_called) == 0
 
-    def test_receipt_local_config_github_returns_none(self, monkeypatch):
-        """receipt=LOCAL → returns None regardless of config (LOCAL receipt is sticky)."""
+    def test_receipt_local_config_github_uses_github_check(self, monkeypatch):
+        """receipt=LOCAL + config=GITHUB → config wins, check_github_updates is called."""
         tool = ToolSpec(
             tool_id="test",
             package_name="test-package",
@@ -945,8 +953,36 @@ class TestCheckToolUpdatesSourceResolution:
             "ai_rules.bootstrap.updater.get_effective_install_source",
             lambda tool_id: (ToolSource.GITHUB, None),
         )
+        github_called = []
+        index_called = []
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.check_github_updates",
+            lambda repo, cur, timeout: _track(
+                github_called,
+                UpdateInfo(
+                    has_update=False,
+                    current_version=cur,
+                    latest_version=cur,
+                    source="github",
+                ),
+            ),
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.check_index_updates",
+            lambda pkg, cur, timeout, repo=None: _track(
+                index_called,
+                UpdateInfo(
+                    has_update=False,
+                    current_version=cur,
+                    latest_version=cur,
+                    source="index",
+                ),
+            ),
+        )
         result = check_tool_updates(tool)
-        assert result is None
+        assert result is not None
+        assert len(github_called) == 1
+        assert len(index_called) == 0
 
 
 @pytest.mark.unit
@@ -1036,8 +1072,8 @@ class TestPerformToolUpgradeSourceResolution:
         assert "test-package" in captured_cmd
         assert tool.github_install_url not in captured_cmd
 
-    def test_receipt_local_config_github_returns_early(self, monkeypatch):
-        """receipt=LOCAL → returns early with success=True, was_upgraded=False, no subprocess."""
+    def test_receipt_local_config_github_uses_github_url(self, monkeypatch):
+        """receipt=LOCAL + config=GITHUB → config wins, github_install_url used."""
         tool = ToolSpec(
             tool_id="test",
             package_name="test-package",
@@ -1058,23 +1094,22 @@ class TestPerformToolUpgradeSourceResolution:
             lambda tool_id: (ToolSource.GITHUB, None),
         )
 
-        subprocess_called = []
+        captured_cmd = []
 
         def mock_run(*args, **kwargs):
-            subprocess_called.append(args)
+            captured_cmd.extend(args[0])
 
             class Result:
                 returncode = 0
                 stderr = ""
-                stdout = ""
+                stdout = "Installed 1 executable: test-package"
 
             return Result()
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         success, message, was_upgraded = perform_tool_upgrade(tool)
         assert success is True
-        assert was_upgraded is False
-        assert not subprocess_called
+        assert tool.github_install_url in captured_cmd
 
 
 @pytest.mark.unit
@@ -1152,3 +1187,89 @@ class TestCheckFailedPropagation:
         )
         result = check_github_updates("owner/test-package", "1.0.0")
         assert result.check_failed is False
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestResolveEffectiveSource:
+    """Tests for _resolve_effective_source helper."""
+
+    def test_config_github_overrides_receipt_pypi(self, monkeypatch):
+        tool = ToolSpec(
+            tool_id="test",
+            package_name="test-package",
+            display_name="test",
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.PYPI,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.GITHUB, None),
+        )
+        from ai_rules.bootstrap.updater import _resolve_effective_source
+
+        assert _resolve_effective_source(tool) == ToolSource.GITHUB
+
+    def test_config_github_overrides_receipt_local(self, monkeypatch):
+        tool = ToolSpec(
+            tool_id="test",
+            package_name="test-package",
+            display_name="test",
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.LOCAL,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.GITHUB, None),
+        )
+        from ai_rules.bootstrap.updater import _resolve_effective_source
+
+        assert _resolve_effective_source(tool) == ToolSource.GITHUB
+
+    def test_config_pypi_uses_receipt(self, monkeypatch):
+        tool = ToolSpec(
+            tool_id="test",
+            package_name="test-package",
+            display_name="test",
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: ToolSource.GITHUB,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.PYPI, None),
+        )
+        from ai_rules.bootstrap.updater import _resolve_effective_source
+
+        assert _resolve_effective_source(tool) == ToolSource.GITHUB
+
+    def test_no_receipt_defaults_to_pypi(self, monkeypatch):
+        tool = ToolSpec(
+            tool_id="test",
+            package_name="test-package",
+            display_name="test",
+            get_version=lambda: "1.0.0",
+            is_installed=lambda: True,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source",
+            lambda pkg: None,
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_effective_install_source",
+            lambda tool_id: (ToolSource.PYPI, None),
+        )
+        from ai_rules.bootstrap.updater import _resolve_effective_source
+
+        assert _resolve_effective_source(tool) == ToolSource.PYPI

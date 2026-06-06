@@ -403,7 +403,13 @@ def ensure_tool_installed(
                 )
 
                 update_info = check_tool_updates(spec, timeout=10)
-                if update_info and update_info.has_update:
+                if update_info and update_info.check_failed:
+                    import logging
+
+                    logging.getLogger(__name__).debug(
+                        f"Update check failed for {spec.display_name}, skipping upgrade"
+                    )
+                elif update_info and update_info.has_update:
                     if dry_run:
                         return (
                             "upgrade_available",
