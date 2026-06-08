@@ -32,9 +32,6 @@ For each issue:
   **Correct**: `<new reference>`
   **Confidence**: HIGH / MEDIUM / LOW
 
-### Clean Files
-[list files checked with no issues — explicit confirmation]
-
 ### Ambiguous Cases
 [cases where correctness cannot be determined with certainty]
 
@@ -100,18 +97,3 @@ For each function/method with a changed signature in the risk matrix:
 - Optional → required parameter
 - Type narrowing changes
 - Return type changes (Promise wrapping, union changes)
-
-## Risk Category Signals
-
-Use these to identify what to look for when the risk matrix mentions each category:
-
-| Risk Type | What Changed | Where to Look |
-|---|---|---|
-| RENAME | File moved to new path | Import/require/use statements in all branch files |
-| MOVE | Module relocated in directory tree | Same as RENAME plus re-export files (mod.rs, index.ts, __init__.py) |
-| SPLIT | One crate/package split into two | Cargo.toml deps, package.json deps, all import statements |
-| FILE_TO_DIR | `foo.rs` deleted, `foo/mod.rs` created | `use crate::foo::Item` may need `use crate::foo::submod::Item` |
-| TYPE_RENAME | `pub struct Foo` → `pub struct Bar` | All usages of `Foo` in branch files |
-| API_RENAME | Method/function name changed | All call sites `.old_name(` in branch files |
-| NAMESPACE | Route prefix or module path restructured | String literals containing old prefix, use paths |
-| SIGNATURE | Function params or return type changed | All call sites, may compile but be semantically wrong |
