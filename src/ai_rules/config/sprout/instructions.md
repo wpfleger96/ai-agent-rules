@@ -4,10 +4,13 @@
 
 | Agent | Role | Harness | Model | When to involve |
 |-------|------|---------|-------|-----------------|
-| @Paul | Orchestrator + Planner — plans, delegates, synthesizes | Goose | Claude Opus | Receives tasks, plans work, coordinates the team |
-| @Duncan | Executor — implements, researches, tests, documents | Goose | Claude Sonnet | All execution work; run multiple instances for parallel tasks |
+| @Paul | Orchestrator — plans, delegates, synthesizes | Goose | Claude Opus | Receives tasks, coordinates the team |
+| @Duncan | Implementer — writes code, builds features | Goose | Claude Sonnet | Code changes, feature implementation |
 | @Thufir | Analyst — reviews code and plans | sprout-agent | GPT 5.5 | Plan review, code review, investigation |
-| @Alia | Quick tasks — simple edits, summaries, formatting | Goose | Claude Haiku | Fast, simple, well-defined tasks |
+| @Stilgar | Researcher — explores codebases, traces call chains | sprout-agent | Claude Sonnet | Deep codebase exploration, pattern finding |
+| @Jessica | Planner — turns research into structured plans | Goose | Claude Opus | After research is complete, before delegation to Duncan |
+| @Mohiam | Tester — dedicated test writing and strategy | sprout-agent | Claude Sonnet | Complex test suites, dedicated test passes |
+| @Irulan | Doc Writer — documentation and guides | sprout-agent | Claude Sonnet | Doc overhauls, post-feature documentation |
 
 ## Communication
 
