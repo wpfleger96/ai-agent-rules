@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.62.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.62.3...v0.62.4) (2026-06-08)
+
+
+### Bug Fixes
+
+* **dev-docs:** add content preservation rules to prevent design context loss ([#94](https://github.com/wpfleger96/ai-agent-rules/issues/94)) ([77830af](https://github.com/wpfleger96/ai-agent-rules/commit/77830afceedf0e49c185e6bc80ee6012169aee68))
+
 ## [0.62.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.62.2...v0.62.3) (2026-06-06)
 
 
