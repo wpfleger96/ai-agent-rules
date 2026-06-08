@@ -30,6 +30,8 @@ Use project tooling (Justfile/Makefile) first. Fall back to these only when no p
 | Python | `uv build` or `python -m build` | `ruff check .` | `ruff format .` | `pytest` | `uv lock` |
 | Go | `go build ./...` | `golangci-lint run` | `gofmt -w .` | `go test ./...` | `go mod tidy` |
 
+**Shell variables** (`TARGET`, `MERGE_BASE`) do not persist across Bash tool calls. Re-derive from Context when needed.
+
 # Rebase Skill
 
 Expert git operator performing safe, semantically-correct rebases. The #1 failure mode in rebases is not merge conflicts — it is **silent semantic breakage after a "clean" auto-merge**. Your primary job is to prevent that.
@@ -52,28 +54,10 @@ For PR URLs, this extracts the PR's base branch (the branch it merges into). To 
 
 Set `TARGET` to the resolved target ref. Run `git fetch origin` to ensure it's current.
 
-**Check working tree:**
-```bash
-git status --porcelain
-```
-If non-empty — ask user: stash, or abort. Do not proceed with uncommitted changes.
-
-If user chooses stash:
-```bash
-git stash push -m "rebase-skill: pre-rebase stash"
-```
-
-**Check for in-progress rebase:**
-```bash
-ls .git/rebase-merge .git/rebase-apply 2>/dev/null
-```
-If either directory exists — a prior rebase is in progress. Ask user to `git rebase --abort` first, or abort the skill.
-
-**Check for rerere:**
-```bash
-git config rerere.enabled
-```
-If true — warn user that git may silently auto-apply recorded conflict resolutions from prior rebases. These bypass Phase 3's manual review. Consider running `git rerere forget` for affected paths if prior resolutions were incorrect.
+**Pre-flight checks:**
+1. `git status --porcelain` — if non-empty, ask user: stash (`git stash push -m "rebase-skill: pre-rebase stash"`) or abort
+2. `ls .git/rebase-merge .git/rebase-apply 2>/dev/null` — if either exists, ask user to `git rebase --abort` first
+3. `git config rerere.enabled` — if true, warn user: git may silently auto-apply prior conflict resolutions, bypassing Phase 3 review
 
 ## Phase 1: Pre-flight Analysis
 
@@ -108,70 +92,31 @@ For each file in `OVERLAP_FILES`:
 
 ### 1c. Detect structural risks on TARGET
 
-This is the most critical intelligence-gathering step. Launch ONE Explore subagent:
+Launch ONE Explore subagent to analyze commits from MERGE_BASE to TARGET (substitute actual SHA/ref values — subagents cannot access shell variables):
 
 ```
-Analyze commits from $MERGE_BASE to $TARGET in <project root>.
-Focus ONLY on commits touching files in OUR_BRANCH_FILES or structural files
-(Cargo.toml, package.json, tsconfig.json, mod.rs, __init__.py, index.ts, lib.rs).
+Analyze commits from <MERGE_BASE_SHA> to <TARGET_REF> in <project root>.
+Focus on commits touching OUR_BRANCH_FILES or structural files (Cargo.toml, package.json, tsconfig.json, mod.rs, __init__.py, index.ts, lib.rs).
 
-For each relevant commit, check for:
-
-1. FILE RENAMES/MOVES
-   git log $MERGE_BASE..$TARGET --diff-filter=R --name-status --find-renames
-
-2. FILE → DIRECTORY TRANSITIONS
-   Deletion of foo.rs + creation of foo/mod.rs
-
-3. CRATE/PACKAGE RENAMES OR SPLITS
-   Cargo.toml [package] name changes, new crates created from old ones,
-   re-export patterns (pub use new_crate::module)
-
-4. TYPE/API RENAMES
-   pub struct/fn/const/type renamed in files we also touch
-
-5. NAMESPACE CHANGES
-   Route prefixes, module path restructuring
-
-6. SIGNATURE CHANGES
-   Functions we call that changed return type, borrow semantics, or parameters
+Check for: file renames/moves (--diff-filter=R), file→directory transitions, crate/package renames or splits, type/API renames, namespace changes, function signature changes.
 
 Output a RISK MATRIX:
   FILE | RISK_TYPE | WHAT_CHANGED | IMPACT_ON_OUR_CODE | CONFIDENCE
 ```
 
-**Important:** Substitute the actual SHA/ref values for `$MERGE_BASE` and `$TARGET` when constructing the subagent prompt — subagents cannot access the orchestrator's shell variables.
-
 ### 1d. Present pre-flight summary
 
-```
-## Rebase Pre-flight
+Present to user: TARGET, commit counts, overlapping files (generated vs hand-written), structural risks from the risk matrix. Ask to confirm before proceeding.
 
-Target: <TARGET>
-Our commits: <N> | Behind: <M>
-Overlapping files: <count> (generated: <n>, hand-written: <m>)
-
-Structural risks:
-  <risk matrix entries, or "None detected">
-
-Strategy: squash to 1 commit, then rebase
-```
-
-Ask user to confirm before proceeding.
-
-**Persist the risk matrix** — record it in full. It will be referenced in Phase 3 (conflict resolution) and Phase 4 (semantic verification). Do not rely on it remaining in context across many tool calls.
+**Persist the risk matrix** in full — it's referenced in Phases 3 and 4.
 
 ## Phase 2: Squash & Rebase
 
 ### 2a. Squash if multiple commits (HARD RULE — no exceptions)
 
-Resolving a conflict once on 1 commit is strictly better than resolving it N times across N commits. Always squash when `COMMIT_COUNT > 1`. **If `COMMIT_COUNT` is 1, skip to Phase 2b.**
+Always squash when `COMMIT_COUNT > 1`. **If `COMMIT_COUNT` is 1, skip to Phase 2b.**
 
-```bash
-MERGE_BASE=$(git merge-base HEAD $TARGET)
-```
-
-Read the branch's commit messages (`git log --reverse --format="%s%n%b" $MERGE_BASE..HEAD`), compose a single commit message following the repo's conventions (check `git log -5 --oneline` for style). Write the message to a temp file to avoid shell escaping issues with quotes and newlines.
+Compute `MERGE_BASE=$(git merge-base HEAD $TARGET)`. Read the branch's commit messages (`git log --reverse --format="%s%n%b" $MERGE_BASE..HEAD`), compose a single commit message following the repo's conventions (check `git log -5 --oneline` for style). Write to a temp file for shell safety.
 
 ```bash
 git reset --soft $MERGE_BASE
@@ -180,28 +125,15 @@ git commit -F <message-file>
 
 ### 2b. Rebase
 
-```bash
-git rebase $TARGET
-```
+Run `git rebase $TARGET`.
 
 ## Phase 3: Conflict Resolution
 
-**Variable reminder:** Re-derive `TARGET` if needed — shell variables do not persist across Bash tool calls.
-
 Check `git status` for conflicts after each rebase step.
 
-**Generated files** — accept TARGET's version:
-```bash
-git checkout $TARGET -- <file>
-git add <file>
-```
+**Generated files** — accept TARGET's version: `git checkout $TARGET -- <file>` then `git add <file>`.
 
-**Hand-written files** — intelligent merge:
-1. Read conflict markers (both sides + base)
-2. Consult the risk matrix for this file
-3. If TARGET renamed a type/module our code uses → use the NEW name
-4. If TARGET moved a module → update our import paths to the new location
-5. Preserve BOTH sides' functional changes
+**Hand-written files** — read conflict markers, consult the risk matrix, use TARGET's new names/paths for renamed types or moved modules, preserve both sides' functional changes.
 
 **When ambiguous** — ask the user. Never guess on conflicts you can't resolve with certainty.
 
@@ -213,32 +145,21 @@ If another conflict round occurs, repeat. If rebase aborts unexpectedly: `git re
 
 ## Phase 4: Semantic Verification
 
-**Variable reminder:** Re-derive `TARGET` from the Context section if needed — shell variables do not persist across Bash tool calls.
-
-**This phase runs after a "successful" rebase. A clean rebase is NOT a correct rebase.** This is the critical differentiator.
+**A clean rebase is NOT a correct rebase.** This is the critical differentiator.
 
 ### 4a. Identify all branch files
 
-```bash
-git diff --name-only $TARGET..HEAD
-```
-
-Every one of these files must be verified — not just the ones that conflicted.
+Run `git diff --name-only $TARGET..HEAD`. Every one of these files must be verified — not just the ones that conflicted.
 
 ### 4b. Launch parallel verification subagents
 
-Only launch agents for risk categories that appeared in the Phase 1 risk matrix. Load the briefing approach from `references/semantic-verification-template.md` **in this skill's directory**. Launch all applicable agents in a single response for parallelism.
+Only launch agents for risk categories from the Phase 1 risk matrix. Load the briefing from `references/semantic-verification-template.md` **in this skill's directory**. Launch all applicable agents in a single response:
 
-**Agent: Stale Imports** (if risk matrix has RENAME/MOVE/SPLIT entries)
-Check every branch file for import/use paths referencing old crate names, old module paths, or old file locations. For Rust: `use old_crate::`, Cargo.toml deps. For Node: `import from 'old/path'`. For Python: `from old.module import`.
+- **Stale Imports** — if RENAME/MOVE/SPLIT risks
+- **Stale API References** — if TYPE/API/NAMESPACE risks
+- **Signature Compatibility** — if SIGNATURE risks
 
-**Agent: Stale API References** (if risk matrix has TYPE/API/NAMESPACE entries)
-Grep branch files for old type/function/constant names from the risk matrix. Report each stale usage with file, line, old reference, and correct replacement.
-
-**Agent: Signature Compatibility** (if risk matrix has SIGNATURE entries)
-For each changed function signature, find our call sites and verify they match the new signature (borrow semantics, argument count, field names).
-
-If the risk matrix was empty (no structural risks detected), skip subagents — proceed directly to the build check.
+Skip if risk matrix was empty.
 
 ### 4c. Fix all reported issues
 
@@ -268,14 +189,12 @@ Use project tooling or Ecosystem Defaults table above.
 
 ### 5d. Amend commit
 
-Stage only files that were regenerated, formatted, or fixed in Phase 4c — do NOT use `git add -A` which stages unrelated untracked files. This phase runs unconditionally, even if Phases 5a-5c found nothing to do, to capture any staged changes from Phase 4c.
+Stage only regenerated/formatted/fixed files (not `git add -A`). Runs unconditionally to capture Phase 4c changes.
 
 ```bash
 git add <changed-files>
 git commit --amend --no-edit
 ```
-
-If regeneration introduced changes, a build check follows in Phase 6a.
 
 ## Phase 6: Final Verification & Push
 
@@ -301,30 +220,7 @@ Fix all lint errors.
 
 ### 6d. Summary & push
 
-Present to user:
-```
-## Rebase Complete
-
-Branch: <branch> onto <TARGET>
-Commits: 1 (squashed from <N>)
-Files changed: <count>
-
-Verification:
-  Build: passed
-  Lint: passed
-  Tests: passed (or "N pre-existing failures noted")
-  Semantic checks: <N issues fixed | clean>
-  Regenerated: <list of generators run>
-
-Ready to force-push.
-```
-
-Wait for explicit confirmation. Then:
-```bash
-git push --force-with-lease origin HEAD
-```
-
-Use `--force-with-lease`, never `--force`. If lease fails (someone else pushed), report it and ask — do NOT retry with `--force`.
+Present completion summary: branch, target, files changed, verification results (build/lint/tests/semantic checks/regenerated files). Wait for explicit push confirmation, then `git push --force-with-lease origin HEAD`. Never `--force`. If lease fails, report and ask — do NOT retry with `--force`.
 
 If stash was created in Phase 0: `git stash pop` to restore working changes.
 
@@ -340,8 +236,4 @@ If stash was created in Phase 0: `git stash pop` to restore working changes.
 
 ## Abort & Cleanup
 
-If the skill aborts at any phase or the user requests a stop:
-
-1. If a rebase is in progress: `git rebase --abort`
-2. If a stash was created in Phase 0: check `git stash list` for "rebase-skill: pre-rebase stash" and `git stash pop` it
-3. Report what phase was reached and what state the repo is in
+On abort: `git rebase --abort` if in progress, `git stash pop` the named stash if created in Phase 0, report phase reached and repo state.
