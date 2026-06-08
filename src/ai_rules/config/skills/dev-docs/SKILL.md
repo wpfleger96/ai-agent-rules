@@ -1,6 +1,6 @@
 ---
 name: dev-docs
-version: 1.0.0
+version: 1.0.1
 description: Creates or updates PLAN.md based on session - auto-detects create vs update mode
 allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, TodoWrite, Write
 model: sonnet
@@ -136,6 +136,28 @@ Every PLAN file must be self-contained enough for a new agent to resume work wit
 - **Dependencies**: Tasks that must be completed in order are explicitly noted (e.g., "depends on Phase 1 completing" or "must run after database migration")
 - **Gotchas**: Any pitfalls, constraints, or non-obvious behaviors discovered during implementation are captured in the Gotchas section with enough detail to avoid re-discovery
 - **File roles**: The Scope section explains what each file does in the context of this plan, not just that it was modified
+- **Design narrative**: The plan tells a coherent story — WHY this work exists, what research informed the approach, what alternatives were rejected and why. A new agent should understand the human intent behind the work, not just the task list. Implementation details without motivating context produce shallow, misguided code.
+
+## Content Preservation Rules
+
+PLAN files accumulate institutional knowledge. The design narrative — the WHY behind decisions — is more valuable than the task tracking. Agents naturally focus on WHAT to change and forget WHY, which leads to incomplete or misguided implementations when they lack the human semantic intent behind the work.
+
+**Design narrative (NEVER remove — only annotate or add forward pointers):**
+- Goals, motivations, and the problem being solved
+- Research findings (what was learned about external systems, APIs, constraints)
+- Architecture decisions, rejected alternatives, and trade-off analysis
+- Reference tables (config mappings, routing tables, compatibility matrices)
+- Gotchas and issues encountered
+- Any content explaining WHY a decision was made
+
+**Tracking artifacts (CAN be relocated between PLAN files):**
+- Task checklists with [TODO]/[DONE] statuses
+- Dependency graphs and blocker lists
+- Verification checklists
+
+**The test:** If removing content would force a future reader to re-discover a decision, re-research an external system, or lose understanding of the human intent behind the work — that content must stay.
+
+When restructuring (moving sections to a new PLAN file, consolidating, or splitting): keep all design narrative in the original location, add forward pointers for tracking, and duplicate design context into the new file for cold-start self-containment. Intentional overlap between files is correct.
 
 ## Status Transitions & Evidence Strength
 
@@ -159,6 +181,7 @@ Every PLAN file must be self-contained enough for a new agent to resume work wit
 - Include evidence-free tasks as [TODO] - never skip planned work
 - Use 3-space indentation, preserve hierarchy
 - Verify PLAN file passes cold-start test: could a new agent resume work using only this file?
+- NEVER remove design narrative (goals, research, architecture decisions, reference tables) — see Content Preservation Rules
 
 **Create Mode:**
 - **PREVENT RECENCY BIAS**: Prioritize FIRST ExitPlanMode
