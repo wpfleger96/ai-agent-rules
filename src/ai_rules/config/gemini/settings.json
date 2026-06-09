@@ -32,6 +32,7 @@
     ]
   },
   "general": {
+    "enableAutoUpdate": true,
     "defaultApprovalMode": "auto_edit",
     "sessionRetention": {
       "enabled": false

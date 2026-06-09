@@ -1,4 +1,5 @@
 {
+  "autoUpdates": true,
   "autoMemoryEnabled": false,
   "cleanupPeriodDays": 99999,
   "respectGitignore": false,
