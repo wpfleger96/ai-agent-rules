@@ -1,11 +1,11 @@
 ---
 name: rebase
-version: 1.0.0
+version: 1.1.0
 description: >
   Rebase a branch onto main (or a target). Squash-first strategy, semantic
   verification of auto-merged files, generated-file regeneration, and safe
   force-push. Use when rebasing PRs or branches that are behind their base.
-allowed-tools: Agent, AskUserQuestion, Bash, Edit, Glob, Grep, Read, Write
+allowed-tools: Agent, Bash, Edit, Glob, Grep, Read, Write
 model: opus
 ---
 
@@ -56,8 +56,8 @@ Set `TARGET` to the resolved target ref. Run `git fetch origin` to ensure it's c
 
 **Pre-flight checks:**
 1. `git status --porcelain` — if non-empty, ask user: stash (`git stash push -m "rebase-skill: pre-rebase stash"`) or abort
-2. `ls .git/rebase-merge .git/rebase-apply 2>/dev/null` — if either exists, ask user to `git rebase --abort` first
-3. `git config rerere.enabled` — if true, warn user: git may silently auto-apply prior conflict resolutions, bypassing Phase 3 review
+2. `ls .git/rebase-merge .git/rebase-apply 2>/dev/null` — if either exists, run `git rebase --abort` automatically, report it, and continue
+3. `git config rerere.enabled` — if true, note it internally and continue (rerere may silently auto-apply prior conflict resolutions; verify Phase 3 output carefully)
 
 ## Phase 1: Pre-flight Analysis
 
@@ -106,7 +106,7 @@ Output a RISK MATRIX:
 
 ### 1d. Present pre-flight summary
 
-Present to user: TARGET, commit counts, overlapping files (generated vs hand-written), structural risks from the risk matrix. Ask to confirm before proceeding.
+Present to user: TARGET, commit counts, overlapping files (generated vs hand-written), structural risks from the risk matrix. Proceed immediately.
 
 **Persist the risk matrix** in full — it's referenced in Phases 3 and 4.
 
@@ -135,13 +135,13 @@ Check `git status` for conflicts after each rebase step.
 
 **Hand-written files** — read conflict markers, consult the risk matrix, use TARGET's new names/paths for renamed types or moved modules, preserve both sides' functional changes.
 
-**When ambiguous** — ask the user. Never guess on conflicts you can't resolve with certainty.
+**When ambiguous** — use best judgment based on the risk matrix, preserving both sides' functional intent. If a conflict is truly unresolvable (no clear correct answer exists), run `git rebase --abort`, report the specific conflicting file and context in the final summary, and exit.
 
 After resolving all files: `git add <resolved files> && git rebase --continue`
 
 Use `GIT_EDITOR=true git rebase --continue` to prevent editor prompts in the agent context.
 
-If another conflict round occurs, repeat. If rebase aborts unexpectedly: `git rebase --abort`, explain, ask user.
+If another conflict round occurs, repeat. If rebase aborts unexpectedly: `git rebase --abort`, report the failure and repo state in the final summary, and exit.
 
 ## Phase 4: Semantic Verification
 
@@ -220,7 +220,7 @@ Fix all lint errors.
 
 ### 6d. Summary & push
 
-Present completion summary: branch, target, files changed, verification results (build/lint/tests/semantic checks/regenerated files). Wait for explicit push confirmation, then `git push --force-with-lease origin HEAD`. Never `--force`. If lease fails, report and ask — do NOT retry with `--force`.
+Run `git push --force-with-lease origin HEAD`. Never `--force`. If lease fails, report it in the summary and stop — do NOT retry with `--force`. Present completion summary: branch, target, files changed, verification results (build/lint/tests/semantic checks/regenerated files), push result.
 
 If stash was created in Phase 0: `git stash pop` to restore working changes.
 
@@ -232,7 +232,6 @@ If stash was created in Phase 0: `git stash pop` to restore working changes.
 4. **Run semantic verification** before declaring success. Clean rebase != correct rebase.
 5. **Build must pass** before committing. Never push broken code.
 6. **`--force-with-lease`**, never `--force`. Prevents clobbering others' pushes.
-7. **Ask before force-pushing.** Always get explicit user confirmation.
 
 ## Abort & Cleanup
 
