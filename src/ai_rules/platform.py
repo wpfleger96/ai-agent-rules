@@ -111,6 +111,6 @@ def get_statusline_config_dir() -> Path:
     return Path("~/.config/claude-statusline")
 
 
-def get_sprout_packs_dir(dev: bool = False) -> Path:
+def get_sprout_teams_dir(dev: bool = False) -> Path:
     bundle = "xyz.block.sprout.app.dev" if dev else "xyz.block.sprout.app"
-    return Path.home() / "Library" / "Application Support" / bundle / "agents" / "packs"
+    return Path.home() / "Library" / "Application Support" / bundle / "agents" / "teams"
