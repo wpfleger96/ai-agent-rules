@@ -60,8 +60,8 @@ def _is_github_git_reference(git_ref: str) -> bool:
 def get_tool_config_dir(package_name: str = "ai-agent-rules") -> Path:
     """Get config directory for a uv tool installation.
 
-    Computes the expected path where uv tool install places the package:
-    $XDG_DATA_HOME/uv/tools/{package}/lib/python{version}/site-packages/ai_rules/config/
+    Discovers the actual Python version directory via glob rather than
+    assuming it matches the running interpreter.
 
     Args:
         package_name: Name of the uv tool package
@@ -72,15 +72,19 @@ def get_tool_config_dir(package_name: str = "ai-agent-rules") -> Path:
 
     from ai_rules.platform import get_lib_path_fragment, get_uv_tools_dir
 
-    python_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    tools_base = get_uv_tools_dir() / package_name
 
-    return (
-        get_uv_tools_dir()
-        / package_name
-        / get_lib_path_fragment(python_version)
-        / "ai_rules"
-        / "config"
+    candidates = sorted(
+        tools_base.glob("lib/python*/site-packages/ai_rules/config"),
+        reverse=True,
     )
+    if not candidates:
+        candidates = list(tools_base.glob("Lib/site-packages/ai_rules/config"))
+    if candidates:
+        return candidates[0]
+
+    python_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    return tools_base / get_lib_path_fragment(python_version) / "ai_rules" / "config"
 
 
 def get_tool_source(package_name: str) -> ToolSource | None:
@@ -114,7 +118,11 @@ def get_tool_source(package_name: str) -> ToolSource | None:
         if isinstance(first_req, dict):
             if "git" in first_req and _is_github_git_reference(str(first_req["git"])):
                 return ToolSource.GITHUB
-            if "path" in first_req or "directory" in first_req:
+            if (
+                "path" in first_req
+                or "directory" in first_req
+                or "editable" in first_req
+            ):
                 return ToolSource.LOCAL
 
         return ToolSource.PYPI
@@ -270,7 +278,7 @@ def get_tool_version(tool_name: str) -> str | None:
             return None
 
         for line in result.stdout.splitlines():
-            if line.startswith(tool_name):
+            if line.startswith(tool_name + " "):
                 match = re.search(r"v?(\d+\.\d+\.\d+)", line)
                 if match:
                     return match.group(1)

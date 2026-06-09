@@ -104,7 +104,10 @@ def setup(
         ai_rules_from_github = ai_rules_source == ToolSource.GITHUB
         current_source = get_tool_source(ai_rules_tool.package_name)
         desired_source = ai_rules_source
-        needs_source_switch = current_source != desired_source
+        if current_source is None:
+            needs_source_switch = desired_source != ToolSource.PYPI
+        else:
+            needs_source_switch = current_source != desired_source
 
         if needs_source_switch:
             if ai_rules_source == ToolSource.LOCAL:
