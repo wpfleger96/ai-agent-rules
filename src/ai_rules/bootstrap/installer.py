@@ -78,6 +78,8 @@ def get_tool_config_dir(package_name: str = "ai-agent-rules") -> Path:
         tools_base.glob("lib/python*/site-packages/ai_rules/config"),
         reverse=True,
     )
+    if not candidates:
+        candidates = list(tools_base.glob("Lib/site-packages/ai_rules/config"))
     if candidates:
         return candidates[0]
 
@@ -114,7 +116,7 @@ def get_tool_source(package_name: str) -> ToolSource | None:
 
         first_req = requirements[0]
         if isinstance(first_req, dict):
-            if "git" in first_req:
+            if "git" in first_req and _is_github_git_reference(str(first_req["git"])):
                 return ToolSource.GITHUB
             if (
                 "path" in first_req

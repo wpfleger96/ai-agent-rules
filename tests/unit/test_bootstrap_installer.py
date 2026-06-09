@@ -443,8 +443,8 @@ class TestGetToolSource:
         result = get_tool_source("test-package")
         assert result == ToolSource.GITHUB
 
-    def test_detects_non_github_git_installation(self, tmp_path, monkeypatch):
-        """Test that non-GitHub git installations are also detected as GITHUB."""
+    def test_non_github_git_falls_through_to_pypi(self, tmp_path, monkeypatch):
+        """Test that non-GitHub git installations fall through to PYPI."""
         tools_dir = tmp_path / "test-package"
         tools_dir.mkdir(parents=True)
         receipt = tools_dir / "uv-receipt.toml"
@@ -455,7 +455,7 @@ class TestGetToolSource:
         monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path))
         monkeypatch.delenv("XDG_DATA_HOME", raising=False)
         result = get_tool_source("test-package")
-        assert result == ToolSource.GITHUB
+        assert result == ToolSource.PYPI
 
 
 @pytest.mark.unit
