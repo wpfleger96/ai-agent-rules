@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.64.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.63.0...v0.64.0) (2026-06-09)
+
+
+### Features
+
+* **skills:** add worktree-cleanup skill for reclaiming disk space ([#101](https://github.com/wpfleger96/ai-agent-rules/issues/101)) ([c0ea4df](https://github.com/wpfleger96/ai-agent-rules/commit/c0ea4df0911c5edd73485c4f10542d14b8aab504))
+
+
+### Refactoring
+
+* **skills:** make rebase skill fully autonomous ([#102](https://github.com/wpfleger96/ai-agent-rules/issues/102)) ([f15d76d](https://github.com/wpfleger96/ai-agent-rules/commit/f15d76d781e815a2500716a6469fc65484ed41a4))
+
 ## [0.63.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.62.4...v0.63.0) (2026-06-09)
 
 
