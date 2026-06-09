@@ -16,6 +16,7 @@ from ai_rules.bootstrap.installer import (
     get_effective_install_source,
     get_tool_config_dir,
     get_tool_source,
+    get_tool_version,
     install_tool,
     uninstall_tool,
 )
@@ -341,6 +342,24 @@ class TestGetToolConfigDir:
         assert "my-custom-package" in result.as_posix()
         assert "ai_rules/config" in result.as_posix()
 
+    def test_discovers_actual_python_version_via_glob(self, tmp_path, monkeypatch):
+        """Test that get_tool_config_dir finds the actual Python version dir."""
+        config_dir = (
+            tmp_path
+            / "test-pkg"
+            / "lib"
+            / "python3.99"
+            / "site-packages"
+            / "ai_rules"
+            / "config"
+        )
+        config_dir.mkdir(parents=True)
+
+        monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path))
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+        result = get_tool_config_dir("test-pkg")
+        assert result == config_dir
+
 
 @pytest.mark.unit
 @pytest.mark.bootstrap
@@ -395,6 +414,69 @@ class TestGetToolSource:
         monkeypatch.delenv("XDG_DATA_HOME", raising=False)
         result = get_tool_source("test-package")
         assert result == ToolSource.LOCAL
+
+    def test_detects_editable_installation(self, tmp_path, monkeypatch):
+        """Test that editable installations are detected as LOCAL."""
+        tools_dir = tmp_path / "test-package"
+        tools_dir.mkdir(parents=True)
+        receipt = tools_dir / "uv-receipt.toml"
+        receipt.write_text(
+            '[tool]\nrequirements = [{ name = "test-package", editable = "/home/user/dev/test-package" }]\n'
+        )
+
+        monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path))
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+        result = get_tool_source("test-package")
+        assert result == ToolSource.LOCAL
+
+    def test_detects_github_git_installation(self, tmp_path, monkeypatch):
+        """Test that GitHub git installations are detected."""
+        tools_dir = tmp_path / "test-package"
+        tools_dir.mkdir(parents=True)
+        receipt = tools_dir / "uv-receipt.toml"
+        receipt.write_text(
+            '[tool]\nrequirements = [{ name = "test-package", git = "ssh://git@github.com/owner/repo.git" }]\n'
+        )
+
+        monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path))
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+        result = get_tool_source("test-package")
+        assert result == ToolSource.GITHUB
+
+    def test_detects_non_github_git_installation(self, tmp_path, monkeypatch):
+        """Test that non-GitHub git installations are also detected as GITHUB."""
+        tools_dir = tmp_path / "test-package"
+        tools_dir.mkdir(parents=True)
+        receipt = tools_dir / "uv-receipt.toml"
+        receipt.write_text(
+            '[tool]\nrequirements = [{ name = "test-package", git = "ssh://git@gitlab.com/owner/repo.git" }]\n'
+        )
+
+        monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path))
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+        result = get_tool_source("test-package")
+        assert result == ToolSource.GITHUB
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestGetToolVersion:
+    """Tests for get_tool_version function."""
+
+    def test_exact_match_not_prefix(self, monkeypatch):
+        """Test that tool name must match exactly, not as a prefix."""
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
+        )
+
+        class Result:
+            returncode = 0
+            stdout = "ai-agent-rules-extra v0.1.0\n  - ai-agent-rules-extra\nai-agent-rules v0.62.4\n  - ai-agent-rules\n"
+            stderr = ""
+
+        monkeypatch.setattr("subprocess.run", lambda *a, **kw: Result())
+        version = get_tool_version("ai-agent-rules")
+        assert version == "0.62.4"
 
 
 @pytest.mark.unit
