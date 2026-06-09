@@ -8,6 +8,15 @@ import pytest
 
 from ai_rules.config import load_config_file
 
+# Top-level keys present in the Claude Code binary but missing from the
+# SchemaStore schema. Remove entries as upstream catches up.
+# Upstream issue: https://github.com/SchemaStore/schemastore/issues/5484
+KNOWN_CLAUDE_SCHEMA_MISSING_KEYS: frozenset[str] = frozenset(
+    {
+        "autoUpdates",
+    }
+)
+
 # Live URLs point at upstream main so the integration suite catches real
 # provider schema drift during normal test runs.
 SCHEMA_URLS = {
@@ -65,7 +74,7 @@ class TestProviderSchemaValidation:
         config = load_config_file(_config_root() / "claude" / "settings.json", "json")
         schema_props = set(claude_schema.get("properties", {}).keys())
         our_keys = set(config.keys())
-        unknown = our_keys - schema_props
+        unknown = our_keys - schema_props - KNOWN_CLAUDE_SCHEMA_MISSING_KEYS
         assert not unknown, (
             f"Base settings.json contains keys not in upstream schema: {unknown}. "
             f"These may be deprecated — remove them to avoid stale config."
