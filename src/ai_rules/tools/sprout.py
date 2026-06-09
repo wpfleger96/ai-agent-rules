@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ai_rules.platform import (
     Platform,
-    get_sprout_packs_dir,
+    get_sprout_teams_dir,
     is_platform,
 )
 from ai_rules.tools.base import Tool
@@ -49,6 +49,6 @@ class SproutTool(Tool):
         if not pack_id:
             return []
         return [
-            (get_sprout_packs_dir(dev=False) / pack_id, source),
-            (get_sprout_packs_dir(dev=True) / pack_id, source),
+            (get_sprout_teams_dir(dev=False) / pack_id, source),
+            (get_sprout_teams_dir(dev=True) / pack_id, source),
         ]
