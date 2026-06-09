@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [0.63.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.62.4...v0.63.0) (2026-06-09)
+
+
+### Features
+
+* **config:** enable auto-update for Claude Code and Gemini CLI ([f43faa9](https://github.com/wpfleger96/ai-agent-rules/commit/f43faa9cbef36e5227a1538aa7cdfc769f34ffb0))
+
+
+### Bug Fixes
+
+* **bootstrap:** fix tool install source detection bugs ([#100](https://github.com/wpfleger96/ai-agent-rules/issues/100)) ([e9c0acc](https://github.com/wpfleger96/ai-agent-rules/commit/e9c0accb33ccf4f695b166b8285a63a60e158610))
+* **tests:** add allowlist for Claude Code keys missing from upstream schema ([be15394](https://github.com/wpfleger96/ai-agent-rules/commit/be1539496f612d5b3d72c2ce5f39b1fe74c8cae4))
+
+
+### Refactoring
+
+* rename get_sprout_packs_dir to get_sprout_teams_dir ([#99](https://github.com/wpfleger96/ai-agent-rules/issues/99)) ([e5cdded](https://github.com/wpfleger96/ai-agent-rules/commit/e5cddeda5001ea38c2fbf55579d45194e1e97e0b))
+
 ## [0.62.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.62.3...v0.62.4) (2026-06-08)
 
 
