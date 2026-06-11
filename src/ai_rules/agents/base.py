@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from ai_rules.targets.base import ConfigTarget
 
@@ -15,6 +16,11 @@ if TYPE_CHECKING:
 
 class Agent(ConfigTarget):
     """Base class for AI agent configuration managers."""
+
+    # Declarative instruction-file symlink. Agents with a runtime-resolved
+    # location (e.g. Goose) override _instruction_symlinks() instead.
+    instructions_target: ClassVar[str | None] = None
+    instructions_source: ClassVar[str | None] = None
 
     @property
     def target_id(self) -> str:
@@ -29,6 +35,41 @@ class Agent(ConfigTarget):
     def agent_id(self) -> str:
         """Short identifier for the agent (e.g., 'claude', 'goose')."""
         pass
+
+    def _instruction_symlinks(self) -> list[tuple[Path, Path]]:
+        """Symlinks for the agent's instruction file (CLAUDE.md, AGENTS.md, ...)."""
+        if self.instructions_target is None or self.instructions_source is None:
+            return []
+        return [
+            (
+                Path(self.instructions_target),
+                self.config_dir / self.target_id / self.instructions_source,
+            )
+        ]
+
+    def _settings_symlinks(self) -> list[tuple[Path, Path]]:
+        """Symlink for the agent's settings file, if the bundled file exists."""
+        config_file = self._base_settings_path
+        target = self.settings_symlink_target
+        if target is None or not config_file.exists():
+            return []
+        target_file = self.config.get_settings_file_for_symlink(
+            self.target_id, config_file, force=bool(self._effective_preserved_fields)
+        )
+        return [(target, target_file)]
+
+    def _extra_symlinks(self) -> list[tuple[Path, Path]]:
+        """Hook for additional agent-specific symlinks (e.g. Claude extensions)."""
+        return []
+
+    @cached_property
+    def symlinks(self) -> list[tuple[Path, Path]]:
+        """Cached list of all agent symlinks (instructions, settings, extras)."""
+        return (
+            self._instruction_symlinks()
+            + self._settings_symlinks()
+            + self._extra_symlinks()
+        )
 
     def get_mcp_manager(self) -> MCPManager | None:
         """Return the agent-specific MCPManager, or None if MCP is unsupported."""
