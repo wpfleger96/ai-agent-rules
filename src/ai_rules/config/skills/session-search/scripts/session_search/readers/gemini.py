@@ -13,9 +13,11 @@ from typing import Any
 
 from session_search.core import (
     Session,
+    current_repo_context,
     in_date_window,
-    repo_context,
+    print_session_header,
     repo_score,
+    search_jsonl_session,
     truncate,
     warn,
 )
@@ -98,13 +100,7 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
     tmp_dir = _gemini_tmp()
     slug_map = _load_slug_map()
 
-    current_cwd = (
-        str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
-    )
-    current_root = ""
-    repo_name = getattr(args, "repo", None) or ""
-    if current_cwd:
-        _, current_root, repo_name = repo_context(current_cwd, repo_name or None)
+    current_cwd, current_root, repo_name = current_repo_context(args)
 
     sessions: list[Session] = []
 
@@ -223,50 +219,6 @@ def display_text(record: dict[str, Any], raw: str) -> str:
     return raw
 
 
-def _search_jsonl(
-    session: Session,
-    pattern: re.Pattern[str],
-    args: argparse.Namespace,
-) -> int:
-    max_matches = getattr(args, "max_matches", 0)
-    header_printed = False
-    matches = 0
-
-    try:
-        with session.path.open("r", encoding="utf-8", errors="replace") as fh:
-            for raw_line in fh:
-                raw = raw_line.rstrip("\n")
-                try:
-                    record = json.loads(raw)
-                except json.JSONDecodeError:
-                    record = {}
-
-                for text in iter_search_text(record, raw):
-                    if not pattern.search(text):
-                        continue
-                    if not header_printed:
-                        label = (
-                            f" [{session.repo_reason}]" if session.repo_reason else ""
-                        )
-                        title_part = f" - {session.title}" if session.title else ""
-                        print(
-                            f"\n=== [{AGENT_NAME}] {session.id}{label}{title_part} ==="
-                        )
-                        print(f"    {session.path}")
-                        header_printed = True
-                    rendered = display_text(record, raw)
-                    width = getattr(args, "width", 280)
-                    print(truncate(rendered, width))
-                    matches += 1
-                    if max_matches > 0 and matches >= max_matches:
-                        return matches
-                    break
-    except OSError as exc:
-        warn(f"cannot read {session.path}: {exc}")
-
-    return matches
-
-
 def _search_legacy_json(
     session: Session,
     pattern: re.Pattern[str],
@@ -307,10 +259,7 @@ def _search_legacy_json(
             continue
 
         if not header_printed:
-            label = f" [{session.repo_reason}]" if session.repo_reason else ""
-            title_part = f" - {session.title}" if session.title else ""
-            print(f"\n=== [{AGENT_NAME}] {session.id}{label}{title_part} ===")
-            print(f"    {session.path}")
+            print_session_header(session)
             header_printed = True
 
         width = getattr(args, "width", 280)
@@ -327,5 +276,7 @@ def search_session(
     session: Session, pattern: re.Pattern[str], args: argparse.Namespace
 ) -> int:
     if session.path.suffix == ".jsonl":
-        return _search_jsonl(session, pattern, args)
+        return search_jsonl_session(
+            session, pattern, args, iter_search_text, display_text
+        )
     return _search_legacy_json(session, pattern, args)
