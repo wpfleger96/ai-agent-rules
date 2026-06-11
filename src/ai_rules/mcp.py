@@ -5,10 +5,11 @@ import json
 import shutil
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import yaml
 
@@ -49,6 +50,11 @@ class MCPManager(ABC):
 
     BACKUP_SUFFIX = "ai-agent-rules-backup"
 
+    # Default translation: copy these keys when present, then apply extras.
+    # Managers with a genuinely different native shape override _translate.
+    _translate_keys: ClassVar[tuple[str, ...]] = ("command", "args", "env")
+    _translate_extras: ClassVar[Mapping[str, Any]] = {}
+
     # --- abstract interface ---------------------------------------------------
 
     @property
@@ -64,9 +70,13 @@ class MCPManager(ABC):
     def _write_installed(self, mcps: dict[str, Any]) -> None:
         """Persist the full set of MCP entries, merging with non-MCP config."""
 
-    @abstractmethod
     def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
         """Convert shared MCP format to agent-native format."""
+        result: dict[str, Any] = {
+            k: shared_config[k] for k in self._translate_keys if k in shared_config
+        }
+        result.update(self._translate_extras)
+        return result
 
     @property
     def mcp_settings_key(self) -> str | None:
@@ -571,132 +581,70 @@ class CodexMCPManager(MCPManager):
         with open(self._config_path, "w") as f:
             f.write(tomlkit.dumps(doc))
 
-    def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        if "command" in shared_config:
-            result["command"] = shared_config["command"]
-        if "args" in shared_config:
-            result["args"] = shared_config["args"]
-        if "env" in shared_config:
-            result["env"] = shared_config["env"]
-        return result
-
-    def detect_conflicts(
-        self, expected: dict[str, Any], installed: dict[str, Any]
-    ) -> list[str]:
-        """Conflict detection strips the per-entry marker added during read."""
-        marker = self._marker_field
-        conflicts = []
-        for name, expected_config in expected.items():
-            if name in installed:
-                expected_clean = {
-                    k: v for k, v in expected_config.items() if k != marker
-                }
-                installed_clean = {
-                    k: v for k, v in installed[name].items() if k != marker
-                }
-                if expected_clean != installed_clean:
-                    conflicts.append(name)
-        return conflicts
-
 
 # ---------------------------------------------------------------------------
-# Gemini
+# Keyed-JSON managers (Gemini, Amp)
 # ---------------------------------------------------------------------------
 
 
-class GeminiMCPManager(MCPManager):
-    """Manages MCPs in ~/.gemini/settings.json under the mcpServers key."""
+class _KeyedJsonMCPManager(MCPManager):
+    """Manager for a JSON settings file with MCPs stored under one key."""
 
     @property
     def _marker_field(self) -> str:
         return "_managedBy"
 
     @property
-    def mcp_settings_key(self) -> str | None:
+    @abstractmethod
+    def mcp_settings_key(self) -> str:
+        """Key in the JSON file under which MCP entries are stored."""
+
+    @property
+    @abstractmethod
+    def _config_path(self) -> Path:
+        """Path to the agent's JSON settings file."""
+
+    def _load_full_config(self) -> dict[str, Any]:
+        if not self._config_path.exists():
+            return {}
+        with open(self._config_path) as f:
+            data: dict[str, Any] = json.load(f)
+        return data
+
+    def _read_installed(self) -> dict[str, Any]:
+        full = self._load_full_config()
+        return cast(dict[str, Any], full.get(self.mcp_settings_key, {}))
+
+    def _write_installed(self, mcps: dict[str, Any]) -> None:
+        self._config_path.parent.mkdir(parents=True, exist_ok=True)
+        full = self._load_full_config()
+        full[self.mcp_settings_key] = mcps
+        write_file_atomic(
+            self._config_path, lambda f: json.dump(full, f, indent=2, sort_keys=True)
+        )
+
+
+class GeminiMCPManager(_KeyedJsonMCPManager):
+    """Manages MCPs in ~/.gemini/settings.json under the mcpServers key."""
+
+    _translate_extras = {"timeout": 30000, "trust": False}
+
+    @property
+    def mcp_settings_key(self) -> str:
         return "mcpServers"
 
     @property
     def _config_path(self) -> Path:
         return Path.home() / ".gemini" / "settings.json"
 
-    def _load_full_config(self) -> dict[str, Any]:
-        if not self._config_path.exists():
-            return {}
-        with open(self._config_path) as f:
-            data: dict[str, Any] = json.load(f)
-        return data
 
-    def _read_installed(self) -> dict[str, Any]:
-        full = self._load_full_config()
-        return cast(dict[str, Any], full.get("mcpServers", {}))
-
-    def _write_installed(self, mcps: dict[str, Any]) -> None:
-        self._config_path.parent.mkdir(parents=True, exist_ok=True)
-        full = self._load_full_config()
-        full["mcpServers"] = mcps
-        write_file_atomic(
-            self._config_path, lambda f: json.dump(full, f, indent=2, sort_keys=True)
-        )
-
-    def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        if "command" in shared_config:
-            result["command"] = shared_config["command"]
-        if "args" in shared_config:
-            result["args"] = shared_config["args"]
-        if "env" in shared_config:
-            result["env"] = shared_config["env"]
-        result["timeout"] = 30000
-        result["trust"] = False
-        return result
-
-
-# ---------------------------------------------------------------------------
-# Amp
-# ---------------------------------------------------------------------------
-
-
-class AmpMCPManager(MCPManager):
+class AmpMCPManager(_KeyedJsonMCPManager):
     """Manages MCPs in ~/.config/amp/settings.json under the amp.mcpServers key."""
 
     @property
-    def _marker_field(self) -> str:
-        return "_managedBy"
-
-    @property
-    def mcp_settings_key(self) -> str | None:
+    def mcp_settings_key(self) -> str:
         return "amp.mcpServers"
 
     @property
     def _config_path(self) -> Path:
         return Path.home() / ".config" / "amp" / "settings.json"
-
-    def _load_full_config(self) -> dict[str, Any]:
-        if not self._config_path.exists():
-            return {}
-        with open(self._config_path) as f:
-            data: dict[str, Any] = json.load(f)
-        return data
-
-    def _read_installed(self) -> dict[str, Any]:
-        full = self._load_full_config()
-        return cast(dict[str, Any], full.get("amp.mcpServers", {}))
-
-    def _write_installed(self, mcps: dict[str, Any]) -> None:
-        self._config_path.parent.mkdir(parents=True, exist_ok=True)
-        full = self._load_full_config()
-        full["amp.mcpServers"] = mcps
-        write_file_atomic(
-            self._config_path, lambda f: json.dump(full, f, indent=2, sort_keys=True)
-        )
-
-    def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        if "command" in shared_config:
-            result["command"] = shared_config["command"]
-        if "args" in shared_config:
-            result["args"] = shared_config["args"]
-        if "env" in shared_config:
-            result["env"] = shared_config["env"]
-        return result
