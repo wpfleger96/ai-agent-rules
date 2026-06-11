@@ -377,6 +377,3 @@ class SkillsComponent(Component):
             console.print()
 
         return ComponentResult(ok=all_correct, changed=not all_correct)
-
-    def diff(self, ctx: CliContext) -> ComponentResult:
-        return self.status(ctx)

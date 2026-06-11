@@ -141,9 +141,10 @@ class ClaudeExtensionManager:
     def get_all_orphaned(self) -> dict[str, dict[str, Path]]:
         """Get all orphaned symlinks across all extension types."""
         return {
-            "commands": self.get_orphaned_symlinks(Path("~/.claude/commands"), "*.md"),
-            "agents": self.get_orphaned_symlinks(Path("~/.claude/agents"), "*.md"),
-            "hooks": self.get_orphaned_symlinks(Path("~/.claude/hooks"), "*.py"),
+            ext_type: self.get_orphaned_symlinks(
+                self.USER_DIRS[ext_type], self.PATTERNS[ext_type]
+            )
+            for ext_type in self.USER_DIRS
         }
 
     def _get_configured_hooks(self, settings: dict[str, Any]) -> set[str]:
@@ -188,10 +189,12 @@ class ClaudeExtensionManager:
         Returns:
             dict mapping hook name -> installed path for orphaned hooks
         """
-        orphaned = self.get_orphaned_symlinks(Path("~/.claude/hooks"), "*.py")
+        orphaned = self.get_orphaned_symlinks(
+            self.USER_DIRS["hooks"], self.PATTERNS["hooks"]
+        )
 
         configured_hooks = self._get_configured_hooks(settings)
-        user_hooks_dir = Path("~/.claude/hooks").expanduser()
+        user_hooks_dir = self.USER_DIRS["hooks"].expanduser()
         if user_hooks_dir.exists():
             for hook_file in user_hooks_dir.glob("*.py"):
                 if hook_file.is_symlink() and hook_file.name not in configured_hooks:
@@ -208,7 +211,7 @@ class ClaudeExtensionManager:
         """Get comprehensive status of Claude extensions (agents, commands, hooks)."""
         status = ClaudeExtensionStatus()
 
-        for ext_type in ["agents", "commands", "hooks"]:
+        for ext_type in self.USER_DIRS:
             type_status = getattr(status, ext_type)
             managed_sources = self._get_managed_extensions(ext_type)
             installed = self._scan_installed_extensions(ext_type)

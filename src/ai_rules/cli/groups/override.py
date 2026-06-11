@@ -149,8 +149,6 @@ def override_set(key: str, value: str) -> None:
     from ai_rules.cli.display import (
         console,
         print_error,
-        print_hint,
-        print_success,
         print_warning,
     )
     from ai_rules.config import (
@@ -159,7 +157,6 @@ def override_set(key: str, value: str) -> None:
         validate_override_path,
     )
 
-    user_config_path = cli_facade.get_user_config_path()
     config_dir = cli_facade.get_config_dir()
 
     parts = key.split(".", 1)
@@ -213,11 +210,11 @@ def override_set(key: str, value: str) -> None:
     else:
         _override_set_scalar(agent, path_components, parsed_value, data)
 
-    Config.save_user_config(data)
-
-    print_success(f"Set override: {agent}.{setting} = {parsed_value}")
-    print_dim(f"Config updated: {user_config_path}")
-    print_hint("Run 'ai-agent-rules install --rebuild-cache' to apply changes")
+    cli_facade.save_user_config_and_report(
+        data,
+        f"Set override: {agent}.{setting} = {parsed_value}",
+        hint="Run 'ai-agent-rules install --rebuild-cache' to apply changes",
+    )
 
 
 @override.command("unset")
@@ -230,8 +227,6 @@ def override_unset(key: str) -> None:
     """
     from ai_rules.cli.display import (
         print_error,
-        print_hint,
-        print_success,
         print_warning,
     )
     from ai_rules.config import Config
@@ -287,11 +282,11 @@ def override_unset(key: str) -> None:
     if not data["settings_overrides"][agent]:
         del data["settings_overrides"][agent]
 
-    Config.save_user_config(data)
-
-    print_success(f"Removed override: {key}")
-    print_dim(f"Config updated: {user_config_path}")
-    print_hint("Run 'ai-agent-rules install --rebuild-cache' to apply changes")
+    cli_facade.save_user_config_and_report(
+        data,
+        f"Removed override: {key}",
+        hint="Run 'ai-agent-rules install --rebuild-cache' to apply changes",
+    )
 
 
 @override.command("list")

@@ -72,48 +72,7 @@ class ClaudePluginComponent(Component):
         )
 
     def install(self, ctx: CliContext) -> ComponentResult:
-        if not self._claude_selected(ctx) or not (
-            ctx.config.plugins or ctx.config.marketplaces
-        ):
-            return ComponentResult()
-
-        from ai_rules.cli.display import (
-            print_dim,
-            print_skipped,
-            print_success,
-            print_warning,
-        )
-        from ai_rules.plugins import OperationResult, PluginManager
-
-        plugin_manager = PluginManager()
-        if not plugin_manager.is_cli_available():
-            if not ctx.dry_run:
-                print_skipped("Skipped plugin sync (claude CLI not available)")
-            return ComponentResult()
-
-        desired_plugins = ctx.config.get_plugin_configs()
-        desired_marketplaces = ctx.config.get_marketplace_configs()
-
-        plugin_result, message, warnings = plugin_manager.sync_plugins(
-            desired_plugins, desired_marketplaces, dry_run=ctx.dry_run
-        )
-
-        if plugin_result == OperationResult.SUCCESS:
-            print_success(message)
-        elif plugin_result == OperationResult.ALREADY_INSTALLED:
-            print_skipped(message)
-        elif plugin_result == OperationResult.DRY_RUN:
-            print_dim(message)
-        elif plugin_result == OperationResult.ERROR:
-            print_warning(message)
-
-        for warning in warnings:
-            print_warning(warning)
-
-        return ComponentResult(
-            changed=plugin_result in (OperationResult.SUCCESS, OperationResult.DRY_RUN),
-            counts={"plugin_errors": int(plugin_result == OperationResult.ERROR)},
-        )
+        return self.apply(ctx, self.plan(ctx))
 
     def status(self, ctx: CliContext) -> ComponentResult:
         if not self._claude_selected(ctx):
@@ -204,6 +163,3 @@ class ClaudePluginComponent(Component):
             changed=len(successfully_removed) > 0,
             counts={"removed": len(successfully_removed)},
         )
-
-    def diff(self, ctx: CliContext) -> ComponentResult:
-        return self.status(ctx)

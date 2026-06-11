@@ -356,6 +356,25 @@ def format_unified_diff(
     return "\n".join(diff_lines)
 
 
+def get_status_diff(
+    status_code: str, target_path: Path, expected_source: Path
+) -> str | None:
+    """Content diff for a non-correct check result, or None if unavailable.
+
+    For ``wrong_target`` the symlink is resolved to diff what it actually
+    points at; for ``not_symlink``/``stale_copy`` the target file itself is
+    diffed. Other status codes have no meaningful content diff.
+    """
+    try:
+        if status_code == "wrong_target":
+            return get_content_diff(target_path.resolve(), expected_source)
+        if status_code in ("not_symlink", "stale_copy"):
+            return get_content_diff(target_path, expected_source)
+    except OSError, RuntimeError:
+        pass
+    return None
+
+
 def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
     """Get a unified diff between two files.
 

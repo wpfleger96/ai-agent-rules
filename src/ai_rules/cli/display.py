@@ -10,9 +10,14 @@ from __future__ import annotations
 
 import contextvars
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ai_rules.symlinks import SymlinkResult
 
 _console_override: contextvars.ContextVar[Console | None] = contextvars.ContextVar(
     "_console_override", default=None
@@ -133,3 +138,25 @@ def print_dim(message: str, *, indent: int = 0) -> None:
 
 def print_label(key: str, value: str, *, indent: int = 0) -> None:
     get_console().print(f"{' ' * indent}{dim(key + ':')} {value}")
+
+
+def print_symlink_result(
+    result: SymlinkResult, target: Path, source: Path, message: str
+) -> str:
+    """Print a symlink/copy operation result and return its counter key."""
+    from ai_rules.symlinks import SymlinkResult
+
+    if result == SymlinkResult.CREATED:
+        print_success(f"{target} → {source}", indent=2)
+        return "created"
+    if result == SymlinkResult.ALREADY_CORRECT:
+        print_unchanged(f"{target} {dim('(already correct)')}", indent=2)
+        return "unchanged"
+    if result == SymlinkResult.UPDATED:
+        print_update(f"{target} → {source}", indent=2)
+        return "updated"
+    if result == SymlinkResult.SKIPPED:
+        print_absent(f"{target} {dim('(skipped)')}", indent=2)
+        return "skipped"
+    print_error(f"{target}: {message}", indent=2)
+    return "errors"
