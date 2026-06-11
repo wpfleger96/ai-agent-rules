@@ -1,12 +1,14 @@
 ---
 name: session-search
-version: 1.0.0
-description: >
+version: 1.0.1
+description: >-
   Use this skill to find, locate, or search previous coding agent sessions or
   conversations. Triggers on requests to search session transcripts or
   conversation history, recover commands or outputs from earlier sessions,
   compare recent sessions for a repository, or search across Claude Code,
   Codex CLI, Gemini CLI, Goose, or Amp session history.
+allowed-tools: Agent, Bash, Glob, Grep, Read
+model: sonnet
 ---
 
 ## Context

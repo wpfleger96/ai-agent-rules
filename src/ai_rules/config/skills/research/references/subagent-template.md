@@ -1,6 +1,6 @@
 # Subagent Briefing Template
 
-Use this template to construct the briefing prompt for each research subagent. Replace all `[bracketed]` fields with specific values from your research plan.
+Use this template to construct the briefing prompt for each subagent. Replace all `[bracketed]` fields with specific values.
 
 Every field is load-bearing. Do not omit sections.
 
@@ -26,7 +26,7 @@ KEY QUESTIONS TO ANSWER:
 1. [specific, answerable question]
 2. [specific, answerable question]
 3. [specific, answerable question]
-(3-5 questions maximum. Each should be independently answerable.)
+(3-5 questions. Each should be independently answerable.)
 
 RESEARCH APPROACH:
 - Start with these search terms: [2-3 suggested starting queries]
