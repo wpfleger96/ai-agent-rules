@@ -14,11 +14,10 @@ from typing import Any
 
 from session_search.core import (
     Session,
+    current_repo_context,
     in_date_window,
-    repo_context,
     repo_score,
-    truncate,
-    warn,
+    search_jsonl_session,
 )
 
 AGENT_NAME: str = "codex"
@@ -108,13 +107,7 @@ def iter_sessions(args: argparse.Namespace) -> list[Session]:
     home = _codex_home()
     index = _read_index(home / "session_index.jsonl")
 
-    current_cwd = (
-        str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
-    )
-    current_root = ""
-    repo_name = getattr(args, "repo", None) or ""
-    if current_cwd:
-        _, current_root, repo_name = repo_context(current_cwd, repo_name or None)
+    current_cwd, current_root, repo_name = current_repo_context(args)
 
     dirs: list[Path] = []
     if (home / "sessions").exists():
@@ -287,40 +280,4 @@ def display_text(record: dict[str, Any], raw: str) -> str:
 def search_session(
     session: Session, pattern: re.Pattern[str], args: argparse.Namespace
 ) -> int:
-    max_matches = getattr(args, "max_matches", 0)
-    header_printed = False
-    matches = 0
-
-    try:
-        with session.path.open("r", encoding="utf-8", errors="replace") as fh:
-            for raw_line in fh:
-                raw = raw_line.rstrip("\n")
-                try:
-                    record = json.loads(raw)
-                except json.JSONDecodeError:
-                    record = {}
-
-                for text in iter_search_text(record, raw):
-                    if not pattern.search(text):
-                        continue
-                    if not header_printed:
-                        label = (
-                            f" [{session.repo_reason}]" if session.repo_reason else ""
-                        )
-                        title_part = f" - {session.title}" if session.title else ""
-                        print(
-                            f"\n=== [{AGENT_NAME}] {session.id}{label}{title_part} ==="
-                        )
-                        print(f"    {session.path}")
-                        header_printed = True
-                    rendered = display_text(record, raw)
-                    print(truncate(rendered))
-                    matches += 1
-                    if max_matches > 0 and matches >= max_matches:
-                        return matches
-                    break
-
-    except OSError as exc:
-        warn(f"cannot read {session.path}: {exc}")
-
-    return matches
+    return search_jsonl_session(session, pattern, args, iter_search_text, display_text)
