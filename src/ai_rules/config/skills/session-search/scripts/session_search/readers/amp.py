@@ -13,8 +13,9 @@ from typing import Any
 
 from session_search.core import (
     Session,
+    current_repo_context,
     in_date_window,
-    repo_context,
+    print_session_header,
     repo_score,
     truncate,
     warn,
@@ -68,13 +69,7 @@ def _extract_cwd(data: dict[str, Any]) -> str:
 def iter_sessions(args: argparse.Namespace) -> list[Session]:
     threads_dir = _AMP_THREADS.expanduser()
 
-    current_cwd = (
-        str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
-    )
-    current_root = ""
-    repo_name = getattr(args, "repo", None) or ""
-    if current_cwd:
-        _, current_root, repo_name = repo_context(current_cwd, repo_name or None)
+    current_cwd, current_root, repo_name = current_repo_context(args)
 
     sessions: list[Session] = []
 
@@ -252,10 +247,7 @@ def search_session(
             continue
 
         if not header_printed:
-            label = f" [{session.repo_reason}]" if session.repo_reason else ""
-            title_part = f" - {session.title}" if session.title else ""
-            print(f"\n=== [{AGENT_NAME}] {session.id}{label}{title_part} ===")
-            print(f"    {session.path}")
+            print_session_header(session)
             header_printed = True
 
         rendered = display_text(msg, "")
