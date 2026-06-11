@@ -1,4 +1,4 @@
-"""Sprout persona pack symlink tool."""
+"""Buzz persona pack symlink tool."""
 
 from __future__ import annotations
 
@@ -9,17 +9,18 @@ from pathlib import Path
 
 from ai_rules.platform import (
     Platform,
-    get_sprout_teams_dir,
+    get_buzz_teams_dir,
+    get_legacy_sprout_teams_dir,
     is_platform,
 )
 from ai_rules.tools.base import Tool
 
 
-class SproutTool(Tool):
-    """Manages Sprout persona pack symlinks into production and dev data directories."""
+class BuzzTool(Tool):
+    """Manages Buzz persona pack symlinks into production and dev data directories."""
 
-    name = "Sprout"
-    tool_id = "sprout"
+    name = "Buzz"
+    tool_id = "buzz"
     config_file_name = ""
     config_file_format = ""
 
@@ -28,7 +29,7 @@ class SproutTool(Tool):
         return False
 
     def _read_pack_id(self) -> str | None:
-        manifest = self.config_dir / "sprout" / ".plugin" / "plugin.json"
+        manifest = self.config_dir / "buzz" / ".plugin" / "plugin.json"
         if not manifest.is_file():
             return None
         try:
@@ -42,13 +43,16 @@ class SproutTool(Tool):
     def symlinks(self) -> list[tuple[Path, Path]]:
         if not is_platform(Platform.MACOS):
             return []
-        source = self.config_dir / "sprout"
+        source = self.config_dir / "buzz"
         if not source.exists():
             return []
         pack_id = self._read_pack_id()
         if not pack_id:
             return []
         return [
-            (get_sprout_teams_dir(dev=False) / pack_id, source),
-            (get_sprout_teams_dir(dev=True) / pack_id, source),
+            (get_buzz_teams_dir(dev=False) / pack_id, source),
+            (get_buzz_teams_dir(dev=True) / pack_id, source),
+            # Legacy Sprout paths — remove once upstream desktop rename is fully shipped
+            (get_legacy_sprout_teams_dir(dev=False) / pack_id, source),
+            (get_legacy_sprout_teams_dir(dev=True) / pack_id, source),
         ]
