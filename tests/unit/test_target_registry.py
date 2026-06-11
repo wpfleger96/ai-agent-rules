@@ -27,7 +27,7 @@ def test_target_registry_returns_unique_targets_in_lifecycle_order(
         "statusline",
     ]
     assert len(target_ids) == len(set(target_ids))
-    # SproutTool is macOS-only, so TARGET_CLASSES has one more entry than the
+    # BuzzTool is macOS-only, so TARGET_CLASSES has one more entry than the
     # Linux-filtered list.
     assert len(TARGET_CLASSES) == len(target_ids) + 1
 
@@ -46,7 +46,7 @@ def test_get_targets_excludes_amp_on_windows(
 
 
 @pytest.mark.unit
-def test_get_targets_includes_sprout_on_macos(
+def test_get_targets_includes_buzz_on_macos(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.MACOS)
@@ -54,4 +54,4 @@ def test_get_targets_includes_sprout_on_macos(
 
     target_ids = [target.target_id for target in get_targets(tmp_path, config)]
 
-    assert "sprout" in target_ids
+    assert "buzz" in target_ids

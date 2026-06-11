@@ -12,7 +12,7 @@ from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent
 from ai_rules.config import Config
 from ai_rules.targets.base import ConfigTarget
-from ai_rules.tools.sprout import SproutTool
+from ai_rules.tools.buzz import BuzzTool
 from ai_rules.tools.statusline import StatuslineTool
 
 TARGET_CLASSES: tuple[type[ConfigTarget], ...] = (
@@ -23,7 +23,7 @@ TARGET_CLASSES: tuple[type[ConfigTarget], ...] = (
     GooseAgent,
     SharedAgent,
     StatuslineTool,
-    SproutTool,
+    BuzzTool,
 )
 
 
@@ -35,7 +35,7 @@ def get_targets(config_dir: Path, config: Config) -> list[ConfigTarget]:
     for target_class in TARGET_CLASSES:
         if is_platform(Platform.WINDOWS) and target_class is AmpAgent:
             continue
-        if not is_platform(Platform.MACOS) and target_class is SproutTool:
+        if not is_platform(Platform.MACOS) and target_class is BuzzTool:
             continue
         targets.append(target_class(config_dir, config))
     return targets

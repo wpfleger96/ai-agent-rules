@@ -103,7 +103,7 @@ src/ai_rules/
     │   ├── dev-docs/, doc-writer/, pr-creator/, prompt-critique/
     │   ├── prompt-engineer/, test-writer/
     ├── profiles/       # Built-in profiles (default.yaml, personal.yaml, work.yaml)
-    └── sprout/         # Multi-agent Sprout coordinator prompts
+    └── buzz/           # Multi-agent Buzz coordinator prompts
 tests/
 ├── fixtures/           # Test fixture files
 ├── unit/               # No filesystem side effects

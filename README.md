@@ -384,7 +384,7 @@ src/ai_rules/config/
 ├── profiles/              # Built-in profiles (default, personal, work)
 ├── skills/                # 10 shared skills -> multiple agent skill dirs
 │   └── */SKILL.md
-└── sprout/                # Multi-agent coordinator prompts
+└── buzz/                  # Multi-agent coordinator prompts
 ```
 
 ## Optional Tools

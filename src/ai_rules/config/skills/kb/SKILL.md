@@ -31,7 +31,7 @@ When configured, recall provides a persistent markdown knowledge base at `~/.rec
 | `preferences/` | User working style, conventions | "test-docstring-conventions" |
 | `references/` | External knowledge, company info | "block-ci-cd-pipeline" |
 | `references/block/` | Block/Square-specific knowledge | "service-registry-conventions" |
-| `people/` | Teammates, communication context | "tyler-sprout-expert" |
+| `people/` | Teammates, communication context | "tyler-buzz-expert" |
 | `feedback/` | Corrections, lessons from mistakes | "no-assertions-without-verification" |
 | `projects/` | Multi-repo initiative context | "slackbot-kotlin-migration" |
 
