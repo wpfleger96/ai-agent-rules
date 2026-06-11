@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.64.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.64.0...v0.64.1) (2026-06-11)
+
+
+### Refactoring
+
+* Rename Sprout to Buzz, add Fable defaults ([#104](https://github.com/wpfleger96/ai-agent-rules/issues/104)) ([daab167](https://github.com/wpfleger96/ai-agent-rules/commit/daab16708d69dee00e7eb49ee8fb65173275c0fb))
+
 ## [0.64.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.63.0...v0.64.0) (2026-06-09)
 
 
