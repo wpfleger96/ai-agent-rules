@@ -47,12 +47,9 @@ class TestInstallTool:
         def mock_run(*args, **kwargs):
             captured_args.append((args, kwargs))
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr=""
+            )
 
         monkeypatch.setattr("subprocess.run", mock_run)
         success, message = install_tool("test-package")
@@ -75,12 +72,9 @@ class TestInstallTool:
         def mock_run(*args, **kwargs):
             captured_args.append((args, kwargs))
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr=""
+            )
 
         monkeypatch.setattr("subprocess.run", mock_run)
         success, message = install_tool("test-package", force=True)
@@ -149,12 +143,9 @@ class TestInstallTool:
         def mock_run(cmd, **kwargs):
             captured.append(cmd)
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr=""
+            )
 
         monkeypatch.setattr("subprocess.run", mock_run)
         success, _ = install_tool("some-package", local_path=str(tmp_path))
@@ -173,12 +164,9 @@ class TestInstallTool:
         def mock_run(cmd, **kwargs):
             captured.append(cmd)
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr=""
+            )
 
         monkeypatch.setattr("subprocess.run", mock_run)
         success, _ = install_tool("this-is-invalid!!!name", local_path=str(tmp_path))
@@ -194,12 +182,9 @@ class TestInstallTool:
         def mock_run(cmd, **kwargs):
             captured.append(cmd)
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr=""
+            )
 
         monkeypatch.setattr("subprocess.run", mock_run)
         success, _ = install_tool(
@@ -237,12 +222,9 @@ class TestUninstallTool:
         def mock_run(*args, **kwargs):
             captured_args.append((args, kwargs))
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr=""
+            )
 
         monkeypatch.setattr("subprocess.run", mock_run)
         success, message = uninstall_tool("test-package")
@@ -469,12 +451,13 @@ class TestGetToolVersion:
             "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
         )
 
-        class Result:
-            returncode = 0
-            stdout = "ai-agent-rules-extra v0.1.0\n  - ai-agent-rules-extra\nai-agent-rules v0.62.4\n  - ai-agent-rules\n"
-            stderr = ""
-
-        monkeypatch.setattr("subprocess.run", lambda *a, **kw: Result())
+        result = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="ai-agent-rules-extra v0.1.0\n  - ai-agent-rules-extra\nai-agent-rules v0.62.4\n  - ai-agent-rules\n",
+            stderr="",
+        )
+        monkeypatch.setattr("subprocess.run", lambda *a, **kw: result)
         version = get_tool_version("ai-agent-rules")
         assert version == "0.62.4"
 
@@ -497,12 +480,9 @@ class TestInstallToolGithub:
         def mock_run(cmd, **kwargs):
             captured.append(cmd)
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr=""
+            )
 
         monkeypatch.setattr(
             "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True

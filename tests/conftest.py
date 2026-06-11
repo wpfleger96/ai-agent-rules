@@ -155,6 +155,22 @@ def runner():
     return CliRunner()
 
 
+def write_config_tree(root: Path, files: dict[str, str]) -> Path:
+    """Materialize a config-dir tree from {relative_path: content}."""
+    root.mkdir(parents=True, exist_ok=True)
+    for rel, content in files.items():
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    return root
+
+
+@pytest.fixture(scope="session")
+def config_tree_writer():
+    """Expose write_config_tree to sub-conftest fixtures (e.g. tests/e2e)."""
+    return write_config_tree
+
+
 @pytest.fixture
 def test_repo(tmp_path):
     """Create a test repository structure with config files.
@@ -162,49 +178,22 @@ def test_repo(tmp_path):
     Note: As of v0.5.0, config structure changed from repo/config/* to package/config/*.
     This fixture mimics the new package structure for testing.
     """
-    config_root = tmp_path / "test-config"
-    config_root.mkdir()
-
-    (config_root / "AGENTS.md").write_text("# Shared Agent Rules\nTest content")
-
-    claude_dir = config_root / "claude"
-    claude_dir.mkdir()
-    (claude_dir / "settings.json").write_text('{"test": "settings"}')
-    (claude_dir / "CLAUDE.md").write_text("@~/AGENTS.md\n")
-
-    claude_agents = claude_dir / "agents"
-    claude_agents.mkdir()
-    (claude_agents / "test-agent.md").write_text("# Test Agent\nAgent content")
-
-    claude_commands = claude_dir / "commands"
-    claude_commands.mkdir()
-    (claude_commands / "test-command.md").write_text("# Test Command\nCommand content")
-
-    codex_dir = config_root / "codex"
-    codex_dir.mkdir()
-    (codex_dir / "config.toml").write_text(
-        'model = "gpt-5.2-codex"\napproval_policy = "on-request"\n'
+    return write_config_tree(
+        tmp_path / "test-config",
+        {
+            "AGENTS.md": "# Shared Agent Rules\nTest content",
+            "claude/settings.json": '{"test": "settings"}',
+            "claude/CLAUDE.md": "@~/AGENTS.md\n",
+            "claude/agents/test-agent.md": "# Test Agent\nAgent content",
+            "claude/commands/test-command.md": "# Test Command\nCommand content",
+            "claude/mcps.json": "{}",
+            "codex/config.toml": 'model = "gpt-5.2-codex"\napproval_policy = "on-request"\n',
+            "codex/AGENTS.md": "@~/AGENTS.md\n",
+            "gemini/settings.json": '{"name": "gemini-3.1-pro-preview"}',
+            "gemini/GEMINI.md": "@~/AGENTS.md\n",
+            "amp/settings.json": '{"amp.anthropic.thinking.enabled": true, "amp.showCosts": true}',
+            "amp/AGENTS.md": "@~/AGENTS.md\n",
+            "goose/config.yaml": "test: config",
+            "goose/.goosehints": "@~/AGENTS.md\n",
+        },
     )
-    (codex_dir / "AGENTS.md").write_text("@~/AGENTS.md\n")
-
-    gemini_dir = config_root / "gemini"
-    gemini_dir.mkdir()
-    (gemini_dir / "settings.json").write_text('{"name": "gemini-3.1-pro-preview"}')
-    (gemini_dir / "GEMINI.md").write_text("@~/AGENTS.md\n")
-
-    amp_dir = config_root / "amp"
-    amp_dir.mkdir()
-    (amp_dir / "settings.json").write_text(
-        '{"amp.anthropic.thinking.enabled": true, "amp.showCosts": true}'
-    )
-    (amp_dir / "AGENTS.md").write_text("@~/AGENTS.md\n")
-
-    goose_dir = config_root / "goose"
-    goose_dir.mkdir()
-    (goose_dir / "config.yaml").write_text("test: config")
-    (goose_dir / ".goosehints").write_text("@~/AGENTS.md\n")
-
-    mcps_file = claude_dir / "mcps.json"
-    mcps_file.write_text("{}")
-
-    return config_root

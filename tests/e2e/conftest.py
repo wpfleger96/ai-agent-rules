@@ -34,45 +34,25 @@ def e2e_home(tmp_path):
 
 
 @pytest.fixture
-def e2e_config_dir(tmp_path):
-    config_dir = tmp_path / "config"
-    config_dir.mkdir()
-
-    (config_dir / "AGENTS.md").write_text("# Shared Agent Rules\n")
-
-    claude_dir = config_dir / "claude"
-    claude_dir.mkdir()
-    (claude_dir / "CLAUDE.md").write_text("")
-    (claude_dir / "settings.json").write_text('{"test": "e2e"}')
-    (claude_dir / "mcps.json").write_text("{}")
-
-    codex_dir = config_dir / "codex"
-    codex_dir.mkdir()
-    (codex_dir / "config.toml").write_text('model = "test-model"\n')
-    (codex_dir / "AGENTS.md").write_text("@~/AGENTS.md\n")
-
-    gemini_dir = config_dir / "gemini"
-    gemini_dir.mkdir()
-    (gemini_dir / "GEMINI.md").write_text("")
-    (gemini_dir / "settings.json").write_text('{"name": "test"}')
-
-    amp_dir = config_dir / "amp"
-    amp_dir.mkdir()
-    (amp_dir / "AGENTS.md").write_text("")
-    (amp_dir / "settings.json").write_text('{"test": true}')
-
-    goose_dir = config_dir / "goose"
-    goose_dir.mkdir()
-    (goose_dir / "config.yaml").write_text("test: e2e\n")
-    (goose_dir / ".goosehints").write_text("")
-
-    profiles_dir = config_dir / "profiles"
-    profiles_dir.mkdir()
-    (profiles_dir / "default.yaml").write_text(
-        "name: default\nagents:\n  - claude\n  - codex\n"
+def e2e_config_dir(tmp_path, config_tree_writer):
+    return config_tree_writer(
+        tmp_path / "config",
+        {
+            "AGENTS.md": "# Shared Agent Rules\n",
+            "claude/CLAUDE.md": "",
+            "claude/settings.json": '{"test": "e2e"}',
+            "claude/mcps.json": "{}",
+            "codex/config.toml": 'model = "test-model"\n',
+            "codex/AGENTS.md": "@~/AGENTS.md\n",
+            "gemini/GEMINI.md": "",
+            "gemini/settings.json": '{"name": "test"}',
+            "amp/AGENTS.md": "",
+            "amp/settings.json": '{"test": true}',
+            "goose/config.yaml": "test: e2e\n",
+            "goose/.goosehints": "",
+            "profiles/default.yaml": "name: default\nagents:\n  - claude\n  - codex\n",
+        },
     )
-
-    return config_dir
 
 
 @pytest.fixture
@@ -105,32 +85,9 @@ def run_cli(e2e_home):
 
 
 @pytest.fixture
-def run_cli_with_config(e2e_home, e2e_config_dir):
-    home_dir, env_overrides = e2e_home
-    repo_root = Path(__file__).parents[2]
-    src_path = repo_root / "src"
-
-    def _run(args, extra_env=None, timeout=30):
-        base_env = {**os.environ, **env_overrides}
-        existing_pythonpath = base_env.get("PYTHONPATH", "")
-        base_env["PYTHONPATH"] = (
-            str(src_path)
-            if not existing_pythonpath
-            else os.pathsep.join([str(src_path), existing_pythonpath])
-        )
-        if extra_env:
-            base_env.update(extra_env)
-        return subprocess.run(
-            [sys.executable, "-m", "ai_rules.cli", *args],
-            capture_output=True,
-            encoding="utf-8",
-            check=False,
-            cwd=repo_root,
-            env=base_env,
-            timeout=timeout,
-        )
-
-    return _run, home_dir, e2e_config_dir
+def run_cli_with_config(run_cli, e2e_home, e2e_config_dir):
+    home_dir, _env_overrides = e2e_home
+    return run_cli, home_dir, e2e_config_dir
 
 
 # ---------------------------------------------------------------------------
