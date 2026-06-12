@@ -13,11 +13,10 @@ from typing import Any
 
 from session_search.core import (
     Session,
+    SessionMatchPrinter,
     current_repo_context,
     in_date_window,
-    print_session_header,
     repo_score,
-    truncate,
     warn,
 )
 
@@ -218,10 +217,7 @@ def display_text(record: dict[str, Any], raw: str) -> str:
 def search_session(
     session: Session, pattern: re.Pattern[str], args: argparse.Namespace
 ) -> int:
-    max_matches = getattr(args, "max_matches", 0)
-    width = getattr(args, "width", 280)
-    header_printed = False
-    matches = 0
+    printer = SessionMatchPrinter(session, args)
 
     try:
         with session.path.open("r", encoding="utf-8", errors="replace") as fh:
@@ -246,14 +242,7 @@ def search_session(
         if not combined or not pattern.search(combined):
             continue
 
-        if not header_printed:
-            print_session_header(session)
-            header_printed = True
+        if not printer.emit(display_text(msg, ""), prefix=f"[msg {idx}] "):
+            return printer.matches
 
-        rendered = display_text(msg, "")
-        print(f"[msg {idx}] {truncate(rendered, width)}")
-        matches += 1
-        if max_matches > 0 and matches >= max_matches:
-            return matches
-
-    return matches
+    return printer.matches

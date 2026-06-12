@@ -227,6 +227,26 @@ def print_session_header(session: Session) -> None:
     print(f"    {session.path}")
 
 
+class SessionMatchPrinter:
+    """Per-session match printing: header-once, truncation, max_matches cutoff."""
+
+    def __init__(self, session: Session, args: argparse.Namespace) -> None:
+        self._session = session
+        self._max_matches = getattr(args, "max_matches", 0)
+        self._width = getattr(args, "width", 280)
+        self._header_printed = False
+        self.matches = 0
+
+    def emit(self, rendered: str, prefix: str = "") -> bool:
+        """Print one match. Returns False once max_matches is reached."""
+        if not self._header_printed:
+            print_session_header(self._session)
+            self._header_printed = True
+        print(f"{prefix}{truncate(rendered, self._width)}")
+        self.matches += 1
+        return not (self._max_matches > 0 and self.matches >= self._max_matches)
+
+
 def search_jsonl_session(
     session: Session,
     pattern: re.Pattern[str],
@@ -235,10 +255,7 @@ def search_jsonl_session(
     display_text: Callable[[dict[str, Any], str], str],
 ) -> int:
     """Shared JSONL search loop: print each record once on its first match."""
-    max_matches = getattr(args, "max_matches", 0)
-    width = getattr(args, "width", 280)
-    header_printed = False
-    matches = 0
+    printer = SessionMatchPrinter(session, args)
 
     try:
         with session.path.open("r", encoding="utf-8", errors="replace") as fh:
@@ -252,15 +269,10 @@ def search_jsonl_session(
                 for text in iter_search_text(record, raw):
                     if not pattern.search(text):
                         continue
-                    if not header_printed:
-                        print_session_header(session)
-                        header_printed = True
-                    print(truncate(display_text(record, raw), width))
-                    matches += 1
-                    if max_matches > 0 and matches >= max_matches:
-                        return matches
+                    if not printer.emit(display_text(record, raw)):
+                        return printer.matches
                     break
     except OSError as exc:
         warn(f"cannot read {session.path}: {exc}")
 
-    return matches
+    return printer.matches

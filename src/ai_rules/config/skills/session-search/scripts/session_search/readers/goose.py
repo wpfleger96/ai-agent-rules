@@ -14,11 +14,10 @@ from typing import Any
 
 from session_search.core import (
     Session,
+    SessionMatchPrinter,
     current_repo_context,
     in_date_window,
-    print_session_header,
     repo_score,
-    truncate,
     warn,
 )
 
@@ -253,10 +252,7 @@ def _search_db_session(
     pattern: re.Pattern[str],
     args: argparse.Namespace,
 ) -> int:
-    max_matches = getattr(args, "max_matches", 0)
-    width = getattr(args, "width", 280)
-    header_printed = False
-    matches = 0
+    printer = SessionMatchPrinter(session, args)
 
     try:
         with _conn(session.path) as con:
@@ -280,21 +276,13 @@ def _search_db_session(
                 if not pattern.search(searchable):
                     continue
 
-                if not header_printed:
-                    print_session_header(session)
-                    header_printed = True
-
-                rendered = display_text(record, content_json_raw or "")
-                print(truncate(rendered, width))
-                matches += 1
-
-                if max_matches > 0 and matches >= max_matches:
-                    return matches
+                if not printer.emit(display_text(record, content_json_raw or "")):
+                    return printer.matches
 
     except sqlite3.Error as exc:
         warn(f"goose: cannot read session {session.id} from {session.path}: {exc}")
 
-    return matches
+    return printer.matches
 
 
 def _search_legacy_session(
@@ -302,10 +290,7 @@ def _search_legacy_session(
     pattern: re.Pattern[str],
     args: argparse.Namespace,
 ) -> int:
-    max_matches = getattr(args, "max_matches", 0)
-    width = getattr(args, "width", 280)
-    header_printed = False
-    matches = 0
+    printer = SessionMatchPrinter(session, args)
 
     try:
         with session.path.open("r", encoding="utf-8", errors="replace") as fh:
@@ -330,21 +315,13 @@ def _search_legacy_session(
                 if not pattern.search(searchable):
                     continue
 
-                if not header_printed:
-                    print_session_header(session)
-                    header_printed = True
-
-                rendered = display_text(record, raw)
-                print(truncate(rendered, width))
-                matches += 1
-
-                if max_matches > 0 and matches >= max_matches:
-                    return matches
+                if not printer.emit(display_text(record, raw)):
+                    return printer.matches
 
     except OSError as exc:
         warn(f"goose: cannot read {session.path}: {exc}")
 
-    return matches
+    return printer.matches
 
 
 def search_session(
