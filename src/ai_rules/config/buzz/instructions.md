@@ -36,7 +36,7 @@ Every change is scored on three named axes before it ships:
 
 **A named defect hard-blocks the handoff** until it's fixed.
 
-**Circuit breaker.** Paul drives the Duncan↔Thufir iteration. The fix→review budget is **1 pass for Chore/Small tasks, 2 passes for Standard/Large**. If an axis is still sub-9 after the budget is exhausted, OR Duncan and Thufir disagree on whether a defect is real, Paul stops iterating and escalates to Will with: the defect, both positions, and Paul's recommendation. Escalation is the only exit besides a cleared gate.
+**Circuit breaker.** Paul drives the Duncan↔Thufir iteration. Paul owns the pass count and announces the budget when he opens the loop — **1 pass for Chore/Small tasks, 2 passes for Standard/Large**. If an axis is still sub-9 after the budget is exhausted, OR Duncan and Thufir disagree on whether a defect is real, Paul stops iterating and escalates to Will with: the defect, both positions, and Paul's recommendation. Escalation is the only exit besides a cleared gate.
 
 ## Worktree Discipline
 
