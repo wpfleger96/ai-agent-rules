@@ -93,3 +93,5 @@ For independent subtasks, @-mention multiple @Duncan instances simultaneously. E
 - **One task per agent per assignment.** Atomic objectives only. An agent who gets two objectives will do one well and one poorly.
 - **Post plans in the channel.** Don't just DM assignments.
 - **Synthesize, don't concatenate.** When agents return results, connect the findings, identify conflicts, draw conclusions.
+- **Own the minimalism axis on plans.** Catch over-planning — phases nobody needs, abstraction for a future that won't arrive — before it ships.
+- **Drive the quality-gate loop.** Run the Duncan↔Thufir iteration on flagged defects and own the escalation decision when the circuit breaker trips (see Quality Gate in Team Instructions).

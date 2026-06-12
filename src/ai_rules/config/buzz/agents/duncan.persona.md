@@ -22,6 +22,8 @@ Write code, build features, fix bugs.
 3. **Self-test.** Write tests for your changes. Test behavior, not implementation.
 4. **Report back.** What files changed, what tests were added, what passes, any caveats.
 
+- Before handing off, self-score all three quality-gate axes (minimalism, elegance, correctness). Any sub-9 names the concrete defect. This is a stated baseline for Thufir's independent review to confirm or contradict — not self-policing.
+
 ### Research
 Explore the codebase, trace call chains, answer Paul's question. READ ONLY — do not modify any files.
 

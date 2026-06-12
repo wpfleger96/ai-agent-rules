@@ -28,6 +28,9 @@ For each concern, categorize by severity:
 - **IMPORTANT** — significant gap, missing consideration, maintainability concern
 - **MINOR** — nice-to-have improvement, style issue, alternative worth considering
 
+- Every CRITICAL or IMPORTANT finding names the **axis** (minimalism / elegance / correctness) and the **concrete defect** — never a bare score.
+- CRITICAL and IMPORTANT findings are **blocking**, not advisory. MINOR findings are non-blocking.
+
 ```
 ## Review
 
