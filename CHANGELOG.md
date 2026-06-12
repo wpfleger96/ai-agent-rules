@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.65.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.64.2...v0.65.0) (2026-06-12)
+
+
+### Features
+
+* **buzz:** add a distributed three-axis quality gate ([#112](https://github.com/wpfleger96/ai-agent-rules/issues/112)) ([2129334](https://github.com/wpfleger96/ai-agent-rules/commit/2129334bfee9777bd6a02c09db28f2cabbca488a))
+
 ## [0.64.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.64.1...v0.64.2) (2026-06-12)
 
 
