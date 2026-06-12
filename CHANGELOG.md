@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## [0.64.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.64.1...v0.64.2) (2026-06-12)
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#107](https://github.com/wpfleger96/ai-agent-rules/issues/107)) ([d149349](https://github.com/wpfleger96/ai-agent-rules/commit/d14934952123328e7e2e617ff7bdaac72f5cd16e))
+* **profile:** use fableplan and adjust thinking settings in work profile ([#111](https://github.com/wpfleger96/ai-agent-rules/issues/111)) ([d5ccdfc](https://github.com/wpfleger96/ai-agent-rules/commit/d5ccdfc8f9c90ad412bf44d4121da8196e0aa6a4))
+
+
+### Continuous Integration
+
+* sync CI workflow ([15a56a0](https://github.com/wpfleger96/ai-agent-rules/commit/15a56a043c8fce706a8ca90c7edaf15912c8e66e))
+* sync publish workflow ([cfe5a20](https://github.com/wpfleger96/ai-agent-rules/commit/cfe5a209494cbb9d3dcb21e9a84caf67b40690e6))
+* sync release workflow ([e67300b](https://github.com/wpfleger96/ai-agent-rules/commit/e67300bbc1096f05bf730947100713d085413cd1))
+
+
+### Refactoring
+
+* **persona:** route single-file fixes to Alia by default ([#109](https://github.com/wpfleger96/ai-agent-rules/issues/109)) ([2e08de1](https://github.com/wpfleger96/ai-agent-rules/commit/2e08de1e1d636c6432046dfb81e375ef1b13cb5b))
+
 ## [0.64.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.64.0...v0.64.1) (2026-06-11)
 
 
