@@ -1,4 +1,9 @@
-"""Shared CLI helper functions."""
+"""Shared CLI helper functions.
+
+To monkeypatch these functions in tests, patch them on the ``ai_rules.cli``
+facade, not on this module: ``build_cli_context`` resolves its dependencies
+through the facade, so only facade patches apply everywhere.
+"""
 
 from __future__ import annotations
 
