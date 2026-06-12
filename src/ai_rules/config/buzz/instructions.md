@@ -38,6 +38,8 @@ Every change is scored on three named axes before it ships:
 
 **Circuit breaker.** Paul drives the Duncan↔Thufir iteration. Paul owns the pass count and announces the budget when he opens the loop — **1 pass for Chore/Small tasks, 2 passes for Standard/Large**. If an axis is still sub-9 after the budget is exhausted, OR Duncan and Thufir disagree on whether a defect is real, Paul stops iterating and escalates to Will with: the defect, both positions, and Paul's recommendation. Escalation is the only exit besides a cleared gate.
 
+**Chore exemption.** Chores skip Thufir review — the implementer's correctness self-score is the gate; ship on green. Paul-dictated fixes where Paul supplied the exact text also skip review. **Exception:** a fix to a Thufir-flagged CRITICAL/IMPORTANT finding always gets re-review regardless of size — it inherits the risk of the defect it resolves. The exemption rides on correct classification, which is Paul's; a change needing all three axes was never a Chore, and misrouting it is Paul's error to catch, not a hole in the gate.
+
 ## Worktree Discipline
 
 All code changes happen in a git worktree, never on the default branch. Branch naming: `<username>/<descriptive-slug>`.
