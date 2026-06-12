@@ -26,15 +26,14 @@ class ClaudeExtensionsComponent(Component):
         from ai_rules.cli.display import (
             dim,
             print_absent,
-            print_error,
             print_success,
-            print_unchanged,
-            print_update,
+            print_symlink_result,
         )
-        from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
+        from ai_rules.symlinks import create_symlink, remove_symlink
 
         ext_manager = ClaudeExtensionManager(ctx.config_dir)
-        created = updated = unchanged = skipped = errors = cleaned = 0
+        counts = {"created": 0, "updated": 0, "unchanged": 0, "skipped": 0, "errors": 0}
+        cleaned = 0
 
         ctx.console.print("\n[bold cyan]Claude Extensions[/bold cyan]")
         for ext_type in ClaudeExtensionManager.USER_DIRS:
@@ -57,23 +56,9 @@ class ClaudeExtensionsComponent(Component):
                     dry_run=ctx.dry_run,
                 )
 
-                if result == SymlinkResult.CREATED:
-                    print_success(f"{target_path} → {source_path}", indent=2)
-                    created += 1
-                elif result == SymlinkResult.ALREADY_CORRECT:
-                    print_unchanged(
-                        f"{target_path} {dim('(already correct)')}", indent=2
-                    )
-                    unchanged += 1
-                elif result == SymlinkResult.UPDATED:
-                    print_update(f"{target_path} → {source_path}", indent=2)
-                    updated += 1
-                elif result == SymlinkResult.SKIPPED:
-                    print_absent(f"{target_path} {dim('(skipped)')}", indent=2)
-                    skipped += 1
-                elif result == SymlinkResult.ERROR:
-                    print_error(f"{target_path}: {message}", indent=2)
-                    errors += 1
+                counts[
+                    print_symlink_result(result, target_path, source_path, message)
+                ] += 1
 
         all_orphaned = ext_manager.get_all_orphaned()
         for ext_type, orphaned in all_orphaned.items():
@@ -91,16 +76,9 @@ class ClaudeExtensionsComponent(Component):
                         cleaned += 1
 
         return ComponentResult(
-            ok=errors == 0,
-            changed=bool(created or updated or cleaned),
-            counts={
-                "created": created,
-                "updated": updated,
-                "unchanged": unchanged,
-                "skipped": skipped,
-                "errors": errors,
-                "cleaned": cleaned,
-            },
+            ok=counts["errors"] == 0,
+            changed=bool(counts["created"] or counts["updated"] or cleaned),
+            counts={**counts, "cleaned": cleaned},
         )
 
     def plan(self, ctx: CliContext) -> ComponentPlan:

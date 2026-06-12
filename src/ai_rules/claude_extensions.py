@@ -139,7 +139,11 @@ class ClaudeExtensionManager:
         return orphaned
 
     def get_all_orphaned(self) -> dict[str, dict[str, Path]]:
-        """Get all orphaned symlinks across all extension types."""
+        """Get all orphaned symlinks across all extension types.
+
+        Iterates in USER_DIRS order (agents, commands, hooks), consistent with
+        every other extension-type iteration in the codebase.
+        """
         return {
             ext_type: self.get_orphaned_symlinks(
                 self.USER_DIRS[ext_type], self.PATTERNS[ext_type]

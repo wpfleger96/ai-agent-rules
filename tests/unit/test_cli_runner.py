@@ -412,7 +412,7 @@ def test_run_install_parallel_reports_failure_on_apply_error(tmp_path: Path) -> 
 
 
 @pytest.mark.unit
-def test_run_uninstall_parallel_aggregates_counts(tmp_path: Path) -> None:
+def test_run_parallel_uninstall_aggregates_counts(tmp_path: Path) -> None:
     first = PlanApplyComponent(
         "first", uninstall_result=ComponentResult(counts={"removed": 2})
     )
@@ -428,7 +428,7 @@ def test_run_uninstall_parallel_aggregates_counts(tmp_path: Path) -> None:
 
 
 @pytest.mark.unit
-def test_run_uninstall_parallel_reports_failure_on_error(tmp_path: Path) -> None:
+def test_run_parallel_uninstall_reports_failure_on_error(tmp_path: Path) -> None:
     bad = PlanApplyComponent("bad", uninstall_error=RuntimeError("uninstall exploded"))
     good = PlanApplyComponent("good")
 
