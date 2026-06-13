@@ -6,7 +6,6 @@ import shutil
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, ClassVar, cast
@@ -47,8 +46,6 @@ def is_managed_value(v: str | None) -> bool:
 
 class MCPManager(ABC):
     """Abstract base for agent-specific MCP config managers."""
-
-    BACKUP_SUFFIX = "ai-agent-rules-backup"
 
     # Default translation: copy these keys when present, then apply extras.
     # Managers with a genuinely different native shape override _translate.
@@ -200,10 +197,9 @@ class MCPManager(ABC):
         if not target.exists():
             return None
 
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup_path = target.with_suffix(
-            f"{target.suffix}.{self.BACKUP_SUFFIX}.{timestamp}"
-        )
+        from .symlinks import create_backup_path
+
+        backup_path = create_backup_path(target)
         shutil.copy2(target, backup_path)
         return backup_path
 
