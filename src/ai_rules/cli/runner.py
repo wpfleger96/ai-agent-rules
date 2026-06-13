@@ -101,6 +101,32 @@ def run_components(
     return acc.to_result()
 
 
+def _confirm_install(ctx: CliContext) -> bool:
+    """Show pending changes and ask for confirmation. Returns False to abort."""
+    if ctx.yes or ctx.dry_run:
+        return True
+
+    import click
+
+    from ai_rules.cli import (
+        _display_pending_changes,
+        check_first_run,
+    )
+    from ai_rules.cli.display import print_warning
+
+    if not check_first_run(list(ctx.selected_targets), ctx.yes):
+        return False
+
+    if _display_pending_changes(ctx):
+        try:
+            click.confirm("Apply these changes?", abort=True)
+        except click.exceptions.Abort:
+            print_warning("Cancelled")
+            return False
+
+    return True
+
+
 def run_install(
     infrastructure: Iterable[Component],
     semantic: Iterable[Component],
@@ -116,26 +142,9 @@ def run_install(
             acc.aborted = True
             return acc.to_result()
 
-    if not ctx.yes and not ctx.dry_run:
-        import click
-
-        from ai_rules.cli import (
-            _display_pending_changes,
-            check_first_run,
-        )
-        from ai_rules.cli.display import print_warning
-
-        if not check_first_run(list(ctx.selected_targets), ctx.yes):
-            acc.aborted = True
-            return acc.to_result()
-
-        if _display_pending_changes(ctx):
-            try:
-                click.confirm("Apply these changes?", abort=True)
-            except click.exceptions.Abort:
-                print_warning("Cancelled")
-                acc.aborted = True
-                return acc.to_result()
+    if not _confirm_install(ctx):
+        acc.aborted = True
+        return acc.to_result()
 
     for component in semantic:
         if _should_skip(component, ctx):
@@ -169,26 +178,9 @@ def run_install_parallel(
             acc.aborted = True
             return acc.to_result()
 
-    if not ctx.yes and not ctx.dry_run:
-        import click
-
-        from ai_rules.cli import (
-            _display_pending_changes,
-            check_first_run,
-        )
-        from ai_rules.cli.display import print_warning
-
-        if not check_first_run(list(ctx.selected_targets), ctx.yes):
-            acc.aborted = True
-            return acc.to_result()
-
-        if _display_pending_changes(ctx):
-            try:
-                click.confirm("Apply these changes?", abort=True)
-            except click.exceptions.Abort:
-                print_warning("Cancelled")
-                acc.aborted = True
-                return acc.to_result()
+    if not _confirm_install(ctx):
+        acc.aborted = True
+        return acc.to_result()
 
     # Run the semantic phase in two ordered waves: components that create the
     # settings symlinks first, then components flagged install_after_symlinks
@@ -242,34 +234,6 @@ def run_parallel(
             continue
         acc.fold(comp, results.get(comp, ComponentResult()))
     return acc.to_result()
-
-
-def run_uninstall_parallel(
-    components: Iterable[Component],
-    ctx: CliContext,
-) -> ComponentRunResult:
-    return run_parallel(components, "uninstall", ctx)
-
-
-def run_status_parallel(
-    components: Iterable[Component],
-    ctx: CliContext,
-) -> ComponentRunResult:
-    return run_parallel(components, "status", ctx)
-
-
-def run_diff_parallel(
-    components: Iterable[Component],
-    ctx: CliContext,
-) -> ComponentRunResult:
-    return run_parallel(components, "diff", ctx)
-
-
-def run_validate_parallel(
-    components: Iterable[Component],
-    ctx: CliContext,
-) -> ComponentRunResult:
-    return run_parallel(components, "validate", ctx)
 
 
 def get_console(ctx: CliContext) -> RichConsole:

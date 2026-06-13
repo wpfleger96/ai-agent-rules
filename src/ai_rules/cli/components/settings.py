@@ -200,6 +200,3 @@ class SettingsComponent(Component):
             removed += 1
 
         return ComponentResult(changed=removed > 0, counts={"removed": removed})
-
-    def diff(self, ctx: CliContext) -> ComponentResult:
-        return self.status(ctx)

@@ -1,6 +1,6 @@
 # Code Review Subagent Briefing Template
 
-Use this template to construct the briefing prompt for each review specialist subagent. Replace all `[bracketed]` fields with specific values.
+Use this template to construct the briefing prompt for each subagent. Replace all `[bracketed]` fields with specific values.
 
 Every field is load-bearing. Do not omit sections.
 
@@ -28,7 +28,7 @@ KEY QUESTIONS:
 SCOPE BOUNDARIES:
 Do NOT review for [other lenses — list explicitly]. Other agents handle those.
 Stay within your lens. If you discover something relevant but outside your scope,
-mention it briefly in Open Questions for the orchestrator.
+mention it briefly in Open Questions for the orchestrator to handle.
 
 SEVERITY FRAMEWORK:
 Categorize every finding:
@@ -69,7 +69,7 @@ Return structured findings only:
 
 ### Confidence Assessment
 Overall: HIGH / MEDIUM / LOW
-Reason: [one sentence — did you have sufficient context to review thoroughly?]
+Reason: [one sentence explaining the confidence level]
 
 CRITICAL RULES:
 - Read FULL file contents, not just diff hunks — context matters

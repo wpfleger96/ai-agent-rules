@@ -17,7 +17,6 @@ from ai_rules.cli.runner import (
     run_install,
     run_install_parallel,
     run_parallel,
-    run_uninstall_parallel,
 )
 from ai_rules.config import Config
 
@@ -413,7 +412,7 @@ def test_run_install_parallel_reports_failure_on_apply_error(tmp_path: Path) -> 
 
 
 @pytest.mark.unit
-def test_run_uninstall_parallel_aggregates_counts(tmp_path: Path) -> None:
+def test_run_parallel_uninstall_aggregates_counts(tmp_path: Path) -> None:
     first = PlanApplyComponent(
         "first", uninstall_result=ComponentResult(counts={"removed": 2})
     )
@@ -421,17 +420,19 @@ def test_run_uninstall_parallel_aggregates_counts(tmp_path: Path) -> None:
         "second", uninstall_result=ComponentResult(counts={"removed": 1, "errors": 0})
     )
 
-    result = run_uninstall_parallel([first, second], make_context(tmp_path, yes=True))
+    result = run_parallel(
+        [first, second], "uninstall", make_context(tmp_path, yes=True)
+    )
 
     assert result.counts == {"removed": 3, "errors": 0}
 
 
 @pytest.mark.unit
-def test_run_uninstall_parallel_reports_failure_on_error(tmp_path: Path) -> None:
+def test_run_parallel_uninstall_reports_failure_on_error(tmp_path: Path) -> None:
     bad = PlanApplyComponent("bad", uninstall_error=RuntimeError("uninstall exploded"))
     good = PlanApplyComponent("good")
 
-    result = run_uninstall_parallel([bad, good], make_context(tmp_path, yes=True))
+    result = run_parallel([bad, good], "uninstall", make_context(tmp_path, yes=True))
 
     assert result.ok is False
 

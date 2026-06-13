@@ -1,7 +1,7 @@
 ---
 name: research
-version: 1.0.0
-description: >
+version: 1.0.1
+description: >-
   Conduct multi-agent research on any topic. Use when the user asks to
   'research', 'investigate', 'deep dive', 'comprehensive analysis',
   'what do we know about', or when a question requires synthesizing information

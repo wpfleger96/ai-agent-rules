@@ -2,14 +2,7 @@
 
 import pytest
 
-from click.testing import CliRunner
-
 from ai_rules.cli import main
-
-
-@pytest.fixture
-def runner():
-    return CliRunner()
 
 
 @pytest.mark.integration

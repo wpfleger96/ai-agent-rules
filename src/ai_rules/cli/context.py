@@ -76,7 +76,8 @@ class Component(ABC):
         return ComponentResult()
 
     def diff(self, ctx: CliContext) -> ComponentResult:
-        return ComponentResult()
+        """Default: diff reports the same information as status."""
+        return self.status(ctx)
 
     def validate(self, ctx: CliContext) -> ComponentResult:
         return ComponentResult()

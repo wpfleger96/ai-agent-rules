@@ -1,13 +1,15 @@
 ---
-disabled: true
 name: kb
-version: 1.0.0
+version: 1.0.1
 description: >-
   This skill should be used when recall MCP tools are available and the user
   asks to "save to knowledge base", "write a note", "persist this", "remember
   this pattern", "update the KB", or when the Stop hook instructs the agent to
   persist session knowledge. Also use when asking "search knowledge base",
   "what do we know about", or needing cross-project context from recall.
+disabled: true
+allowed-tools: Read, mcp__recall
+model: sonnet
 ---
 
 # Knowledge Base (recall)

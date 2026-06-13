@@ -1,7 +1,8 @@
 ---
 name: doc-writer
-version: 1.0.0
+version: 1.0.1
 description: Write, update, or review documentation (README, ARCHITECTURE.md, API docs, guides). Use after implementing features to document new APIs, CLI commands, or behavior changes.
+allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, Write
 model: sonnet
 ---
 

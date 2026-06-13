@@ -30,7 +30,6 @@ uv run ai-agent-rules setup --github  # Install from GitHub instead of PyPI
 # Key CLI commands
 uv run ai-agent-rules install        # Install symlinks
 uv run ai-agent-rules status         # Check symlink status (shows diffs)
-uv run ai-agent-rules info           # Show installation method and version info
 uv run ai-agent-rules upgrade        # Upgrade to latest (shows changelogs)
 uv run ai-agent-rules validate       # Validate config files
 uv run ai-agent-rules diff           # Show diffs between repo and installed
@@ -53,7 +52,7 @@ uv run ai-agent-rules profile switch <name>  # Switch to different profile
 
 ## Tech Stack
 
-- Python 3.10+ with strict type checking (mypy)
+- Python 3.14+ with strict type checking (mypy)
 - **uv** for dependency management
 - **Click** for CLI framework
 - **Rich** for console output

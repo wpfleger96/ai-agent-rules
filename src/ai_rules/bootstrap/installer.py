@@ -336,6 +336,96 @@ def get_effective_install_source(
     return ToolSource.PYPI, None
 
 
+def _switch_tool_source(
+    spec: ToolSpec,
+    source: ToolSource,
+    local_path: str | None,
+    dry_run: bool,
+) -> tuple[str, str | None] | None:
+    """Reinstall an installed tool from the desired source, if it differs.
+
+    Returns None when the current source already matches (or is unknown).
+    """
+    current_source = get_tool_source(spec.package_name)
+    if current_source is None or current_source == source:
+        return None
+
+    if dry_run:
+        return (
+            "source_switch_needed",
+            f"Would switch {spec.display_name} from {current_source.name} to {source.name}",
+        )
+
+    uninstall_success, _ = uninstall_tool(spec.package_name)
+    if uninstall_success:
+        from_github = source == ToolSource.GITHUB
+        github_url = spec.github_install_url if from_github else None
+        success, _ = install_tool(
+            spec.package_name,
+            from_github=from_github,
+            github_url=github_url,
+            local_path=local_path,
+            force=True,
+        )
+        if success:
+            return "source_switched", f"{current_source.name} → {source.name}"
+    return "failed", None
+
+
+def _reinstall_local(
+    spec: ToolSpec, local_path: str | None, dry_run: bool
+) -> tuple[str, str | None]:
+    """LOCAL source: always reinstall to pick up latest local changes."""
+    success, message = install_tool(
+        spec.package_name,
+        local_path=local_path,
+        force=True,
+        dry_run=dry_run,
+    )
+    if dry_run:
+        return "upgrade_available", message
+    if success:
+        return "upgraded", "reinstalled from local path"
+    return "failed", None
+
+
+def _check_and_apply_upgrade(
+    spec: ToolSpec, dry_run: bool
+) -> tuple[str, str | None] | None:
+    """Upgrade an installed tool when an update is available. Fails open.
+
+    Returns None when nothing was (or would be) upgraded.
+    """
+    try:
+        from ai_rules.bootstrap.updater import (
+            check_tool_updates,
+            perform_tool_upgrade,
+        )
+
+        update_info = check_tool_updates(spec, timeout=10)
+        if update_info and update_info.check_failed:
+            import logging
+
+            logging.getLogger(__name__).debug(
+                f"Update check failed for {spec.display_name}, skipping upgrade"
+            )
+        elif update_info and update_info.has_update:
+            if dry_run:
+                return (
+                    "upgrade_available",
+                    f"Would upgrade {spec.display_name} {update_info.current_version} → {update_info.latest_version}",
+                )
+            success, msg, _ = perform_tool_upgrade(spec)
+            if success:
+                return (
+                    "upgraded",
+                    f"{update_info.current_version} → {update_info.latest_version}",
+                )
+    except Exception:
+        pass
+    return None
+
+
 def ensure_tool_installed(
     spec: ToolSpec,
     dry_run: bool = False,
@@ -361,79 +451,23 @@ def ensure_tool_installed(
         "source_switched", "source_switch_needed", "failed"
         Message is only provided in dry_run mode or when upgraded/switched
     """
-    from_github = source == ToolSource.GITHUB
-
     if spec.is_installed():
         if allow_source_switch:
-            current_source = get_tool_source(spec.package_name)
-            if current_source is not None and current_source != source:
-                if dry_run:
-                    return (
-                        "source_switch_needed",
-                        f"Would switch {spec.display_name} from {current_source.name} to {source.name}",
-                    )
-                uninstall_success, _ = uninstall_tool(spec.package_name)
-                if uninstall_success:
-                    github_url = spec.github_install_url if from_github else None
-                    success, _ = install_tool(
-                        spec.package_name,
-                        from_github=from_github,
-                        github_url=github_url,
-                        local_path=local_path,
-                        force=True,
-                    )
-                    if success:
-                        return (
-                            "source_switched",
-                            f"{current_source.name} → {source.name}",
-                        )
-                return "failed", None
+            switched = _switch_tool_source(spec, source, local_path, dry_run)
+            if switched is not None:
+                return switched
 
         if source == ToolSource.LOCAL:
-            # LOCAL source: always reinstall to pick up latest local changes
-            success, message = install_tool(
-                spec.package_name,
-                local_path=local_path,
-                force=True,
-                dry_run=dry_run,
-            )
-            if dry_run:
-                return "upgrade_available", message
-            if success:
-                return "upgraded", "reinstalled from local path"
-            return "failed", None
+            return _reinstall_local(spec, local_path, dry_run)
 
         if not skip_update_check:
-            try:
-                from ai_rules.bootstrap.updater import (
-                    check_tool_updates,
-                    perform_tool_upgrade,
-                )
-
-                update_info = check_tool_updates(spec, timeout=10)
-                if update_info and update_info.check_failed:
-                    import logging
-
-                    logging.getLogger(__name__).debug(
-                        f"Update check failed for {spec.display_name}, skipping upgrade"
-                    )
-                elif update_info and update_info.has_update:
-                    if dry_run:
-                        return (
-                            "upgrade_available",
-                            f"Would upgrade {spec.display_name} {update_info.current_version} → {update_info.latest_version}",
-                        )
-                    success, msg, _ = perform_tool_upgrade(spec)
-                    if success:
-                        return (
-                            "upgraded",
-                            f"{update_info.current_version} → {update_info.latest_version}",
-                        )
-            except Exception:
-                pass
+            upgraded = _check_and_apply_upgrade(spec, dry_run)
+            if upgraded is not None:
+                return upgraded
         return "already_installed", None
 
     try:
+        from_github = source == ToolSource.GITHUB
         github_url = spec.github_install_url if from_github else None
         success, message = install_tool(
             spec.package_name,

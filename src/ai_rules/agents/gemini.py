@@ -1,6 +1,5 @@
 """Gemini CLI agent implementation."""
 
-from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,29 +12,14 @@ if TYPE_CHECKING:
 class GeminiAgent(Agent):
     """Agent for Gemini CLI configuration."""
 
-    @property
-    def name(self) -> str:
-        return "Gemini CLI"
-
-    @property
-    def agent_id(self) -> str:
-        return "gemini"
-
-    @property
-    def config_file_name(self) -> str:
-        return "settings.json"
-
-    @property
-    def config_file_format(self) -> str:
-        return "json"
-
-    @property
-    def preserved_fields(self) -> list[str]:
-        return ["ide"]
-
-    @property
-    def settings_symlink_target(self) -> Path:
-        return Path("~/.gemini/settings.json")
+    name = "Gemini CLI"
+    agent_id = "gemini"
+    config_file_name = "settings.json"
+    config_file_format = "json"
+    preserved_fields = ["ide"]
+    settings_symlink_target = Path("~/.gemini/settings.json")
+    instructions_target = "~/.gemini/GEMINI.md"
+    instructions_source = "GEMINI.md"
 
     @property
     def copy_mode_targets(self) -> set[Path]:
@@ -44,27 +28,6 @@ class GeminiAgent(Agent):
         if is_platform(Platform.WINDOWS):
             return {self.settings_symlink_target.expanduser()}
         return set()
-
-    @cached_property
-    def symlinks(self) -> list[tuple[Path, Path]]:
-        """Cached list of all Gemini CLI symlinks."""
-        result = []
-
-        result.append(
-            (
-                Path("~/.gemini/GEMINI.md"),
-                self.config_dir / "gemini" / "GEMINI.md",
-            )
-        )
-
-        config_file = self.config_dir / "gemini" / "settings.json"
-        if config_file.exists():
-            target_file = self.config.get_settings_file_for_symlink(
-                "gemini", config_file, force=bool(self._effective_preserved_fields)
-            )
-            result.append((Path("~/.gemini/settings.json"), target_file))
-
-        return result
 
     def get_mcp_manager(self) -> MCPManager:
         from ai_rules.mcp import GeminiMCPManager

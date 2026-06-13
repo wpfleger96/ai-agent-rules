@@ -109,9 +109,6 @@ class AgentsMdComponent(Component):
 
         return ComponentResult(ok=False, changed=True, counts={"cache_stale": 1})
 
-    def diff(self, ctx: CliContext) -> ComponentResult:
-        return self.status(ctx)
-
     def uninstall(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.config import Config
 

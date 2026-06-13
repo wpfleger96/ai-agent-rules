@@ -498,11 +498,10 @@ _SELF_SPEC = ToolSpec(
 
 
 def get_updatable_tools() -> list[ToolSpec]:
-    """Get all updatable tool specs, deriving from registered Tool classes."""
-    from ai_rules.tools.statusline import StatuslineTool
+    """Get all updatable tool specs: self plus every registered active tool."""
+    from ai_rules.bootstrap.registry import ACTIVE_TOOLS
 
-    tools: list[ToolSpec] = [_SELF_SPEC, StatuslineTool.INSTALL_SPEC]
-    return tools
+    return [_SELF_SPEC, *(tool.get_install_spec() for tool in ACTIVE_TOOLS)]
 
 
 def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:

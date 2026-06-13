@@ -1,7 +1,7 @@
 ---
 name: rebase
-version: 1.1.0
-description: >
+version: 1.1.1
+description: >-
   Rebase a branch onto main (or a target). Squash-first strategy, semantic
   verification of auto-merged files, generated-file regeneration, and safe
   force-push. Use when rebasing PRs or branches that are behind their base.

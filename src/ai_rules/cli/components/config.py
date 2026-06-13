@@ -38,6 +38,18 @@ def _get_copy_mode_targets(agents: list[ConfigTarget]) -> set[Path]:
     return result
 
 
+# status_code -> (severity, fixed annotation or None to use the check message)
+_STATUS_DISPLAY: dict[str, tuple[str, str | None]] = {
+    "missing": ("error", "not installed"),
+    "broken": ("error", "broken symlink"),
+    "wrong_target": ("warning", None),
+    "not_symlink": ("warning", "not a symlink"),
+    "stale_copy": ("warning", "copy out of date"),
+    "not_copy": ("warning", "expected managed copy, found symlink"),
+    "error": ("error", None),
+}
+
+
 def _display_symlink_status(
     status_code: str,
     target: Path,
@@ -53,68 +65,29 @@ def _display_symlink_status(
         print_success,
         print_warning,
     )
-    from ai_rules.symlinks import get_content_diff
+    from ai_rules.symlinks import get_status_diff
 
-    active_console: Console = console or get_console()
-
-    target_str = str(target)
+    target_display = str(target)
     if source.is_dir():
-        target_str = target_str.rstrip("/") + "/"
-    target_display = target_str
+        target_display = target_display.rstrip("/") + "/"
 
     if status_code == "correct":
         print_success(target_display, indent=2)
         return True
-    if status_code == "missing":
-        print_error(f"{target_display} {dim('(not installed)')}", indent=2)
-        return False
-    if status_code == "broken":
-        print_error(f"{target_display} {dim('(broken symlink)')}", indent=2)
-        return False
-    if status_code == "wrong_target":
-        print_warning(f"{target_display} {dim(f'({message})')}", indent=2)
 
-        try:
-            actual = target.expanduser().resolve()
-            diff_output = get_content_diff(actual, source)
-            if diff_output:
-                active_console.print(diff_output)
-        except OSError, RuntimeError:
-            pass
+    if status_code not in _STATUS_DISPLAY:
+        return True
 
-        return False
-    if status_code == "not_symlink":
-        print_warning(f"{target_display} {dim('(not a symlink)')}", indent=2)
+    severity, annotation = _STATUS_DISPLAY[status_code]
+    printer = print_error if severity == "error" else print_warning
+    printer(f"{target_display} {dim(f'({annotation or message})')}", indent=2)
 
-        try:
-            diff_output = get_content_diff(target.expanduser(), source)
-            if diff_output:
-                active_console.print(diff_output)
-        except OSError, RuntimeError:
-            pass
+    diff_output = get_status_diff(status_code, target.expanduser(), source)
+    if diff_output:
+        active_console: Console = console or get_console()
+        active_console.print(diff_output)
 
-        return False
-    if status_code == "stale_copy":
-        print_warning(f"{target_display} {dim('(copy out of date)')}", indent=2)
-
-        try:
-            diff_output = get_content_diff(target.expanduser(), source)
-            if diff_output:
-                active_console.print(diff_output)
-        except OSError, RuntimeError:
-            pass
-
-        return False
-    if status_code == "not_copy":
-        print_warning(
-            f"{target_display} {dim('(expected managed copy, found symlink)')}",
-            indent=2,
-        )
-        return False
-    if status_code == "error":
-        print_error(f"{target_display} {dim(f'({message})')}", indent=2)
-        return False
-    return True
+    return False
 
 
 class ConfigComponent(Component):
@@ -150,19 +123,10 @@ class ConfigComponent(Component):
             return ComponentResult()
 
         from ai_rules.cli import cleanup_deprecated_symlinks
-        from ai_rules.cli.display import (
-            dim,
-            print_absent,
-            print_error,
-            print_success,
-            print_unchanged,
-            print_update,
-        )
-        from ai_rules.symlinks import SymlinkResult, create_file_copy, create_symlink
+        from ai_rules.cli.display import print_symlink_result
+        from ai_rules.symlinks import create_file_copy, create_symlink
 
-        created = updated = unchanged = skipped = excluded = errors = 0
-
-        excluded = plan.excluded_count
+        counts = {"created": 0, "updated": 0, "unchanged": 0, "skipped": 0, "errors": 0}
 
         for target, source in plan.symlink_ops:
             if target.expanduser() in plan.copy_targets:
@@ -170,53 +134,25 @@ class ConfigComponent(Component):
             else:
                 result, message = create_symlink(target, source, True, ctx.dry_run)
 
-            if result == SymlinkResult.CREATED:
-                print_success(f"{target} → {source}", indent=2)
-                created += 1
-            elif result == SymlinkResult.ALREADY_CORRECT:
-                print_unchanged(f"{target} {dim('(already correct)')}", indent=2)
-                unchanged += 1
-            elif result == SymlinkResult.UPDATED:
-                print_update(f"{target} → {source}", indent=2)
-                updated += 1
-            elif result == SymlinkResult.SKIPPED:
-                print_absent(f"{target} {dim('(skipped)')}", indent=2)
-                skipped += 1
-            elif result == SymlinkResult.ERROR:
-                print_error(f"{target}: {message}", indent=2)
-                errors += 1
+            counts[print_symlink_result(result, target, source, message)] += 1
 
         cleanup_deprecated_symlinks(
             list(ctx.selected_targets), ctx.config_dir, ctx.dry_run
         )
 
         return ComponentResult(
-            ok=errors == 0,
-            changed=bool(created or updated),
-            counts={
-                "created": created,
-                "updated": updated,
-                "unchanged": unchanged,
-                "skipped": skipped,
-                "excluded": excluded,
-                "errors": errors,
-            },
+            ok=counts["errors"] == 0,
+            changed=bool(counts["created"] or counts["updated"]),
+            counts={**counts, "excluded": plan.excluded_count},
         )
 
     def install(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.cli import cleanup_deprecated_symlinks
-        from ai_rules.cli.display import (
-            dim,
-            print_absent,
-            print_dim,
-            print_error,
-            print_success,
-            print_unchanged,
-            print_update,
-        )
-        from ai_rules.symlinks import SymlinkResult, create_file_copy, create_symlink
+        from ai_rules.cli.display import print_dim, print_symlink_result
+        from ai_rules.symlinks import create_file_copy, create_symlink
 
-        created = updated = unchanged = skipped = excluded = errors = 0
+        counts = {"created": 0, "updated": 0, "unchanged": 0, "skipped": 0, "errors": 0}
+        excluded = 0
         effective_force = ctx.yes or not ctx.dry_run
         copy_targets = _get_copy_mode_targets(list(ctx.selected_targets))
 
@@ -246,38 +182,16 @@ class ConfigComponent(Component):
                         target, source, effective_force, ctx.dry_run
                     )
 
-                if result == SymlinkResult.CREATED:
-                    print_success(f"{target} → {source}", indent=2)
-                    created += 1
-                elif result == SymlinkResult.ALREADY_CORRECT:
-                    print_unchanged(f"{target} {dim('(already correct)')}", indent=2)
-                    unchanged += 1
-                elif result == SymlinkResult.UPDATED:
-                    print_update(f"{target} → {source}", indent=2)
-                    updated += 1
-                elif result == SymlinkResult.SKIPPED:
-                    print_absent(f"{target} {dim('(skipped)')}", indent=2)
-                    skipped += 1
-                elif result == SymlinkResult.ERROR:
-                    print_error(f"{target}: {message}", indent=2)
-                    errors += 1
+                counts[print_symlink_result(result, target, source, message)] += 1
 
         cleanup_deprecated_symlinks(
             list(ctx.selected_targets), ctx.config_dir, ctx.dry_run
         )
 
-        results = {
-            "created": created,
-            "updated": updated,
-            "unchanged": unchanged,
-            "skipped": skipped,
-            "excluded": excluded,
-            "errors": errors,
-        }
         return ComponentResult(
-            ok=errors == 0,
-            changed=bool(created or updated),
-            counts=results,
+            ok=counts["errors"] == 0,
+            changed=bool(counts["created"] or counts["updated"]),
+            counts={**counts, "excluded": excluded},
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
@@ -322,7 +236,12 @@ class ConfigComponent(Component):
     def diff(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.cli.display import print_dim, print_error, print_warning
         from ai_rules.cli.runner import get_console
-        from ai_rules.symlinks import check_file_copy, check_symlink, get_content_diff
+        from ai_rules.symlinks import (
+            check_file_copy,
+            check_symlink,
+            get_content_diff,
+            get_status_diff,
+        )
 
         console = get_console(ctx)
         found_differences = False
@@ -371,10 +290,7 @@ class ConfigComponent(Component):
                         )
                         target_has_diff = True
                 elif status_code in ("not_symlink", "stale_copy"):
-                    try:
-                        diff_output = get_content_diff(target_path, source)
-                    except OSError, RuntimeError:
-                        diff_output = None
+                    diff_output = get_status_diff(status_code, target_path, source)
                     desc = (
                         "Copy out of date"
                         if status_code == "stale_copy"

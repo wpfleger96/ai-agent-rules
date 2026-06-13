@@ -1,6 +1,5 @@
 """Amp agent implementation."""
 
-from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,46 +12,13 @@ if TYPE_CHECKING:
 class AmpAgent(Agent):
     """Agent for Amp configuration."""
 
-    @property
-    def name(self) -> str:
-        return "Amp"
-
-    @property
-    def agent_id(self) -> str:
-        return "amp"
-
-    @property
-    def config_file_name(self) -> str:
-        return "settings.json"
-
-    @property
-    def config_file_format(self) -> str:
-        return "json"
-
-    @property
-    def settings_symlink_target(self) -> Path:
-        return Path("~/.config/amp/settings.json")
-
-    @cached_property
-    def symlinks(self) -> list[tuple[Path, Path]]:
-        """Cached list of all Amp symlinks."""
-        result = []
-
-        result.append(
-            (
-                Path("~/.config/amp/AGENTS.md"),
-                self.config_dir / "amp" / "AGENTS.md",
-            )
-        )
-
-        config_file = self.config_dir / "amp" / "settings.json"
-        if config_file.exists():
-            target_file = self.config.get_settings_file_for_symlink(
-                "amp", config_file, force=bool(self._effective_preserved_fields)
-            )
-            result.append((Path("~/.config/amp/settings.json"), target_file))
-
-        return result
+    name = "Amp"
+    agent_id = "amp"
+    config_file_name = "settings.json"
+    config_file_format = "json"
+    settings_symlink_target = Path("~/.config/amp/settings.json")
+    instructions_target = "~/.config/amp/AGENTS.md"
+    instructions_source = "AGENTS.md"
 
     def get_mcp_manager(self) -> MCPManager:
         from ai_rules.mcp import AmpMCPManager

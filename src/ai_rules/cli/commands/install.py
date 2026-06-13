@@ -3,28 +3,15 @@ from __future__ import annotations
 import sys
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import click
 
 import ai_rules.cli as cli_facade
 
-if TYPE_CHECKING:
-    from click.shell_completion import CompletionItem
-
 from ai_rules.cli.groups.profile import (
     _detect_profile_override_conflicts,
     _handle_profile_conflicts,
 )
-
-
-def _complete_components(
-    ctx: click.Context, param: click.Parameter, incomplete: str
-) -> list[CompletionItem]:
-    from ai_rules.cli.components import INSTALL_COMPONENTS
-
-    ids = tuple(c.component_id for c in INSTALL_COMPONENTS if c.filterable)
-    return cli_facade.complete_components(ctx, param, incomplete, component_ids=ids)
 
 
 @click.command()
@@ -40,17 +27,8 @@ def _complete_components(
     is_flag=True,
     help="Rebuild merged settings cache (use after changing overrides)",
 )
-@click.option(
-    "--agents",
-    help="Comma-separated list of agents to install (default: all)",
-    shell_complete=cli_facade.complete_targets,
-)
-@click.option(
-    "--only",
-    "component_filter",
-    help="Comma-separated list of components to target (default: all)",
-    shell_complete=_complete_components,
-)
+@cli_facade.agents_option("install")
+@cli_facade.only_option("INSTALL_COMPONENTS", filterable_only=True)
 @click.option(
     "--skip-completions",
     is_flag=True,
@@ -81,7 +59,6 @@ def install(
 ) -> None:
     """Install AI agent configs via symlinks."""
     from ai_rules.cli.components import INSTALL_COMPONENTS
-    from ai_rules.cli.context import CliContext
     from ai_rules.cli.display import console, print_error
     from ai_rules.cli.runner import run_install_parallel
     from ai_rules.config import Config
@@ -129,9 +106,6 @@ def install(
         print_label("Using profile", profile)
         console.print()
 
-    all_targets = cli_facade.get_targets(config_dir, config)
-    selected_targets = cli_facade.select_targets(all_targets, agents)
-
     from ai_rules.cli.components.agents_md import AgentsMdComponent
     from ai_rules.cli.components.settings import SettingsComponent
 
@@ -147,17 +121,13 @@ def install(
         if not isinstance(c, (SettingsComponent, AgentsMdComponent))
     )
 
-    parsed_filter = cli_facade.select_components(INSTALL_COMPONENTS, component_filter)
-
-    cli_ctx = CliContext(
-        console=console,
+    cli_ctx = cli_facade.build_cli_context(
+        INSTALL_COMPONENTS,
+        agents,
+        component_filter,
         config_dir=config_dir,
         config=config,
         profile_name=profile,
-        all_targets=tuple(all_targets),
-        selected_targets=tuple(selected_targets),
-        target_filter=agents,
-        component_filter=parsed_filter,
         yes=yes,
         dry_run=dry_run,
         rebuild_cache=rebuild_cache,
