@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.65.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.65.0...v0.65.1) (2026-06-13)
+
+
+### Chores
+
+* Revert "chore(profile): use fableplan and adjust thinking settings in work pr…" ([#114](https://github.com/wpfleger96/ai-agent-rules/issues/114)) ([f8413e9](https://github.com/wpfleger96/ai-agent-rules/commit/f8413e9a827e6aea75f32498d4a37afbac95a7c9))
+
 ## [0.65.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.64.2...v0.65.0) (2026-06-12)
 
 
