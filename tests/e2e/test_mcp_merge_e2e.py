@@ -21,6 +21,7 @@ import pytest
 
 from tests.e2e.helpers import (
     build_config_dir,
+    goose_config_dir,
     is_windows,
     make_cli_runner,
     make_home_env,
@@ -98,7 +99,7 @@ class TestMCPTranslation:
         install_agent, home = mcp_env
         install_agent("goose")
         data = yaml.safe_load(
-            (home / ".config" / "goose" / "config.yaml").read_text("utf-8")
+            (goose_config_dir(home) / "config.yaml").read_text("utf-8")
         )
         demo = data["extensions"]["demo"]
         # Goose renames command -> cmd in its extension schema.

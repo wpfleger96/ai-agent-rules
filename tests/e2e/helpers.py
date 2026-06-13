@@ -210,6 +210,18 @@ def find_backups(directory: Path) -> list[Path]:
     return sorted(directory.rglob("*.ai-agent-rules-backup.*"))
 
 
+def goose_config_dir(home_dir: Path) -> Path:
+    """Resolve Goose's config dir under an isolated HOME.
+
+    Mirrors ``ai_rules.platform.get_goose_config_dir`` so tests don't hardcode a
+    Unix-only path: Windows uses ``%APPDATA%/Block/goose/config`` (our harness
+    points APPDATA at ``<home>/AppData/Roaming``), Unix uses ``~/.config/goose``.
+    """
+    if is_windows():
+        return home_dir / "AppData" / "Roaming" / "Block" / "goose" / "config"
+    return home_dir / ".config" / "goose"
+
+
 def normalize_output(text: str, replacements: dict[str, str]) -> str:
     """Normalize CLI output for golden comparison.
 
