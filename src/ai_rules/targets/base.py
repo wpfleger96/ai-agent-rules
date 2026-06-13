@@ -192,8 +192,6 @@ class ConfigTarget(ABC):
         Returns:
             Path to merged settings file, or None if no overrides exist
         """
-        from ai_rules.config import ManagedFieldsTracker
-
         if not self.needs_cache:
             return None
 
@@ -213,20 +211,13 @@ class ConfigTarget(ABC):
         if base_settings is None:
             return None
 
-        merged = self.config.merge_settings(self.target_id, base_settings)
         if cache_path:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-            tracker = ManagedFieldsTracker() if config_format == "json" else None
             existing = self._read_existing_cache(cache_path, config_format)
-
-            source_preserved = {
-                f: merged.get(f)
-                for f in self._effective_preserved_fields
-                if merged.get(f)
-            }
-
-            merged, airules_keys = self._reconcile_cache(merged, existing, tracker)
+            merged, tracker, source_preserved, airules_keys = self._expected_merged(
+                base_settings, existing
+            )
 
             if tracker:
                 self._persist_tracker(tracker, source_preserved, airules_keys)
@@ -234,6 +225,32 @@ class ConfigTarget(ABC):
             self._write_merged_cache(cache_path, merged, config_format)
 
         return cache_path
+
+    def _expected_merged(
+        self,
+        base_settings: dict[str, Any],
+        existing: dict[str, Any] | None,
+    ) -> tuple[dict[str, Any], Any | None, dict[str, Any], set[str]]:
+        """Compute the settings ai-rules would write for the given inputs.
+
+        Shared by build_merged_settings (which persists the tracker and writes
+        the result) and get_cache_diff (which only previews it), so the diff
+        predicts exactly what an install materializes. Returns the merged
+        settings plus the tracker, the source-preserved snapshot, and the
+        ai-rules-contributed key set needed to persist tracker state.
+
+        The source-preserved snapshot is taken from the freshly merged settings
+        BEFORE _reconcile_cache mutates them in place.
+        """
+        from ai_rules.config import ManagedFieldsTracker
+
+        merged = self.config.merge_settings(self.target_id, base_settings)
+        tracker = ManagedFieldsTracker() if self.config_file_format == "json" else None
+        source_preserved = {
+            f: merged.get(f) for f in self._effective_preserved_fields if merged.get(f)
+        }
+        merged, airules_keys = self._reconcile_cache(merged, existing, tracker)
+        return merged, tracker, source_preserved, airules_keys
 
     def _load_base_settings(self, path: Path, fmt: str) -> dict[str, Any] | None:
         """Load base settings from ``path``.
@@ -359,11 +376,7 @@ class ConfigTarget(ABC):
         import tomli_w
         import yaml
 
-        from ai_rules.config import (
-            CONFIG_PARSE_ERRORS,
-            ManagedFieldsTracker,
-            load_config_file,
-        )
+        from ai_rules.config import CONFIG_PARSE_ERRORS, load_config_file
 
         if not self.needs_cache:
             return None
@@ -394,14 +407,9 @@ class ConfigTarget(ABC):
             from_label = "Base (current)"
             to_label = "Expected (with overrides)"
 
-        merged = self.config.merge_settings(self.target_id, base_settings)
-
-        tracker = ManagedFieldsTracker() if config_format == "json" else None
-
-        expected, _ = self._reconcile_cache(
-            merged,
+        expected, _, _, _ = self._expected_merged(
+            base_settings,
             copy.deepcopy(current_settings) if cache_exists else None,
-            tracker,
         )
 
         if current_settings == expected:
