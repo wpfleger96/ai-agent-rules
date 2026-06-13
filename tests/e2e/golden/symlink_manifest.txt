@@ -1,0 +1,17 @@
+.agents/skills/demo-skill -> source
+.claude/CLAUDE.md -> source
+.claude/agents/demo-agent.md -> source
+.claude/commands/hello.md -> source
+.claude/settings.json -> cache
+.claude/skills/demo-skill -> source
+.codex/AGENTS.md -> source
+.codex/config.toml -> cache
+.config/agents/skills/demo-skill -> source
+.config/amp/AGENTS.md -> source
+.config/amp/settings.json -> cache
+.config/goose/.goosehints -> source
+.config/goose/config.yaml -> cache
+.config/goose/skills/demo-skill -> source
+.gemini/GEMINI.md -> source
+.gemini/settings.json -> cache
+AGENTS.md -> source
