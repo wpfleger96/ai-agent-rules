@@ -23,4 +23,5 @@ Agents:
 Commands:
   ✓ <HOME>/.claude/commands/hello.md → <CONFIG>/claude/commands/hello.md
 
+
 Summary: Would create 17

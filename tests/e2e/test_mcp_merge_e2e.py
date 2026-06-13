@@ -5,10 +5,12 @@ each writing a different native format to a different file. These tests install
 real MCPs and inspect every generated artifact, exercising the per-agent
 ``_translate`` implementations and the JSON/TOML/YAML writers end-to-end.
 
-Each agent is installed in its own ``--agents <id>`` invocation. That keeps the
-component runner single-threaded for the MCP step, which is deterministic;
-installing several MCP-writing agents in one parallel run is racy in the app
-today (see the PR description), so we avoid coupling these assertions to it.
+The per-agent translation tests install each agent in its own ``--agents <id>``
+invocation, which keeps the assertions focused on one native format at a time.
+``TestParallelMCPInstall`` then covers the full multi-agent parallel install,
+guarding the fix that defers the MCP component until after ConfigComponent has
+created the settings symlinks (previously these two raced on the per-agent
+settings files, intermittently failing the install).
 """
 
 from __future__ import annotations
@@ -17,7 +19,12 @@ import json
 
 import pytest
 
-from tests.e2e.helpers import build_config_dir, is_windows, make_cli_runner
+from tests.e2e.helpers import (
+    build_config_dir,
+    is_windows,
+    make_cli_runner,
+    make_home_env,
+)
 
 SHARED_MCPS = {
     "demo": {
@@ -108,3 +115,47 @@ class TestMCPTranslation:
         demo = data["amp.mcpServers"]["demo"]
         assert demo["command"] == "demo-server"
         assert demo["_managedBy"] == "ai-agent-rules"
+
+
+@pytest.mark.e2e
+class TestParallelMCPInstall:
+    """Regression guard for the Config<->MCP symlink-creation race.
+
+    Installs all agents in one parallel run (no ``--agents``) so ConfigComponent
+    and MCPComponent run in the same install. Before the fix this failed the
+    large majority of the time with ``Created N-1`` + ``1 error(s)``; with the
+    MCP component deferred until after symlink creation it is deterministic.
+    Looped to make the guard robust against an intermittent race.
+    """
+
+    def test_parallel_install_is_race_free(self, isolated_home, tmp_path):
+        _home, env = isolated_home
+        config = build_config_dir(tmp_path / "rules", mcps=SHARED_MCPS)
+
+        last_home = None
+        for i in range(6):
+            home = tmp_path / f"home-{i}"
+            home.mkdir()
+            run = make_cli_runner(home, make_home_env(home))
+            result = run(
+                [
+                    "install",
+                    "-y",
+                    "--skip-completions",
+                    "--only",
+                    "settings,agents-md,config,mcps",
+                    "--config-dir",
+                    str(config),
+                ]
+            )
+            assert result.returncode == 0, (
+                f"iteration {i} failed:\n{result.stdout}{result.stderr}"
+            )
+            last_home = home
+
+        # Spot-check that MCPs landed correctly on the final iteration.
+        assert last_home is not None
+        claude = json.loads((last_home / ".claude.json").read_text("utf-8"))
+        assert claude["mcpServers"]["demo"]["command"] == "demo-server"
+        codex = (last_home / ".codex" / "config.toml").read_text("utf-8")
+        assert "[mcp_servers.demo]" in codex
