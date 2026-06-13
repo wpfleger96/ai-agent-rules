@@ -93,12 +93,12 @@ class TestCheckIndexUpdates:
         )
 
         def mock_run(*args, **kwargs):
-            class Result:
-                returncode = 0
-                stdout = "test-package (1.0.0)\nAvailable versions: 1.0.0"
-                stderr = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout="test-package (1.0.0)\nAvailable versions: 1.0.0",
+                stderr="",
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
 
@@ -114,12 +114,12 @@ class TestCheckIndexUpdates:
         )
 
         def mock_run(*args, **kwargs):
-            class Result:
-                returncode = 0
-                stdout = "test-package (1.1.0)\nAvailable versions: 1.1.0, 1.0.0"
-                stderr = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout="test-package (1.1.0)\nAvailable versions: 1.1.0, 1.0.0",
+                stderr="",
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
 
@@ -136,12 +136,9 @@ class TestCheckIndexUpdates:
         )
 
         def mock_run(*args, **kwargs):
-            class Result:
-                returncode = 1
-                stdout = ""
-                stderr = "Network error"
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=1, stdout="", stderr="Network error"
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
 
@@ -181,12 +178,9 @@ class TestCheckIndexUpdates:
         )
 
         def mock_run(*args, **kwargs):
-            class Result:
-                returncode = 0
-                stdout = "Unexpected output format"
-                stderr = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="Unexpected output format", stderr=""
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
 
@@ -242,12 +236,12 @@ class TestPerformToolUpgrade:
         )
 
         def mock_run(*args, **kwargs):
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = "Upgraded test-package from 1.0.0 to 1.1.0"
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout="Upgraded test-package from 1.0.0 to 1.1.0",
+                stderr="",
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         success, message, was_upgraded = perform_tool_upgrade(test_tool)
@@ -262,12 +256,9 @@ class TestPerformToolUpgrade:
         )
 
         def mock_run(*args, **kwargs):
-            class Result:
-                returncode = 1
-                stderr = "Package not found"
-                stdout = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=1, stdout="", stderr="Package not found"
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         success, message, was_upgraded = perform_tool_upgrade(test_tool)
@@ -312,12 +303,9 @@ class TestPerformToolUpgrade:
         )
 
         def mock_run(*args, **kwargs):
-            class Result:
-                returncode = 1
-                stderr = ""
-                stdout = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=1, stdout="", stderr=""
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         success, message, was_upgraded = perform_tool_upgrade(test_tool)
@@ -335,12 +323,12 @@ class TestPerformToolUpgrade:
         )
 
         def mock_run(*args, **kwargs):
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = "Upgraded test-package from 1.0.0 to 1.1.0"
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout="Upgraded test-package from 1.0.0 to 1.1.0",
+                stderr="",
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         success, message, was_upgraded = perform_tool_upgrade(test_tool)
@@ -681,12 +669,12 @@ class TestPerformToolUpgradeWithPythonSwitch:
         def mock_run(*args, **kwargs):
             captured_cmd.extend(args[0])
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = "Upgraded test-package from 1.0.0 to 2.0.0"
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout="Upgraded test-package from 1.0.0 to 2.0.0",
+                stderr="",
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         success, msg, was_upgraded = perform_tool_upgrade(
@@ -714,12 +702,9 @@ class TestPerformToolUpgradeWithPythonSwitch:
         def mock_run(*args, **kwargs):
             captured_cmd.extend(args[0])
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = "Nothing to upgrade"
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="Nothing to upgrade", stderr=""
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         perform_tool_upgrade(test_tool, target_version="1.0.0")
@@ -738,12 +723,9 @@ class TestPerformToolUpgradeWithPythonSwitch:
         def mock_run(*args, **kwargs):
             captured_cmd.extend(args[0])
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = "Nothing to upgrade"
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="Nothing to upgrade", stderr=""
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         perform_tool_upgrade(test_tool)
@@ -767,12 +749,12 @@ class TestPerformToolUpgradeWithPythonSwitch:
         def mock_run(*args, **kwargs):
             captured_cmd.extend(args[0])
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = "Installed 1 executable: test-package"
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout="Installed 1 executable: test-package",
+                stderr="",
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         success, msg, was_upgraded = perform_tool_upgrade(
@@ -1019,12 +1001,12 @@ class TestPerformToolUpgradeSourceResolution:
         def mock_run(*args, **kwargs):
             captured_cmd.extend(args[0])
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = "Installed 1 executable: test-package"
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout="Installed 1 executable: test-package",
+                stderr="",
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         success, message, was_upgraded = perform_tool_upgrade(tool)
@@ -1061,12 +1043,12 @@ class TestPerformToolUpgradeSourceResolution:
         def mock_run(*args, **kwargs):
             captured_cmd.extend(args[0])
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = "Upgraded test-package from 1.0.0 to 1.1.0"
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout="Upgraded test-package from 1.0.0 to 1.1.0",
+                stderr="",
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         success, message, was_upgraded = perform_tool_upgrade(tool)
@@ -1101,12 +1083,12 @@ class TestPerformToolUpgradeSourceResolution:
         def mock_run(*args, **kwargs):
             captured_cmd.extend(args[0])
 
-            class Result:
-                returncode = 0
-                stderr = ""
-                stdout = "Installed 1 executable: test-package"
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout="Installed 1 executable: test-package",
+                stderr="",
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         success, message, was_upgraded = perform_tool_upgrade(tool)
@@ -1126,12 +1108,9 @@ class TestCheckFailedPropagation:
         )
 
         def mock_run(*args, **kwargs):
-            class Result:
-                returncode = 1
-                stdout = ""
-                stderr = "Network error"
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[], returncode=1, stdout="", stderr="Network error"
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         result = check_index_updates("test-package", "1.0.0")
@@ -1157,12 +1136,12 @@ class TestCheckFailedPropagation:
         )
 
         def mock_run(*args, **kwargs):
-            class Result:
-                returncode = 0
-                stdout = "test-package (1.0.0)\nAvailable versions: 1.0.0"
-                stderr = ""
-
-            return Result()
+            return subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout="test-package (1.0.0)\nAvailable versions: 1.0.0",
+                stderr="",
+            )
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
         result = check_index_updates("test-package", "1.0.0")

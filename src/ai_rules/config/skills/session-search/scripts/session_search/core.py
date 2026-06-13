@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -87,6 +88,18 @@ def repo_context(cwd_text: str, explicit_repo: str | None) -> tuple[str, str, st
     root_text = str(root) if root else str(cwd)
     repo_name = explicit_repo or repo_name_from_path(root_text)
     return str(cwd), root_text, repo_name
+
+
+def current_repo_context(args: argparse.Namespace) -> tuple[str, str, str]:
+    """Resolve (current_cwd, current_root, repo_name) from --cwd/--repo args."""
+    current_cwd = (
+        str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
+    )
+    current_root = ""
+    repo_name = getattr(args, "repo", None) or ""
+    if current_cwd:
+        _, current_root, repo_name = repo_context(current_cwd, repo_name or None)
+    return current_cwd, current_root, repo_name
 
 
 def repo_score(
@@ -199,3 +212,67 @@ def print_sessions(sessions: list[Session], limit: int, json_output: bool) -> No
 
 def warn(msg: str) -> None:
     print(f"[warn] {msg}", file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
+# Search helpers
+# ---------------------------------------------------------------------------
+
+
+def print_session_header(session: Session) -> None:
+    """Print the standard once-per-session match header."""
+    label = f" [{session.repo_reason}]" if session.repo_reason else ""
+    title_part = f" - {session.title}" if session.title else ""
+    print(f"\n=== [{session.agent}] {session.id}{label}{title_part} ===")
+    print(f"    {session.path}")
+
+
+class SessionMatchPrinter:
+    """Per-session match printing: header-once, truncation, max_matches cutoff."""
+
+    def __init__(self, session: Session, args: argparse.Namespace) -> None:
+        self._session = session
+        self._max_matches = getattr(args, "max_matches", 0)
+        self._width = getattr(args, "width", 280)
+        self._header_printed = False
+        self.matches = 0
+
+    def emit(self, rendered: str, prefix: str = "") -> bool:
+        """Print one match. Returns False once max_matches is reached."""
+        if not self._header_printed:
+            print_session_header(self._session)
+            self._header_printed = True
+        print(f"{prefix}{truncate(rendered, self._width)}")
+        self.matches += 1
+        return not (self._max_matches > 0 and self.matches >= self._max_matches)
+
+
+def search_jsonl_session(
+    session: Session,
+    pattern: re.Pattern[str],
+    args: argparse.Namespace,
+    iter_search_text: Callable[[dict[str, Any], str], Iterable[str]],
+    display_text: Callable[[dict[str, Any], str], str],
+) -> int:
+    """Shared JSONL search loop: print each record once on its first match."""
+    printer = SessionMatchPrinter(session, args)
+
+    try:
+        with session.path.open("r", encoding="utf-8", errors="replace") as fh:
+            for raw_line in fh:
+                raw = raw_line.rstrip("\n")
+                try:
+                    record = json.loads(raw)
+                except json.JSONDecodeError:
+                    record = {}
+
+                for text in iter_search_text(record, raw):
+                    if not pattern.search(text):
+                        continue
+                    if not printer.emit(display_text(record, raw)):
+                        return printer.matches
+                    break
+    except OSError as exc:
+        warn(f"cannot read {session.path}: {exc}")
+
+    return printer.matches

@@ -261,9 +261,6 @@ class MCPComponent(Component):
 
         return ComponentResult(ok=all_correct, changed=not all_correct)
 
-    def diff(self, ctx: CliContext) -> ComponentResult:
-        return self.status(ctx)
-
     def uninstall(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.mcp import OperationResult
 

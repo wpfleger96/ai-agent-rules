@@ -1,6 +1,5 @@
 """Claude Code agent implementation."""
 
-from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,45 +18,18 @@ class ClaudeAgent(Agent):
         Path("~/CLAUDE.md"),
     ]
 
-    @property
-    def name(self) -> str:
-        return "Claude Code"
+    name = "Claude Code"
+    agent_id = "claude"
+    config_file_name = "settings.json"
+    config_file_format = "json"
+    preserved_fields = ["enabledPlugins", "hooks"]
+    settings_symlink_target = Path("~/.claude/settings.json")
+    instructions_target = "~/.claude/CLAUDE.md"
+    instructions_source = "CLAUDE.md"
 
-    @property
-    def agent_id(self) -> str:
-        return "claude"
-
-    @property
-    def config_file_name(self) -> str:
-        return "settings.json"
-
-    @property
-    def config_file_format(self) -> str:
-        return "json"
-
-    @property
-    def preserved_fields(self) -> list[str]:
-        return ["enabledPlugins", "hooks"]
-
-    @property
-    def settings_symlink_target(self) -> Path:
-        return Path("~/.claude/settings.json")
-
-    @cached_property
-    def symlinks(self) -> list[tuple[Path, Path]]:
-        """Cached list of all Claude Code symlinks including dynamic agents/commands."""
+    def _extra_symlinks(self) -> list[tuple[Path, Path]]:
+        """Dynamic symlinks for bundled agents, commands, and hooks."""
         result = []
-
-        result.append(
-            (Path("~/.claude/CLAUDE.md"), self.config_dir / "claude" / "CLAUDE.md")
-        )
-
-        settings_file = self.config_dir / "claude" / "settings.json"
-        if settings_file.exists():
-            target_file = self.config.get_settings_file_for_symlink(
-                "claude", settings_file, force=bool(self._effective_preserved_fields)
-            )
-            result.append((Path("~/.claude/settings.json"), target_file))
 
         agents_dir = self.config_dir / "claude" / "agents"
         if agents_dir.exists():

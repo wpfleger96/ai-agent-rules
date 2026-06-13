@@ -1,10 +1,13 @@
 """Unit tests for skills module."""
 
 import importlib.metadata
+import re
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
 
 from ai_rules.skills import SkillManager
 
@@ -420,3 +423,67 @@ class TestListBundledSkillsDisabled:
         assert names == {"active", "inactive"}
         disabled_skill = next(s for s in results if s.name == "inactive")
         assert disabled_skill.disabled is True
+
+
+@pytest.mark.unit
+class TestBundledSkillFrontmatter:
+    """Schema validation for the bundled SKILL.md files."""
+
+    SKILLS_DIR = Path(__file__).parents[2] / "src" / "ai_rules" / "config" / "skills"
+    CANONICAL_FIELD_ORDER = [
+        "name",
+        "version",
+        "description",
+        "disabled",
+        "disable-model-invocation",
+        "agent",
+        "allowed-tools",
+        "model",
+    ]
+    KNOWN_MODELS = {"haiku", "sonnet", "opus"}
+
+    @staticmethod
+    def _frontmatter(skill_md: Path) -> tuple[dict, list[str]]:
+        """Return (parsed frontmatter, top-level keys in file order)."""
+        parts = skill_md.read_text().split("---", 2)
+        assert len(parts) >= 3, f"{skill_md}: missing frontmatter"
+        raw = parts[1]
+        data = yaml.safe_load(raw)
+        keys = re.findall(r"^([A-Za-z][A-Za-z-]*):", raw, flags=re.MULTILINE)
+        return data, keys
+
+    def _skill_files(self) -> list[Path]:
+        files = sorted(self.SKILLS_DIR.glob("*/SKILL.md"))
+        assert files, f"no bundled skills found under {self.SKILLS_DIR}"
+        return files
+
+    def test_required_fields_and_values(self):
+        for skill_md in self._skill_files():
+            data, _ = self._frontmatter(skill_md)
+            assert data["name"] == skill_md.parent.name, skill_md
+            assert re.fullmatch(r"\d+\.\d+\.\d+", str(data["version"])), skill_md
+            assert isinstance(data["description"], str) and data["description"], (
+                skill_md
+            )
+            if "model" in data:
+                assert data["model"] in self.KNOWN_MODELS, skill_md
+
+    def test_fields_are_known_and_canonically_ordered(self):
+        for skill_md in self._skill_files():
+            _, keys = self._frontmatter(skill_md)
+            unknown = set(keys) - set(self.CANONICAL_FIELD_ORDER)
+            assert not unknown, f"{skill_md}: unknown fields {unknown}"
+            indices = [self.CANONICAL_FIELD_ORDER.index(k) for k in keys]
+            assert indices == sorted(indices), (
+                f"{skill_md}: fields out of canonical order {keys}"
+            )
+
+    def test_allowed_tools_are_sorted(self):
+        for skill_md in self._skill_files():
+            data, _ = self._frontmatter(skill_md)
+            tools_value = data.get("allowed-tools")
+            if tools_value is None:
+                continue
+            tools = [t.strip() for t in tools_value.split(",")]
+            assert tools == sorted(tools), f"{skill_md}: tools not sorted {tools}"
+            assert len(tools) == len(set(tools)), f"{skill_md}: duplicate tools"

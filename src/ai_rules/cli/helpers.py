@@ -1,4 +1,9 @@
-"""Shared CLI helper functions."""
+"""Shared CLI helper functions.
+
+To monkeypatch these functions in tests, patch them on the ``ai_rules.cli``
+facade, not on this module: ``build_cli_context`` resolves its dependencies
+through the facade, so only facade patches apply everywhere.
+"""
 
 from __future__ import annotations
 
@@ -6,14 +11,17 @@ import sys
 
 from importlib.resources import files as resource_files
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import click
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from click.decorators import FC
     from click.shell_completion import CompletionItem
 
-    from ai_rules.cli.context import Component
+    from ai_rules.cli.context import CliContext, Component
     from ai_rules.config import Config
     from ai_rules.targets.base import ConfigTarget
 
@@ -148,6 +156,113 @@ def complete_components(
         for component_id in component_ids
         if component_id.startswith(incomplete)
     ]
+
+
+def make_component_completer(
+    components_attr: str, *, filterable_only: bool = False
+) -> Callable[[click.Context, click.Parameter, str], list[CompletionItem]]:
+    """Build a --only completion callback for a component list.
+
+    Takes the attribute name on ``ai_rules.cli.components`` (rather than the
+    tuple itself) so commands keep their lazy component imports.
+    """
+
+    def _complete(
+        ctx: click.Context, param: click.Parameter, incomplete: str
+    ) -> list[CompletionItem]:
+        import ai_rules.cli.components as components_module
+
+        components = getattr(components_module, components_attr)
+        ids = tuple(
+            c.component_id for c in components if c.filterable or not filterable_only
+        )
+        return complete_components(ctx, param, incomplete, component_ids=ids)
+
+    return _complete
+
+
+def agents_option(verb: str) -> Callable[[FC], FC]:
+    """Shared ``--agents`` option with target-name completion."""
+    return click.option(
+        "--agents",
+        help=f"Comma-separated list of agents to {verb} (default: all)",
+        shell_complete=complete_targets,
+    )
+
+
+def only_option(
+    components_attr: str, *, filterable_only: bool = False
+) -> Callable[[FC], FC]:
+    """Shared ``--only`` option completing against a component list."""
+    return click.option(
+        "--only",
+        "component_filter",
+        help="Comma-separated list of components to target (default: all)",
+        shell_complete=make_component_completer(
+            components_attr, filterable_only=filterable_only
+        ),
+    )
+
+
+def build_cli_context(
+    components: tuple[Component, ...],
+    agents: str | None,
+    component_filter: str | None,
+    *,
+    config_dir: Path | None = None,
+    config: Config | None = None,
+    profile_name: str | None = None,
+    yes: bool = False,
+    dry_run: bool = False,
+    rebuild_cache: bool = False,
+    skip_completions: bool = False,
+    force: bool = False,
+) -> CliContext:
+    """Load config, resolve target/component filters, and build a CliContext."""
+    # Route through the facade so monkeypatching ai_rules.cli still applies.
+    import ai_rules.cli as cli_facade
+
+    from ai_rules.cli.context import CliContext
+    from ai_rules.cli.display import console
+    from ai_rules.config import Config as ConfigClass
+
+    if config_dir is None:
+        config_dir = cli_facade.get_config_dir()
+    if config is None:
+        config = ConfigClass.load()
+    all_targets = cli_facade.get_targets(config_dir, config)
+    selected_targets = cli_facade.select_targets(all_targets, agents)
+    parsed_filter = cli_facade.select_components(components, component_filter)
+
+    return CliContext(
+        console=console,
+        config_dir=config_dir,
+        config=config,
+        profile_name=profile_name if profile_name is not None else config.profile_name,
+        all_targets=tuple(all_targets),
+        selected_targets=tuple(selected_targets),
+        target_filter=agents,
+        component_filter=parsed_filter,
+        yes=yes,
+        dry_run=dry_run,
+        rebuild_cache=rebuild_cache,
+        skip_completions=skip_completions,
+        force=force,
+    )
+
+
+def save_user_config_and_report(
+    data: dict[str, Any], success_msg: str, hint: str | None = None
+) -> None:
+    """Save user config and print the standard confirmation lines."""
+    from ai_rules.cli.display import print_dim, print_hint, print_success
+    from ai_rules.config import Config
+
+    Config.save_user_config(data)
+    print_success(success_msg)
+    print_dim(f"Config updated: {get_user_config_path()}")
+    if hint:
+        print_hint(hint)
 
 
 def format_summary(

@@ -10,6 +10,12 @@ from typing import TYPE_CHECKING, Any
 import click
 
 from ai_rules.cli.helpers import (
+    agents_option as agents_option,
+)
+from ai_rules.cli.helpers import (
+    build_cli_context as build_cli_context,
+)
+from ai_rules.cli.helpers import (
     complete_components as complete_components,
 )
 from ai_rules.cli.helpers import (
@@ -29,6 +35,12 @@ from ai_rules.cli.helpers import (
 )
 from ai_rules.cli.helpers import (
     get_user_config_path as get_user_config_path,
+)
+from ai_rules.cli.helpers import (
+    only_option as only_option,
+)
+from ai_rules.cli.helpers import (
+    save_user_config_and_report as save_user_config_and_report,
 )
 from ai_rules.cli.helpers import (
     select_components as select_components,
@@ -76,7 +88,7 @@ def _display_pending_symlink_changes(targets: list[ConfigTarget]) -> bool:
     """
     from ai_rules.cli.components.config import _get_copy_mode_targets
     from ai_rules.cli.display import console, print_add, print_update
-    from ai_rules.symlinks import check_file_copy, check_symlink, get_content_diff
+    from ai_rules.symlinks import check_file_copy, check_symlink, get_status_diff
 
     found_changes = False
     copy_targets = _get_copy_mode_targets(targets)
@@ -104,15 +116,7 @@ def _display_pending_symlink_changes(targets: list[ConfigTarget]) -> bool:
                 "stale_copy",
                 "not_copy",
             ]:
-                diff_output = None
-                try:
-                    if status_code == "wrong_target":
-                        actual = target_path.resolve()
-                        diff_output = get_content_diff(actual, source)
-                    elif status_code in ("not_symlink", "stale_copy"):
-                        diff_output = get_content_diff(target_path, source)
-                except OSError, RuntimeError:
-                    pass
+                diff_output = get_status_diff(status_code, target_path, source)
                 agent_changes.append(("update", target_path, source, diff_output))
 
         if agent_changes:

@@ -14,10 +14,10 @@ from typing import Any
 
 from session_search.core import (
     Session,
+    SessionMatchPrinter,
+    current_repo_context,
     in_date_window,
-    repo_context,
     repo_score,
-    truncate,
     warn,
 )
 
@@ -45,13 +45,7 @@ def _ts_from_unix(unix: int) -> str:
 
 
 def iter_sessions(args: argparse.Namespace) -> list[Session]:
-    current_cwd = (
-        str(Path(args.cwd).expanduser().resolve()) if getattr(args, "cwd", None) else ""
-    )
-    current_root = ""
-    repo_name = getattr(args, "repo", None) or ""
-    if current_cwd:
-        _, current_root, repo_name = repo_context(current_cwd, repo_name or None)
+    current_cwd, current_root, repo_name = current_repo_context(args)
 
     db = _db_path()
     if db.exists():
@@ -258,10 +252,7 @@ def _search_db_session(
     pattern: re.Pattern[str],
     args: argparse.Namespace,
 ) -> int:
-    max_matches = getattr(args, "max_matches", 0)
-    width = getattr(args, "width", 280)
-    header_printed = False
-    matches = 0
+    printer = SessionMatchPrinter(session, args)
 
     try:
         with _conn(session.path) as con:
@@ -285,24 +276,13 @@ def _search_db_session(
                 if not pattern.search(searchable):
                     continue
 
-                if not header_printed:
-                    label = f" [{session.repo_reason}]" if session.repo_reason else ""
-                    title_part = f" - {session.title}" if session.title else ""
-                    print(f"\n=== [{AGENT_NAME}] {session.id}{label}{title_part} ===")
-                    print(f"    {session.path}")
-                    header_printed = True
-
-                rendered = display_text(record, content_json_raw or "")
-                print(truncate(rendered, width))
-                matches += 1
-
-                if max_matches > 0 and matches >= max_matches:
-                    return matches
+                if not printer.emit(display_text(record, content_json_raw or "")):
+                    return printer.matches
 
     except sqlite3.Error as exc:
         warn(f"goose: cannot read session {session.id} from {session.path}: {exc}")
 
-    return matches
+    return printer.matches
 
 
 def _search_legacy_session(
@@ -310,10 +290,7 @@ def _search_legacy_session(
     pattern: re.Pattern[str],
     args: argparse.Namespace,
 ) -> int:
-    max_matches = getattr(args, "max_matches", 0)
-    width = getattr(args, "width", 280)
-    header_printed = False
-    matches = 0
+    printer = SessionMatchPrinter(session, args)
 
     try:
         with session.path.open("r", encoding="utf-8", errors="replace") as fh:
@@ -338,24 +315,13 @@ def _search_legacy_session(
                 if not pattern.search(searchable):
                     continue
 
-                if not header_printed:
-                    label = f" [{session.repo_reason}]" if session.repo_reason else ""
-                    title_part = f" - {session.title}" if session.title else ""
-                    print(f"\n=== [{AGENT_NAME}] {session.id}{label}{title_part} ===")
-                    print(f"    {session.path}")
-                    header_printed = True
-
-                rendered = display_text(record, raw)
-                print(truncate(rendered, width))
-                matches += 1
-
-                if max_matches > 0 and matches >= max_matches:
-                    return matches
+                if not printer.emit(display_text(record, raw)):
+                    return printer.matches
 
     except OSError as exc:
         warn(f"goose: cannot read {session.path}: {exc}")
 
-    return matches
+    return printer.matches
 
 
 def search_session(
