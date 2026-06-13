@@ -665,63 +665,85 @@ class Config:
         except ProfileNotFoundError:
             raise
 
-        exclude_symlinks = list(profile_data.exclude_symlinks)
-        settings_overrides = copy.deepcopy(profile_data.settings_overrides)
-        mcp_overrides = copy.deepcopy(profile_data.mcp_overrides)
-        plugins = copy.deepcopy(profile_data.plugins)
-        marketplaces = copy.deepcopy(profile_data.marketplaces)
-        managed_tools = copy.deepcopy(profile_data.managed_tools)
-        agents_md = profile_data.agents_md
+        # Keys here must stay in sync with Config.__init__ parameters: the
+        # final `cls(profile_name=..., **fields)` below unpacks them directly.
+        fields: dict[str, Any] = {
+            "exclude_symlinks": list(profile_data.exclude_symlinks),
+            "settings_overrides": copy.deepcopy(profile_data.settings_overrides),
+            "mcp_overrides": copy.deepcopy(profile_data.mcp_overrides),
+            "plugins": copy.deepcopy(profile_data.plugins),
+            "marketplaces": copy.deepcopy(profile_data.marketplaces),
+            "managed_tools": copy.deepcopy(profile_data.managed_tools),
+            "agents_md": profile_data.agents_md,
+        }
 
         user_config_path = get_user_config_path()
         if user_config_path.exists():
             with open(user_config_path) as f:
                 user_data = yaml.safe_load(f) or {}
+            fields = cls._merge_user_overrides(fields, user_data)
 
-            user_excludes = user_data.get("exclude_symlinks", [])
-            exclude_symlinks = list(set(exclude_symlinks) | set(user_excludes))
+        return cls(profile_name=profile_name, **fields)
 
-            user_settings = user_data.get("settings_overrides", {})
-            settings_overrides = deep_merge(settings_overrides, user_settings)
+    @staticmethod
+    def _upsert_by_name(base: list[dict], overrides: list[dict]) -> list[dict]:
+        """Merge override entries onto base, replacing/adding by their 'name'."""
+        by_name = {item["name"]: item for item in base}
+        for item in overrides:
+            by_name[item["name"]] = item
+        return list(by_name.values())
 
-            user_mcp = user_data.get("mcp_overrides", {})
-            mcp_overrides = deep_merge(mcp_overrides, user_mcp)
+    @classmethod
+    def _merge_user_overrides(
+        cls, fields: dict[str, Any], user_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Merge user-config YAML overrides onto profile-derived defaults.
 
-            user_plugins = user_data.get("plugins", [])
-            if user_plugins:
-                plugins_by_name = {p["name"]: p for p in plugins}
-                for plugin in user_plugins:
-                    plugins_by_name[plugin["name"]] = plugin
-                plugins = list(plugins_by_name.values())
-
-            user_marketplaces = user_data.get("marketplaces", [])
-            if user_marketplaces:
-                marketplaces_by_name = {m["name"]: m for m in marketplaces}
-                for marketplace in user_marketplaces:
-                    marketplaces_by_name[marketplace["name"]] = marketplace
-                marketplaces = list(marketplaces_by_name.values())
-
-            user_managed_tools = user_data.get("managed_tools", {})
-            if user_managed_tools:
-                managed_tools = deep_merge(managed_tools, user_managed_tools)
-
-            user_agents_md = user_data.get("agents_md", "")
-            if user_agents_md and isinstance(user_agents_md, str):
-                if agents_md:
-                    agents_md = agents_md.rstrip("\n") + "\n\n" + user_agents_md.strip()
-                else:
-                    agents_md = user_agents_md.strip()
-
-        return cls(
-            exclude_symlinks=exclude_symlinks,
-            settings_overrides=settings_overrides,
-            mcp_overrides=mcp_overrides,
-            profile_name=profile_name,
-            plugins=plugins,
-            marketplaces=marketplaces,
-            managed_tools=managed_tools,
-            agents_md=agents_md,
+        Operates on the kwargs dict assembled for the Config constructor and
+        returns it updated. Mirrors the per-field semantics of each override:
+        exclude_symlinks unions, settings/mcp/managed_tools deep-merge, plugins
+        and marketplaces upsert by name, and agents_md appends.
+        """
+        user_excludes = user_data.get("exclude_symlinks", [])
+        fields["exclude_symlinks"] = list(
+            set(fields["exclude_symlinks"]) | set(user_excludes)
         )
+
+        user_settings = user_data.get("settings_overrides", {})
+        fields["settings_overrides"] = deep_merge(
+            fields["settings_overrides"], user_settings
+        )
+
+        user_mcp = user_data.get("mcp_overrides", {})
+        fields["mcp_overrides"] = deep_merge(fields["mcp_overrides"], user_mcp)
+
+        user_plugins = user_data.get("plugins", [])
+        if user_plugins:
+            fields["plugins"] = cls._upsert_by_name(fields["plugins"], user_plugins)
+
+        user_marketplaces = user_data.get("marketplaces", [])
+        if user_marketplaces:
+            fields["marketplaces"] = cls._upsert_by_name(
+                fields["marketplaces"], user_marketplaces
+            )
+
+        user_managed_tools = user_data.get("managed_tools", {})
+        if user_managed_tools:
+            fields["managed_tools"] = deep_merge(
+                fields["managed_tools"], user_managed_tools
+            )
+
+        user_agents_md = user_data.get("agents_md", "")
+        if user_agents_md and isinstance(user_agents_md, str):
+            agents_md = fields["agents_md"]
+            if agents_md:
+                fields["agents_md"] = (
+                    agents_md.rstrip("\n") + "\n\n" + user_agents_md.strip()
+                )
+            else:
+                fields["agents_md"] = user_agents_md.strip()
+
+        return fields
 
     def get_tool_install_source(self, tool_id: str) -> str | None:
         """Return configured install source for a managed tool.

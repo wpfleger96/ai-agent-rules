@@ -14,10 +14,10 @@ from typing import Any
 
 from session_search.core import (
     Session,
+    SessionMatchPrinter,
     in_date_window,
     repo_context,
     repo_score,
-    truncate,
     warn,
 )
 
@@ -291,14 +291,18 @@ def display_text(record: dict[str, Any], raw: str) -> str:
     return raw.strip()
 
 
+def _print_claude_header(session: Session) -> None:
+    """Claude-specific match header: shows cwd rather than the session path."""
+    title_part = f" - {session.title}" if session.title else ""
+    cwd_part = session.cwd or "(unknown)"
+    print(f"\n=== [{AGENT_NAME}] {session.id}{title_part}")
+    print(f"    cwd: {cwd_part}")
+
+
 def search_session(
     session: Session, pattern: re.Pattern[str], args: argparse.Namespace
 ) -> int:
-    max_matches = getattr(args, "max_matches", 0)
-    width = getattr(args, "width", 280)
-
-    match_count = 0
-    header_printed = False
+    printer = SessionMatchPrinter(session, args, header_renderer=_print_claude_header)
 
     try:
         fh = open(session.path, encoding="utf-8", errors="replace")
@@ -320,19 +324,7 @@ def search_session(
             if not pattern.search(searchable):
                 continue
 
-            if not header_printed:
-                agent_tag = f"[{AGENT_NAME}]"
-                title_part = f" - {session.title}" if session.title else ""
-                cwd_part = session.cwd or "(unknown)"
-                print(f"\n=== {agent_tag} {session.id}{title_part}")
-                print(f"    cwd: {cwd_part}")
-                header_printed = True
-
-            rendered = display_text(record, raw_stripped)
-            print(truncate(rendered, width))
-
-            match_count += 1
-            if max_matches > 0 and match_count >= max_matches:
+            if not printer.emit(display_text(record, raw_stripped)):
                 break
 
-    return match_count
+    return printer.matches

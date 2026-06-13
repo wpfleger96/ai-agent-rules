@@ -230,17 +230,23 @@ def print_session_header(session: Session) -> None:
 class SessionMatchPrinter:
     """Per-session match printing: header-once, truncation, max_matches cutoff."""
 
-    def __init__(self, session: Session, args: argparse.Namespace) -> None:
+    def __init__(
+        self,
+        session: Session,
+        args: argparse.Namespace,
+        header_renderer: Callable[[Session], None] | None = None,
+    ) -> None:
         self._session = session
         self._max_matches = getattr(args, "max_matches", 0)
         self._width = getattr(args, "width", 280)
+        self._header_renderer = header_renderer or print_session_header
         self._header_printed = False
         self.matches = 0
 
     def emit(self, rendered: str, prefix: str = "") -> bool:
         """Print one match. Returns False once max_matches is reached."""
         if not self._header_printed:
-            print_session_header(self._session)
+            self._header_renderer(self._session)
             self._header_printed = True
         print(f"{prefix}{truncate(rendered, self._width)}")
         self.matches += 1

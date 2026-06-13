@@ -8,9 +8,22 @@ import json
 from abc import ABC, abstractmethod
 from functools import cached_property
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from ai_rules.config import Config
+
+
+class _MergedSettings(NamedTuple):
+    """Result of computing the settings ai-rules would write for a target.
+
+    ``merged`` is what gets written/diffed; the remaining fields are only
+    needed by the write path to persist managed-fields tracker state.
+    """
+
+    merged: dict[str, Any]
+    tracker: Any | None
+    source_preserved: dict[str, Any]
+    airules_keys: set[str]
 
 
 class ConfigTarget(ABC):
@@ -192,13 +205,6 @@ class ConfigTarget(ABC):
         Returns:
             Path to merged settings file, or None if no overrides exist
         """
-        from ai_rules.config import (
-            CONFIG_PARSE_ERRORS,
-            ManagedFieldsTracker,
-            dump_config_file,
-            load_config_file,
-        )
-
         if not self.needs_cache:
             return None
 
@@ -210,75 +216,129 @@ class ConfigTarget(ABC):
             if not self.is_cache_stale():
                 return cache_path
 
-        base_settings_path = self._base_settings_path
         config_format = self.config_file_format
 
-        if not base_settings_path.exists():
-            base_settings: dict[str, Any] = {}
-        else:
-            try:
-                base_settings = load_config_file(base_settings_path, config_format)
-            except CONFIG_PARSE_ERRORS:
-                return None
+        base_settings = self._load_base_settings(
+            self._base_settings_path, config_format
+        )
+        if base_settings is None:
+            return None
 
-        merged = self.config.merge_settings(self.target_id, base_settings)
         if cache_path:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-            tracker = ManagedFieldsTracker() if config_format == "json" else None
-            existing: dict[str, Any] | None = None
+            existing = self._read_existing_cache(cache_path, config_format)
+            result = self._expected_merged(base_settings, existing)
 
-            if cache_path.exists():
-                try:
-                    existing = load_config_file(cache_path, config_format)
-                except CONFIG_PARSE_ERRORS:
-                    existing = None
-
-            # For copy-mode agents (e.g. Gemini on Windows), read preserved
-            # fields from the live target file so edits made by the agent
-            # (after it destroyed the symlink and rewrote the file) survive.
-            if self.copy_mode_targets and self.settings_symlink_target:
-                live_target = self.settings_symlink_target.expanduser()
-                if live_target.exists() and not live_target.is_symlink():
-                    try:
-                        live_settings = load_config_file(live_target, config_format)
-                        if existing is None:
-                            existing = {}
-                        for field in self._effective_preserved_fields:
-                            if field in live_settings:
-                                existing[field] = live_settings[field]
-                    except CONFIG_PARSE_ERRORS:
-                        pass
-
-            source_preserved = {
-                f: merged.get(f)
-                for f in self._effective_preserved_fields
-                if merged.get(f)
-            }
-
-            merged, airules_keys = self._reconcile_cache(merged, existing, tracker)
-
-            if tracker:
-                for field, value in source_preserved.items():
-                    tracker.set_field_contributions(field, value)
-                for field in self._effective_preserved_fields:
-                    if field not in source_preserved:
-                        tracker.set_field_contributions(field, None)
-                tracker.set_field_contributions(
-                    f"_contributed_keys_{self.target_id}",
-                    sorted(airules_keys),
+            if result.tracker:
+                self._persist_tracker(
+                    result.tracker, result.source_preserved, result.airules_keys
                 )
-                tracker.save()
 
-            try:
-                dump_config_file(cache_path, merged, config_format)
-            except ValueError as exc:
-                import logging
-
-                logging.getLogger(__name__).error("%s: %s", self.name, exc)
-                raise
+            self._write_merged_cache(cache_path, result.merged, config_format)
 
         return cache_path
+
+    def _expected_merged(
+        self,
+        base_settings: dict[str, Any],
+        existing: dict[str, Any] | None,
+    ) -> _MergedSettings:
+        """Compute the settings ai-rules would write for the given inputs.
+
+        Shared by build_merged_settings (which persists the tracker and writes
+        the result) and get_cache_diff (which only previews it), so the diff
+        predicts exactly what an install materializes.
+
+        The source-preserved snapshot is taken from the freshly merged settings
+        BEFORE _reconcile_cache mutates them in place.
+        """
+        from ai_rules.config import ManagedFieldsTracker
+
+        merged = self.config.merge_settings(self.target_id, base_settings)
+        tracker = ManagedFieldsTracker() if self.config_file_format == "json" else None
+        # Preserved fields are containers (hooks, extensions, projects, ...); a
+        # falsy/empty value means ai-rules contributes nothing, so skipping it
+        # here correctly records "no contribution" in the tracker.
+        source_preserved = {
+            f: merged.get(f) for f in self._effective_preserved_fields if merged.get(f)
+        }
+        merged, airules_keys = self._reconcile_cache(merged, existing, tracker)
+        return _MergedSettings(merged, tracker, source_preserved, airules_keys)
+
+    def _safe_load_config(self, path: Path, fmt: str) -> dict[str, Any] | None:
+        """Load a config file, returning None if it is absent or unparseable."""
+        from ai_rules.config import CONFIG_PARSE_ERRORS, load_config_file
+
+        if not path.exists():
+            return None
+        try:
+            return load_config_file(path, fmt)
+        except CONFIG_PARSE_ERRORS:
+            return None
+
+    def _load_base_settings(self, path: Path, fmt: str) -> dict[str, Any] | None:
+        """Load base settings from ``path``.
+
+        Returns an empty dict when the file is absent (a valid, mergeable
+        result) and ``None`` on parse error so callers can short-circuit.
+        Callers MUST branch on ``is None`` rather than truthiness.
+        """
+        if not path.exists():
+            return {}
+        return self._safe_load_config(path, fmt)
+
+    def _read_existing_cache(self, cache_path: Path, fmt: str) -> dict[str, Any] | None:
+        """Read existing cache state, layering in copy-mode preserved fields."""
+        existing = self._safe_load_config(cache_path, fmt)
+
+        # For copy-mode agents (e.g. Gemini on Windows), read preserved
+        # fields from the live target file so edits made by the agent
+        # (after it destroyed the symlink and rewrote the file) survive.
+        if self.copy_mode_targets and self.settings_symlink_target:
+            live_target = self.settings_symlink_target.expanduser()
+            if live_target.exists() and not live_target.is_symlink():
+                live_settings = self._safe_load_config(live_target, fmt)
+                if live_settings is not None:
+                    if existing is None:
+                        existing = {}
+                    for field in self._effective_preserved_fields:
+                        if field in live_settings:
+                            existing[field] = live_settings[field]
+
+        return existing
+
+    def _persist_tracker(
+        self,
+        tracker: Any,
+        source_preserved: dict[str, Any],
+        airules_keys: set[str],
+    ) -> None:
+        """Persist ai-rules field contributions to the managed-fields tracker."""
+        for field, value in source_preserved.items():
+            tracker.set_field_contributions(field, value)
+        for field in self._effective_preserved_fields:
+            if field not in source_preserved:
+                tracker.set_field_contributions(field, None)
+        tracker.set_field_contributions(
+            f"_contributed_keys_{self.target_id}",
+            sorted(airules_keys),
+        )
+        tracker.save()
+
+    def _write_merged_cache(
+        self, cache_path: Path, merged: dict[str, Any], fmt: str
+    ) -> None:
+        """Write merged settings to the cache file, logging and re-raising errors."""
+        from ai_rules.config import dump_config_file
+
+        try:
+            dump_config_file(cache_path, merged, fmt)
+        except ValueError as exc:
+            import logging
+
+            logging.getLogger(__name__).error("%s: %s", self.name, exc)
+            raise
 
     def is_cache_stale(self) -> bool:
         """Check if cached merged settings are stale.
@@ -326,25 +386,18 @@ class ConfigTarget(ABC):
         import tomli_w
         import yaml
 
-        from ai_rules.config import (
-            CONFIG_PARSE_ERRORS,
-            ManagedFieldsTracker,
-            load_config_file,
-        )
+        from ai_rules.config import CONFIG_PARSE_ERRORS, load_config_file
 
         if not self.needs_cache:
             return None
 
         config_format = self.config_file_format
-        base_settings_path = self._base_settings_path
 
-        if not base_settings_path.exists():
-            base_settings: dict[str, Any] = {}
-        else:
-            try:
-                base_settings = load_config_file(base_settings_path, config_format)
-            except CONFIG_PARSE_ERRORS:
-                return None
+        base_settings = self._load_base_settings(
+            self._base_settings_path, config_format
+        )
+        if base_settings is None:
+            return None
 
         cache_path = self.config.get_merged_settings_path(
             self.target_id, self.config_file_name, force=True
@@ -364,15 +417,10 @@ class ConfigTarget(ABC):
             from_label = "Base (current)"
             to_label = "Expected (with overrides)"
 
-        merged = self.config.merge_settings(self.target_id, base_settings)
-
-        tracker = ManagedFieldsTracker() if config_format == "json" else None
-
-        expected, _ = self._reconcile_cache(
-            merged,
+        expected = self._expected_merged(
+            base_settings,
             copy.deepcopy(current_settings) if cache_exists else None,
-            tracker,
-        )
+        ).merged
 
         if current_settings == expected:
             return None
