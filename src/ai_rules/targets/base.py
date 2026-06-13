@@ -8,9 +8,22 @@ import json
 from abc import ABC, abstractmethod
 from functools import cached_property
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from ai_rules.config import Config
+
+
+class _MergedSettings(NamedTuple):
+    """Result of computing the settings ai-rules would write for a target.
+
+    ``merged`` is what gets written/diffed; the remaining fields are only
+    needed by the write path to persist managed-fields tracker state.
+    """
+
+    merged: dict[str, Any]
+    tracker: Any | None
+    source_preserved: dict[str, Any]
+    airules_keys: set[str]
 
 
 class ConfigTarget(ABC):
@@ -215,14 +228,14 @@ class ConfigTarget(ABC):
             cache_path.parent.mkdir(parents=True, exist_ok=True)
 
             existing = self._read_existing_cache(cache_path, config_format)
-            merged, tracker, source_preserved, airules_keys = self._expected_merged(
-                base_settings, existing
-            )
+            result = self._expected_merged(base_settings, existing)
 
-            if tracker:
-                self._persist_tracker(tracker, source_preserved, airules_keys)
+            if result.tracker:
+                self._persist_tracker(
+                    result.tracker, result.source_preserved, result.airules_keys
+                )
 
-            self._write_merged_cache(cache_path, merged, config_format)
+            self._write_merged_cache(cache_path, result.merged, config_format)
 
         return cache_path
 
@@ -230,14 +243,12 @@ class ConfigTarget(ABC):
         self,
         base_settings: dict[str, Any],
         existing: dict[str, Any] | None,
-    ) -> tuple[dict[str, Any], Any | None, dict[str, Any], set[str]]:
+    ) -> _MergedSettings:
         """Compute the settings ai-rules would write for the given inputs.
 
         Shared by build_merged_settings (which persists the tracker and writes
         the result) and get_cache_diff (which only previews it), so the diff
-        predicts exactly what an install materializes. Returns the merged
-        settings plus the tracker, the source-preserved snapshot, and the
-        ai-rules-contributed key set needed to persist tracker state.
+        predicts exactly what an install materializes.
 
         The source-preserved snapshot is taken from the freshly merged settings
         BEFORE _reconcile_cache mutates them in place.
@@ -246,11 +257,25 @@ class ConfigTarget(ABC):
 
         merged = self.config.merge_settings(self.target_id, base_settings)
         tracker = ManagedFieldsTracker() if self.config_file_format == "json" else None
+        # Preserved fields are containers (hooks, extensions, projects, ...); a
+        # falsy/empty value means ai-rules contributes nothing, so skipping it
+        # here correctly records "no contribution" in the tracker.
         source_preserved = {
             f: merged.get(f) for f in self._effective_preserved_fields if merged.get(f)
         }
         merged, airules_keys = self._reconcile_cache(merged, existing, tracker)
-        return merged, tracker, source_preserved, airules_keys
+        return _MergedSettings(merged, tracker, source_preserved, airules_keys)
+
+    def _safe_load_config(self, path: Path, fmt: str) -> dict[str, Any] | None:
+        """Load a config file, returning None if it is absent or unparseable."""
+        from ai_rules.config import CONFIG_PARSE_ERRORS, load_config_file
+
+        if not path.exists():
+            return None
+        try:
+            return load_config_file(path, fmt)
+        except CONFIG_PARSE_ERRORS:
+            return None
 
     def _load_base_settings(self, path: Path, fmt: str) -> dict[str, Any] | None:
         """Load base settings from ``path``.
@@ -259,26 +284,13 @@ class ConfigTarget(ABC):
         result) and ``None`` on parse error so callers can short-circuit.
         Callers MUST branch on ``is None`` rather than truthiness.
         """
-        from ai_rules.config import CONFIG_PARSE_ERRORS, load_config_file
-
         if not path.exists():
             return {}
-        try:
-            return load_config_file(path, fmt)
-        except CONFIG_PARSE_ERRORS:
-            return None
+        return self._safe_load_config(path, fmt)
 
     def _read_existing_cache(self, cache_path: Path, fmt: str) -> dict[str, Any] | None:
         """Read existing cache state, layering in copy-mode preserved fields."""
-        from ai_rules.config import CONFIG_PARSE_ERRORS, load_config_file
-
-        existing: dict[str, Any] | None = None
-
-        if cache_path.exists():
-            try:
-                existing = load_config_file(cache_path, fmt)
-            except CONFIG_PARSE_ERRORS:
-                existing = None
+        existing = self._safe_load_config(cache_path, fmt)
 
         # For copy-mode agents (e.g. Gemini on Windows), read preserved
         # fields from the live target file so edits made by the agent
@@ -286,15 +298,13 @@ class ConfigTarget(ABC):
         if self.copy_mode_targets and self.settings_symlink_target:
             live_target = self.settings_symlink_target.expanduser()
             if live_target.exists() and not live_target.is_symlink():
-                try:
-                    live_settings = load_config_file(live_target, fmt)
+                live_settings = self._safe_load_config(live_target, fmt)
+                if live_settings is not None:
                     if existing is None:
                         existing = {}
                     for field in self._effective_preserved_fields:
                         if field in live_settings:
                             existing[field] = live_settings[field]
-                except CONFIG_PARSE_ERRORS:
-                    pass
 
         return existing
 
@@ -407,10 +417,10 @@ class ConfigTarget(ABC):
             from_label = "Base (current)"
             to_label = "Expected (with overrides)"
 
-        expected, _, _, _ = self._expected_merged(
+        expected = self._expected_merged(
             base_settings,
             copy.deepcopy(current_settings) if cache_exists else None,
-        )
+        ).merged
 
         if current_settings == expected:
             return None

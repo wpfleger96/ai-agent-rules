@@ -20,11 +20,10 @@ agent with a managed-fields tracker, since its config is JSON):
 from __future__ import annotations
 
 import json
-import time
 
 import pytest
 
-from tests.e2e.helpers import build_config_dir, make_cli_runner
+from tests.e2e.helpers import build_config_dir, goose_config_dir, make_cli_runner
 
 ONLY = ["--only", "settings,agents-md,config", "--agents", "claude"]
 
@@ -38,8 +37,10 @@ def claude_merge_env(isolated_home, tmp_path):
     """Install Claude from a toy config and return helpers to drive reinstalls.
 
     Yields ``(write_source, reinstall, settings_path)`` where ``write_source``
-    rewrites the base ``claude/settings.json`` (bumping mtime so the cache is
-    detected stale) and ``reinstall`` runs the scoped install again.
+    rewrites the base ``claude/settings.json`` and ``reinstall`` runs the
+    scoped install again. Changing the source content makes the cache stale via
+    the content diff in ``is_cache_stale`` (base-settings mtime is ignored), so
+    no artificial mtime bump is needed.
     """
     home, env = isolated_home
     config = build_config_dir(tmp_path / "rules")
@@ -48,9 +49,6 @@ def claude_merge_env(isolated_home, tmp_path):
     settings_path = home / ".claude" / "settings.json"
 
     def write_source(settings: dict) -> None:
-        # Sleep so the source mtime advances past the cache; staleness then
-        # also falls through to the content diff, so this is belt-and-suspenders.
-        time.sleep(0.05)
         source.write_text(json.dumps(settings), encoding="utf-8")
 
     def reinstall() -> None:
@@ -122,3 +120,68 @@ class TestSettingsMergePreservation:
         ]
         assert "airules-cmd" not in commands, "stale ai-rules hook should be pruned"
         assert "user-cmd" in commands, "user-added hook must be preserved"
+
+    def test_preserved_field_deep_merges_for_non_tracker_yaml_agent(
+        self, isolated_home, tmp_path
+    ):
+        """Goose (yaml, no ManagedFieldsTracker) still preserves user entries.
+
+        Exercises the non-json branch of _reconcile_cache: there is no tracker,
+        so the top-level user-key pass-through is skipped, but the preserved
+        'extensions' field must still deep-merge a user-added extension back in
+        across a rebuild while a new ai-rules extension is also applied.
+        """
+        import yaml
+
+        home, env = isolated_home
+        config = build_config_dir(tmp_path / "rules")
+        run = make_cli_runner(home, env)
+        source = config / "goose" / "config.yaml"
+        live = goose_config_dir(home) / "config.yaml"
+        only = ["--only", "settings,agents-md,config", "--agents", "goose"]
+
+        def reinstall() -> None:
+            result = run(
+                [
+                    "install",
+                    "-y",
+                    "--skip-completions",
+                    *only,
+                    "--config-dir",
+                    str(config),
+                ]
+            )
+            assert result.returncode == 0, result.stdout + result.stderr
+
+        # 1. Install with an ai-rules-contributed extension.
+        source.write_text(
+            yaml.safe_dump({"extensions": {"airules-ext": {"enabled": True}}}),
+            encoding="utf-8",
+        )
+        reinstall()
+        assert live.is_symlink(), "goose config.yaml should be a managed symlink"
+
+        # 2. User adds their own extension to the live (symlinked) config.
+        data = yaml.safe_load(live.read_text("utf-8")) or {}
+        data.setdefault("extensions", {})["user-ext"] = {"enabled": True}
+        live.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+        # 3. Source adds a second ai-rules extension, forcing a real rebuild
+        #    (the preserved 'extensions' field now differs from the cache).
+        source.write_text(
+            yaml.safe_dump(
+                {
+                    "extensions": {
+                        "airules-ext": {"enabled": True},
+                        "airules-ext2": {"enabled": True},
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        reinstall()
+
+        final = yaml.safe_load(live.read_text("utf-8")) or {}
+        extensions = final.get("extensions", {})
+        assert "user-ext" in extensions, "user extension must survive the rebuild"
+        assert "airules-ext2" in extensions, "new ai-rules extension should be applied"

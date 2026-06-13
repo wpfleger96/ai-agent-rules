@@ -665,6 +665,8 @@ class Config:
         except ProfileNotFoundError:
             raise
 
+        # Keys here must stay in sync with Config.__init__ parameters: the
+        # final `cls(profile_name=..., **fields)` below unpacks them directly.
         fields: dict[str, Any] = {
             "exclude_symlinks": list(profile_data.exclude_symlinks),
             "settings_overrides": copy.deepcopy(profile_data.settings_overrides),
@@ -684,8 +686,16 @@ class Config:
         return cls(profile_name=profile_name, **fields)
 
     @staticmethod
+    def _upsert_by_name(base: list[dict], overrides: list[dict]) -> list[dict]:
+        """Merge override entries onto base, replacing/adding by their 'name'."""
+        by_name = {item["name"]: item for item in base}
+        for item in overrides:
+            by_name[item["name"]] = item
+        return list(by_name.values())
+
+    @classmethod
     def _merge_user_overrides(
-        fields: dict[str, Any], user_data: dict[str, Any]
+        cls, fields: dict[str, Any], user_data: dict[str, Any]
     ) -> dict[str, Any]:
         """Merge user-config YAML overrides onto profile-derived defaults.
 
@@ -709,17 +719,13 @@ class Config:
 
         user_plugins = user_data.get("plugins", [])
         if user_plugins:
-            plugins_by_name = {p["name"]: p for p in fields["plugins"]}
-            for plugin in user_plugins:
-                plugins_by_name[plugin["name"]] = plugin
-            fields["plugins"] = list(plugins_by_name.values())
+            fields["plugins"] = cls._upsert_by_name(fields["plugins"], user_plugins)
 
         user_marketplaces = user_data.get("marketplaces", [])
         if user_marketplaces:
-            marketplaces_by_name = {m["name"]: m for m in fields["marketplaces"]}
-            for marketplace in user_marketplaces:
-                marketplaces_by_name[marketplace["name"]] = marketplace
-            fields["marketplaces"] = list(marketplaces_by_name.values())
+            fields["marketplaces"] = cls._upsert_by_name(
+                fields["marketplaces"], user_marketplaces
+            )
 
         user_managed_tools = user_data.get("managed_tools", {})
         if user_managed_tools:
