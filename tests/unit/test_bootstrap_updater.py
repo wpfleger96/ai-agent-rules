@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import urllib.error
 
@@ -21,6 +22,7 @@ from ai_rules.bootstrap.updater import (
     check_github_updates,
     check_index_updates,
     check_tool_updates,
+    fetch_changelog_entries,
     get_configured_index_url,
     perform_tool_upgrade,
 )
@@ -1273,3 +1275,72 @@ class TestResolveEffectiveSource:
         from ai_rules.bootstrap.updater import _resolve_effective_source
 
         assert _resolve_effective_source(tool) == ToolSource.PYPI
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestFetchChangelogEntries:
+    """Tests for fetch_changelog_entries using the GitHub Releases API."""
+
+    def _releases_payload(self, releases: list[dict]) -> bytes:
+        return json.dumps(releases).encode()
+
+    def test_returns_entries_in_version_range(self, monkeypatch):
+        """Returns entries for versions newer than current and not newer than latest."""
+        releases = [
+            {"tag_name": "v1.2.0", "body": "## Changes\n\nAdded feature X"},
+            {"tag_name": "v1.1.0", "body": "## Changes\n\nFixed bug Y"},
+            {"tag_name": "v1.0.0", "body": "## Changes\n\nInitial release"},
+        ]
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.urllib.request.urlopen",
+            _mock_urlopen(self._releases_payload(releases)),
+        )
+
+        result = fetch_changelog_entries("owner/repo", "1.0.0", "1.2.0")
+
+        versions = [v for v, _ in result]
+        assert "1.2.0" in versions
+        assert "1.1.0" in versions
+        assert "1.0.0" not in versions
+
+    def test_strips_skills_downloads_trailer(self, monkeypatch):
+        """Skills Downloads section appended by CI is removed from release notes."""
+        body = (
+            "## Changes\n\nSome change\n\n---\n\n"
+            "### Skills Downloads\n\n| table content |"
+        )
+        releases = [{"tag_name": "v2.0.0", "body": body}]
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.urllib.request.urlopen",
+            _mock_urlopen(self._releases_payload(releases)),
+        )
+
+        result = fetch_changelog_entries("owner/repo", "1.0.0", "2.0.0")
+
+        assert len(result) == 1
+        _, notes = result[0]
+        assert "Skills Downloads" not in notes
+
+    def test_empty_releases_returns_empty_list(self, monkeypatch):
+        """Empty releases array returns an empty list."""
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.urllib.request.urlopen",
+            _mock_urlopen(self._releases_payload([])),
+        )
+
+        result = fetch_changelog_entries("owner/repo", "1.0.0", "1.1.0")
+
+        assert result == []
+
+    def test_network_error_returns_empty_list(self, monkeypatch):
+        """Network failure returns empty list without raising."""
+
+        def _raise(*args: Any, **kwargs: Any) -> None:
+            raise urllib.error.URLError("connection refused")
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.urllib.request.urlopen", _raise)
+
+        result = fetch_changelog_entries("owner/repo", "1.0.0", "1.1.0")
+
+        assert result == []

@@ -7,9 +7,7 @@ managed_tools:
     statusline: github
 settings_overrides:
   claude:
-    env:
-      ANTHROPIC_DEFAULT_OPUS_MODEL: "claude-fable-5[1m]"
-      CLAUDE_CODE_EFFORT_LEVEL: "xhigh"
+    model: "opus[1m]"
   codex:
     service_tier: "fast"
     features:

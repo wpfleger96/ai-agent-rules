@@ -88,6 +88,8 @@ def fetch_changelog_entries(
 ) -> list[tuple[str, str]]:
     """Fetch changelog entries for versions between current and latest.
 
+    Uses the GitHub Releases API so version headings don't need to be parsed.
+
     Args:
         repo: GitHub repository in format "owner/repo"
         current_version: Currently installed version
@@ -99,42 +101,28 @@ def fetch_changelog_entries(
         Returns empty list on any error (private repo, network failure, etc).
     """
     try:
-        url = f"https://raw.githubusercontent.com/{repo}/main/CHANGELOG.md"
+        url = f"https://api.github.com/repos/{repo}/releases"
 
         req = urllib.request.Request(url)
         req.add_header("User-Agent", f"ai-rules/{current_version}")
 
         with urllib.request.urlopen(req, timeout=timeout) as response:
-            changelog_content = response.read().decode()
+            releases = json.loads(response.read().decode())
 
         entries: list[tuple[str, str]] = []
-        current_entry_version: str | None = None
-        current_entry_lines: list[str] = []
-
-        for line in changelog_content.split("\n"):
-            version_match = re.match(r"^##\s+v?(\d+\.\d+\.\d+)", line)
-            if version_match:
-                if current_entry_version and current_entry_lines:
-                    version_obj = current_entry_version
-                    if is_newer(version_obj, current_version) and (
-                        version_obj == latest_version
-                        or not is_newer(version_obj, latest_version)
-                    ):
-                        entries.append(
-                            (current_entry_version, "\n".join(current_entry_lines))
-                        )
-
-                current_entry_version = version_match.group(1)
-                current_entry_lines = []
-            elif current_entry_version and line.strip():
-                current_entry_lines.append(line)
-
-        if current_entry_version and current_entry_lines:
-            if is_newer(current_entry_version, current_version) and (
-                current_entry_version == latest_version
-                or not is_newer(current_entry_version, latest_version)
+        for release in releases:
+            version = release["tag_name"].lstrip("v")
+            if not (
+                is_newer(version, current_version)
+                and (version == latest_version or not is_newer(version, latest_version))
             ):
-                entries.append((current_entry_version, "\n".join(current_entry_lines)))
+                continue
+
+            # Strip the CI-appended Skills Downloads trailer if present
+            body: str = release.get("body") or ""
+            notes = body.split("\n---\n", 1)[0].strip()
+
+            entries.append((version, notes))
 
         return entries
 
