@@ -190,23 +190,43 @@ def run_install_parallel(
                 acc.aborted = True
                 return acc.to_result()
 
+    # Run the semantic phase in two ordered waves: components that create the
+    # settings symlinks first, then components flagged install_after_symlinks
+    # (MCPs), which write through those symlinks and must not race with their
+    # creation. Within each wave components still run in parallel.
     semantic_list = list(semantic)
-    plans = run_components_parallel(semantic_list, "plan", ctx)
+    primary = [c for c in semantic_list if not c.install_after_symlinks]
+    deferred = [c for c in semantic_list if c.install_after_symlinks]
+
+    _run_semantic_wave(primary, ctx, acc)
+    _run_semantic_wave(deferred, ctx, acc)
+
+    return acc.to_result()
+
+
+def _run_semantic_wave(
+    components: list[Component],
+    ctx: CliContext,
+    acc: _RunAccumulator,
+) -> None:
+    """Plan, then apply changed components in parallel, folding results into acc."""
+    if not components:
+        return
+
+    plans = run_components_parallel(components, "plan", ctx)
 
     apply_list = [
         c
-        for c in semantic_list
+        for c in components
         if getattr(plans.get(c), "has_changes", False) or ctx.force
     ]
     results = run_components_parallel(apply_list, "apply", ctx, plans=plans)
 
-    for component in semantic_list:
+    for component in components:
         if _should_skip(component, ctx):
             continue
         result = results.get(component, ComponentResult())
         acc.fold(component, result)
-
-    return acc.to_result()
 
 
 def run_parallel(

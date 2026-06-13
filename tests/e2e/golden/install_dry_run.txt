@@ -1,0 +1,27 @@
+Dry run mode - no changes will be made
+
+
+
+Config Files
+  ✓ ~/.config/amp/AGENTS.md → <CONFIG>/amp/AGENTS.md
+  ✓ ~/.config/amp/settings.json → <CONFIG>/amp/settings.json
+  ✓ ~/.claude/CLAUDE.md → <CONFIG>/claude/CLAUDE.md
+  ✓ ~/.claude/settings.json → <CONFIG>/claude/settings.json
+  ✓ ~/.codex/AGENTS.md → <CONFIG>/codex/AGENTS.md
+  ✓ ~/.codex/config.toml → <CONFIG>/codex/config.toml
+  ✓ ~/.gemini/GEMINI.md → <CONFIG>/gemini/GEMINI.md
+  ✓ ~/.gemini/settings.json → <CONFIG>/gemini/settings.json
+  ✓ ~/.config/goose/.goosehints → <CONFIG>/goose/.goosehints
+  ✓ ~/.config/goose/config.yaml → <CONFIG>/goose/config.yaml
+  ✓ ~/AGENTS.md → <CONFIG>/AGENTS.md
+
+Claude Extensions
+
+Agents:
+  ✓ <HOME>/.claude/agents/demo-agent.md → <CONFIG>/claude/agents/demo-agent.md
+
+Commands:
+  ✓ <HOME>/.claude/commands/hello.md → <CONFIG>/claude/commands/hello.md
+
+
+Summary: Would create 17

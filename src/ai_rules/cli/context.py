@@ -61,6 +61,12 @@ class Component(ABC):
     label: str
     filterable: bool = True
 
+    # Components that write through the per-agent settings symlinks (e.g. MCPs)
+    # must run AFTER ConfigComponent materializes those symlinks. When True, the
+    # install runner defers this component to a second semantic wave so it never
+    # races with symlink creation.
+    install_after_symlinks: bool = False
+
     component_id: ClassVar[str]
 
     def install(self, ctx: CliContext) -> ComponentResult:

@@ -19,6 +19,10 @@ from ai_rules.cli.context import (
 class MCPComponent(Component):
     label = "MCPs"
     component_id = "mcps"
+    # MCPs are written into the per-agent settings files (for settings-backed
+    # agents these are symlinks created by ConfigComponent). Defer to the second
+    # semantic wave so the symlinks exist first and we never race on those paths.
+    install_after_symlinks = True
 
     def install(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.mcp import OperationResult

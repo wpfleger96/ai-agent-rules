@@ -305,6 +305,35 @@ def test_run_install_parallel_infra_runs_before_semantic(tmp_path: Path) -> None
 
 
 @pytest.mark.unit
+def test_run_install_parallel_defers_install_after_symlinks(tmp_path: Path) -> None:
+    """Components flagged install_after_symlinks apply after the primary wave."""
+    call_order: list[str] = []
+
+    class OrderedPrimary(PlanApplyComponent):
+        def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+            call_order.append("primary_apply")
+            return super().apply(ctx, plan)
+
+    class OrderedDeferred(PlanApplyComponent):
+        install_after_symlinks = True
+
+        def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+            call_order.append("deferred_apply")
+            return super().apply(ctx, plan)
+
+    primary = OrderedPrimary("primary")
+    deferred = OrderedDeferred("deferred")
+
+    # Order the deferred component first to prove the flag, not list order, wins.
+    result = run_install_parallel(
+        [], [deferred, primary], make_context(tmp_path, yes=True)
+    )
+
+    assert result.ok is True
+    assert call_order.index("primary_apply") < call_order.index("deferred_apply")
+
+
+@pytest.mark.unit
 def test_run_install_parallel_aborts_if_infrastructure_fails(tmp_path: Path) -> None:
     infra = PlanApplyInfraComponent("infra", apply_result=ComponentResult(ok=False))
     semantic = PlanApplyComponent("semantic")
