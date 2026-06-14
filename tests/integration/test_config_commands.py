@@ -32,7 +32,7 @@ class TestConfigInitCommand:
         assert result.exit_code == 0
         assert config_path.exists()
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert data["version"] == 1
@@ -62,7 +62,7 @@ class TestConfigInitCommand:
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         normalized = [s.replace("\\", "/") for s in data["exclude_symlinks"]]
@@ -98,7 +98,7 @@ class TestConfigInitCommand:
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert "settings_overrides" in data
@@ -114,7 +114,7 @@ class TestConfigInitCommand:
         config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump({"version": 1}, f)
 
         inputs = ["n"]  # Decline overwrite
@@ -130,7 +130,7 @@ class TestConfigInitCommand:
         config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump({"version": 1, "old_key": "old_value"}, f)
 
         inputs = [
@@ -153,7 +153,7 @@ class TestConfigInitCommand:
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert "old_key" not in data
@@ -198,7 +198,7 @@ class TestConfigShowCommand:
             "exclude_symlinks": ["~/.claude/settings.json"],
         }
 
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(config_data, f)
 
         result = runner.invoke(main, ["config", "show"])

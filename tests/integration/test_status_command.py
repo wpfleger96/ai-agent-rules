@@ -91,7 +91,7 @@ class TestStatusValidation:
         target_path = Path(str(target).replace("~", str(mock_home)))
 
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        target_path.write_text("not a symlink")
+        target_path.write_text("not a symlink", encoding="utf-8")
 
         status, message = check_symlink(target_path, source)
 
@@ -111,7 +111,7 @@ class TestStatusValidation:
         target3, source3 = symlinks[2]
         target3_path = Path(str(target3).replace("~", str(mock_home)))
         target3_path.parent.mkdir(parents=True, exist_ok=True)
-        target3_path.write_text("regular file")
+        target3_path.write_text("regular file", encoding="utf-8")
 
         statuses = {}
         for target, source in [
@@ -145,7 +145,7 @@ class TestStatusCacheValidation:
             "version": 1,
             "settings_overrides": {"claude": {"test_override": "value"}},
         }
-        with open(user_config_path, "w") as f:
+        with open(user_config_path, "w", encoding="utf-8") as f:
             yaml.dump(user_config, f)
 
         config = Config.load()
@@ -180,7 +180,7 @@ class TestStatusCacheValidation:
             "version": 1,
             "settings_overrides": {"claude": {"test_override": "value"}},
         }
-        with open(user_config_path, "w") as f:
+        with open(user_config_path, "w", encoding="utf-8") as f:
             yaml.dump(user_config, f)
 
         config = Config.load()
@@ -193,7 +193,7 @@ class TestStatusCacheValidation:
         time.sleep(0.01)
 
         user_config["settings_overrides"]["claude"]["test_override"] = "updated_value"
-        with open(user_config_path, "w") as f:
+        with open(user_config_path, "w", encoding="utf-8") as f:
             yaml.dump(user_config, f)
 
         config_reloaded = Config.load()
@@ -216,7 +216,7 @@ class TestStatusCacheValidation:
             "version": 1,
             "settings_overrides": {"claude": {"test_override": "value"}},
         }
-        with open(user_config_path, "w") as f:
+        with open(user_config_path, "w", encoding="utf-8") as f:
             yaml.dump(user_config, f)
 
         config = Config.load()
@@ -286,7 +286,7 @@ class TestStatusCacheValidation:
             "version": 1,
             "settings_overrides": {"claude": {"model": "claude-sonnet-4"}},
         }
-        with open(user_config_path, "w") as f:
+        with open(user_config_path, "w", encoding="utf-8") as f:
             yaml.dump(user_config, f)
 
         config = Config.load()
@@ -331,7 +331,7 @@ class TestStatusCacheValidation:
             "version": 1,
             "settings_overrides": {"claude": {"model": "claude-sonnet-4"}},
         }
-        with open(user_config_path, "w") as f:
+        with open(user_config_path, "w", encoding="utf-8") as f:
             yaml.dump(user_config, f)
 
         config = Config.load()

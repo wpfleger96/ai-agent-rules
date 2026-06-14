@@ -259,7 +259,7 @@ settings_overrides:
         assert cache_path is not None
         assert cache_path.exists()
 
-        with open(cache_path) as f:
+        with open(cache_path, encoding="utf-8") as f:
             cached = json.load(f)
 
         assert cached["model"] == "claude-sonnet-4-5-20250929"
@@ -383,7 +383,7 @@ settings_overrides:
         result_path = agent.build_merged_settings(force_rebuild=True)
 
         assert result_path is not None
-        with open(result_path) as f:
+        with open(result_path, encoding="utf-8") as f:
             result = json.load(f)
         assert result["model"] == "new"
         assert result["enabledPlugins"] == {"my-plugin@marketplace": True}
@@ -416,7 +416,7 @@ settings_overrides:
         result_path = agent.build_merged_settings(force_rebuild=True)
 
         assert result_path is not None
-        with open(result_path) as f:
+        with open(result_path, encoding="utf-8") as f:
             result = json.load(f)
         assert "Stop" in result["hooks"]
         assert result["hooks"]["Stop"] == stop_hook
@@ -454,7 +454,7 @@ settings_overrides:
         result_path = agent.build_merged_settings(force_rebuild=True)
 
         assert result_path is not None
-        with open(result_path) as f:
+        with open(result_path, encoding="utf-8") as f:
             result = json.load(f)
         assert "Stop" in result["hooks"]
         assert "PreCompact" in result["hooks"]
@@ -691,7 +691,7 @@ settings_overrides:
         cache_path = agent.build_merged_settings(force_rebuild=True)
         assert cache_path is not None
 
-        with open(cache_path) as f:
+        with open(cache_path, encoding="utf-8") as f:
             cached = json.load(f)
 
         assert "amp.mcpServers" in cached
@@ -723,19 +723,19 @@ settings_overrides:
         cache_path = agent.build_merged_settings(force_rebuild=True)
         assert cache_path is not None
 
-        with open(cache_path) as f:
+        with open(cache_path, encoding="utf-8") as f:
             cached = json.load(f)
         cached["amp.mcpServers"]["stale-mcp"] = {
             "command": "old",
             "args": [],
             "_managedBy": "ai-agent-rules",
         }
-        with open(cache_path, "w") as f:
+        with open(cache_path, "w", encoding="utf-8") as f:
             json.dump(cached, f)
 
         cache_path2 = agent.build_merged_settings(force_rebuild=True)
         assert cache_path2 is not None
-        with open(cache_path2) as f:
+        with open(cache_path2, encoding="utf-8") as f:
             result = json.load(f)
 
         assert "keep-mcp" in result["amp.mcpServers"]
@@ -913,7 +913,7 @@ class TestUserContributedKeysPreservation:
         result_path = agent.build_merged_settings(force_rebuild=True)
 
         assert result_path is not None
-        with open(result_path) as f:
+        with open(result_path, encoding="utf-8") as f:
             result = json.load(f)
         assert result["model"] == "new"
         assert result["verbose"] is True
@@ -921,7 +921,7 @@ class TestUserContributedKeysPreservation:
         # Second rebuild — the bug dropped user keys here
         result_path2 = agent.build_merged_settings(force_rebuild=True)
         assert result_path2 is not None
-        with open(result_path2) as f:
+        with open(result_path2, encoding="utf-8") as f:
             result2 = json.load(f)
         assert result2["model"] == "new"
         assert result2["verbose"] is True
@@ -953,7 +953,7 @@ class TestUserContributedKeysPreservation:
         for i in range(3):
             result_path = agent.build_merged_settings(force_rebuild=True)
             assert result_path is not None
-            with open(result_path) as f:
+            with open(result_path, encoding="utf-8") as f:
                 result = json.load(f)
             assert result["verbose"] is True, f"verbose missing after rebuild {i + 1}"
 
@@ -1016,7 +1016,7 @@ class TestUserContributedKeysPreservation:
         result_path = agent_b.build_merged_settings(force_rebuild=True)
 
         assert result_path is not None
-        with open(result_path) as f:
+        with open(result_path, encoding="utf-8") as f:
             result = json.load(f)
         assert result["verbose"] is True
         assert result["model"] == "beta"
@@ -1048,18 +1048,18 @@ class TestUserContributedKeysPreservation:
 
         result_path = agent.build_merged_settings(force_rebuild=True)
         assert result_path is not None
-        with open(result_path) as f:
+        with open(result_path, encoding="utf-8") as f:
             first_result = json.load(f)
         assert first_result["verbose"] is True
 
         # Simulate user deleting the key from the cache
         del first_result["verbose"]
-        with open(result_path, "w") as f:
+        with open(result_path, "w", encoding="utf-8") as f:
             json.dump(first_result, f)
 
         result_path2 = agent.build_merged_settings(force_rebuild=True)
         assert result_path2 is not None
-        with open(result_path2) as f:
+        with open(result_path2, encoding="utf-8") as f:
             result2 = json.load(f)
         assert "verbose" not in result2
 
@@ -1099,13 +1099,13 @@ class TestUserContributedKeysPreservation:
 
         result_path = agent.build_merged_settings(force_rebuild=True)
         assert result_path is not None
-        with open(result_path) as f:
+        with open(result_path, encoding="utf-8") as f:
             result = json.load(f)
         assert "autoCompactEnabled" not in result
 
         result_path2 = agent.build_merged_settings(force_rebuild=True)
         assert result_path2 is not None
-        with open(result_path2) as f:
+        with open(result_path2, encoding="utf-8") as f:
             result2 = json.load(f)
         assert "autoCompactEnabled" not in result2
 
@@ -1191,7 +1191,7 @@ class TestUserContributedKeysPreservation:
         result_path = agent.build_merged_settings(force_rebuild=True)
 
         assert result_path is not None
-        with open(result_path) as f:
+        with open(result_path, encoding="utf-8") as f:
             result = json.load(f)
         assert result["model"] == "new"
         assert "autoCompactEnabled" not in result
@@ -1230,7 +1230,7 @@ class TestUserContributedKeysPreservation:
         result_path = agent.build_merged_settings(force_rebuild=True)
 
         assert result_path is not None
-        with open(result_path) as f:
+        with open(result_path, encoding="utf-8") as f:
             result = json.load(f)
         assert result["verbose"] is True
         assert result["autoCompactEnabled"] is False
