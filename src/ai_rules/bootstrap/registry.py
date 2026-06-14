@@ -43,7 +43,7 @@ def _is_recall_configured(config: object) -> bool:
             if hasattr(traversable, "is_file") and traversable.is_file():
                 import json
 
-                data = json.loads(traversable.read_text())
+                data = json.loads(traversable.read_text(encoding="utf-8"))
                 if "recall" in data:
                     return True
     except Exception:

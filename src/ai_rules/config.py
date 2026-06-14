@@ -149,11 +149,11 @@ def load_config_file(path: Path, config_format: str) -> dict[str, Any]:
         with open(path, "rb") as f:
             return tomllib.load(f)
     elif config_format == "json":
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             result: dict[str, Any] = json.load(f)
             return result
     elif config_format == "yaml":
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             result = yaml.safe_load(f) or {}
             return result
     raise ValueError(f"Unsupported config format: {config_format}")
@@ -195,7 +195,7 @@ def write_file_atomic(
     fd, temp_path = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
     try:
         mode = "wb" if binary else "w"
-        with open(fd, mode) as f:
+        with open(fd, mode, encoding=None if binary else "utf-8") as f:
             write_fn(f)
         if path.exists():
             shutil.copymode(path, temp_path)
@@ -456,10 +456,10 @@ class ManagedFieldsTracker:
             return self._data
 
         try:
-            with open(self.path) as f:
+            with open(self.path, encoding="utf-8") as f:
                 self._data = json.load(f)
                 return self._data
-        except OSError, json.JSONDecodeError:
+        except (OSError, json.JSONDecodeError):
             self._data = {"version": 1}
             return self._data
 
@@ -470,7 +470,7 @@ class ManagedFieldsTracker:
 
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.path, "w") as f:
+            with open(self.path, "w", encoding="utf-8") as f:
                 json.dump(self._data, f, indent=2, sort_keys=True)
                 f.write("\n")
         except Exception:
@@ -679,7 +679,7 @@ class Config:
 
         user_config_path = get_user_config_path()
         if user_config_path.exists():
-            with open(user_config_path) as f:
+            with open(user_config_path, encoding="utf-8") as f:
                 user_data = yaml.safe_load(f) or {}
             fields = cls._merge_user_overrides(fields, user_data)
 
@@ -898,7 +898,7 @@ class Config:
         user_config_path = get_user_config_path()
 
         if user_config_path.exists():
-            with open(user_config_path) as f:
+            with open(user_config_path, encoding="utf-8") as f:
                 return yaml.safe_load(f) or {"version": 1}
         return {"version": 1}
 
@@ -912,7 +912,7 @@ class Config:
         user_config_path = get_user_config_path()
         user_config_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(user_config_path, "w") as f:
+        with open(user_config_path, "w", encoding="utf-8") as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=True)
 
     def cleanup_orphaned_cache(self, agents_needing_cache: set[str]) -> list[str]:

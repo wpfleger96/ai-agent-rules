@@ -304,7 +304,7 @@ def _get_tool_venv_python(package_name: str) -> str | None:
 
     pyvenv_cfg = get_uv_tools_dir() / package_name / "pyvenv.cfg"
     try:
-        for line in pyvenv_cfg.read_text().splitlines():
+        for line in pyvenv_cfg.read_text(encoding="utf-8").splitlines():
             if line.startswith("version_info"):
                 return line.split("=", 1)[1].strip()
     except OSError:

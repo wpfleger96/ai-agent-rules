@@ -112,7 +112,7 @@ def config_show(merged: bool, agent: str | None) -> None:
         console.print("[bold]Configuration:[/bold]\n")
 
         if user_config_path.exists():
-            with open(user_config_path) as f:
+            with open(user_config_path, encoding="utf-8") as f:
                 content = f.read()
             console.print(f"[bold]User Config:[/bold] {user_config_path}")
             console.print(content)
@@ -138,7 +138,7 @@ def config_edit() -> None:
 
     if not user_config_path.exists():
         user_config_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(user_config_path, "w") as f:
+        with open(user_config_path, "w", encoding="utf-8") as f:
             f.write("version: 1\n")
 
     try:

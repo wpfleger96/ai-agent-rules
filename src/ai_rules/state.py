@@ -37,7 +37,7 @@ def get_state() -> dict[str, Any]:
         return {}
 
     try:
-        with state_file.open() as f:
+        with state_file.open(encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
     except Exception:
         return {}
@@ -47,7 +47,7 @@ def _save_state(state: dict[str, Any]) -> None:
     """Save state to file."""
     state_file = _get_state_file()
     state_file.parent.mkdir(parents=True, exist_ok=True)
-    with state_file.open("w") as f:
+    with state_file.open("w", encoding="utf-8") as f:
         yaml.dump(state, f, default_flow_style=False, sort_keys=True)
 
 
