@@ -163,7 +163,13 @@ Iterate until all three are genuinely 9/10. A 9 means you actively tried to find
 
 **Rule:** After pushing to an open PR, re-evaluate title and description. A PR description is a snapshot of what this branch changes vs. main — never a timeline of how it evolved.
 
-After every push: `gh pr view <number> --json title,body` → evaluate if title/description covers ALL commits (not just latest push) → if stale, rewrite from scratch via `gh pr edit`. Never add "Review fixes" sections — rewrite the full description.
+After every push: `gh pr view <number> --json title,body` → evaluate if title/description covers ALL commits (not just latest push) → if stale, rewrite from scratch via `gh pr edit`. Also verify the title still uses the correct conventional commit type. Never add "Review fixes" sections — rewrite the full description.
+
+### PR Titles
+
+**Rule:** PR titles must follow the same conventional commit format as commit message subjects — repos use squash merge, so the PR title becomes the squash commit subject line.
+
+**Format:** `<type>(<optional-scope>): <imperative verb> <specific change>` (50-70 chars). Same types and accuracy rules as the Commit Messages section below.
 
 ### PR Description Content
 
@@ -228,6 +234,19 @@ for complex filtered queries rather than converting to ORM. Fixes
 None-safety bug in statistics display (obstructive_apneas > 0
 crashed when value was None).
 ```
+
+### Agent-Authored Commits
+
+**Rule:** When the agent is the git commit author — detected by checking `git config user.name` and confirming it is not the user's name — every commit must include both trailers:
+
+```
+Co-authored-by: Will Pfleger <email>
+Signed-off-by: Will Pfleger <email>
+```
+
+**Discover email:** Run `git log --format="%aN <%aE>" | grep -i "will pfleger" | head -1` in the repo. Never hardcode.
+
+**Why:** `Co-authored-by` ensures proper GitHub attribution. `Signed-off-by` satisfies DCO checks requiring human sign-off on agent-authored commits. Applies to commit messages only — not PR descriptions.
 
 ---
 

@@ -85,7 +85,7 @@ git push -u origin HEAD
 
 ### Create PR
 
-**Extract title** from opening paragraph (50-70 chars)
+**Title** must use conventional commit format: `<type>(<optional-scope>): <imperative verb> <specific change>` (50-70 chars). Use the PR type detected in Step 1. Same accuracy rules as Commit Messages in AGENTS.md.
 
 **Create** (use HEREDOC for formatting):
 
