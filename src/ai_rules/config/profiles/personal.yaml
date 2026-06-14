@@ -4,6 +4,7 @@ extends: default
 settings_overrides:
   claude:
     model: opusplan
+    remoteControlAtStartup: true
     permissions:
       defaultMode: bypassPermissions
   statusline:
