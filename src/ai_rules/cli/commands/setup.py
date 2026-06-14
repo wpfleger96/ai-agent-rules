@@ -62,8 +62,12 @@ def setup(
     console.print("This allows you to run 'ai-agent-rules' from any directory.\n")
 
     from ai_rules.bootstrap.registry import ACTIVE_TOOLS
+    from ai_rules.config import Config
 
+    _config = Config.load()
     for active in ACTIVE_TOOLS:
+        if active.is_configured is not None and not active.is_configured(_config):
+            continue
         source, local_path = get_effective_install_source(
             active.tool_id, cli_github_flag=github
         )

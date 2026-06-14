@@ -12,7 +12,7 @@ import tomllib
 
 from collections.abc import Callable
 from fnmatch import fnmatch
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -48,6 +48,7 @@ FORMAT_CONFIG_FILES: dict[str, str] = {
 }
 
 
+@cache
 def get_agent_formats() -> dict[str, str]:
     from ai_rules.targets.registry import TARGET_CLASSES
 
@@ -60,21 +61,21 @@ def get_agent_formats() -> dict[str, str]:
     return result
 
 
+@cache
 def get_agent_skills_dirs() -> dict[str, Path]:
     from ai_rules.agents.base import Agent
-    from ai_rules.platform import Platform, is_platform
     from ai_rules.targets.registry import TARGET_CLASSES
 
     result = {}
     for cls in TARGET_CLASSES:
         if not (isinstance(cls, type) and issubclass(cls, Agent)):
             continue
+        if not cls.is_supported_on_current_platform():
+            continue
         agent_id = cls.__dict__.get("agent_id")
         skills_dir = cls.__dict__.get("skills_dir")
         if isinstance(agent_id, str) and isinstance(skills_dir, Path):
             result[agent_id] = skills_dir
-    if is_platform(Platform.WINDOWS):
-        result.pop("amp", None)
     return result
 
 

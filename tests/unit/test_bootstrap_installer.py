@@ -553,7 +553,9 @@ class TestGetEffectiveInstallSource:
         from ai_rules.config import Config
 
         mock_config = MagicMock()
-        mock_config.get_tool_install_source.return_value = "local:~/Development/example-tool"
+        mock_config.get_tool_install_source.return_value = (
+            "local:~/Development/example-tool"
+        )
         monkeypatch.setattr(Config, "load", lambda *a, **kw: mock_config)
         source, local_path = get_effective_install_source("example-tool")
         assert source == ToolSource.LOCAL
@@ -567,10 +569,14 @@ class TestGetEffectiveInstallSource:
             raise RuntimeError("should not load active profile")
 
         mock_config = MagicMock()
-        mock_config.get_tool_install_source.return_value = "local:~/Development/example-tool"
+        mock_config.get_tool_install_source.return_value = (
+            "local:~/Development/example-tool"
+        )
         monkeypatch.setattr(Config, "load", _raise)
 
-        source, local_path = get_effective_install_source("example-tool", config=mock_config)
+        source, local_path = get_effective_install_source(
+            "example-tool", config=mock_config
+        )
 
         assert source == ToolSource.LOCAL
         assert local_path == "~/Development/example-tool"

@@ -34,8 +34,18 @@ class SkillsComponent(Component):
     label = "Skills"
     component_id = "skills"
 
-    def plan(self, ctx: CliContext) -> SkillsPlan:
+    @staticmethod
+    def _resolve_target_dirs(target: Agent) -> list[tuple[str, Path]] | None:
         from ai_rules.config import get_agent_skills_dirs
+
+        dirs = get_agent_skills_dirs()
+        if target.agent_id == "shared":
+            return list(dirs.items())
+        if target.agent_id in dirs:
+            return [(target.agent_id, dirs[target.agent_id])]
+        return None
+
+    def plan(self, ctx: CliContext) -> SkillsPlan:
         from ai_rules.skills import SkillManager
 
         skills_source_dir = ctx.config_dir / "skills"
@@ -53,11 +63,8 @@ class SkillsComponent(Component):
             if not isinstance(target, Agent):
                 continue
 
-            if target.agent_id == "shared":
-                target_dirs = list(get_agent_skills_dirs().items())
-            elif target.agent_id in get_agent_skills_dirs():
-                target_dirs = [(target.agent_id, get_agent_skills_dirs()[target.agent_id])]
-            else:
+            target_dirs = self._resolve_target_dirs(target)
+            if target_dirs is None:
                 continue
 
             for _agent_id, skills_dir_path in target_dirs:
@@ -145,7 +152,6 @@ class SkillsComponent(Component):
 
         from pathlib import Path
 
-        from ai_rules.config import get_agent_skills_dirs
         from ai_rules.skills import SkillManager
         from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
 
@@ -166,11 +172,8 @@ class SkillsComponent(Component):
             if not isinstance(target, Agent):
                 continue
 
-            if target.agent_id == "shared":
-                target_dirs = list(get_agent_skills_dirs().items())
-            elif target.agent_id in get_agent_skills_dirs():
-                target_dirs = [(target.agent_id, get_agent_skills_dirs()[target.agent_id])]
-            else:
+            target_dirs = self._resolve_target_dirs(target)
+            if target_dirs is None:
                 continue
 
             for _agent_id, skills_dir_path in target_dirs:
@@ -238,7 +241,6 @@ class SkillsComponent(Component):
         )
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.config import get_agent_skills_dirs
         from ai_rules.symlinks import remove_symlink
 
         removed = 0
@@ -251,11 +253,8 @@ class SkillsComponent(Component):
             if not isinstance(target, Agent):
                 continue
 
-            if target.agent_id == "shared":
-                target_dirs = list(get_agent_skills_dirs().items())
-            elif target.agent_id in get_agent_skills_dirs():
-                target_dirs = [(target.agent_id, get_agent_skills_dirs()[target.agent_id])]
-            else:
+            target_dirs = self._resolve_target_dirs(target)
+            if target_dirs is None:
                 continue
 
             for _agent_id, skills_dir_path in target_dirs:

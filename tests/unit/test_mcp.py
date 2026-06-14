@@ -370,7 +370,13 @@ def test_goose_install_and_uninstall(mock_home, test_repo):
     shared_file = test_repo / "mcps.json"
     shared_file.write_text(
         json.dumps(
-            {"example-mcp": {"command": "uvx", "args": ["example-mcp-server"], "env": {}}}
+            {
+                "example-mcp": {
+                    "command": "uvx",
+                    "args": ["example-mcp-server"],
+                    "env": {},
+                }
+            }
         )
     )
 
@@ -490,7 +496,13 @@ def test_codex_install_and_uninstall(mock_home, test_repo):
     shared_file = test_repo / "mcps.json"
     shared_file.write_text(
         json.dumps(
-            {"example-mcp": {"command": "uvx", "args": ["example-mcp-server"], "env": {}}}
+            {
+                "example-mcp": {
+                    "command": "uvx",
+                    "args": ["example-mcp-server"],
+                    "env": {},
+                }
+            }
         )
     )
 
@@ -580,7 +592,13 @@ def test_gemini_install_and_uninstall(mock_home, test_repo):
     shared_file = test_repo / "mcps.json"
     shared_file.write_text(
         json.dumps(
-            {"example-mcp": {"command": "uvx", "args": ["example-mcp-server"], "env": {}}}
+            {
+                "example-mcp": {
+                    "command": "uvx",
+                    "args": ["example-mcp-server"],
+                    "env": {},
+                }
+            }
         )
     )
 
@@ -665,7 +683,13 @@ def test_amp_install_and_uninstall(mock_home, test_repo):
     shared_file = test_repo / "mcps.json"
     shared_file.write_text(
         json.dumps(
-            {"example-mcp": {"command": "uvx", "args": ["example-mcp-server"], "env": {}}}
+            {
+                "example-mcp": {
+                    "command": "uvx",
+                    "args": ["example-mcp-server"],
+                    "env": {},
+                }
+            }
         )
     )
 
