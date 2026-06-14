@@ -327,18 +327,6 @@ Authentication overhead was allowing unbounded request rates.
 
 ## Title Guidelines
 
-**Length:** 50-70 characters
+**Format:** `<type>(<optional-scope>): <imperative verb> <specific change>` (50-70 chars)
 
-**Format:** Start with verb, be specific
-
-**Good titles:**
-- "Add email verification to user registration"
-- "Fix duplicate notifications on self-comments"
-- "Refactor auth middleware for dependency injection"
-- "Update API docs for new pagination format"
-
-**Bad titles:**
-- "Feature" (too vague)
-- "Fix bug" (what bug?)
-- "Update" (update what?)
-- "This PR adds a comprehensive email verification system with token generation, expiry, and email sending capabilities" (too long)
+Squash merges use the PR title as the commit subject — follow the same conventional commit format as Commit Messages in AGENTS.md. Use the PR type detected during classification (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`). Same accuracy rules apply.
