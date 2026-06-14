@@ -345,12 +345,12 @@ class TestCheckToolUpdatesLocalSource:
     def test_local_source_returns_none(self, monkeypatch):
         """check_tool_updates returns None for LOCAL installs — no PyPI query."""
         tool = ToolSpec(
-            tool_id="recall",
-            package_name="recall-mcp-server",
-            display_name="recall",
+            tool_id="example-tool",
+            package_name="example-mcp-server",
+            display_name="example-tool",
             get_version=lambda: "0.1.0",
             is_installed=lambda: True,
-            github_repo="wpfleger96/recall",
+            github_repo="wpfleger96/example-tool",
         )
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.get_tool_source",
@@ -393,12 +393,12 @@ class TestPerformToolUpgradeLocalSource:
         monkeypatch.setattr("subprocess.run", spy_run)
 
         tool = ToolSpec(
-            tool_id="recall",
-            package_name="recall-mcp-server",
-            display_name="recall",
+            tool_id="example-tool",
+            package_name="example-mcp-server",
+            display_name="example-tool",
             get_version=lambda: "0.1.0",
             is_installed=lambda: True,
-            github_repo="wpfleger96/recall",
+            github_repo="wpfleger96/example-tool",
         )
         success, message, was_upgraded = perform_tool_upgrade(tool)
         assert success is True
@@ -427,13 +427,13 @@ class TestIsEnabledFiltering:
     def test_disabled_tool_excluded(self):
         from ai_rules.cli.commands.upgrade import _filter_enabled
 
-        tools = [self._make_tool("recall", is_enabled=lambda: False)]
+        tools = [self._make_tool("example-tool", is_enabled=lambda: False)]
         assert _filter_enabled(tools) == []
 
     def test_enabled_tool_included(self):
         from ai_rules.cli.commands.upgrade import _filter_enabled
 
-        tools = [self._make_tool("recall", is_enabled=lambda: True)]
+        tools = [self._make_tool("example-tool", is_enabled=lambda: True)]
         assert len(_filter_enabled(tools)) == 1
 
     def test_tool_without_is_enabled_included(self):
@@ -444,8 +444,8 @@ class TestIsEnabledFiltering:
 
     def test_disabled_tool_included_when_explicitly_targeted(self):
         """--only=<tool> bypasses the is_enabled check."""
-        resolved_only = "recall"
-        tools = [self._make_tool("recall", is_enabled=lambda: False)]
+        resolved_only = "example-tool"
+        tools = [self._make_tool("example-tool", is_enabled=lambda: False)]
         tools = [
             t for t in tools if resolved_only is None or t.tool_id == resolved_only
         ]
@@ -481,7 +481,7 @@ class TestMissingToolsFilterEnabled:
         from ai_rules.cli.commands.upgrade import _filter_enabled
 
         all_tools = [
-            self._make_tool("recall", installed=False, is_enabled=lambda: False)
+            self._make_tool("example-tool", installed=False, is_enabled=lambda: False)
         ]
         missing_tools = [t for t in all_tools if not t.is_installed()]
         missing_tools = _filter_enabled(missing_tools)
@@ -499,9 +499,9 @@ class TestMissingToolsFilterEnabled:
         """--only=<tool> bypasses the is_enabled check for missing tools too."""
         from ai_rules.cli.commands.upgrade import _filter_enabled
 
-        resolved_only = "recall"
+        resolved_only = "example-tool"
         all_tools = [
-            self._make_tool("recall", installed=False, is_enabled=lambda: False)
+            self._make_tool("example-tool", installed=False, is_enabled=lambda: False)
         ]
         missing_tools = [t for t in all_tools if not t.is_installed()]
         if resolved_only is None:

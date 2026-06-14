@@ -57,6 +57,10 @@ class ConfigTarget(ABC):
         """Config file format ('json', 'yaml', or 'toml')."""
         pass
 
+    @classmethod
+    def is_supported_on_current_platform(cls) -> bool:
+        return True
+
     @property
     def preserved_fields(self) -> list[str]:
         """Fields in the target's config file managed by the tool itself.

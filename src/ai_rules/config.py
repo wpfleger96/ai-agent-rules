@@ -12,7 +12,7 @@ import tomllib
 
 from collections.abc import Callable
 from fnmatch import fnmatch
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -26,9 +26,9 @@ if TYPE_CHECKING:
 
 __all__ = [
     "Config",
-    "AGENT_FORMATS",
+    "get_agent_formats",
     "FORMAT_CONFIG_FILES",
-    "AGENT_SKILLS_DIRS",
+    "get_agent_skills_dirs",
     "CONFIG_PARSE_ERRORS",
     "ManagedFieldsTracker",
     "dump_config_file",
@@ -41,15 +41,6 @@ __all__ = [
     "validate_override_path",
 ]
 
-AGENT_FORMATS: dict[str, str] = {
-    "amp": "json",
-    "claude": "json",
-    "codex": "toml",
-    "gemini": "json",
-    "goose": "yaml",
-    "statusline": "yaml",
-}
-
 FORMAT_CONFIG_FILES: dict[str, str] = {
     "json": "settings.json",
     "toml": "config.toml",
@@ -57,24 +48,36 @@ FORMAT_CONFIG_FILES: dict[str, str] = {
 }
 
 
-def _get_agent_skills_dirs() -> dict[str, Path]:
-    from ai_rules.platform import Platform, get_goose_config_dir, is_platform
+@cache
+def get_agent_formats() -> dict[str, str]:
+    from ai_rules.targets.registry import TARGET_CLASSES
 
-    dirs = {
-        "amp": Path("~/.config/agents/skills"),
-        "claude": Path("~/.claude/skills"),
-        "codex": Path("~/.agents/skills"),
-        # Gemini CLI not listed here — it discovers skills from ~/.agents/skills/ via
-        # built-in alias. Adding ~/.gemini/skills/ would cause "Skill conflict detected"
-        # warnings that break headless invocations (e.g., crossfire code review).
-        "goose": get_goose_config_dir() / "skills",
-    }
-    if is_platform(Platform.WINDOWS):
-        dirs.pop("amp", None)
-    return dirs
+    result = {}
+    for cls in TARGET_CLASSES:
+        tid = cls.__dict__.get("agent_id") or cls.__dict__.get("tool_id")
+        fmt = cls.__dict__.get("config_file_format")
+        if isinstance(tid, str) and isinstance(fmt, str) and tid and fmt:
+            result[tid] = fmt
+    return result
 
 
-AGENT_SKILLS_DIRS = _get_agent_skills_dirs()
+@cache
+def get_agent_skills_dirs() -> dict[str, Path]:
+    from ai_rules.agents.base import Agent
+    from ai_rules.targets.registry import TARGET_CLASSES
+
+    result = {}
+    for cls in TARGET_CLASSES:
+        if not (isinstance(cls, type) and issubclass(cls, Agent)):
+            continue
+        if not cls.is_supported_on_current_platform():
+            continue
+        agent_id = cls.__dict__.get("agent_id")
+        skills_dir = cls.__dict__.get("skills_dir")
+        if isinstance(agent_id, str) and isinstance(skills_dir, Path):
+            result[agent_id] = skills_dir
+    return result
+
 
 _CONFIG_FILE_NAME = ".ai-agent-rules-config.yaml"
 _LEGACY_CONFIG_FILE_NAME = ".ai-rules-config.yaml"
@@ -383,7 +386,7 @@ def validate_override_path(
         - If invalid (hard error): (False, 'error message', '', ['suggestion1', 'suggestion2'])
         - If valid with warning: (True, '', 'warning message', ['suggestion1', 'suggestion2'])
     """
-    valid_agents = list(AGENT_FORMATS.keys())
+    valid_agents = list(get_agent_formats().keys())
     if agent not in valid_agents:
         return (
             False,
@@ -392,7 +395,7 @@ def validate_override_path(
             valid_agents,
         )
 
-    config_format = AGENT_FORMATS[agent]
+    config_format = get_agent_formats()[agent]
     config_file = FORMAT_CONFIG_FILES.get(config_format, "settings.json")
     settings_file = config_dir / agent / config_file
     if not settings_file.exists():

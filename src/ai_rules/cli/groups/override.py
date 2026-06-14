@@ -54,9 +54,9 @@ def _override_set_with_array_index(
     import copy
 
     from ai_rules.config import (
-        AGENT_FORMATS,
         FORMAT_CONFIG_FILES,
         Config,
+        get_agent_formats,
         load_config_file,
     )
 
@@ -69,7 +69,7 @@ def _override_set_with_array_index(
 
     cfg = Config.load()
     config_dir = cli_facade.get_config_dir()
-    agent_format = AGENT_FORMATS.get(agent)
+    agent_format = get_agent_formats().get(agent)
     if not agent_format:
         from ai_rules.cli.display import print_error
 

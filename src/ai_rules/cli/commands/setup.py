@@ -61,36 +61,40 @@ def setup(
     console.print("[bold cyan]Step 1/3: Install ai-agent-rules system-wide[/bold cyan]")
     console.print("This allows you to run 'ai-agent-rules' from any directory.\n")
 
-    statusline_source, statusline_local_path = get_effective_install_source(
-        "statusline", cli_github_flag=github
-    )
+    from ai_rules.bootstrap.registry import ACTIVE_TOOLS
+    from ai_rules.config import Config
 
-    from ai_rules.tools.statusline import StatuslineTool
-
-    statusline_result, statusline_message = ensure_tool_installed(
-        StatuslineTool.INSTALL_SPEC,
-        dry_run=dry_run,
-        source=statusline_source,
-        local_path=statusline_local_path,
-        allow_source_switch=True,
-    )
-    if statusline_result == "installed":
-        if dry_run and statusline_message:
-            print_dim(statusline_message)
-        else:
-            print_success("Installed claude-statusline")
-    elif statusline_result == "upgraded":
-        print_success(f"Upgraded claude-statusline ({statusline_message})")
-    elif statusline_result == "upgrade_available":
-        if statusline_message:
-            print_dim(statusline_message)
-    elif statusline_result == "source_switched":
-        print_success(f"Switched claude-statusline source ({statusline_message})")
-    elif statusline_result == "source_switch_needed":
-        if dry_run and statusline_message:
-            print_dim(statusline_message)
-    elif statusline_result == "failed":
-        print_warning("Failed to install claude-statusline (continuing anyway)")
+    _config = Config.load()
+    for active in ACTIVE_TOOLS:
+        if active.is_configured is not None and not active.is_configured(_config):
+            continue
+        source, local_path = get_effective_install_source(
+            active.tool_id, cli_github_flag=github
+        )
+        result, message = ensure_tool_installed(
+            active.get_install_spec(),
+            dry_run=dry_run,
+            source=source,
+            local_path=local_path,
+            allow_source_switch=True,
+        )
+        if result == "installed":
+            if dry_run and message:
+                print_dim(message)
+            else:
+                print_success(f"Installed {active.tool_id}")
+        elif result == "upgraded":
+            print_success(f"Upgraded {active.tool_id} ({message})")
+        elif result == "upgrade_available":
+            if message:
+                print_dim(message)
+        elif result == "source_switched":
+            print_success(f"Switched {active.tool_id} source ({message})")
+        elif result == "source_switch_needed":
+            if dry_run and message:
+                print_dim(message)
+        elif result == "failed":
+            print_warning(f"Failed to install {active.tool_id} (continuing anyway)")
 
     ai_rules_tool = get_tool_by_id("ai-agent-rules")
     tool_install_success = False

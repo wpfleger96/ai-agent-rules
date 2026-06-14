@@ -1,7 +1,7 @@
 """Codex CLI agent implementation."""
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from ai_rules.agents.base import Agent
 
@@ -20,6 +20,7 @@ class CodexAgent(Agent):
     settings_symlink_target = Path("~/.codex/config.toml")
     instructions_target = "~/.codex/AGENTS.md"
     instructions_source = "AGENTS.md"
+    skills_dir: ClassVar[Path | None] = Path("~/.agents/skills")
 
     def get_mcp_manager(self) -> MCPManager:
         from ai_rules.mcp import CodexMCPManager

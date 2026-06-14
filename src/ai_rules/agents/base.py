@@ -21,6 +21,7 @@ class Agent(ConfigTarget):
     # location (e.g. Goose) override _instruction_symlinks() instead.
     instructions_target: ClassVar[str | None] = None
     instructions_source: ClassVar[str | None] = None
+    skills_dir: ClassVar[Path | None] = None
 
     @property
     def target_id(self) -> str:

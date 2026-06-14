@@ -41,9 +41,9 @@ def config_show(merged: bool, agent: str | None) -> None:
     if merged:
         console.print("[bold]Merged Settings:[/bold]\n")
 
-        from ai_rules.config import AGENT_FORMATS, FORMAT_CONFIG_FILES
+        from ai_rules.config import FORMAT_CONFIG_FILES, get_agent_formats
 
-        agents_to_show = [agent] if agent else list(AGENT_FORMATS.keys())
+        agents_to_show = [agent] if agent else list(get_agent_formats().keys())
 
         for agent_name in agents_to_show:
             has_overrides = agent_name in cfg.settings_overrides
@@ -61,7 +61,7 @@ def config_show(merged: bool, agent: str | None) -> None:
 
             console.print(f"[bold]{agent_name}:[/bold]")
 
-            agent_format = AGENT_FORMATS.get(agent_name)
+            agent_format = get_agent_formats().get(agent_name)
             if not agent_format:
                 print_error(f"Unknown agent: {agent_name}", indent=2)
                 console.print()
@@ -255,9 +255,9 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
 
     while True:
         console.print("\nWhich agent's settings do you want to override?")
-        from ai_rules.config import AGENT_FORMATS
+        from ai_rules.config import get_agent_formats
 
-        agent_keys = list(AGENT_FORMATS.keys())
+        agent_keys = list(get_agent_formats().keys())
         for i, key in enumerate(agent_keys, 1):
             console.print(f"  {i}) {key}")
         console.print(f"  {len(agent_keys) + 1}) done")

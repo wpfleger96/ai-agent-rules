@@ -20,7 +20,6 @@ from ai_rules.bootstrap.installer import (
     install_tool,
     uninstall_tool,
 )
-from ai_rules.bootstrap.registry import _is_recall_configured
 from ai_rules.bootstrap.updater import ToolSpec
 
 
@@ -554,11 +553,13 @@ class TestGetEffectiveInstallSource:
         from ai_rules.config import Config
 
         mock_config = MagicMock()
-        mock_config.get_tool_install_source.return_value = "local:~/Development/recall"
+        mock_config.get_tool_install_source.return_value = (
+            "local:~/Development/example-tool"
+        )
         monkeypatch.setattr(Config, "load", lambda *a, **kw: mock_config)
-        source, local_path = get_effective_install_source("recall")
+        source, local_path = get_effective_install_source("example-tool")
         assert source == ToolSource.LOCAL
-        assert local_path == "~/Development/recall"
+        assert local_path == "~/Development/example-tool"
 
     def test_passed_config_is_used_without_loading_active_profile(self, monkeypatch):
         """An explicit config avoids active-profile source lookups."""
@@ -568,13 +569,17 @@ class TestGetEffectiveInstallSource:
             raise RuntimeError("should not load active profile")
 
         mock_config = MagicMock()
-        mock_config.get_tool_install_source.return_value = "local:~/Development/recall"
+        mock_config.get_tool_install_source.return_value = (
+            "local:~/Development/example-tool"
+        )
         monkeypatch.setattr(Config, "load", _raise)
 
-        source, local_path = get_effective_install_source("recall", config=mock_config)
+        source, local_path = get_effective_install_source(
+            "example-tool", config=mock_config
+        )
 
         assert source == ToolSource.LOCAL
-        assert local_path == "~/Development/recall"
+        assert local_path == "~/Development/example-tool"
 
     def test_defaults_to_pypi_when_nothing_configured(self, monkeypatch):
         """Falls back to PYPI when no config and no CLI flag."""
@@ -598,38 +603,6 @@ class TestGetEffectiveInstallSource:
         source, local_path = get_effective_install_source("statusline")
         assert source == ToolSource.PYPI
         assert local_path is None
-
-
-@pytest.mark.unit
-@pytest.mark.bootstrap
-class TestIsRecallConfigured:
-    """Tests for _is_recall_configured helper."""
-
-    def test_returns_true_when_in_mcp_overrides(self):
-        config = SimpleNamespace(mcp_overrides={"recall": {"command": "recall"}})
-        assert _is_recall_configured(config) is True
-
-    def test_returns_false_when_mcp_overrides_empty(self, monkeypatch):
-        import importlib.resources
-
-        config = SimpleNamespace(mcp_overrides={})
-        monkeypatch.setattr(
-            importlib.resources,
-            "files",
-            lambda pkg: _MockTraversable({}),
-        )
-        assert _is_recall_configured(config) is False
-
-    def test_returns_false_when_no_mcp_overrides_attr(self, monkeypatch):
-        import importlib.resources
-
-        config = SimpleNamespace()
-        monkeypatch.setattr(
-            importlib.resources,
-            "files",
-            lambda pkg: _MockTraversable({}),
-        )
-        assert _is_recall_configured(config) is False
 
 
 def _make_spec(installed: bool = True) -> ToolSpec:
