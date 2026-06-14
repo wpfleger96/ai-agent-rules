@@ -111,7 +111,7 @@ class ProfileLoader:
             )
 
         try:
-            with open(profile_path) as f:
+            with open(profile_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
         except yaml.YAMLError as e:
             raise ProfileError(f"Profile '{name}' has invalid YAML: {e}") from e
@@ -246,7 +246,7 @@ class ProfileLoader:
             raise ProfileNotFoundError(f"Profile '{name}' not found")
 
         try:
-            with open(profile_path) as f:
+            with open(profile_path, encoding="utf-8") as f:
                 return yaml.safe_load(f) or {}
         except yaml.YAMLError as e:
             raise ProfileError(f"Profile '{name}' has invalid YAML: {e}") from e

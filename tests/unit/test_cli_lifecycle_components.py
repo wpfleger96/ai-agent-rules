@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
 from typing import Any
@@ -36,9 +37,9 @@ class FailingCacheTarget:
         raise ValueError("invalid override")
 
 
+@dataclass
 class Target:
-    def __init__(self, target_id: str):
-        self.target_id = target_id
+    target_id: str
 
 
 class UnavailablePluginManager:

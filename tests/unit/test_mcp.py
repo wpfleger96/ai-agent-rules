@@ -21,7 +21,7 @@ def setup_test_mcp(test_repo):
     """Add test-mcp to mcps.json for MCP-specific tests."""
     mcps_file = test_repo / "claude" / "mcps.json"
     mcps_data = {"test-mcp": {"type": "stdio", "command": "test", "args": []}}
-    mcps_file.write_text(json.dumps(mcps_data, indent=2))
+    mcps_file.write_text(json.dumps(mcps_data, indent=2), encoding="utf-8")
     return test_repo
 
 
@@ -74,7 +74,7 @@ def test_install_mcps_fresh(manager, mock_home, test_repo):
     assert conflicts == []
 
     assert manager.CLAUDE_JSON.exists()
-    with open(manager.CLAUDE_JSON) as f:
+    with open(manager.CLAUDE_JSON, encoding="utf-8") as f:
         data = json.load(f)
         assert "mcpServers" in data
         assert "test-mcp" in data["mcpServers"]
@@ -88,16 +88,16 @@ def test_install_mcps_update(manager, mock_home, test_repo):
     manager.install_mcps(test_repo, config, force=True)
 
     mcps_file = test_repo / "claude" / "mcps.json"
-    with open(mcps_file) as f:
+    with open(mcps_file, encoding="utf-8") as f:
         mcps_data = json.load(f)
         mcps_data["test-mcp"]["args"] = ["modified"]
-    with open(mcps_file, "w") as f:
+    with open(mcps_file, "w", encoding="utf-8") as f:
         json.dump(mcps_data, f)
 
     result, message, conflicts = manager.install_mcps(test_repo, config, force=True)
     assert result == OperationResult.UPDATED
 
-    with open(manager.CLAUDE_JSON) as f:
+    with open(manager.CLAUDE_JSON, encoding="utf-8") as f:
         data = json.load(f)
         assert data["mcpServers"]["test-mcp"]["args"] == ["modified"]
 
@@ -108,10 +108,10 @@ def test_install_mcps_conflict_detection(manager, mock_home, test_repo):
 
     manager.install_mcps(test_repo, config, force=True)
 
-    with open(manager.CLAUDE_JSON) as f:
+    with open(manager.CLAUDE_JSON, encoding="utf-8") as f:
         data = json.load(f)
         data["mcpServers"]["test-mcp"]["args"] = ["user-modified"]
-    with open(manager.CLAUDE_JSON, "w") as f:
+    with open(manager.CLAUDE_JSON, "w", encoding="utf-8") as f:
         json.dump(data, f)
 
     result, message, conflicts = manager.install_mcps(test_repo, config, force=False)
@@ -128,7 +128,7 @@ def test_uninstall_mcps(manager, mock_home, test_repo):
     assert result == OperationResult.REMOVED
     assert "Removed" in message
 
-    with open(manager.CLAUDE_JSON) as f:
+    with open(manager.CLAUDE_JSON, encoding="utf-8") as f:
         data = json.load(f)
         assert "test-mcp" not in data.get("mcpServers", {})
 
@@ -138,19 +138,19 @@ def test_uninstall_preserves_user_mcps(manager, mock_home, test_repo):
     config = Config()
     manager.install_mcps(test_repo, config, force=True)
 
-    with open(manager.CLAUDE_JSON) as f:
+    with open(manager.CLAUDE_JSON, encoding="utf-8") as f:
         data = json.load(f)
         data["mcpServers"]["user-custom-mcp"] = {
             "type": "stdio",
             "command": "user-mcp",
             "args": [],
         }
-    with open(manager.CLAUDE_JSON, "w") as f:
+    with open(manager.CLAUDE_JSON, "w", encoding="utf-8") as f:
         json.dump(data, f)
 
     manager.uninstall_mcps()
 
-    with open(manager.CLAUDE_JSON) as f:
+    with open(manager.CLAUDE_JSON, encoding="utf-8") as f:
         data = json.load(f)
         assert "user-custom-mcp" in data["mcpServers"]
         assert "test-mcp" not in data["mcpServers"]
@@ -161,14 +161,14 @@ def test_status_shows_managed_vs_unmanaged(manager, mock_home, test_repo):
     config = Config()
     manager.install_mcps(test_repo, config, force=True)
 
-    with open(manager.CLAUDE_JSON) as f:
+    with open(manager.CLAUDE_JSON, encoding="utf-8") as f:
         data = json.load(f)
         data["mcpServers"]["user-mcp"] = {
             "type": "stdio",
             "command": "user-mcp",
             "args": [],
         }
-    with open(manager.CLAUDE_JSON, "w") as f:
+    with open(manager.CLAUDE_JSON, "w", encoding="utf-8") as f:
         json.dump(data, f)
 
     status = manager.get_status(test_repo, config)
@@ -186,7 +186,7 @@ def test_claude_json_missing(manager, mock_home, test_repo):
     assert result == OperationResult.UPDATED
     assert manager.CLAUDE_JSON.exists()
 
-    with open(manager.CLAUDE_JSON) as f:
+    with open(manager.CLAUDE_JSON, encoding="utf-8") as f:
         data = json.load(f)
         assert "mcpServers" in data
 
@@ -197,7 +197,7 @@ def test_atomic_write_backup(manager, mock_home, test_repo):
 
     original_content = {"mcpServers": {}, "existingKey": "existingValue"}
     manager.CLAUDE_JSON.parent.mkdir(parents=True, exist_ok=True)
-    with open(manager.CLAUDE_JSON, "w") as f:
+    with open(manager.CLAUDE_JSON, "w", encoding="utf-8") as f:
         json.dump(original_content, f)
 
     manager.install_mcps(test_repo, config, force=True)
@@ -205,7 +205,7 @@ def test_atomic_write_backup(manager, mock_home, test_repo):
     backup_files = list(manager.CLAUDE_JSON.parent.glob("*.ai-agent-rules-backup.*"))
     assert len(backup_files) == 1
 
-    with open(backup_files[0]) as f:
+    with open(backup_files[0], encoding="utf-8") as f:
         backup_data = json.load(f)
         assert backup_data == original_content
 
@@ -252,10 +252,10 @@ def test_status_sync_detection(manager, mock_home, test_repo):
     status = manager.get_status(test_repo, config)
     assert status.installed["test-mcp"] is True
 
-    with open(manager.CLAUDE_JSON) as f:
+    with open(manager.CLAUDE_JSON, encoding="utf-8") as f:
         data = json.load(f)
         data["mcpServers"]["test-mcp"]["args"] = ["modified"]
-    with open(manager.CLAUDE_JSON, "w") as f:
+    with open(manager.CLAUDE_JSON, "w", encoding="utf-8") as f:
         json.dump(data, f)
 
     status = manager.get_status(test_repo, config)
@@ -278,7 +278,7 @@ def test_install_removes_mcps_no_longer_in_repo(manager, mock_home, test_repo):
     config = Config()
 
     manager.install_mcps(test_repo, config, force=True)
-    with open(manager.CLAUDE_JSON) as f:
+    with open(manager.CLAUDE_JSON, encoding="utf-8") as f:
         data = json.load(f)
         assert "test-mcp" in data["mcpServers"]
         assert data["mcpServers"]["test-mcp"]["_managedBy"] == "ai-agent-rules"
@@ -290,7 +290,7 @@ def test_install_removes_mcps_no_longer_in_repo(manager, mock_home, test_repo):
     assert result == OperationResult.UPDATED
     assert "removed" in message
 
-    with open(manager.CLAUDE_JSON) as f:
+    with open(manager.CLAUDE_JSON, encoding="utf-8") as f:
         data = json.load(f)
         assert "test-mcp" not in data.get("mcpServers", {})
 
@@ -383,7 +383,7 @@ def test_goose_install_and_uninstall(mock_home, test_repo):
 
     config_path = mock_home / ".config" / "goose" / "config.yaml"
     assert config_path.exists()
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     assert "recall" in data["extensions"]
@@ -392,7 +392,7 @@ def test_goose_install_and_uninstall(mock_home, test_repo):
 
     result, message = mgr.uninstall_mcps()
     assert result == OperationResult.REMOVED
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     assert "recall" not in data.get("extensions", {})
 
@@ -419,7 +419,7 @@ def test_goose_install_removes_unmarked_recall_orphan(mock_home, test_repo):
     result, _message, _conflicts = GooseMCPManager().install_mcps(test_repo, Config())
     assert result == OperationResult.UPDATED
 
-    with open(config_path / "config.yaml") as f:
+    with open(config_path / "config.yaml", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     assert "recall" not in data.get("extensions", {})
 
@@ -449,7 +449,7 @@ def test_goose_install_preserves_unmarked_entry_not_in_previously_managed(
     # Empty mcps.json + no orphans to remove → nothing to do
     assert result == OperationResult.NOT_FOUND
 
-    with open(config_path / "config.yaml") as f:
+    with open(config_path / "config.yaml", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     assert "custom-tool" in data["extensions"]
 
@@ -468,7 +468,7 @@ def test_goose_preserves_non_extension_keys(mock_home, test_repo):
     mgr = GooseMCPManager()
     mgr.install_mcps(test_repo, Config())
 
-    with open(config_path / "config.yaml") as f:
+    with open(config_path / "config.yaml", encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     assert data["GOOSE_MODEL"] == "claude-opus-4-5"
@@ -527,7 +527,7 @@ def test_codex_install_and_uninstall(mock_home, test_repo):
 
     config_path = mock_home / ".codex" / "config.toml"
     assert config_path.exists()
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         doc = tomlkit.load(f)
 
     mcp_servers = dict(doc["mcp_servers"])
@@ -538,7 +538,7 @@ def test_codex_install_and_uninstall(mock_home, test_repo):
 
     result, message = mgr.uninstall_mcps()
     assert result == OperationResult.REMOVED
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         doc = tomlkit.load(f)
     mcp_servers_after = dict(doc.get("mcp_servers", {}))
     assert "recall" not in mcp_servers_after
@@ -561,7 +561,7 @@ def test_codex_preserves_non_mcp_keys(mock_home, test_repo):
 
     CodexMCPManager().install_mcps(test_repo, Config())
 
-    with open(config_dir / "config.toml") as f:
+    with open(config_dir / "config.toml", encoding="utf-8") as f:
         doc = tomlkit.load(f)
 
     assert doc["model"] == "gpt-5.2-codex"
@@ -617,7 +617,7 @@ def test_gemini_install_and_uninstall(mock_home, test_repo):
 
     config_path = mock_home / ".gemini" / "settings.json"
     assert config_path.exists()
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         data = json.load(f)
 
     assert "recall" in data["mcpServers"]
@@ -627,7 +627,7 @@ def test_gemini_install_and_uninstall(mock_home, test_repo):
 
     result, message = mgr.uninstall_mcps()
     assert result == OperationResult.REMOVED
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         data = json.load(f)
     assert "recall" not in data.get("mcpServers", {})
 
@@ -644,7 +644,7 @@ def test_gemini_preserves_non_mcp_keys(mock_home, test_repo):
 
     GeminiMCPManager().install_mcps(test_repo, Config())
 
-    with open(gemini_dir / "settings.json") as f:
+    with open(gemini_dir / "settings.json", encoding="utf-8") as f:
         data = json.load(f)
 
     assert data["model"] == "gemini-3.1-pro-preview"
@@ -703,7 +703,7 @@ def test_amp_install_and_uninstall(mock_home, test_repo):
 
     config_path = mock_home / ".config" / "amp" / "settings.json"
     assert config_path.exists()
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         data = json.load(f)
 
     assert "recall" in data["amp.mcpServers"]
@@ -712,7 +712,7 @@ def test_amp_install_and_uninstall(mock_home, test_repo):
 
     result, message = mgr.uninstall_mcps()
     assert result == OperationResult.REMOVED
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         data = json.load(f)
     assert "recall" not in data.get("amp.mcpServers", {})
 
@@ -729,7 +729,7 @@ def test_amp_preserves_non_mcp_keys(mock_home, test_repo):
 
     AmpMCPManager().install_mcps(test_repo, Config())
 
-    with open(amp_dir / "settings.json") as f:
+    with open(amp_dir / "settings.json", encoding="utf-8") as f:
         data = json.load(f)
 
     assert data["amp.showCosts"] is True

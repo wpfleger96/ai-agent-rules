@@ -132,7 +132,7 @@ def is_completion_installed(config_path: Path) -> bool:
     if not config_path.exists():
         return False
 
-    content = config_path.read_text()
+    content = config_path.read_text(encoding="utf-8")
     return _has_any_marker(content)
 
 
@@ -144,7 +144,7 @@ def is_legacy_completion_block(config_path: Path) -> bool:
     if not config_path.exists():
         return False
 
-    content = config_path.read_text()
+    content = config_path.read_text(encoding="utf-8")
     if _LEGACY_MARKER_START in content:
         return True
     if COMPLETION_MARKER_START in content and "command -v" not in content:
@@ -283,7 +283,7 @@ def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
         return True, f"Would append completion script to {config_path}"
 
     try:
-        with config_path.open("a") as f:
+        with config_path.open("a", encoding="utf-8") as f:
             f.write(f"\n{script}\n")
         return (
             True,
@@ -305,7 +305,7 @@ def update_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
     if dry_run:
         return True, f"Would update completion in {config_path}"
 
-    content = config_path.read_text()
+    content = config_path.read_text(encoding="utf-8")
 
     start_re = (
         re.escape(COMPLETION_MARKER_START) + "|" + re.escape(_LEGACY_MARKER_START)
@@ -315,7 +315,7 @@ def update_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
     new_content, n = re.subn(pattern, new_script, content, flags=re.DOTALL)
     if n == 0:
         return False, f"Could not find completion block in {config_path}"
-    config_path.write_text(new_content)
+    config_path.write_text(new_content, encoding="utf-8")
     return (
         True,
         f"Completion updated in {config_path}. Restart your shell or run: source {config_path}",
@@ -338,7 +338,7 @@ def uninstall_completion(config_path: Path) -> tuple[bool, str]:
         return True, f"Completion not installed in {config_path}"
 
     try:
-        content = config_path.read_text()
+        content = config_path.read_text(encoding="utf-8")
 
         start_re = (
             re.escape(COMPLETION_MARKER_START) + "|" + re.escape(_LEGACY_MARKER_START)
@@ -350,7 +350,7 @@ def uninstall_completion(config_path: Path) -> tuple[bool, str]:
         # Clean up extra blank lines left behind
         new_content = re.sub(r"\n{3,}", "\n\n", new_content)
 
-        config_path.write_text(new_content)
+        config_path.write_text(new_content, encoding="utf-8")
         return True, f"Completion removed from {config_path}"
     except Exception as e:
         return False, f"Failed to modify {config_path}: {e}"

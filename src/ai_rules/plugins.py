@@ -86,7 +86,7 @@ class PluginManager:
             return {"version": 2, "plugins": {}}
 
         try:
-            with open(self.INSTALLED_PLUGINS_PATH) as f:
+            with open(self.INSTALLED_PLUGINS_PATH, encoding="utf-8") as f:
                 data: dict[str, Any] = json.load(f)
                 return data
         except OSError, json.JSONDecodeError:
@@ -98,7 +98,7 @@ class PluginManager:
             return []
 
         try:
-            with open(self.KNOWN_MARKETPLACES_PATH) as f:
+            with open(self.KNOWN_MARKETPLACES_PATH, encoding="utf-8") as f:
                 data = json.load(f)
                 return list(data.keys())
         except OSError, json.JSONDecodeError:
@@ -110,7 +110,7 @@ class PluginManager:
             return set()
 
         try:
-            with open(self.MANAGED_PLUGINS_PATH) as f:
+            with open(self.MANAGED_PLUGINS_PATH, encoding="utf-8") as f:
                 data = json.load(f)
                 return set(data.get("plugins", []))
         except OSError, json.JSONDecodeError:
@@ -122,9 +122,9 @@ class PluginManager:
             self.MANAGED_PLUGINS_PATH.parent.mkdir(parents=True, exist_ok=True)
 
             data = {"plugins": sorted(list(plugins))}
-            with open(self.MANAGED_PLUGINS_PATH, "w") as f:
+            with open(self.MANAGED_PLUGINS_PATH, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, sort_keys=True)
-            with open(self.MANAGED_PLUGINS_PATH, "a") as f:
+            with open(self.MANAGED_PLUGINS_PATH, "a", encoding="utf-8") as f:
                 f.write("\n")
         except Exception:
             pass
@@ -199,7 +199,7 @@ class PluginManager:
         try:
             settings = {}
             if self.SETTINGS_PATH.exists():
-                with open(self.SETTINGS_PATH) as f:
+                with open(self.SETTINGS_PATH, encoding="utf-8") as f:
                     settings = json.load(f)
 
             if "enabledPlugins" not in settings:
@@ -213,9 +213,9 @@ class PluginManager:
 
             settings["enabledPlugins"][plugin_key] = True
 
-            with open(self.SETTINGS_PATH, "w") as f:
+            with open(self.SETTINGS_PATH, "w", encoding="utf-8") as f:
                 json.dump(settings, f, indent=2, sort_keys=True)
-            with open(self.SETTINGS_PATH, "a") as f:
+            with open(self.SETTINGS_PATH, "a", encoding="utf-8") as f:
                 f.write("\n")
 
             return (OperationResult.SUCCESS, f"Enabled {plugin_key}")
@@ -242,13 +242,13 @@ class PluginManager:
 
             del plugins[plugin_key]
 
-            with open(self.INSTALLED_PLUGINS_PATH, "w") as f:
+            with open(self.INSTALLED_PLUGINS_PATH, "w", encoding="utf-8") as f:
                 json.dump(installed_data, f, indent=2, sort_keys=True)
-            with open(self.INSTALLED_PLUGINS_PATH, "a") as f:
+            with open(self.INSTALLED_PLUGINS_PATH, "a", encoding="utf-8") as f:
                 f.write("\n")
 
             if self.SETTINGS_PATH.exists():
-                with open(self.SETTINGS_PATH) as f:
+                with open(self.SETTINGS_PATH, encoding="utf-8") as f:
                     settings = json.load(f)
 
                 if (
@@ -257,9 +257,9 @@ class PluginManager:
                 ):
                     del settings["enabledPlugins"][plugin_key]
 
-                    with open(self.SETTINGS_PATH, "w") as f:
+                    with open(self.SETTINGS_PATH, "w", encoding="utf-8") as f:
                         json.dump(settings, f, indent=2, sort_keys=True)
-                    with open(self.SETTINGS_PATH, "a") as f:
+                    with open(self.SETTINGS_PATH, "a", encoding="utf-8") as f:
                         f.write("\n")
 
             if clean_cache and cache_path and cache_path.exists():

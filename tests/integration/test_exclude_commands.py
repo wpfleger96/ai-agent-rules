@@ -17,7 +17,7 @@ class TestExcludeAddCommand:
         assert result.exit_code == 0
         assert config_path.exists()
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert data["version"] == 1
@@ -33,14 +33,14 @@ class TestExcludeAddCommand:
             "version": 1,
             "exclude_symlinks": ["~/.existing/pattern.txt"],
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         result = runner.invoke(main, ["exclude", "add", "~/.new/pattern.txt"])
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert len(data["exclude_symlinks"]) == 2
@@ -55,7 +55,7 @@ class TestExcludeAddCommand:
             "version": 1,
             "exclude_symlinks": ["~/.claude/settings.json"],
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         result = runner.invoke(main, ["exclude", "add", "~/.claude/settings.json"])
@@ -63,7 +63,7 @@ class TestExcludeAddCommand:
         assert result.exit_code == 0
         assert "already excluded" in result.output
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert data["exclude_symlinks"].count("~/.claude/settings.json") == 1
@@ -76,7 +76,7 @@ class TestExcludeAddCommand:
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert "~/.claude/*.json" in data["exclude_symlinks"]
@@ -93,7 +93,7 @@ class TestExcludeRemoveCommand:
             "version": 1,
             "exclude_symlinks": ["~/.pattern1.txt", "~/.pattern2.txt"],
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         result = runner.invoke(main, ["exclude", "remove", "~/.pattern1.txt"])
@@ -101,7 +101,7 @@ class TestExcludeRemoveCommand:
         assert result.exit_code == 0
         assert "Removed exclusion pattern" in result.output
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert "~/.pattern1.txt" not in data["exclude_symlinks"]
@@ -127,7 +127,7 @@ class TestExcludeRemoveCommand:
             "version": 1,
             "exclude_symlinks": ["~/.other.txt"],
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         result = runner.invoke(main, ["exclude", "remove", "~/.nonexistent.txt"])
@@ -147,7 +147,7 @@ class TestExcludeListCommand:
             "version": 1,
             "exclude_symlinks": ["~/.pattern1.txt", "~/.pattern2.txt"],
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         repo_root = tmp_path / "repo"
@@ -165,7 +165,7 @@ class TestExcludeListCommand:
         monkeypatch.setenv("HOME", str(tmp_path))
 
         existing_data = {"version": 1}
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         repo_root = tmp_path / "repo"

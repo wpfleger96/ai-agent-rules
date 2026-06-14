@@ -121,10 +121,10 @@ class MCPManager(ABC):
         legacy_file = config_dir / "claude" / "mcps.json"
 
         if shared_file.exists():
-            with open(shared_file) as f:
+            with open(shared_file, encoding="utf-8") as f:
                 base_mcps: dict[str, Any] = json.load(f)
         elif legacy_file.exists():
-            with open(legacy_file) as f:
+            with open(legacy_file, encoding="utf-8") as f:
                 base_mcps = json.load(f)
         else:
             return {}
@@ -349,7 +349,7 @@ class ClaudeMCPManager(MCPManager):
     def _read_installed(self) -> dict[str, Any]:
         if not self._claude_json_path.exists():
             return {}
-        with open(self._claude_json_path) as f:
+        with open(self._claude_json_path, encoding="utf-8") as f:
             data: dict[str, Any] = json.load(f)
         return cast(dict[str, Any], data.get("mcpServers", {}))
 
@@ -357,7 +357,7 @@ class ClaudeMCPManager(MCPManager):
         self._claude_json_path.parent.mkdir(parents=True, exist_ok=True)
 
         if self._claude_json_path.exists():
-            with open(self._claude_json_path) as f:
+            with open(self._claude_json_path, encoding="utf-8") as f:
                 data: dict[str, Any] = json.load(f)
         else:
             data = {}
@@ -436,7 +436,7 @@ class GooseMCPManager(MCPManager):
     def _load_full_config(self) -> dict[str, Any]:
         if not self._config_path.exists():
             return {}
-        with open(self._config_path) as f:
+        with open(self._config_path, encoding="utf-8") as f:
             result = yaml.safe_load(f)
         return cast(dict[str, Any], result) if result else {}
 
@@ -451,7 +451,7 @@ class GooseMCPManager(MCPManager):
         self._config_path.parent.mkdir(parents=True, exist_ok=True)
         full = self._load_full_config()
         full["extensions"] = mcps
-        with open(self._config_path, "w") as f:
+        with open(self._config_path, "w", encoding="utf-8") as f:
             yaml.safe_dump(full, f, default_flow_style=False, sort_keys=True)
 
     def _translate(self, shared_config: dict[str, Any]) -> dict[str, Any]:
@@ -509,7 +509,7 @@ class CodexMCPManager(MCPManager):
 
         if not self._config_path.exists():
             return tomlkit.document()
-        with open(self._config_path) as f:
+        with open(self._config_path, encoding="utf-8") as f:
             return tomlkit.load(f)
 
     def _get_managed_names(self, doc: Any) -> set[str]:
@@ -574,7 +574,7 @@ class CodexMCPManager(MCPManager):
         if self._LEGACY_MANAGED_SECTION in doc:
             del doc[self._LEGACY_MANAGED_SECTION]
 
-        with open(self._config_path, "w") as f:
+        with open(self._config_path, "w", encoding="utf-8") as f:
             f.write(tomlkit.dumps(doc))
 
 
@@ -603,7 +603,7 @@ class _KeyedJsonMCPManager(MCPManager):
     def _load_full_config(self) -> dict[str, Any]:
         if not self._config_path.exists():
             return {}
-        with open(self._config_path) as f:
+        with open(self._config_path, encoding="utf-8") as f:
             data: dict[str, Any] = json.load(f)
         return data
 

@@ -21,7 +21,7 @@ class TestOverrideSetCommand:
         assert result.exit_code == 0
         assert config_path.exists()
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert data["settings_overrides"]["claude"]["model"] == "claude-3-opus"
@@ -36,7 +36,7 @@ class TestOverrideSetCommand:
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert data["settings_overrides"]["claude"]["cleanupPeriodDays"] == 30
@@ -54,7 +54,7 @@ class TestOverrideSetCommand:
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert data["settings_overrides"]["claude"]["model"] == "my-model-name"
@@ -75,7 +75,7 @@ class TestOverrideSetCommand:
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert (
@@ -93,14 +93,14 @@ class TestOverrideSetCommand:
             "version": 1,
             "settings_overrides": {"claude": {"model": "old-model"}},
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         result = runner.invoke(main, ["override", "set", "claude.model", "new-model"])
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert data["settings_overrides"]["claude"]["model"] == "new-model"
@@ -116,7 +116,7 @@ class TestOverrideSetCommand:
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert data["settings_overrides"]["claude"]["model"] == "claude-model"
@@ -134,14 +134,14 @@ class TestOverrideUnsetCommand:
             "version": 1,
             "settings_overrides": {"claude": {"model": "claude-3-opus", "timeout": 30}},
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         result = runner.invoke(main, ["override", "unset", "claude.model"])
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert "model" not in data["settings_overrides"]["claude"]
@@ -159,14 +159,14 @@ class TestOverrideUnsetCommand:
                 }
             },
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         result = runner.invoke(main, ["override", "unset", "claude.api.endpoint"])
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert "endpoint" not in data["settings_overrides"]["claude"]["api"]
@@ -182,14 +182,14 @@ class TestOverrideUnsetCommand:
                 "claude": {"api": {"endpoint": "https://api.example.com"}}
             },
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         result = runner.invoke(main, ["override", "unset", "claude.api.endpoint"])
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert "claude" not in data.get("settings_overrides", {})
@@ -204,14 +204,14 @@ class TestOverrideUnsetCommand:
             "version": 1,
             "settings_overrides": {"claude": {"model": "claude-3-opus"}},
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         result = runner.invoke(main, ["override", "unset", "claude.model"])
 
         assert result.exit_code == 0
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert "claude" not in data.get("settings_overrides", {})
@@ -236,7 +236,7 @@ class TestOverrideUnsetCommand:
             "version": 1,
             "settings_overrides": {"claude": {"timeout": 30}},
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         result = runner.invoke(main, ["override", "unset", "claude.model"])
@@ -259,7 +259,7 @@ class TestOverrideListCommand:
                 "goose": {"model": "gpt-4"},
             },
         }
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         repo_root = tmp_path / "repo"
@@ -278,7 +278,7 @@ class TestOverrideListCommand:
         monkeypatch.setenv("HOME", str(tmp_path))
 
         existing_data = {"version": 1}
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(existing_data, f)
 
         repo_root = tmp_path / "repo"
@@ -356,7 +356,7 @@ class TestOverrideSetArrayIndex:
         import yaml
 
         config_path = home / ".ai-agent-rules-config.yaml"
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         stored_list = data["settings_overrides"]["claude"]["hooks"]["SubagentStop"]

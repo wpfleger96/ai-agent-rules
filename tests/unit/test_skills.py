@@ -445,7 +445,7 @@ class TestBundledSkillFrontmatter:
     @staticmethod
     def _frontmatter(skill_md: Path) -> tuple[dict, list[str]]:
         """Return (parsed frontmatter, top-level keys in file order)."""
-        parts = skill_md.read_text().split("---", 2)
+        parts = skill_md.read_text(encoding="utf-8").split("---", 2)
         assert len(parts) >= 3, f"{skill_md}: missing frontmatter"
         raw = parts[1]
         data = yaml.safe_load(raw)
