@@ -35,7 +35,7 @@ class SkillsComponent(Component):
     component_id = "skills"
 
     def plan(self, ctx: CliContext) -> SkillsPlan:
-        from ai_rules.config import AGENT_SKILLS_DIRS
+        from ai_rules.config import get_agent_skills_dirs
         from ai_rules.skills import SkillManager
 
         skills_source_dir = ctx.config_dir / "skills"
@@ -54,9 +54,9 @@ class SkillsComponent(Component):
                 continue
 
             if target.agent_id == "shared":
-                target_dirs = list(AGENT_SKILLS_DIRS.items())
-            elif target.agent_id in AGENT_SKILLS_DIRS:
-                target_dirs = [(target.agent_id, AGENT_SKILLS_DIRS[target.agent_id])]
+                target_dirs = list(get_agent_skills_dirs().items())
+            elif target.agent_id in get_agent_skills_dirs():
+                target_dirs = [(target.agent_id, get_agent_skills_dirs()[target.agent_id])]
             else:
                 continue
 
@@ -145,7 +145,7 @@ class SkillsComponent(Component):
 
         from pathlib import Path
 
-        from ai_rules.config import AGENT_SKILLS_DIRS
+        from ai_rules.config import get_agent_skills_dirs
         from ai_rules.skills import SkillManager
         from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
 
@@ -167,9 +167,9 @@ class SkillsComponent(Component):
                 continue
 
             if target.agent_id == "shared":
-                target_dirs = list(AGENT_SKILLS_DIRS.items())
-            elif target.agent_id in AGENT_SKILLS_DIRS:
-                target_dirs = [(target.agent_id, AGENT_SKILLS_DIRS[target.agent_id])]
+                target_dirs = list(get_agent_skills_dirs().items())
+            elif target.agent_id in get_agent_skills_dirs():
+                target_dirs = [(target.agent_id, get_agent_skills_dirs()[target.agent_id])]
             else:
                 continue
 
@@ -238,7 +238,7 @@ class SkillsComponent(Component):
         )
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.config import AGENT_SKILLS_DIRS
+        from ai_rules.config import get_agent_skills_dirs
         from ai_rules.symlinks import remove_symlink
 
         removed = 0
@@ -252,9 +252,9 @@ class SkillsComponent(Component):
                 continue
 
             if target.agent_id == "shared":
-                target_dirs = list(AGENT_SKILLS_DIRS.items())
-            elif target.agent_id in AGENT_SKILLS_DIRS:
-                target_dirs = [(target.agent_id, AGENT_SKILLS_DIRS[target.agent_id])]
+                target_dirs = list(get_agent_skills_dirs().items())
+            elif target.agent_id in get_agent_skills_dirs():
+                target_dirs = [(target.agent_id, get_agent_skills_dirs()[target.agent_id])]
             else:
                 continue
 
@@ -307,14 +307,14 @@ class SkillsComponent(Component):
             )
             orphaned_skills = {}
             if skill_status:
-                from ai_rules.config import AGENT_SKILLS_DIRS
+                from ai_rules.config import get_agent_skills_dirs
                 from ai_rules.skills import SkillManager
 
                 skill_manager = SkillManager(
                     config_dir=ctx.config_dir,
                     agent_id="" if target.target_id == "shared" else target.target_id,
                     user_skills_dirs=(
-                        list(AGENT_SKILLS_DIRS.values())
+                        list(get_agent_skills_dirs().values())
                         if target.target_id == "shared"
                         else None
                     ),

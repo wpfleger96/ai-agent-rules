@@ -231,21 +231,21 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
 
     try:
         from ai_rules.bootstrap import is_command_available
+        from ai_rules.bootstrap.registry import ACTIVE_TOOLS
 
-        if is_command_available("claude-statusline"):
-            from ai_rules.tools.statusline import StatuslineTool
+        for active in ACTIVE_TOOLS:
+            if is_command_available(active.command_name):
+                version = active.get_install_spec().get_version()
+                if version:
+                    console.print(f"{active.tool_id}, version {version}")
+                else:
+                    from ai_rules.cli.display import dim
 
-            statusline_version = StatuslineTool.INSTALL_SPEC.get_version()
-            if statusline_version:
-                console.print(f"statusline, version {statusline_version}")
-            else:
-                from ai_rules.cli.display import dim
-
-                console.print(
-                    f"statusline, version {dim('(installed, version unknown)')}"
-                )
+                    console.print(
+                        f"{active.tool_id}, version {dim('(installed, version unknown)')}"
+                    )
     except Exception as e:
-        logger.debug(f"Failed to get statusline version: {e}")
+        logger.debug(f"Failed to get tool versions: {e}")
 
     try:
         from ai_rules.bootstrap import check_tool_updates, get_tool_by_id

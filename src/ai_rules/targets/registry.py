@@ -29,13 +29,8 @@ TARGET_CLASSES: tuple[type[ConfigTarget], ...] = (
 
 def get_targets(config_dir: Path, config: Config) -> list[ConfigTarget]:
     """Instantiate all configured targets in lifecycle order."""
-    from ai_rules.platform import Platform, is_platform
-
-    targets = []
-    for target_class in TARGET_CLASSES:
-        if is_platform(Platform.WINDOWS) and target_class is AmpAgent:
-            continue
-        if not is_platform(Platform.MACOS) and target_class is BuzzTool:
-            continue
-        targets.append(target_class(config_dir, config))
-    return targets
+    return [
+        target_class(config_dir, config)
+        for target_class in TARGET_CLASSES
+        if target_class.is_supported_on_current_platform()
+    ]

@@ -24,6 +24,12 @@ class BuzzTool(Tool):
     config_file_name = ""
     config_file_format = ""
 
+    @classmethod
+    def is_supported_on_current_platform(cls) -> bool:
+        from ai_rules.platform import Platform, is_platform
+
+        return is_platform(Platform.MACOS)
+
     @property
     def needs_cache(self) -> bool:
         return False

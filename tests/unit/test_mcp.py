@@ -334,25 +334,25 @@ def test_goose_translate_maps_shared_format(mock_home):
     mgr = GooseMCPManager()
     shared = {
         "command": "uvx",
-        "args": ["recall-mcp-server"],
-        "env": {"RECALL_WIKI_PATH": "~/.recall"},
-        "name": "Recall",
-        "description": "Persistent LLM knowledge base",
+        "args": ["example-mcp-server"],
+        "env": {"EXAMPLE_MCP_PATH": "~/.example-mcp"},
+        "name": "Example MCP",
+        "description": "Example description",
     }
 
     result = mgr._translate(shared)
 
     assert result["type"] == "stdio"
     assert result["cmd"] == "uvx"
-    assert result["args"] == ["recall-mcp-server"]
-    assert result["envs"] == {"RECALL_WIKI_PATH": "~/.recall"}
+    assert result["args"] == ["example-mcp-server"]
+    assert result["envs"] == {"EXAMPLE_MCP_PATH": "~/.example-mcp"}
     assert result["env_keys"] == []
     assert result["enabled"] is True
     assert result["timeout"] == 300
     assert result["bundled"] is False
     assert result["available_tools"] == []
-    assert result["name"] == "Recall"
-    assert result["description"] == "Persistent LLM knowledge base"
+    assert result["name"] == "Example MCP"
+    assert result["description"] == "Example description"
 
 
 def test_goose_translate_minimal_config(mock_home):
@@ -370,7 +370,7 @@ def test_goose_install_and_uninstall(mock_home, test_repo):
     shared_file = test_repo / "mcps.json"
     shared_file.write_text(
         json.dumps(
-            {"recall": {"command": "uvx", "args": ["recall-mcp-server"], "env": {}}}
+            {"example-mcp": {"command": "uvx", "args": ["example-mcp-server"], "env": {}}}
         )
     )
 
@@ -386,42 +386,15 @@ def test_goose_install_and_uninstall(mock_home, test_repo):
     with open(config_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
-    assert "recall" in data["extensions"]
-    assert data["extensions"]["recall"]["_managed_by"] == "ai-agent-rules"
-    assert data["extensions"]["recall"]["cmd"] == "uvx"
+    assert "example-mcp" in data["extensions"]
+    assert data["extensions"]["example-mcp"]["_managed_by"] == "ai-agent-rules"
+    assert data["extensions"]["example-mcp"]["cmd"] == "uvx"
 
     result, message = mgr.uninstall_mcps()
     assert result == OperationResult.REMOVED
     with open(config_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
-    assert "recall" not in data.get("extensions", {})
-
-
-def test_goose_install_removes_unmarked_recall_orphan(mock_home, test_repo):
-    """install_mcps removes a recall entry that has no _managed_by marker (pre-marker migration)."""
-    config_path = mock_home / ".config" / "goose"
-    config_path.mkdir(parents=True)
-    orphan_config = {
-        "extensions": {
-            "recall": {
-                "cmd": "uvx",
-                "args": ["recall-mcp-server"],
-            }
-        }
-    }
-    (config_path / "config.yaml").write_text(
-        yaml.safe_dump(orphan_config, default_flow_style=False, sort_keys=True)
-    )
-
-    shared_file = test_repo / "mcps.json"
-    shared_file.write_text("{}")
-
-    result, _message, _conflicts = GooseMCPManager().install_mcps(test_repo, Config())
-    assert result == OperationResult.UPDATED
-
-    with open(config_path / "config.yaml", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    assert "recall" not in data.get("extensions", {})
+    assert "example-mcp" not in data.get("extensions", {})
 
 
 def test_goose_install_preserves_unmarked_entry_not_in_previously_managed(
@@ -486,17 +459,17 @@ def test_codex_translate_maps_shared_format(mock_home):
     mgr = CodexMCPManager()
     shared = {
         "command": "uvx",
-        "args": ["recall-mcp-server"],
-        "env": {"RECALL_WIKI_PATH": "~/.recall"},
-        "name": "Recall",
+        "args": ["example-mcp-server"],
+        "env": {"EXAMPLE_MCP_PATH": "~/.example-mcp"},
+        "name": "Example MCP",
         "description": "ignored",
     }
 
     result = mgr._translate(shared)
 
     assert result["command"] == "uvx"
-    assert result["args"] == ["recall-mcp-server"]
-    assert result["env"] == {"RECALL_WIKI_PATH": "~/.recall"}
+    assert result["args"] == ["example-mcp-server"]
+    assert result["env"] == {"EXAMPLE_MCP_PATH": "~/.example-mcp"}
     assert "name" not in result
     assert "description" not in result
 
@@ -517,7 +490,7 @@ def test_codex_install_and_uninstall(mock_home, test_repo):
     shared_file = test_repo / "mcps.json"
     shared_file.write_text(
         json.dumps(
-            {"recall": {"command": "uvx", "args": ["recall-mcp-server"], "env": {}}}
+            {"example-mcp": {"command": "uvx", "args": ["example-mcp-server"], "env": {}}}
         )
     )
 
@@ -531,20 +504,20 @@ def test_codex_install_and_uninstall(mock_home, test_repo):
         doc = tomlkit.load(f)
 
     mcp_servers = dict(doc["mcp_servers"])
-    assert "recall" in mcp_servers
+    assert "example-mcp" in mcp_servers
     managed_section = doc["_ai_agent_rules_managed"]
     managed_names = list(managed_section["names"])
-    assert "recall" in managed_names
+    assert "example-mcp" in managed_names
 
     result, message = mgr.uninstall_mcps()
     assert result == OperationResult.REMOVED
     with open(config_path, encoding="utf-8") as f:
         doc = tomlkit.load(f)
     mcp_servers_after = dict(doc.get("mcp_servers", {}))
-    assert "recall" not in mcp_servers_after
+    assert "example-mcp" not in mcp_servers_after
     managed_after = doc.get("_ai_agent_rules_managed", {})
     names_after = list(managed_after.get("names", []))
-    assert "recall" not in names_after
+    assert "example-mcp" not in names_after
 
 
 def test_codex_preserves_non_mcp_keys(mock_home, test_repo):
@@ -579,15 +552,15 @@ def test_gemini_translate_adds_timeout_and_trust(mock_home):
     mgr = GeminiMCPManager()
     shared = {
         "command": "uvx",
-        "args": ["recall-mcp-server"],
-        "env": {"RECALL_WIKI_PATH": "~/.recall"},
+        "args": ["example-mcp-server"],
+        "env": {"EXAMPLE_MCP_PATH": "~/.example-mcp"},
     }
 
     result = mgr._translate(shared)
 
     assert result["command"] == "uvx"
-    assert result["args"] == ["recall-mcp-server"]
-    assert result["env"] == {"RECALL_WIKI_PATH": "~/.recall"}
+    assert result["args"] == ["example-mcp-server"]
+    assert result["env"] == {"EXAMPLE_MCP_PATH": "~/.example-mcp"}
     assert result["timeout"] == 30000
     assert result["trust"] is False
 
@@ -607,7 +580,7 @@ def test_gemini_install_and_uninstall(mock_home, test_repo):
     shared_file = test_repo / "mcps.json"
     shared_file.write_text(
         json.dumps(
-            {"recall": {"command": "uvx", "args": ["recall-mcp-server"], "env": {}}}
+            {"example-mcp": {"command": "uvx", "args": ["example-mcp-server"], "env": {}}}
         )
     )
 
@@ -620,16 +593,16 @@ def test_gemini_install_and_uninstall(mock_home, test_repo):
     with open(config_path, encoding="utf-8") as f:
         data = json.load(f)
 
-    assert "recall" in data["mcpServers"]
-    assert data["mcpServers"]["recall"]["_managedBy"] == "ai-agent-rules"
-    assert data["mcpServers"]["recall"]["timeout"] == 30000
-    assert data["mcpServers"]["recall"]["trust"] is False
+    assert "example-mcp" in data["mcpServers"]
+    assert data["mcpServers"]["example-mcp"]["_managedBy"] == "ai-agent-rules"
+    assert data["mcpServers"]["example-mcp"]["timeout"] == 30000
+    assert data["mcpServers"]["example-mcp"]["trust"] is False
 
     result, message = mgr.uninstall_mcps()
     assert result == OperationResult.REMOVED
     with open(config_path, encoding="utf-8") as f:
         data = json.load(f)
-    assert "recall" not in data.get("mcpServers", {})
+    assert "example-mcp" not in data.get("mcpServers", {})
 
 
 def test_gemini_preserves_non_mcp_keys(mock_home, test_repo):
@@ -663,17 +636,17 @@ def test_amp_translate_maps_shared_format(mock_home):
     mgr = AmpMCPManager()
     shared = {
         "command": "uvx",
-        "args": ["recall-mcp-server"],
-        "env": {"RECALL_WIKI_PATH": "~/.recall"},
-        "name": "Recall",
+        "args": ["example-mcp-server"],
+        "env": {"EXAMPLE_MCP_PATH": "~/.example-mcp"},
+        "name": "Example MCP",
         "description": "ignored",
     }
 
     result = mgr._translate(shared)
 
     assert result["command"] == "uvx"
-    assert result["args"] == ["recall-mcp-server"]
-    assert result["env"] == {"RECALL_WIKI_PATH": "~/.recall"}
+    assert result["args"] == ["example-mcp-server"]
+    assert result["env"] == {"EXAMPLE_MCP_PATH": "~/.example-mcp"}
     assert "name" not in result
     assert "description" not in result
 
@@ -692,7 +665,7 @@ def test_amp_install_and_uninstall(mock_home, test_repo):
     shared_file = test_repo / "mcps.json"
     shared_file.write_text(
         json.dumps(
-            {"recall": {"command": "uvx", "args": ["recall-mcp-server"], "env": {}}}
+            {"example-mcp": {"command": "uvx", "args": ["example-mcp-server"], "env": {}}}
         )
     )
 
@@ -706,15 +679,15 @@ def test_amp_install_and_uninstall(mock_home, test_repo):
     with open(config_path, encoding="utf-8") as f:
         data = json.load(f)
 
-    assert "recall" in data["amp.mcpServers"]
-    assert data["amp.mcpServers"]["recall"]["_managedBy"] == "ai-agent-rules"
-    assert data["amp.mcpServers"]["recall"]["command"] == "uvx"
+    assert "example-mcp" in data["amp.mcpServers"]
+    assert data["amp.mcpServers"]["example-mcp"]["_managedBy"] == "ai-agent-rules"
+    assert data["amp.mcpServers"]["example-mcp"]["command"] == "uvx"
 
     result, message = mgr.uninstall_mcps()
     assert result == OperationResult.REMOVED
     with open(config_path, encoding="utf-8") as f:
         data = json.load(f)
-    assert "recall" not in data.get("amp.mcpServers", {})
+    assert "example-mcp" not in data.get("amp.mcpServers", {})
 
 
 def test_amp_preserves_non_mcp_keys(mock_home, test_repo):

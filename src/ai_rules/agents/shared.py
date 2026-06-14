@@ -92,7 +92,7 @@ class SharedAgent(Agent):
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of shared symlinks for agent-agnostic configurations."""
-        from ai_rules.config import AGENT_SKILLS_DIRS
+        from ai_rules.config import get_agent_skills_dirs
         from ai_rules.skills import SkillManager
 
         result = []
@@ -113,7 +113,7 @@ class SharedAgent(Agent):
                     and not skill_folder.name.startswith(".")
                     and not SkillManager.is_skill_disabled(skill_folder)
                 ):
-                    for agent_skills_dir in AGENT_SKILLS_DIRS.values():
+                    for agent_skills_dir in get_agent_skills_dirs().values():
                         result.append(
                             (agent_skills_dir / skill_folder.name, skill_folder)
                         )
@@ -122,12 +122,12 @@ class SharedAgent(Agent):
 
     def get_skill_status(self) -> SkillStatus:
         """Get status of shared skills symlinked to multiple agent directories."""
-        from ai_rules.config import AGENT_SKILLS_DIRS
+        from ai_rules.config import get_agent_skills_dirs
         from ai_rules.skills import SkillManager
 
         manager = SkillManager(
             config_dir=self.config_dir,
             agent_id="",
-            user_skills_dirs=list(AGENT_SKILLS_DIRS.values()),
+            user_skills_dirs=list(get_agent_skills_dirs().values()),
         )
         return manager.get_status()

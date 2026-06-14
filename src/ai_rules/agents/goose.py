@@ -1,7 +1,7 @@
 """Goose agent implementation."""
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from ai_rules.agents.base import Agent
 from ai_rules.platform import get_goose_config_dir
@@ -17,6 +17,7 @@ class GooseAgent(Agent):
     agent_id = "goose"
     config_file_name = "config.yaml"
     config_file_format = "yaml"
+    skills_dir: ClassVar[Path | None] = get_goose_config_dir() / "skills"
     preserved_fields = ["extensions"]
 
     @property

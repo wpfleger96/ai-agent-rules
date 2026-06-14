@@ -17,6 +17,12 @@ def _filter_enabled(tools: list[ToolSpec]) -> list[ToolSpec]:
     return [t for t in tools if t.is_enabled is None or t.is_enabled()]
 
 
+def _only_choices() -> list[str]:
+    from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES, get_updatable_tools
+
+    return [t.tool_id for t in get_updatable_tools()] + list(_TOOL_ID_ALIASES.keys())
+
+
 @click.command()
 @click.option("--check", is_flag=True, help="Check for updates without installing")
 @click.option("--force", is_flag=True, help="Force reinstall even if up to date")
@@ -30,7 +36,7 @@ def _filter_enabled(tools: list[ToolSpec]) -> list[ToolSpec]:
 )
 @click.option(
     "--only",
-    type=click.Choice(["ai-agent-rules", "ai-rules", "statusline"]),
+    type=click.Choice(_only_choices()),
     help="Only upgrade specific tool",
 )
 def upgrade(

@@ -1,7 +1,7 @@
 """Claude Code agent implementation."""
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from ai_rules.agents.base import Agent
 from ai_rules.utils import is_managed_target
@@ -26,6 +26,7 @@ class ClaudeAgent(Agent):
     settings_symlink_target = Path("~/.claude/settings.json")
     instructions_target = "~/.claude/CLAUDE.md"
     instructions_source = "CLAUDE.md"
+    skills_dir: ClassVar[Path | None] = Path("~/.claude/skills")
 
     def _extra_symlinks(self) -> list[tuple[Path, Path]]:
         """Dynamic symlinks for bundled agents, commands, and hooks."""
