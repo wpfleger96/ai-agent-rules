@@ -459,7 +459,7 @@ class ManagedFieldsTracker:
             with open(self.path, encoding="utf-8") as f:
                 self._data = json.load(f)
                 return self._data
-        except (OSError, json.JSONDecodeError):
+        except OSError, json.JSONDecodeError:
             self._data = {"version": 1}
             return self._data
 
