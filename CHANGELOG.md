@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## [0.65.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.65.1...v0.65.2) (2026-06-14)
+
+
+### Bug Fixes
+
+* **updater:** fetch release notes from GitHub Releases API ([#116](https://github.com/wpfleger96/ai-agent-rules/issues/116)) ([07ca663](https://github.com/wpfleger96/ai-agent-rules/commit/07ca6632d2b8390abd3e99e74f04747baa8ff827))
+
+
+### Chores
+
+* **deps:** Update github-actions to v8.2.0 ([f33bd62](https://github.com/wpfleger96/ai-agent-rules/commit/f33bd62dab0dd81b0cad255120a9fe6bd4121529))
+* sync Justfile ([6bce9b6](https://github.com/wpfleger96/ai-agent-rules/commit/6bce9b61e6b246d9db56fcfd030a193e995b9fc8))
+
+
+### Continuous Integration
+
+* switch e2e exclusion from --ignore to marker-based filtering ([#119](https://github.com/wpfleger96/ai-agent-rules/issues/119)) ([a073bee](https://github.com/wpfleger96/ai-agent-rules/commit/a073bee095f2621b6b586c29dade80608e4e1ee9))
+* sync CI workflow ([27eefc7](https://github.com/wpfleger96/ai-agent-rules/commit/27eefc71474b1b9efcdaced84a8f5fd0e1cddab4))
+
+
+### Refactoring
+
+* address code-review feedback on PR [#110](https://github.com/wpfleger96/ai-agent-rules/issues/110) follow-ups ([45b9ec5](https://github.com/wpfleger96/ai-agent-rules/commit/45b9ec5d4d0f2048b9f2ddb9ae8cf29b647170bb))
+* codebase-wide simplification and consolidation ([#110](https://github.com/wpfleger96/ai-agent-rules/issues/110)) ([149c6f4](https://github.com/wpfleger96/ai-agent-rules/commit/149c6f4308ed32fd44c6c9757cbbc90f039c7930))
+* **config:** extract _merge_user_overrides from _load_cached ([eb98787](https://github.com/wpfleger96/ai-agent-rules/commit/eb987878bbb309bab81640171f6a53019b54fe15))
+* **mcp:** reuse create_backup_path for MCP config backups ([29fd686](https://github.com/wpfleger96/ai-agent-rules/commit/29fd6867024617d24857db9a6ee5d8c163124875))
+* **session-search:** reuse SessionMatchPrinter in Claude reader ([3cc7135](https://github.com/wpfleger96/ai-agent-rules/commit/3cc713588d6877e53f6e47bdca01289be7b5ff02))
+* **targets:** decompose build_merged_settings into phase helpers ([67bc29c](https://github.com/wpfleger96/ai-agent-rules/commit/67bc29c4c7c281ff99392234d042edff9cae1061))
+
+
+### Testing
+
+* **e2e:** realistic install-and-inspect coverage + fix MCP install race ([#118](https://github.com/wpfleger96/ai-agent-rules/issues/118)) ([7f87f8e](https://github.com/wpfleger96/ai-agent-rules/commit/7f87f8ef52899faa5cd323f0ae060137da8d8f79))
+
 ## [0.65.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.65.0...v0.65.1) (2026-06-13)
 
 
