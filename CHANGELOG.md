@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## [0.66.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.65.2...v0.66.0) (2026-06-14)
+
+
+### Features
+
+* add conventional commit PR title rule and agent-author trailers ([#123](https://github.com/wpfleger96/ai-agent-rules/issues/123)) ([d020d12](https://github.com/wpfleger96/ai-agent-rules/commit/d020d12b88eab3b4b8f3449a3a40ad2fa99afc6a))
+* **personal:** enable remote control at startup ([797d7cd](https://github.com/wpfleger96/ai-agent-rules/commit/797d7cdc636369b2bc6c0062194a0dc0ef60e83b))
+* **personal:** enable remote control at startup ([423174f](https://github.com/wpfleger96/ai-agent-rules/commit/423174fc8ad12e68b0fd0e7fd479f90e1c386e8c))
+* unify chat agent hints with Claude iOS app content ([#126](https://github.com/wpfleger96/ai-agent-rules/issues/126)) ([52cfa7c](https://github.com/wpfleger96/ai-agent-rules/commit/52cfa7c81464e7eb413df0f98f4f1aad7b209916))
+
+
+### Bug Fixes
+
+* add explicit UTF-8 encoding to all text file I/O for Windows ([#124](https://github.com/wpfleger96/ai-agent-rules/issues/124)) ([8a8d95d](https://github.com/wpfleger96/ai-agent-rules/commit/8a8d95df28d0118060b650cf4095fa933a48b7c5))
+
+
+### Refactoring
+
+* eliminate hardcoded tool references throughout codebase ([#125](https://github.com/wpfleger96/ai-agent-rules/issues/125)) ([a9c366a](https://github.com/wpfleger96/ai-agent-rules/commit/a9c366aa574e2b1173e9eaa10e353af47ef77371))
+
 ## [0.65.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.65.1...v0.65.2) (2026-06-14)
 
 
