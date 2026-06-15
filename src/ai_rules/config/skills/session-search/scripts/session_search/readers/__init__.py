@@ -18,9 +18,9 @@ if TYPE_CHECKING:
 
 
 def _load_readers() -> list[Any]:
-    from session_search.readers import amp, claude, codex, gemini, goose
+    from session_search.readers import amp, buzz, claude, codex, gemini, goose
 
-    return [codex, claude, gemini, goose, amp]
+    return [codex, claude, gemini, goose, amp, buzz]
 
 
 def iter_all_sessions(args: argparse.Namespace) -> list[Session]:
@@ -49,9 +49,9 @@ def search_sessions(
     args: argparse.Namespace,
 ) -> int:
     """Grep across session files/records. Returns match count."""
-    from session_search.readers import amp, claude, codex, gemini, goose
+    from session_search.readers import amp, buzz, claude, codex, gemini, goose
 
-    reader_map = {r.AGENT_NAME: r for r in [codex, claude, gemini, goose, amp]}
+    reader_map = {r.AGENT_NAME: r for r in [codex, claude, gemini, goose, amp, buzz]}
     total_matches = 0
     for session in sessions:
         reader = reader_map.get(session.agent)

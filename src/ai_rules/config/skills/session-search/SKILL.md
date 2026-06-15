@@ -6,7 +6,7 @@ description: >-
   conversations. Triggers on requests to search session transcripts or
   conversation history, recover commands or outputs from earlier sessions,
   compare recent sessions for a repository, or search across Claude Code,
-  Codex CLI, Gemini CLI, Goose, or Amp session history.
+  Codex CLI, Gemini CLI, Goose, Amp, or Buzz relay session history.
 allowed-tools: Agent, Bash, Glob, Grep, Read
 model: sonnet
 ---
@@ -19,7 +19,7 @@ model: sonnet
 
 # Session Search
 
-Searches session transcripts across all detected coding agents: Claude Code, Codex CLI, Gemini CLI, Goose, and Amp. Results are ranked by current repo match, then by recency.
+Searches session transcripts across all detected coding agents: Claude Code, Codex CLI, Gemini CLI, Goose, Amp, and Buzz (Nostr relay chat). Results are ranked by current repo match, then by recency.
 
 ## Quick Start
 
@@ -95,7 +95,7 @@ rg "Bearer token" /path/to/session1.jsonl /path/to/session2.jsonl
 
 | Flag | Purpose |
 |------|---------|
-| `--agent {claude,codex,gemini,goose,amp}` | Restrict to one agent |
+| `--agent {claude,codex,gemini,goose,amp,buzz}` | Restrict to one agent |
 | `--all-repos` | Search beyond current repo |
 | `--since YYYY-MM-DD` | Lower bound on session date |
 | `--until YYYY-MM-DD` | Upper bound on session date |
@@ -125,3 +125,21 @@ Use `--all-repos` to include sessions from unrelated repositories.
 | Gemini CLI | `~/.gemini/tmp/<project-slug>/chats/session-*.jsonl` |
 | Goose | `~/.local/share/goose/sessions/sessions.db` (SQLite) |
 | Amp | `~/.local/share/amp/threads/T-<uuid>.json` |
+| Buzz | Nostr relay via the `buzz` CLI (one channel = one session) |
+
+## Buzz (Relay Backend)
+
+Buzz history lives on a Nostr relay, not on disk, so its reader behaves differently from the local-file backends:
+
+- **Detection** gates on the `BUZZ_PRIVATE_KEY` and `BUZZ_RELAY_URL` environment variables, not a directory. An unreachable relay yields a warning and zero Buzz results — not an error and not a crash.
+- **One channel = one session.** The channel UUID is the session ID and the channel name is the title.
+- **Recency-only ranking.** Buzz channels have no working directory, so every Buzz session scores `repo_score=0` and ranks purely by recency. Buzz results are inherently `--all-repos`.
+- **Grep is global-search-first.** A selective pattern resolves in a single relay round-trip via `buzz messages search`. The relay caps that search at 100 results; when a pattern is broad enough to saturate the cap (or has no literal substring to pre-filter on, e.g. `\d{4}`), the reader falls back to a bounded per-channel sweep over the top `--limit-sessions` channels by recency and prints a one-line stderr notice. The result is either complete or explicitly bounded and announced — never a silent partial.
+
+```bash
+# Restrict to Buzz history
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search grep "deployment" --agent buzz
+
+# Scope to a single channel by UUID fragment
+PYTHONPATH=<skill-dir>/scripts uv run python -m session_search grep "rollback" --agent buzz --id 2a5c4f66
+```

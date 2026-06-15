@@ -18,7 +18,7 @@ from session_search.readers import iter_all_sessions, search_sessions
 def add_common_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--agent",
-        choices=["claude", "codex", "gemini", "goose", "amp"],
+        choices=["claude", "codex", "gemini", "goose", "amp", "buzz"],
         help="Restrict to a single agent.",
     )
     parser.add_argument(
