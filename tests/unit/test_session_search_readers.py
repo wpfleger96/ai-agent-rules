@@ -29,6 +29,7 @@ import pytest
 
 from session_search.core import Session
 from session_search.readers import amp, buzz, claude, codex, gemini, goose
+from session_search.readers import rank_candidates as dispatch_rank
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -1175,6 +1176,22 @@ def _grep_args(pattern: str, **kwargs: Any) -> argparse.Namespace:
     )
 
 
+def _buzz_session(
+    channel_id: str, updated_at: str = "2026-06-15T00:00:00+00:00"
+) -> Session:
+    return Session(
+        id=channel_id,
+        agent="buzz",
+        path=Path(f"buzz:{channel_id}"),
+        timestamp=updated_at,
+        updated_at=updated_at,
+        title=channel_id,
+        cwd="",
+        repo_score=0,
+        repo_reason="",
+    )
+
+
 @pytest.mark.unit
 class TestBuzzReader:
     @pytest.fixture(autouse=True)
@@ -1507,3 +1524,145 @@ class TestBuzzReader:
     def test_buzz_literal_seed_drops_zero_exact_brace(self):
         # 'ab{0}c' matches 'ac' (zero b); the optional 'b' must not anchor the seed
         assert "b" not in buzz._literal_seed("ab{0}c")
+
+    # -- grep ranking: match-density first -------------------------------
+
+    def test_buzz_rank_candidates_floats_dense_older_channel_above_sparse_recent(
+        self, monkeypatch
+    ):
+        # Global search finds 2 hits in the older channel, 1 in the recent one.
+        self._mock_buzz(
+            monkeypatch,
+            lambda *a: [
+                _buzz_event("dense", "systemPrompt one"),
+                _buzz_event("dense", "systemPrompt two"),
+                _buzz_event("sparse", "systemPrompt solo"),
+            ],
+        )
+        # Incoming order is recency: sparse (recent) before dense (older).
+        recent = _buzz_session("sparse", "2026-06-15T00:00:00+00:00")
+        older = _buzz_session("dense", "2026-06-01T00:00:00+00:00")
+
+        ranked = buzz.rank_candidates([recent, older], _grep_args("systemPrompt"))
+
+        # dense outranks sparse despite being older — match density wins.
+        assert [s.id for s in ranked] == ["dense", "sparse"]
+
+    def test_buzz_rank_candidates_saturated_search_leaves_order_unchanged(
+        self, monkeypatch
+    ):
+        self._mock_buzz(
+            monkeypatch,
+            lambda *a: [_buzz_event("x", "common") for _ in range(buzz._SEARCH_CAP)],
+        )
+        sessions = [_buzz_session("a"), _buzz_session("b")]
+
+        ranked = buzz.rank_candidates(sessions, _grep_args("common"))
+
+        assert ranked == sessions
+
+    def test_buzz_rank_candidates_no_seed_leaves_order_unchanged(self, monkeypatch):
+        calls = []
+
+        def handler(*args):
+            calls.append(args)
+            return []
+
+        self._mock_buzz(monkeypatch, handler)
+        sessions = [_buzz_session("a"), _buzz_session("b")]
+
+        # r"\d{4}" yields no literal seed -> no global search, identity order.
+        ranked = buzz.rank_candidates(sessions, _grep_args(r"\d{4}"))
+
+        assert ranked == sessions
+        assert calls == []  # no relay search fired without a seed
+
+    def test_buzz_rank_candidates_id_path_skips_search_and_is_identity(
+        self, monkeypatch
+    ):
+        # Guards the CRITICAL: --id must not fire an unscoped global search.
+        calls = []
+
+        def handler(*args):
+            calls.append(args)
+            return []
+
+        self._mock_buzz(monkeypatch, handler)
+        sessions = [_buzz_session("uuid-1"), _buzz_session("uuid-2")]
+
+        ranked = buzz.rank_candidates(sessions, _grep_args("systemPrompt", id="uuid"))
+
+        assert ranked == sessions
+        assert calls == []  # no _grouped_search on the scoped path
+
+    def test_buzz_rank_candidates_memoizes_search_shared_with_search_session(
+        self, monkeypatch
+    ):
+        calls = []
+
+        def handler(*args):
+            calls.append(args)
+            return [_buzz_event("a", "match")]
+
+        self._mock_buzz(monkeypatch, handler)
+        import re as _re
+
+        args = _grep_args("match")
+        sessions = [_buzz_session("a"), _buzz_session("b")]
+
+        buzz.rank_candidates(sessions, args)
+        buzz.search_session(sessions[0], _re.compile("match"), args)
+
+        # ranking primes the cache; the later search hits it -> one search call.
+        assert sum(1 for c in calls if c[:2] == ("messages", "search")) == 1
+
+    def test_dispatch_rank_reorders_buzz_slots_only_non_buzz_byte_identical(
+        self, monkeypatch
+    ):
+        self._mock_buzz(
+            monkeypatch,
+            lambda *a: [
+                _buzz_event("buzz-dense", "match one"),
+                _buzz_event("buzz-dense", "match two"),
+                _buzz_event("buzz-sparse", "match solo"),
+            ],
+        )
+        # Interleaved as sorted_sessions returns: non-Buzz sessions sit between
+        # the two Buzz ones. They must keep their exact index positions.
+        claude_a = Session(
+            id="claude-a",
+            agent="claude",
+            path=Path("/c/a"),
+            timestamp="2026-06-10T00:00:00+00:00",
+            updated_at="2026-06-10T00:00:00+00:00",
+            title="ca",
+            cwd="",
+            repo_score=5,
+            repo_reason="",
+        )
+        codex_b = Session(
+            id="codex-b",
+            agent="codex",
+            path=Path("/x/b"),
+            timestamp="2026-06-09T00:00:00+00:00",
+            updated_at="2026-06-09T00:00:00+00:00",
+            title="cb",
+            cwd="",
+            repo_score=3,
+            repo_reason="",
+        )
+        incoming = [
+            _buzz_session("buzz-sparse"),  # slot 0 (Buzz)
+            claude_a,  # slot 1 (non-Buzz)
+            codex_b,  # slot 2 (non-Buzz)
+            _buzz_session("buzz-dense"),  # slot 3 (Buzz)
+        ]
+
+        ranked = dispatch_rank(incoming, _grep_args("match"))
+
+        # Non-Buzz sessions never move.
+        assert ranked[1] is claude_a
+        assert ranked[2] is codex_b
+        # Buzz slots (0 and 3) hold the permuted Buzz values: dense first.
+        assert ranked[0].id == "buzz-dense"
+        assert ranked[3].id == "buzz-sparse"

@@ -260,6 +260,31 @@ def _sweep_channel(
     return _print_matches(session, events, pattern, args)
 
 
+def rank_candidates(sessions: list[Session], args: argparse.Namespace) -> list[Session]:
+    """Float channels that match the grep seed to the front, densest first.
+
+    `cmd_grep` truncates candidates by recency BEFORE searching, so a relevant
+    but older channel is dropped from the candidate set and never searched. The
+    same global search the grep flow already runs (and memoizes) knows the exact
+    set of matching channels across the whole relay, so reorder by descending
+    match-event count here — before the truncation slice — and the dense match
+    survives the cut. Unmatched channels trail in their incoming (recency) order.
+
+    Returns the input unchanged when ranking cannot help or must not run:
+    `--id` (scoped to 1-2 channels; firing the global search would regress the
+    scoping contract), no literal seed, or a saturated search (None) — the
+    bounded sweep owns that case and its stderr notice stays intact.
+    """
+    if getattr(args, "id", None):
+        return sessions
+    seed = _literal_seed(args.pattern)
+    groups = _grouped_search(seed) if seed else None
+    if not groups:
+        return sessions
+    # Stable: ties keep incoming recency order; unmatched (count 0) trail.
+    return sorted(sessions, key=lambda s: len(groups.get(s.id, [])), reverse=True)
+
+
 def search_session(
     session: Session, pattern: re.Pattern[str], args: argparse.Namespace
 ) -> int:
