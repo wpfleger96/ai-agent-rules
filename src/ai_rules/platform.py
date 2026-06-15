@@ -61,14 +61,14 @@ def get_uv_tools_dir() -> Path:
     """Return the platform-appropriate uv tools directory.
 
     Honors UV_TOOL_DIR env var if set (uv's official override).
-    Windows default: %APPDATA%/uv/data/tools
+    Windows default: %APPDATA%/uv/tools
     Unix default:    $XDG_DATA_HOME/uv/tools (fallback ~/.local/share/uv/tools)
     """
     override = os.environ.get("UV_TOOL_DIR")
     if override:
         return Path(override)
     if is_platform(Platform.WINDOWS):
-        return get_appdata_dir() / "uv" / "data" / "tools"
+        return get_appdata_dir() / "uv" / "tools"
     data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
     return Path(data_home) / "uv" / "tools"
 
