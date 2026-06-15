@@ -13,6 +13,8 @@ from dataclasses import dataclass
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 
+from ai_rules.platform import Platform, is_platform
+
 from .installer import (
     UV_NOT_FOUND_ERROR,
     ToolSource,
@@ -24,7 +26,6 @@ from .installer import (
     make_github_install_url,
 )
 from .version import is_newer
-from ai_rules.platform import Platform, is_platform
 
 _SELF_GITHUB_REPO = "wpfleger96/ai-agent-rules"
 
@@ -393,15 +394,14 @@ def _spawn_deferred_upgrade(
     uv_cmd: list[str],
     post_upgrade_cmd: list[str] | None = None,
 ) -> tuple[bool, str, bool]:
-    import subprocess
-
     parts = ["timeout /t 3 /nobreak >nul", subprocess.list2cmdline(uv_cmd)]
     if post_upgrade_cmd:
         parts.append(subprocess.list2cmdline(post_upgrade_cmd))
 
     subprocess.Popen(
         ["cmd.exe", "/c", " && ".join(parts)],
-        creationflags=0x00000008 | 0x00000200,  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+        creationflags=0x00000008
+        | 0x00000200,  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
         close_fds=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
