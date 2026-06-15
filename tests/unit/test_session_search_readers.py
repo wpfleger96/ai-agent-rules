@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+import subprocess
 import sys
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +27,7 @@ sys.path.insert(
 
 import pytest
 
+from session_search.core import Session
 from session_search.readers import amp, buzz, claude, codex, gemini, goose
 
 # ---------------------------------------------------------------------------
@@ -1182,7 +1185,9 @@ class TestBuzzReader:
         buzz._search_cache.clear()
         buzz._sweep_notified = False
 
-    def _mock_buzz(self, monkeypatch, handler):
+    def _mock_buzz(
+        self, monkeypatch: pytest.MonkeyPatch, handler: Callable[..., Any]
+    ) -> None:
         monkeypatch.setattr(buzz, "_run_buzz", handler)
 
     # -- detect ----------------------------------------------------------
@@ -1287,7 +1292,7 @@ class TestBuzzReader:
             ]
 
         self._mock_buzz(monkeypatch, handler)
-        session = buzz.Session(
+        session = Session(
             id="uuid-1", agent="buzz", path=Path("buzz://uuid-1"),
             timestamp="2026-06-15T00:00:00+00:00",
             updated_at="2026-06-15T00:00:00+00:00",
@@ -1316,7 +1321,7 @@ class TestBuzzReader:
         pattern = _re.compile("match")
         args = _grep_args("match")
         for cid in ("uuid-1", "uuid-2"):
-            s = buzz.Session(
+            s = Session(
                 id=cid, agent="buzz", path=Path(f"buzz://{cid}"),
                 timestamp="2026-06-15T00:00:00+00:00",
                 updated_at="2026-06-15T00:00:00+00:00",
@@ -1343,7 +1348,7 @@ class TestBuzzReader:
             return [_buzz_event("uuid-1", "the common word matches")]
 
         self._mock_buzz(monkeypatch, handler)
-        session = buzz.Session(
+        session = Session(
             id="uuid-1", agent="buzz", path=Path("buzz://uuid-1"),
             timestamp="2026-06-15T00:00:00+00:00",
             updated_at="2026-06-15T00:00:00+00:00",
@@ -1369,7 +1374,7 @@ class TestBuzzReader:
             return [_buzz_event("uuid-1", "year 2026 here")]
 
         self._mock_buzz(monkeypatch, handler)
-        session = buzz.Session(
+        session = Session(
             id="uuid-1", agent="buzz", path=Path("buzz://uuid-1"),
             timestamp="2026-06-15T00:00:00+00:00",
             updated_at="2026-06-15T00:00:00+00:00",
@@ -1397,7 +1402,7 @@ class TestBuzzReader:
         self._mock_buzz(monkeypatch, handler)
         # dispatcher resolves the fragment to this full-UUID candidate; the
         # reader fetches it directly and never touches global search.
-        session = buzz.Session(
+        session = Session(
             id="uuid-1", agent="buzz", path=Path("buzz://uuid-1"),
             timestamp="2026-06-15T00:00:00+00:00",
             updated_at="2026-06-15T00:00:00+00:00",
@@ -1422,12 +1427,10 @@ class TestBuzzReader:
     def test_buzz_run_buzz_nonzero_exit_warns_and_returns_empty(
         self, monkeypatch, capsys
     ):
-        import subprocess as _sp
-
         def fake_run(*a, **kw):
-            raise _sp.CalledProcessError(2, a[0], stderr="relay unreachable")
+            raise subprocess.CalledProcessError(2, a[0], stderr="relay unreachable")
 
-        monkeypatch.setattr(buzz.subprocess, "run", fake_run)
+        monkeypatch.setattr(subprocess, "run", fake_run)
 
         assert buzz._run_buzz("channels", "list") == []
         assert "relay unreachable" in capsys.readouterr().err
@@ -1438,7 +1441,7 @@ class TestBuzzReader:
         class _Result:
             stdout = "not json"
 
-        monkeypatch.setattr(buzz.subprocess, "run", lambda *a, **kw: _Result())
+        monkeypatch.setattr(subprocess, "run", lambda *a, **kw: _Result())
 
         assert buzz._run_buzz("channels", "list") == []
         assert "malformed JSON" in capsys.readouterr().err
