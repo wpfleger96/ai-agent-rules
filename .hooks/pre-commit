@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
+# This file is managed by github-config. Do not edit manually.
+# https://github.com/wpfleger96/github-config
 
 set -euo pipefail
 
 UNSTAGED_BEFORE=$(git diff --name-only 2>/dev/null || true)
 
-just sync
-just type-check
-just lint
-just format
+just pre-commit
 
 while IFS= read -r file; do
     if [ -n "$file" ] && [ -f "$file" ]; then
@@ -19,5 +18,3 @@ while IFS= read -r file; do
         fi
     fi
 done < <(git diff --name-only 2>/dev/null)
-
-just test
