@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [0.66.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.66.0...v0.66.1) (2026-06-15)
+
+
+### Bug Fixes
+
+* **windows:** correct uv tools directory path ([#129](https://github.com/wpfleger96/ai-agent-rules/issues/129)) ([6fd8b55](https://github.com/wpfleger96/ai-agent-rules/commit/6fd8b559bdc4f5894447147786d1f3e8ac181754))
+
+
+### Chores
+
+* add .tokeignore to restrict LOC badge to Python source ([#127](https://github.com/wpfleger96/ai-agent-rules/issues/127)) ([12f9864](https://github.com/wpfleger96/ai-agent-rules/commit/12f9864cf42dc6f0184d34f3678765a01151e640))
+* add .tokeignore to restrict tokei LOC badge to Python source ([12f9864](https://github.com/wpfleger96/ai-agent-rules/commit/12f9864cf42dc6f0184d34f3678765a01151e640))
+
 ## [0.66.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.65.2...v0.66.0) (2026-06-14)
 
 
