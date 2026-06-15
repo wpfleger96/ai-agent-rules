@@ -12,13 +12,13 @@ from session_search.core import (
     sorted_sessions,
     warn,
 )
-from session_search.readers import iter_all_sessions, search_sessions
+from session_search.readers import iter_all_sessions, rank_candidates, search_sessions
 
 
 def add_common_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--agent",
-        choices=["claude", "codex", "gemini", "goose", "amp"],
+        choices=["claude", "codex", "gemini", "goose", "amp", "buzz"],
         help="Restrict to a single agent.",
     )
     parser.add_argument(
@@ -126,6 +126,12 @@ def cmd_grep(args: argparse.Namespace) -> int:
     if args.id:
         sessions = [s for s in sessions if matches_term(s, args.id)]
     ranked = sorted_sessions(sessions, args.oldest)
+    if not args.id:
+        # Float seed-matching channels ahead of the recency truncation below, so
+        # a dense match outside the recency window is not cut before it is
+        # searched. Skipped under --id: candidates are already scoped to 1-2
+        # channels and ranking would fire an unscoped global search.
+        ranked = rank_candidates(ranked, args)
     if args.limit_sessions > 0:
         ranked = ranked[: args.limit_sessions]
 

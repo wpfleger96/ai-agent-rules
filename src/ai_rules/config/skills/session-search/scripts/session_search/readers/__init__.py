@@ -18,9 +18,9 @@ if TYPE_CHECKING:
 
 
 def _load_readers() -> list[Any]:
-    from session_search.readers import amp, claude, codex, gemini, goose
+    from session_search.readers import amp, buzz, claude, codex, gemini, goose
 
-    return [codex, claude, gemini, goose, amp]
+    return [codex, claude, gemini, goose, amp, buzz]
 
 
 def iter_all_sessions(args: argparse.Namespace) -> list[Session]:
@@ -43,15 +43,40 @@ def iter_all_sessions(args: argparse.Namespace) -> list[Session]:
     return sessions
 
 
+def rank_candidates(sessions: list[Session], args: argparse.Namespace) -> list[Session]:
+    """Let each reader reorder its own sessions before the grep truncation cut.
+
+    `sorted_sessions` interleaves all agents in one list, so reordering is done
+    in place: a reader's hook permutes only the Session values in the slots its
+    sessions already occupy, and those values are written back into the same
+    slots. Sessions from other readers never move, so their output stays
+    byte-identical. Readers without a `rank_candidates` hook are left untouched.
+    """
+    from session_search.readers import amp, buzz, claude, codex, gemini, goose
+
+    ranked = list(sessions)
+    for reader in [codex, claude, gemini, goose, amp, buzz]:
+        hook = getattr(reader, "rank_candidates", None)
+        if hook is None:
+            continue
+        slots = [i for i, s in enumerate(ranked) if s.agent == reader.AGENT_NAME]
+        if not slots:
+            continue
+        reordered = hook([ranked[i] for i in slots], args)
+        for slot, session in zip(slots, reordered, strict=True):
+            ranked[slot] = session
+    return ranked
+
+
 def search_sessions(
     sessions: list[Session],
     pattern: re.Pattern[str],
     args: argparse.Namespace,
 ) -> int:
     """Grep across session files/records. Returns match count."""
-    from session_search.readers import amp, claude, codex, gemini, goose
+    from session_search.readers import amp, buzz, claude, codex, gemini, goose
 
-    reader_map = {r.AGENT_NAME: r for r in [codex, claude, gemini, goose, amp]}
+    reader_map = {r.AGENT_NAME: r for r in [codex, claude, gemini, goose, amp, buzz]}
     total_matches = 0
     for session in sessions:
         reader = reader_map.get(session.agent)

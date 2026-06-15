@@ -227,6 +227,7 @@ just test-e2e                   # E2E only — runs real CLI as subprocess, no m
 - Managed by SharedAgent (displays under "Shared:" in status)
 - To add a skill: Create subdir in `config/skills/` with `SKILL.md`
 - **Skill versioning**: Each SKILL.md has a `version` field in its frontmatter. Bump it when changing a skill's behavior — patch (1.0.x) for tweaks/fixes, minor (1.x.0) for new capabilities, major (x.0.0) for breaking prompt changes
+  - **Ship checklist (do NOT skip):** any PR that changes a skill's behavior MUST bump that skill's `version` in the SAME PR. Verify the bump is present before marking the PR ready for review — a behavior change with an unchanged version is an incomplete PR.
 
 ## Key Files by Task
 

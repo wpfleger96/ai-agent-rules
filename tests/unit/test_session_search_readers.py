@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+import subprocess
 import sys
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +27,9 @@ sys.path.insert(
 
 import pytest
 
-from session_search.readers import amp, claude, codex, gemini, goose
+from session_search.core import Session
+from session_search.readers import amp, buzz, claude, codex, gemini, goose
+from session_search.readers import rank_candidates as dispatch_rank
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -1141,3 +1145,524 @@ class TestAmpReader:
         parsed = json.loads(result)
 
         assert parsed["role"] == "user"
+
+
+# ---------------------------------------------------------------------------
+# Buzz reader tests
+# ---------------------------------------------------------------------------
+
+
+def _buzz_channel(channel_id: str, name: str, created_at: int) -> dict[str, Any]:
+    return {"channel_id": channel_id, "name": name, "created_at": created_at}
+
+
+def _buzz_event(channel_id: str, content: str, created_at: int = 1781525643) -> dict:
+    return {
+        "id": "evt-" + channel_id,
+        "kind": 9,
+        "pubkey": "abc",
+        "content": content,
+        "created_at": created_at,
+        "tags": [["h", channel_id]],
+    }
+
+
+def _grep_args(pattern: str, **kwargs: Any) -> argparse.Namespace:
+    return _args(
+        pattern=pattern,
+        id=kwargs.pop("id", None),
+        limit_sessions=kwargs.pop("limit_sessions", 25),
+        **kwargs,
+    )
+
+
+def _buzz_session(
+    channel_id: str, updated_at: str = "2026-06-15T00:00:00+00:00"
+) -> Session:
+    return Session(
+        id=channel_id,
+        agent="buzz",
+        path=Path(f"buzz:{channel_id}"),
+        timestamp=updated_at,
+        updated_at=updated_at,
+        title=channel_id,
+        cwd="",
+        repo_score=0,
+        repo_reason="",
+    )
+
+
+@pytest.mark.unit
+class TestBuzzReader:
+    @pytest.fixture(autouse=True)
+    def _reset_module_state(self):
+        buzz._search_cache.clear()
+        buzz._sweep_notified = False
+        yield
+        buzz._search_cache.clear()
+        buzz._sweep_notified = False
+
+    def _mock_buzz(
+        self, monkeypatch: pytest.MonkeyPatch, handler: Callable[..., Any]
+    ) -> None:
+        monkeypatch.setattr(buzz, "_run_buzz", handler)
+
+    # -- detect ----------------------------------------------------------
+
+    def test_buzz_detect_returns_true_when_both_env_vars_present(self, monkeypatch):
+        monkeypatch.setenv("BUZZ_PRIVATE_KEY", "nsec1xxx")
+        monkeypatch.setenv("BUZZ_RELAY_URL", "wss://relay")
+
+        assert buzz.detect() is True
+
+    def test_buzz_detect_returns_false_when_relay_url_missing(self, monkeypatch):
+        monkeypatch.setenv("BUZZ_PRIVATE_KEY", "nsec1xxx")
+        monkeypatch.delenv("BUZZ_RELAY_URL", raising=False)
+
+        assert buzz.detect() is False
+
+    def test_buzz_detect_returns_false_when_private_key_missing(self, monkeypatch):
+        monkeypatch.delenv("BUZZ_PRIVATE_KEY", raising=False)
+        monkeypatch.setenv("BUZZ_RELAY_URL", "wss://relay")
+
+        assert buzz.detect() is False
+
+    # -- iter_sessions ---------------------------------------------------
+
+    def test_buzz_iter_sessions_maps_channel_to_session(self, monkeypatch):
+        self._mock_buzz(
+            monkeypatch,
+            lambda *a: [_buzz_channel("uuid-1", "general", 1781525643)],
+        )
+
+        sessions = buzz.iter_sessions(_args())
+
+        assert len(sessions) == 1
+        s = sessions[0]
+        assert s.id == "uuid-1"
+        assert s.title == "general"
+        assert s.agent == "buzz"
+        assert s.cwd == ""
+        assert s.repo_score == 0
+        assert str(s.path) == "buzz:uuid-1"
+        # epoch int converted to ISO, sortable by core.date_key
+        assert s.timestamp.startswith("2026-")
+        assert s.timestamp == s.updated_at
+
+    def test_buzz_iter_sessions_skips_channel_without_id(self, monkeypatch):
+        self._mock_buzz(
+            monkeypatch,
+            lambda *a: [{"name": "broken", "created_at": 1781525643}],
+        )
+
+        assert buzz.iter_sessions(_args()) == []
+
+    def test_buzz_iter_sessions_since_includes_recent_session(self, monkeypatch):
+        # Regression: epoch int must convert or core.in_date_window drops it.
+        recent = _buzz_channel("uuid-recent", "recent", 1781525643)  # 2026-06
+        self._mock_buzz(monkeypatch, lambda *a: [recent])
+
+        sessions = buzz.iter_sessions(_args(since="2026-01-01"))
+
+        assert [s.id for s in sessions] == ["uuid-recent"]
+
+    def test_buzz_iter_sessions_since_excludes_old_session(self, monkeypatch):
+        old = _buzz_channel("uuid-old", "old", 1262304000)  # 2010-01-01
+        self._mock_buzz(monkeypatch, lambda *a: [old])
+
+        sessions = buzz.iter_sessions(_args(since="2026-01-01"))
+
+        assert sessions == []
+
+    # -- iter_search_text / display_text ---------------------------------
+
+    def test_buzz_iter_search_text_yields_content(self):
+        record = {"content": "hello world"}
+
+        assert list(buzz.iter_search_text(record, "")) == ["hello world"]
+
+    def test_buzz_iter_search_text_empty_content_yields_nothing(self):
+        assert list(buzz.iter_search_text({"content": ""}, "")) == []
+
+    def test_buzz_display_text_returns_json_with_converted_time(self):
+        record = {"pubkey": "pk", "content": "msg", "created_at": 1781525643}
+
+        parsed = json.loads(buzz.display_text(record, ""))
+
+        assert parsed["pubkey"] == "pk"
+        assert parsed["content"] == "msg"
+        assert parsed["time"].startswith("2026-")
+
+    # -- grep: fast path (unsaturated global search) ---------------------
+
+    def test_buzz_grep_unsaturated_groups_by_h_tag_and_applies_full_regex(
+        self, monkeypatch, capsys
+    ):
+        calls = []
+
+        def handler(*args):
+            calls.append(args)
+            # global search returns hits across two channels, under the cap
+            return [
+                _buzz_event("uuid-1", "the password is hunter2"),
+                _buzz_event("uuid-2", "the weather is nice"),
+            ]
+
+        self._mock_buzz(monkeypatch, handler)
+        session = Session(
+            id="uuid-1",
+            agent="buzz",
+            path=Path("buzz://uuid-1"),
+            timestamp="2026-06-15T00:00:00+00:00",
+            updated_at="2026-06-15T00:00:00+00:00",
+            title="general",
+            cwd="",
+            repo_score=0,
+            repo_reason="",
+        )
+        import re as _re
+
+        count = buzz.search_session(
+            session, _re.compile("password"), _grep_args("password")
+        )
+
+        assert count == 1
+        # exactly one global search call, no per-channel get
+        assert calls == [
+            ("messages", "search", "--query", "password", "--limit", "100")
+        ]
+        out = capsys.readouterr().out
+        assert "hunter2" in out
+
+    def test_buzz_grep_memoizes_global_search_across_sessions(self, monkeypatch):
+        calls = []
+
+        def handler(*args):
+            calls.append(args)
+            return [_buzz_event("uuid-1", "match here")]
+
+        self._mock_buzz(monkeypatch, handler)
+        import re as _re
+
+        pattern = _re.compile("match")
+        args = _grep_args("match")
+        for cid in ("uuid-1", "uuid-2"):
+            s = Session(
+                id=cid,
+                agent="buzz",
+                path=Path(f"buzz://{cid}"),
+                timestamp="2026-06-15T00:00:00+00:00",
+                updated_at="2026-06-15T00:00:00+00:00",
+                title="t",
+                cwd="",
+                repo_score=0,
+                repo_reason="",
+            )
+            buzz.search_session(s, pattern, args)
+
+        # single global search despite two candidate sessions
+        assert len(calls) == 1
+
+    # -- grep: saturated -> bounded sweep --------------------------------
+
+    def test_buzz_grep_saturated_falls_back_to_per_channel_sweep(
+        self, monkeypatch, capsys
+    ):
+        calls = []
+
+        def handler(*args):
+            calls.append(args)
+            if args[:2] == ("messages", "search"):
+                # saturated: exactly the cap
+                return [
+                    _buzz_event("uuid-x", "common") for _ in range(buzz._SEARCH_CAP)
+                ]
+            # per-channel get for the swept channel
+            return [_buzz_event("uuid-1", "the common word matches")]
+
+        self._mock_buzz(monkeypatch, handler)
+        session = Session(
+            id="uuid-1",
+            agent="buzz",
+            path=Path("buzz://uuid-1"),
+            timestamp="2026-06-15T00:00:00+00:00",
+            updated_at="2026-06-15T00:00:00+00:00",
+            title="general",
+            cwd="",
+            repo_score=0,
+            repo_reason="",
+        )
+        import re as _re
+
+        count = buzz.search_session(
+            session, _re.compile("common"), _grep_args("common")
+        )
+
+        assert count == 1
+        # search fired once (saturated), then a per-channel get for the candidate
+        assert ("messages", "search", "--query", "common", "--limit", "100") in calls
+        assert ("messages", "get", "--channel", "uuid-1", "--kinds", "9") in calls
+        assert "swept" in capsys.readouterr().err
+
+    # -- grep: no literal seed -> sweep ----------------------------------
+
+    def test_buzz_grep_no_seed_goes_straight_to_sweep(self, monkeypatch, capsys):
+        calls = []
+
+        def handler(*args):
+            calls.append(args)
+            return [_buzz_event("uuid-1", "year 2026 here")]
+
+        self._mock_buzz(monkeypatch, handler)
+        session = Session(
+            id="uuid-1",
+            agent="buzz",
+            path=Path("buzz://uuid-1"),
+            timestamp="2026-06-15T00:00:00+00:00",
+            updated_at="2026-06-15T00:00:00+00:00",
+            title="general",
+            cwd="",
+            repo_score=0,
+            repo_reason="",
+        )
+        import re as _re
+
+        # \d{4} has no [A-Za-z0-9_] literal run usable as a seed
+        count = buzz.search_session(
+            session, _re.compile(r"\d{4}"), _grep_args(r"\d{4}")
+        )
+
+        assert count == 1
+        # never issued a global search; went straight to per-channel get
+        assert all(c[:2] != ("messages", "search") for c in calls)
+        assert ("messages", "get", "--channel", "uuid-1", "--kinds", "9") in calls
+
+    # -- grep: --id fragment ---------------------------------------------
+
+    def test_buzz_grep_id_fragment_fetches_channel_directly(self, monkeypatch):
+        calls = []
+
+        def handler(*args):
+            calls.append(args)
+            return [_buzz_event("uuid-1", "scoped match")]
+
+        self._mock_buzz(monkeypatch, handler)
+        # dispatcher resolves the fragment to this full-UUID candidate; the
+        # reader fetches it directly and never touches global search.
+        session = Session(
+            id="uuid-1",
+            agent="buzz",
+            path=Path("buzz://uuid-1"),
+            timestamp="2026-06-15T00:00:00+00:00",
+            updated_at="2026-06-15T00:00:00+00:00",
+            title="general",
+            cwd="",
+            repo_score=0,
+            repo_reason="",
+        )
+        import re as _re
+
+        count = buzz.search_session(
+            session, _re.compile("scoped"), _grep_args("scoped", id="uuid")
+        )
+
+        assert count == 1
+        assert calls == [("messages", "get", "--channel", "uuid-1", "--kinds", "9")]
+
+    # -- graceful degradation --------------------------------------------
+
+    def test_buzz_iter_sessions_empty_when_run_buzz_returns_empty(self, monkeypatch):
+        self._mock_buzz(monkeypatch, lambda *a: [])
+
+        assert buzz.iter_sessions(_args()) == []
+
+    def test_buzz_run_buzz_nonzero_exit_warns_and_returns_empty(
+        self, monkeypatch, capsys
+    ):
+        def fake_run(*a, **kw):
+            raise subprocess.CalledProcessError(2, a[0], stderr="relay unreachable")
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+
+        assert buzz._run_buzz("channels", "list") == []
+        assert "relay unreachable" in capsys.readouterr().err
+
+    def test_buzz_run_buzz_malformed_json_warns_and_returns_empty(
+        self, monkeypatch, capsys
+    ):
+        class _Result:
+            stdout = "not json"
+
+        monkeypatch.setattr(subprocess, "run", lambda *a, **kw: _Result())
+
+        assert buzz._run_buzz("channels", "list") == []
+        assert "malformed JSON" in capsys.readouterr().err
+
+    # -- literal seed extraction -----------------------------------------
+
+    def test_buzz_literal_seed_plain_word(self):
+        assert buzz._literal_seed("deployment") == "deployment"
+
+    def test_buzz_literal_seed_picks_longest_run(self):
+        assert buzz._literal_seed("ab.cdef.gh") == "cdef"
+
+    def test_buzz_literal_seed_ignores_escaped_class(self):
+        # \d{4} has no literal text: 'd' is escaped, '4' is inside a quantifier
+        assert buzz._literal_seed(r"\d{4}") == ""
+
+    def test_buzz_literal_seed_ignores_char_class(self):
+        assert buzz._literal_seed(r"[a-z]+error") == "error"
+
+    def test_buzz_literal_seed_drops_optional_char(self):
+        # 'colou?r' -> the optional 'u' must not anchor the seed
+        assert buzz._literal_seed("colou?r") == "colo"
+
+    def test_buzz_literal_seed_drops_zero_min_brace_range(self):
+        # 'ax{0,3}b' matches 'ab' (zero x); seeding 'ax' would silently drop it
+        assert "x" not in buzz._literal_seed("ax{0,3}b")
+
+    def test_buzz_literal_seed_drops_zero_exact_brace(self):
+        # 'ab{0}c' matches 'ac' (zero b); the optional 'b' must not anchor the seed
+        assert "b" not in buzz._literal_seed("ab{0}c")
+
+    # -- grep ranking: match-density first -------------------------------
+
+    def test_buzz_rank_candidates_floats_dense_older_channel_above_sparse_recent(
+        self, monkeypatch
+    ):
+        # Global search finds 2 hits in the older channel, 1 in the recent one.
+        self._mock_buzz(
+            monkeypatch,
+            lambda *a: [
+                _buzz_event("dense", "systemPrompt one"),
+                _buzz_event("dense", "systemPrompt two"),
+                _buzz_event("sparse", "systemPrompt solo"),
+            ],
+        )
+        # Incoming order is recency: sparse (recent) before dense (older).
+        recent = _buzz_session("sparse", "2026-06-15T00:00:00+00:00")
+        older = _buzz_session("dense", "2026-06-01T00:00:00+00:00")
+
+        ranked = buzz.rank_candidates([recent, older], _grep_args("systemPrompt"))
+
+        # dense outranks sparse despite being older — match density wins.
+        assert [s.id for s in ranked] == ["dense", "sparse"]
+
+    def test_buzz_rank_candidates_saturated_search_leaves_order_unchanged(
+        self, monkeypatch
+    ):
+        self._mock_buzz(
+            monkeypatch,
+            lambda *a: [_buzz_event("x", "common") for _ in range(buzz._SEARCH_CAP)],
+        )
+        sessions = [_buzz_session("a"), _buzz_session("b")]
+
+        ranked = buzz.rank_candidates(sessions, _grep_args("common"))
+
+        assert ranked == sessions
+
+    def test_buzz_rank_candidates_no_seed_leaves_order_unchanged(self, monkeypatch):
+        calls = []
+
+        def handler(*args):
+            calls.append(args)
+            return []
+
+        self._mock_buzz(monkeypatch, handler)
+        sessions = [_buzz_session("a"), _buzz_session("b")]
+
+        # r"\d{4}" yields no literal seed -> no global search, identity order.
+        ranked = buzz.rank_candidates(sessions, _grep_args(r"\d{4}"))
+
+        assert ranked == sessions
+        assert calls == []  # no relay search fired without a seed
+
+    def test_buzz_rank_candidates_id_path_skips_search_and_is_identity(
+        self, monkeypatch
+    ):
+        # Guards the CRITICAL: --id must not fire an unscoped global search.
+        calls = []
+
+        def handler(*args):
+            calls.append(args)
+            return []
+
+        self._mock_buzz(monkeypatch, handler)
+        sessions = [_buzz_session("uuid-1"), _buzz_session("uuid-2")]
+
+        ranked = buzz.rank_candidates(sessions, _grep_args("systemPrompt", id="uuid"))
+
+        assert ranked == sessions
+        assert calls == []  # no _grouped_search on the scoped path
+
+    def test_buzz_rank_candidates_memoizes_search_shared_with_search_session(
+        self, monkeypatch
+    ):
+        calls = []
+
+        def handler(*args):
+            calls.append(args)
+            return [_buzz_event("a", "match")]
+
+        self._mock_buzz(monkeypatch, handler)
+        import re as _re
+
+        args = _grep_args("match")
+        sessions = [_buzz_session("a"), _buzz_session("b")]
+
+        buzz.rank_candidates(sessions, args)
+        buzz.search_session(sessions[0], _re.compile("match"), args)
+
+        # ranking primes the cache; the later search hits it -> one search call.
+        assert sum(1 for c in calls if c[:2] == ("messages", "search")) == 1
+
+    def test_dispatch_rank_reorders_buzz_slots_only_non_buzz_byte_identical(
+        self, monkeypatch
+    ):
+        self._mock_buzz(
+            monkeypatch,
+            lambda *a: [
+                _buzz_event("buzz-dense", "match one"),
+                _buzz_event("buzz-dense", "match two"),
+                _buzz_event("buzz-sparse", "match solo"),
+            ],
+        )
+        # Interleaved as sorted_sessions returns: non-Buzz sessions sit between
+        # the two Buzz ones. They must keep their exact index positions.
+        claude_a = Session(
+            id="claude-a",
+            agent="claude",
+            path=Path("/c/a"),
+            timestamp="2026-06-10T00:00:00+00:00",
+            updated_at="2026-06-10T00:00:00+00:00",
+            title="ca",
+            cwd="",
+            repo_score=5,
+            repo_reason="",
+        )
+        codex_b = Session(
+            id="codex-b",
+            agent="codex",
+            path=Path("/x/b"),
+            timestamp="2026-06-09T00:00:00+00:00",
+            updated_at="2026-06-09T00:00:00+00:00",
+            title="cb",
+            cwd="",
+            repo_score=3,
+            repo_reason="",
+        )
+        incoming = [
+            _buzz_session("buzz-sparse"),  # slot 0 (Buzz)
+            claude_a,  # slot 1 (non-Buzz)
+            codex_b,  # slot 2 (non-Buzz)
+            _buzz_session("buzz-dense"),  # slot 3 (Buzz)
+        ]
+
+        ranked = dispatch_rank(incoming, _grep_args("match"))
+
+        # Non-Buzz sessions never move.
+        assert ranked[1] is claude_a
+        assert ranked[2] is codex_b
+        # Buzz slots (0 and 3) hold the permuted Buzz values: dense first.
+        assert ranked[0].id == "buzz-dense"
+        assert ranked[3].id == "buzz-sparse"
