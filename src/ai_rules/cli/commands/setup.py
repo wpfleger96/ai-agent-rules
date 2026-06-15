@@ -172,7 +172,9 @@ def setup(
                             print_warning("Skipped ai-agent-rules upgrade")
                             tool_install_success = True
                         else:
-                            success, msg, _ = perform_tool_upgrade(ai_rules_tool, is_self=True)
+                            success, msg, _ = perform_tool_upgrade(
+                                ai_rules_tool, is_self=True
+                            )
                             if success:
                                 print_success(
                                     f"Upgraded ai-agent-rules ({update_info.current_version} → {update_info.latest_version})"

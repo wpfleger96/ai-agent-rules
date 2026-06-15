@@ -190,8 +190,13 @@ def upgrade(
 
     current_profile = get_active_profile() or "default"
     self_post_upgrade_cmd = [
-        "ai-agent-rules", "install", "--rebuild-cache", "--force", "-y",
-        "--profile", current_profile,
+        "ai-agent-rules",
+        "install",
+        "--rebuild-cache",
+        "--force",
+        "-y",
+        "--profile",
+        current_profile,
     ]
 
     ai_rules_upgraded = False
@@ -202,7 +207,9 @@ def upgrade(
                     tool,
                     target_version=update_info.latest_version,
                     is_self=(tool.tool_id == "ai-agent-rules"),
-                    post_upgrade_cmd=self_post_upgrade_cmd if tool.tool_id == "ai-agent-rules" else None,
+                    post_upgrade_cmd=self_post_upgrade_cmd
+                    if tool.tool_id == "ai-agent-rules"
+                    else None,
                 )
             except Exception as e:
                 print_error(f"{tool.display_name} upgrade failed: {e}")
@@ -211,7 +218,9 @@ def upgrade(
         if success:
             if msg == "deferred":
                 print_success(f"{tool.display_name} upgrade started in the background")
-                print_hint("Run 'ai-agent-rules install --rebuild-cache' once it completes if needed")
+                print_hint(
+                    "Run 'ai-agent-rules install --rebuild-cache' once it completes if needed"
+                )
             else:
                 new_version = tool.get_version()
                 if new_version == update_info.latest_version:

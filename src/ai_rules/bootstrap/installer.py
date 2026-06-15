@@ -415,7 +415,9 @@ def _check_and_apply_upgrade(
                     "upgrade_available",
                     f"Would upgrade {spec.display_name} {update_info.current_version} → {update_info.latest_version}",
                 )
-            success, msg, _ = perform_tool_upgrade(spec, is_self=(spec.tool_id == "ai-agent-rules"))
+            success, msg, _ = perform_tool_upgrade(
+                spec, is_self=(spec.tool_id == "ai-agent-rules")
+            )
             if success:
                 return (
                     "upgraded",
