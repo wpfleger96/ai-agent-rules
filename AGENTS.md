@@ -216,7 +216,12 @@ just test-e2e                   # E2E only — runs real CLI as subprocess, no m
    - `ActiveToolSpec.get_install_spec` is a `Callable[[], ToolSpec]` — always call it: `active.get_install_spec()`. Storing the result at module level causes circular imports.
    - `ensure_tool_installed(..., skip_update_check=True)` in `_install_active_tools` — install is a fast presence-check; upgrade checks belong in the `upgrade` command
 
-10. **Gemini skill directory** - Gemini discovers skills from `~/.agents/skills/` (the Codex directory) via a built-in alias:
+10. **Profile inheritance is additive-only** — `deep_merge` can add or overwrite keys but CANNOT remove them.
+    If a parent profile sets a key, every child inherits it unless the child explicitly overrides it.
+    Inheritance chain: `default` → `personal` → `work`.
+    When adding a setting to a parent profile, check all child profiles and add explicit overrides where the setting should NOT apply.
+
+11. **Gemini skill directory** - Gemini discovers skills from `~/.agents/skills/` (the Codex directory) via a built-in alias:
    - Do NOT add a `~/.gemini/skills/` directory — it causes "Skill conflict detected" warnings in headless invocations
    - This is why `AGENT_SKILLS_DIRS` in `config.py` intentionally excludes Gemini
 
