@@ -24,6 +24,7 @@ from .installer import (
     make_github_install_url,
 )
 from .version import is_newer
+from ai_rules.platform import Platform, is_platform
 
 _SELF_GITHUB_REPO = "wpfleger96/ai-agent-rules"
 
@@ -388,9 +389,32 @@ def _resolve_effective_source(tool: ToolSpec) -> ToolSource:
     return receipt_source or ToolSource.PYPI
 
 
+def _spawn_deferred_upgrade(
+    uv_cmd: list[str],
+    post_upgrade_cmd: list[str] | None = None,
+) -> tuple[bool, str, bool]:
+    import subprocess
+
+    parts = ["timeout /t 3 /nobreak >nul", subprocess.list2cmdline(uv_cmd)]
+    if post_upgrade_cmd:
+        parts.append(subprocess.list2cmdline(post_upgrade_cmd))
+
+    subprocess.Popen(
+        ["cmd.exe", "/c", " && ".join(parts)],
+        creationflags=0x00000008 | 0x00000200,  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+        close_fds=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL,
+    )
+    return True, "deferred", True
+
+
 def perform_tool_upgrade(
     tool: ToolSpec,
     target_version: str | None = None,
+    is_self: bool = False,
+    post_upgrade_cmd: list[str] | None = None,
 ) -> tuple[bool, str, bool]:
     """Upgrade a tool via uv, handling PyPI and GitHub sources.
 
@@ -435,6 +459,9 @@ def perform_tool_upgrade(
 
     if python_flag:
         cmd.extend(["--python", python_flag])
+
+    if is_self and is_platform(Platform.WINDOWS):
+        return _spawn_deferred_upgrade(cmd, post_upgrade_cmd)
 
     try:
         result = subprocess.run(
