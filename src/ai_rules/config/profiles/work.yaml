@@ -8,6 +8,7 @@ managed_tools:
 settings_overrides:
   claude:
     model: "opus[1m]"
+    remoteControlAtStartup: false
   codex:
     service_tier: "fast"
     features:
