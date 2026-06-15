@@ -1293,18 +1293,27 @@ class TestBuzzReader:
 
         self._mock_buzz(monkeypatch, handler)
         session = Session(
-            id="uuid-1", agent="buzz", path=Path("buzz://uuid-1"),
+            id="uuid-1",
+            agent="buzz",
+            path=Path("buzz://uuid-1"),
             timestamp="2026-06-15T00:00:00+00:00",
             updated_at="2026-06-15T00:00:00+00:00",
-            title="general", cwd="", repo_score=0, repo_reason="",
+            title="general",
+            cwd="",
+            repo_score=0,
+            repo_reason="",
         )
         import re as _re
 
-        count = buzz.search_session(session, _re.compile("password"), _grep_args("password"))
+        count = buzz.search_session(
+            session, _re.compile("password"), _grep_args("password")
+        )
 
         assert count == 1
         # exactly one global search call, no per-channel get
-        assert calls == [("messages", "search", "--query", "password", "--limit", "100")]
+        assert calls == [
+            ("messages", "search", "--query", "password", "--limit", "100")
+        ]
         out = capsys.readouterr().out
         assert "hunter2" in out
 
@@ -1322,10 +1331,15 @@ class TestBuzzReader:
         args = _grep_args("match")
         for cid in ("uuid-1", "uuid-2"):
             s = Session(
-                id=cid, agent="buzz", path=Path(f"buzz://{cid}"),
+                id=cid,
+                agent="buzz",
+                path=Path(f"buzz://{cid}"),
                 timestamp="2026-06-15T00:00:00+00:00",
                 updated_at="2026-06-15T00:00:00+00:00",
-                title="t", cwd="", repo_score=0, repo_reason="",
+                title="t",
+                cwd="",
+                repo_score=0,
+                repo_reason="",
             )
             buzz.search_session(s, pattern, args)
 
@@ -1343,20 +1357,29 @@ class TestBuzzReader:
             calls.append(args)
             if args[:2] == ("messages", "search"):
                 # saturated: exactly the cap
-                return [_buzz_event("uuid-x", "common") for _ in range(buzz._SEARCH_CAP)]
+                return [
+                    _buzz_event("uuid-x", "common") for _ in range(buzz._SEARCH_CAP)
+                ]
             # per-channel get for the swept channel
             return [_buzz_event("uuid-1", "the common word matches")]
 
         self._mock_buzz(monkeypatch, handler)
         session = Session(
-            id="uuid-1", agent="buzz", path=Path("buzz://uuid-1"),
+            id="uuid-1",
+            agent="buzz",
+            path=Path("buzz://uuid-1"),
             timestamp="2026-06-15T00:00:00+00:00",
             updated_at="2026-06-15T00:00:00+00:00",
-            title="general", cwd="", repo_score=0, repo_reason="",
+            title="general",
+            cwd="",
+            repo_score=0,
+            repo_reason="",
         )
         import re as _re
 
-        count = buzz.search_session(session, _re.compile("common"), _grep_args("common"))
+        count = buzz.search_session(
+            session, _re.compile("common"), _grep_args("common")
+        )
 
         assert count == 1
         # search fired once (saturated), then a per-channel get for the candidate
@@ -1375,15 +1398,22 @@ class TestBuzzReader:
 
         self._mock_buzz(monkeypatch, handler)
         session = Session(
-            id="uuid-1", agent="buzz", path=Path("buzz://uuid-1"),
+            id="uuid-1",
+            agent="buzz",
+            path=Path("buzz://uuid-1"),
             timestamp="2026-06-15T00:00:00+00:00",
             updated_at="2026-06-15T00:00:00+00:00",
-            title="general", cwd="", repo_score=0, repo_reason="",
+            title="general",
+            cwd="",
+            repo_score=0,
+            repo_reason="",
         )
         import re as _re
 
         # \d{4} has no [A-Za-z0-9_] literal run usable as a seed
-        count = buzz.search_session(session, _re.compile(r"\d{4}"), _grep_args(r"\d{4}"))
+        count = buzz.search_session(
+            session, _re.compile(r"\d{4}"), _grep_args(r"\d{4}")
+        )
 
         assert count == 1
         # never issued a global search; went straight to per-channel get
@@ -1403,10 +1433,15 @@ class TestBuzzReader:
         # dispatcher resolves the fragment to this full-UUID candidate; the
         # reader fetches it directly and never touches global search.
         session = Session(
-            id="uuid-1", agent="buzz", path=Path("buzz://uuid-1"),
+            id="uuid-1",
+            agent="buzz",
+            path=Path("buzz://uuid-1"),
             timestamp="2026-06-15T00:00:00+00:00",
             updated_at="2026-06-15T00:00:00+00:00",
-            title="general", cwd="", repo_score=0, repo_reason="",
+            title="general",
+            cwd="",
+            repo_score=0,
+            repo_reason="",
         )
         import re as _re
 
