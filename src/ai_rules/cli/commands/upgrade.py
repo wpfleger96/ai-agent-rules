@@ -186,40 +186,55 @@ def upgrade(
             print_warning("Cancelled")
             return
 
+    from ai_rules.state import get_active_profile
+
+    current_profile = get_active_profile() or "default"
+    self_post_upgrade_cmd = [
+        "ai-agent-rules", "install", "--rebuild-cache", "--force", "-y",
+        "--profile", current_profile,
+    ]
+
     ai_rules_upgraded = False
     for tool, update_info in tool_updates:
         with console.status(f"Upgrading {tool.display_name}..."):
             try:
                 success, msg, was_upgraded = perform_tool_upgrade(
-                    tool, target_version=update_info.latest_version
+                    tool,
+                    target_version=update_info.latest_version,
+                    is_self=(tool.tool_id == "ai-agent-rules"),
+                    post_upgrade_cmd=self_post_upgrade_cmd if tool.tool_id == "ai-agent-rules" else None,
                 )
             except Exception as e:
                 print_error(f"{tool.display_name} upgrade failed: {e}")
                 continue
 
         if success:
-            new_version = tool.get_version()
-            if new_version == update_info.latest_version:
-                print_success(f"{tool.display_name} upgraded to {new_version}")
-                if tool.tool_id == "ai-agent-rules":
-                    ai_rules_upgraded = True
-            elif new_version == update_info.current_version:
-                print_warning(
-                    f"{tool.display_name} upgrade reported success but version "
-                    f"unchanged ({new_version})"
-                )
-                if msg and msg != "Upgrade successful":
-                    print_hint(msg)
-                else:
-                    print_hint(
-                        "This may be due to a Python version mismatch. Check the "
-                        "package's requires-python and try: "
-                        f"uv tool upgrade {tool.package_name} --python <version>"
-                    )
+            if msg == "deferred":
+                print_success(f"{tool.display_name} upgrade started in the background")
+                print_hint("Run 'ai-agent-rules install --rebuild-cache' once it completes if needed")
             else:
-                print_success(f"{tool.display_name} upgraded to {new_version}")
-                if tool.tool_id == "ai-agent-rules":
-                    ai_rules_upgraded = True
+                new_version = tool.get_version()
+                if new_version == update_info.latest_version:
+                    print_success(f"{tool.display_name} upgraded to {new_version}")
+                    if tool.tool_id == "ai-agent-rules":
+                        ai_rules_upgraded = True
+                elif new_version == update_info.current_version:
+                    print_warning(
+                        f"{tool.display_name} upgrade reported success but version "
+                        f"unchanged ({new_version})"
+                    )
+                    if msg and msg != "Upgrade successful":
+                        print_hint(msg)
+                    else:
+                        print_hint(
+                            "This may be due to a Python version mismatch. Check the "
+                            "package's requires-python and try: "
+                            f"uv tool upgrade {tool.package_name} --python <version>"
+                        )
+                else:
+                    print_success(f"{tool.display_name} upgraded to {new_version}")
+                    if tool.tool_id == "ai-agent-rules":
+                        ai_rules_upgraded = True
         else:
             print_error(f"{tool.display_name} upgrade failed: {msg}")
 
