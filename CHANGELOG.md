@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## [0.67.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.66.1...v0.67.0) (2026-06-15)
+
+
+### Features
+
+* Add /handoff skill for portable session handoff documents ([7fd8f68](https://github.com/wpfleger96/ai-agent-rules/commit/7fd8f68b009bef314ffe36e50debb8d994c56252))
+
+
+### Bug Fixes
+
+* apply ruff format to installer.py, setup.py, upgrade.py ([feddae1](https://github.com/wpfleger96/ai-agent-rules/commit/feddae17f8f5cfbb355aafa6d87a250c349d3521))
+* correct import order and formatting in updater.py ([741cbd0](https://github.com/wpfleger96/ai-agent-rules/commit/741cbd0a3bd24a35c3c699e1645f9023ec491cc4))
+* **windows:** defer self-upgrade via detached process to avoid exe lock ([8ffe12a](https://github.com/wpfleger96/ai-agent-rules/commit/8ffe12ac6bf6b1403d31306e79a42a60efb790f9))
+
 ## [0.66.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.66.0...v0.66.1) (2026-06-15)
 
 
