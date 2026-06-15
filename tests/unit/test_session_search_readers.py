@@ -1461,3 +1461,11 @@ class TestBuzzReader:
     def test_buzz_literal_seed_drops_optional_char(self):
         # 'colou?r' -> the optional 'u' must not anchor the seed
         assert buzz._literal_seed("colou?r") == "colo"
+
+    def test_buzz_literal_seed_drops_zero_min_brace_range(self):
+        # 'ax{0,3}b' matches 'ab' (zero x); seeding 'ax' would silently drop it
+        assert "x" not in buzz._literal_seed("ax{0,3}b")
+
+    def test_buzz_literal_seed_drops_zero_exact_brace(self):
+        # 'ab{0}c' matches 'ac' (zero b); the optional 'b' must not anchor the seed
+        assert "b" not in buzz._literal_seed("ab{0}c")

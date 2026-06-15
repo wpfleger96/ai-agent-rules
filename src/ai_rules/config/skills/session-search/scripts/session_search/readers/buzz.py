@@ -143,6 +143,18 @@ _WORD_RE = re.compile(r"\w")
 _OPTIONAL_QUANTIFIERS = frozenset("?*")
 
 
+def _brace_min_zero(inner: str) -> bool:
+    """True when a `{...}` quantifier permits zero repetitions (min == 0).
+
+    `{0}`, `{0,}`, `{0,n}`, and `{,n}` (Python reads an omitted minimum as 0) make
+    the preceding char optional, exactly like `?`/`*`. A non-numeric minimum
+    (e.g. a literal `{foo}`) is not zero — keep the char; the brace run is already
+    excluded from the seed, so the conservative outcome stands.
+    """
+    minimum = inner.split(",", 1)[0].strip()
+    return minimum in ("", "0")
+
+
 def _literal_seed(pattern: str) -> str:
     """Longest substring the regex requires verbatim, for a server pre-filter.
 
@@ -172,6 +184,8 @@ def _literal_seed(pattern: str) -> str:
             continue
         if ch == "{":
             end = pattern.find("}", i + 1)
+            if current and _brace_min_zero(pattern[i + 1 : end] if end != -1 else ""):
+                current.pop()  # {0}, {0,n}, {0,} make the preceding char optional
             i = n if end == -1 else end + 1
             runs.append("".join(current))
             current = []
