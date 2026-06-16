@@ -13,6 +13,11 @@
 * **profiles:** override `remoteControlAtStartup` in work profile ([#135](https://github.com/wpfleger96/ai-agent-rules/issues/135)) ([daa0848](https://github.com/wpfleger96/ai-agent-rules/commit/daa08485c06fe9b5afdcd308e470cf66978c4e0b))
 
 
+### Chores
+
+* sync pre-commit hook ([9cf533b](https://github.com/wpfleger96/ai-agent-rules/commit/9cf533b9da485b8fffbb9855788fffb0f04e2570))
+
+
 ### Documentation
 
 * **agents-md:** document gh-infra fork workflow ([#136](https://github.com/wpfleger96/ai-agent-rules/issues/136)) ([230da25](https://github.com/wpfleger96/ai-agent-rules/commit/230da251f43337a2837fd44bbb60e1e8520ef7db))
