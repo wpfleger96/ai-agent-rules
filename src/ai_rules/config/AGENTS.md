@@ -17,6 +17,25 @@
 | Shell/terminal, git global config, editor settings (VS Code, Cursor), SSH signing, AI agent binary installs | `shell-configs` | `~/Development/Personal/shell-configs` | Managed section injection — NOT symlinks. Delimited blocks inside config files are overwritten on `shell-configs install`; content outside blocks persists. CLI: `shell-configs`. |
 | Claude Code statusline (model, tokens, cost, git branch bar) | `claude-code-status-line` | `~/Development/Personal/claude-code-status-line` | Wired into `~/.claude/settings.json`. |
 | GitHub repo settings (branch protection, merge rules, labels, Renovate) | `github-config` | `~/Development/Personal/github-config` | Declarative YAML manifests applied via `gh-infra`. |
+| `gh-infra` fork workflow | `gh-infra` | `~/Development/Personal/gh-infra` | Fork of `babarot/gh-infra`. `origin` = `wpfleger96/gh-infra`, `upstream` = `babarot/gh-infra`. See fork workflow section below. |
+
+---
+
+### gh-infra Fork Workflow
+
+**Rule:** When making changes to gh-infra, always follow the fork workflow — never commit directly to `dev`.
+
+- `origin` = `wpfleger96/gh-infra` (personal fork), `upstream` = `babarot/gh-infra` (canonical)
+- `dev` branch is the dogfood branch — all github-config CI workflows install gh-infra from `wpfleger96/gh-infra -b dev`
+- PR branches target upstream `main` (for eventual merge by the maintainer)
+- **After pushing a fix to a PR branch, also merge it into `dev`** so dogfooding picks it up immediately:
+  ```
+  git checkout dev && git merge wpfleger96/<type>/<slug> --no-ff -m "chore: merge <slug> into dev" && git push origin dev
+  ```
+- `dev` has dev-only content (its own AGENTS.md with deeper context) that must never go upstream
+- For fixes that touch code only on `dev` (not yet in upstream `main`), stack the PR branch on the relevant upstream PR branch — GitHub recomputes diffs dynamically once the base PR merges
+- Local dev binary: `cd ~/Development/Personal/gh-infra && go build -o gh-infra ./cmd/gh-infra/`
+- No `Co-authored-by` / `Signed-off-by` trailers in gh-infra commits — git is configured with maintainer identity
 
 ---
 
