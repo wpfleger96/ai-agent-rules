@@ -10,14 +10,7 @@
 
 ### Bug Fixes
 
-* **profiles:** override `remoteControlAtStartup` in work profile ([daa0848](https://github.com/wpfleger96/ai-agent-rules/commit/daa08485c06fe9b5afdcd308e470cf66978c4e0b))
-* **profiles:** override remoteControlAtStartup in work profile ([#135](https://github.com/wpfleger96/ai-agent-rules/issues/135)) ([daa0848](https://github.com/wpfleger96/ai-agent-rules/commit/daa08485c06fe9b5afdcd308e470cf66978c4e0b))
-
-
-### Chores
-
-* sync Justfile ([1e86523](https://github.com/wpfleger96/ai-agent-rules/commit/1e8652379c2bd261090798bdc4884ce0ebcc23a9))
-* sync pre-commit hook ([9cf533b](https://github.com/wpfleger96/ai-agent-rules/commit/9cf533b9da485b8fffbb9855788fffb0f04e2570))
+* **profiles:** override `remoteControlAtStartup` in work profile ([#135](https://github.com/wpfleger96/ai-agent-rules/issues/135)) ([daa0848](https://github.com/wpfleger96/ai-agent-rules/commit/daa08485c06fe9b5afdcd308e470cf66978c4e0b))
 
 
 ### Documentation
