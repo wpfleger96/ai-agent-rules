@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## [0.68.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.0...v0.68.1) (2026-06-19)
+
+
+### Bug Fixes
+
+* downgrade Python 3.14 to 3.13 and fix Python 3 syntax incompatibilities ([#140](https://github.com/wpfleger96/ai-agent-rules/issues/140)) ([142729f](https://github.com/wpfleger96/ai-agent-rules/commit/142729f081b459b4b5a2c4dbd07a091d351bc771))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#138](https://github.com/wpfleger96/ai-agent-rules/issues/138)) ([beea035](https://github.com/wpfleger96/ai-agent-rules/commit/beea03536cdfbd36a579354f56a0829bf5ab3735))
+* **deps:** Lock file maintenance ([#139](https://github.com/wpfleger96/ai-agent-rules/issues/139)) ([115a3c7](https://github.com/wpfleger96/ai-agent-rules/commit/115a3c76d099f21fa4da6383a869b4c2f03ca581))
+* sync pre-commit hook ([204c8fb](https://github.com/wpfleger96/ai-agent-rules/commit/204c8fb83d5d080a6af614cfdbe17b712485e0f0))
+
 ## [0.68.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.67.0...v0.68.0) (2026-06-16)
 
 
