@@ -48,7 +48,7 @@ def is_managed_target(target_path: Path, config_dir: Path) -> bool:
         config_resolved = config_dir.resolve()
         if target_resolved.is_relative_to(config_resolved):
             return True
-    except ValueError, OSError, RuntimeError:
+    except (ValueError, OSError, RuntimeError):
         pass
 
     # Fallback: check raw path string for package markers. Catches symlinks

@@ -43,7 +43,7 @@ def _load_slug_map() -> dict[str, str]:
     try:
         with projects_path.open("r", encoding="utf-8", errors="replace") as fh:
             data = json.load(fh)
-    except json.JSONDecodeError, OSError:
+    except (json.JSONDecodeError, OSError):
         return {}
     projects = data.get("projects") if isinstance(data, dict) else None
     if not isinstance(projects, dict):
@@ -189,7 +189,7 @@ def iter_search_text(record: dict[str, Any], raw: str) -> Iterable[str]:
                 elif isinstance(args_val, dict):
                     try:
                         yield json.dumps(args_val, ensure_ascii=False)
-                    except TypeError, ValueError:
+                    except (TypeError, ValueError):
                         pass
 
 

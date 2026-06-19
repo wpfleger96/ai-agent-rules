@@ -86,7 +86,7 @@ class SkillsComponent(Component):
                             continue
                         try:
                             link_target = existing.resolve()
-                        except OSError, RuntimeError:
+                        except (OSError, RuntimeError):
                             link_target = None
 
                         if link_target is None:
@@ -209,7 +209,7 @@ class SkillsComponent(Component):
                             continue
                         try:
                             link_target = existing.resolve()
-                        except OSError, RuntimeError:
+                        except (OSError, RuntimeError):
                             link_target = None
 
                         if link_target is None:
@@ -267,12 +267,12 @@ class SkillsComponent(Component):
                         continue
                     try:
                         link_target = existing.resolve()
-                    except OSError, RuntimeError:
+                    except (OSError, RuntimeError):
                         try:
                             link_target = existing.readlink()
                             if not link_target.is_absolute():
                                 link_target = existing.parent / link_target
-                        except OSError, RuntimeError:
+                        except (OSError, RuntimeError):
                             try:
                                 existing.unlink()
                                 removed += 1

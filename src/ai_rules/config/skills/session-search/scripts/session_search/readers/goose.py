@@ -267,7 +267,7 @@ def _search_db_session(
                 role, content_json_raw, created_ts = row
                 try:
                     blocks = json.loads(content_json_raw)
-                except json.JSONDecodeError, TypeError:
+                except (json.JSONDecodeError, TypeError):
                     blocks = []
 
                 record = {"role": role, "content_json_parsed": blocks}

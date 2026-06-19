@@ -1,5 +1,7 @@
 """Claude Code agent implementation."""
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -82,7 +84,7 @@ class ClaudeAgent(Agent):
                     target = loc.resolve()
                     if is_managed_target(target, self.config_dir):
                         deprecated.append(loc)
-                except OSError, RuntimeError:
+                except (OSError, RuntimeError):
                     pass
         return deprecated
 

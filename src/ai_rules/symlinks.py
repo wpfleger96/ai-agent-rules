@@ -268,7 +268,7 @@ def check_symlink(target_path: Path, expected_source: Path) -> tuple[str, str]:
 
     try:
         actual = target.resolve()
-    except OSError, RuntimeError:
+    except (OSError, RuntimeError):
         return ("broken", "Symlink is broken")
 
     if actual == expected:
@@ -370,7 +370,7 @@ def get_status_diff(
             return get_content_diff(target_path.resolve(), expected_source)
         if status_code in ("not_symlink", "stale_copy"):
             return get_content_diff(target_path, expected_source)
-    except OSError, RuntimeError:
+    except (OSError, RuntimeError):
         pass
     return None
 
@@ -434,7 +434,7 @@ def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
             actual_lines = f.readlines()
         with open(expected_path, encoding="utf-8") as f:
             expected_lines = f.readlines()
-    except OSError, UnicodeDecodeError:
+    except (OSError, UnicodeDecodeError):
         return None
 
     if str(actual_path).endswith(".json") and str(expected_path).endswith(".json"):
@@ -451,7 +451,7 @@ def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
             expected_lines = (
                 json.dumps(expected_parsed, indent=2, sort_keys=True) + "\n"
             ).splitlines(keepends=True)
-        except json.JSONDecodeError, ValueError:
+        except (json.JSONDecodeError, ValueError):
             pass
 
     return format_unified_diff(
