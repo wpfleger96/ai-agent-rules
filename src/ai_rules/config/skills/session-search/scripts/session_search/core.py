@@ -70,7 +70,7 @@ def git_root(cwd: Path) -> Path | None:
             stderr=subprocess.DEVNULL,
             check=True,
         )
-    except OSError, subprocess.CalledProcessError:
+    except (OSError, subprocess.CalledProcessError):
         return None
     root = result.stdout.strip()
     return Path(root).resolve() if root else None

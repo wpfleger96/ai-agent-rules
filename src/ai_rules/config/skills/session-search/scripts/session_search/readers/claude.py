@@ -77,7 +77,7 @@ def _read_head_record(path: Path) -> dict[str, Any]:
                     continue
                 try:
                     record: dict[str, Any] = json.loads(raw)
-                except json.JSONDecodeError, ValueError:
+                except (json.JSONDecodeError, ValueError):
                     continue
                 if not isinstance(record, dict):
                     continue

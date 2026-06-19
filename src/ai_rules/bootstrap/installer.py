@@ -1,5 +1,7 @@
 """Tool installation utilities."""
 
+from __future__ import annotations
+
 import re
 import shutil
 import subprocess
@@ -127,7 +129,7 @@ def get_tool_source(package_name: str) -> ToolSource | None:
 
         return ToolSource.PYPI
 
-    except OSError, tomllib.TOMLDecodeError, KeyError, IndexError:
+    except (OSError, tomllib.TOMLDecodeError, KeyError, IndexError):
         return None
 
 
@@ -285,7 +287,7 @@ def get_tool_version(tool_name: str) -> str | None:
 
         return None
 
-    except subprocess.TimeoutExpired, Exception:
+    except (subprocess.TimeoutExpired, Exception):
         return None
 
 

@@ -1,5 +1,7 @@
 """Command-line interface for ai-agent-rules."""
 
+from __future__ import annotations
+
 import logging
 
 from importlib.metadata import PackageNotFoundError

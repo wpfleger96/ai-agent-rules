@@ -284,7 +284,7 @@ class ConfigComponent(Component):
                             )
                         )
                         target_has_diff = True
-                    except OSError, RuntimeError:
+                    except (OSError, RuntimeError):
                         target_diffs.append(
                             (target_path, source, "broken", "Broken symlink", None)
                         )

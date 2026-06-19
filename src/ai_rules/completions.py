@@ -51,7 +51,7 @@ def _get_powershell_profile_path() -> Path | None:
             )
             if result.returncode == 0 and result.stdout.strip():
                 return Path(result.stdout.strip())
-        except FileNotFoundError, subprocess.TimeoutExpired:
+        except (FileNotFoundError, subprocess.TimeoutExpired):
             continue
     return None
 

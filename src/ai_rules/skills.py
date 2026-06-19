@@ -146,14 +146,14 @@ class SkillManager:
                         if item.name not in orphaned:
                             orphaned[item.name] = []
                         orphaned[item.name].append(item)
-                except OSError, RuntimeError:
+                except (OSError, RuntimeError):
                     try:
                         raw_target = item.readlink()
                         if is_managed_target(raw_target, self.config_dir):
                             if item.name not in orphaned:
                                 orphaned[item.name] = []
                             orphaned[item.name].append(item)
-                    except OSError, RuntimeError:
+                    except (OSError, RuntimeError):
                         pass
 
         return orphaned
@@ -180,7 +180,7 @@ class SkillManager:
                     try:
                         source = item.resolve()
                         is_broken = not source.exists()
-                    except OSError, RuntimeError:
+                    except (OSError, RuntimeError):
                         source = None
                         is_broken = True
                     entry = (item, source, is_broken)

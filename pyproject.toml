@@ -3,7 +3,7 @@ name = "ai-agent-rules"
 version = "0.68.0"
 description = "Manage user-level AI agent configurations"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 license = "MIT"
 authors = [
     { name = "Will Pfleger", email = "pfleger.will@gmail.com" }
@@ -14,7 +14,7 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities",
 ]
