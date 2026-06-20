@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.68.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.1...v0.68.2) (2026-06-20)
+
+
+### Chores
+
+* disable Claude Code session feedback survey prompts ([#141](https://github.com/wpfleger96/ai-agent-rules/issues/141)) ([570f5b9](https://github.com/wpfleger96/ai-agent-rules/commit/570f5b9d674aef6c216f553cf0cf14ed5dcc251e))
+
 ## [0.68.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.0...v0.68.1) (2026-06-19)
 
 
