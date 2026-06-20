@@ -18,6 +18,7 @@
 | Claude Code statusline (model, tokens, cost, git branch bar) | `claude-code-status-line` | `~/Development/Personal/claude-code-status-line` | Wired into `~/.claude/settings.json`. |
 | GitHub repo settings (branch protection, merge rules, labels, Renovate) | `github-config` | `~/Development/Personal/github-config` | Declarative YAML manifests applied via `gh-infra`. |
 | `gh-infra` fork workflow | `gh-infra` | `~/Development/Personal/gh-infra` | Fork of `babarot/gh-infra`. `origin` = `wpfleger96/gh-infra`, `upstream` = `babarot/gh-infra`. See fork workflow section below. |
+| `enpass-cli` fork workflow | `enpass-cli` | `~/Development/enpass-cli` | Fork of `hazcod/enpass-cli`. `origin` = `wpfleger96/enpass-cli`, `upstream` = `hazcod/enpass-cli`. See fork workflow section below. |
 
 ---
 
@@ -36,6 +37,24 @@
 - For fixes that touch code only on `dev` (not yet in upstream `main`), stack the PR branch on the relevant upstream PR branch — GitHub recomputes diffs dynamically once the base PR merges
 - Local dev binary: `cd ~/Development/Personal/gh-infra && go build -o gh-infra ./cmd/gh-infra/`
 - No `Co-authored-by` / `Signed-off-by` trailers in gh-infra commits — git is configured with maintainer identity
+
+---
+
+### enpass-cli Fork Workflow
+
+**Rule:** When making changes to enpass-cli, always follow the fork workflow — never commit directly to `dev`.
+
+- `origin` = `wpfleger96/enpass-cli` (personal fork), `upstream` = `hazcod/enpass-cli` (canonical)
+- `dev` branch is the dogfood branch — local builds for homelabconfigs use `wpfleger96/enpass-cli -b dev`
+- PR branches target upstream `master` (upstream uses `master` not `main`)
+- **After pushing a fix to a PR branch, also merge it into `dev`** so dogfooding picks it up immediately:
+  ```
+  git checkout dev && git merge wpfleger96/<type>/<slug> --no-ff -m "chore: merge <slug> into dev" && git push origin dev
+  ```
+- `dev` has dev-only content (its own AGENTS.md with deeper context) that must never go upstream
+- For fixes that touch code only on `dev` (not yet in upstream `master`), stack the PR branch on the relevant upstream PR branch — GitHub recomputes diffs dynamically once the base PR merges
+- Local dev binary: `cd ~/Development/enpass-cli && make build`
+- Normal `Co-authored-by` / `Signed-off-by` trailer rules apply — git is configured with the user's own identity
 
 ---
 
