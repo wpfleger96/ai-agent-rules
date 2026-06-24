@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.68.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.3...v0.68.4) (2026-06-24)
+
+
+### Chores
+
+* **buzz:** set Alia harness to claude, Thufir to codex ([#146](https://github.com/wpfleger96/ai-agent-rules/issues/146)) ([b4e98d7](https://github.com/wpfleger96/ai-agent-rules/commit/b4e98d71556c0474afd43b5251dccc2ca48c3384))
+
 ## [0.68.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.2...v0.68.3) (2026-06-24)
 
 
