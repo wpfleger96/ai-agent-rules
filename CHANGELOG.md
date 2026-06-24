@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.68.5](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.4...v0.68.5) (2026-06-24)
+
+
+### Documentation
+
+* **buzz:** size the task not the conversation in Paul routing ([#148](https://github.com/wpfleger96/ai-agent-rules/issues/148)) ([2b925af](https://github.com/wpfleger96/ai-agent-rules/commit/2b925af06eef2721dd82a8d4c6ee0f5f3f272260))
+
 ## [0.68.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.3...v0.68.4) (2026-06-24)
 
 
