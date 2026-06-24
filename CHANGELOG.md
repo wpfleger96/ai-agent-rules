@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.68.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.2...v0.68.3) (2026-06-24)
+
+
+### Chores
+
+* **buzz:** change Paul persona model to claude-4-6-opus ([#145](https://github.com/wpfleger96/ai-agent-rules/issues/145)) ([ff00510](https://github.com/wpfleger96/ai-agent-rules/commit/ff00510cb6ee286adeee9a7c5fef4b3cdb0fb4fb))
+
+
+### Documentation
+
+* document enpass-cli fork workflow in Personal Infrastructure table ([#143](https://github.com/wpfleger96/ai-agent-rules/issues/143)) ([171145f](https://github.com/wpfleger96/ai-agent-rules/commit/171145fc3d043361446c17f31311d8371e1ec069))
+
 ## [0.68.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.1...v0.68.2) (2026-06-20)
 
 
