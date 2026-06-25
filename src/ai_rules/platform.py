@@ -114,9 +114,3 @@ def get_statusline_config_dir() -> Path:
 def get_buzz_teams_dir(dev: bool = False) -> Path:
     bundle = "xyz.block.buzz.app.dev" if dev else "xyz.block.buzz.app"
     return Path.home() / "Library" / "Application Support" / bundle / "agents" / "teams"
-
-
-def get_legacy_sprout_teams_dir(dev: bool = False) -> Path:
-    """Pre-rename Sprout bundle paths — remove once upstream desktop rename is fully shipped."""
-    bundle = "xyz.block.sprout.app.dev" if dev else "xyz.block.sprout.app"
-    return Path.home() / "Library" / "Application Support" / bundle / "agents" / "teams"
