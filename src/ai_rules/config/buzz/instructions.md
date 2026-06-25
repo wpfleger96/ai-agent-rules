@@ -6,7 +6,7 @@
 |-------|------|---------|-------|-----------------|
 | @Paul | Orchestrator + Planner — plans, delegates, synthesizes | Goose | Claude Opus | Receives tasks, plans work, coordinates the team |
 | @Duncan | Primary Executor — implements, researches, tests, documents | Goose | Claude Sonnet | All execution work; run multiple instances for parallel tasks |
-| @Thufir | Primary Analyst — reviews code and plans | sprout-agent | GPT 5.5 | Plan review, code review, investigation |
+| @Thufir | Primary Analyst — reviews code and plans | buzz-agent | GPT 5.5 | Plan review, code review, investigation |
 | @Alia | Quick tasks — simple edits, summaries, formatting | Goose | Claude Haiku | Fast, simple, well-defined tasks |
 
 ## Collaboration Model

@@ -40,7 +40,7 @@ def test_buzz_tool_symlinks_on_macos(
 
     links = tool.symlinks
 
-    assert len(links) == 4
+    assert len(links) == 2
 
 
 @pytest.mark.unit
@@ -77,7 +77,7 @@ def test_buzz_tool_target_paths_use_correct_bundles(
     tool = BuzzTool(tmp_path, Config())
 
     links = tool.symlinks
-    assert len(links) == 4
+    assert len(links) == 2
 
     target_prod, _ = links[0]
     target_dev, _ = links[1]
@@ -87,28 +87,6 @@ def test_buzz_tool_target_paths_use_correct_bundles(
     assert "xyz.block.buzz.app.dev" in target_dev.as_posix()
     assert target_prod.name == "com.test.my-pack"
     assert target_dev.name == "com.test.my-pack"
-
-
-@pytest.mark.unit
-def test_buzz_tool_legacy_sprout_symlinks(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_home: Path
-) -> None:
-    """Legacy Sprout paths — remove this test once upstream desktop rename is fully shipped."""
-    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.MACOS)
-    buzz_dir = tmp_path / "buzz"
-    buzz_dir.mkdir()
-    _create_pack_manifest(buzz_dir, pack_id="com.test.my-pack")
-    tool = BuzzTool(tmp_path, Config())
-
-    links = tool.symlinks
-    legacy_prod, _ = links[2]
-    legacy_dev, _ = links[3]
-
-    assert "xyz.block.sprout.app" in legacy_prod.as_posix()
-    assert "xyz.block.sprout.app.dev" not in legacy_prod.as_posix()
-    assert "xyz.block.sprout.app.dev" in legacy_dev.as_posix()
-    assert legacy_prod.name == "com.test.my-pack"
-    assert legacy_dev.name == "com.test.my-pack"
 
 
 @pytest.mark.unit
@@ -169,7 +147,7 @@ def test_buzz_tool_symlinks_use_pack_id_from_manifest(
     tool = BuzzTool(tmp_path, Config())
 
     links = tool.symlinks
-    assert len(links) == 4
+    assert len(links) == 2
 
     for target, _source in links:
         assert target.name == "com.example.custom-pack"
