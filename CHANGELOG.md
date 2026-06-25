@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [0.69.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.5...v0.69.0) (2026-06-25)
+
+
+### Features
+
+* **buzz:** loosen Sietch Tabr agent roles for collaborative parallel work ([#153](https://github.com/wpfleger96/ai-agent-rules/issues/153)) ([c763f73](https://github.com/wpfleger96/ai-agent-rules/commit/c763f73ec58bba15613d44b0830daeac13d95c8d))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#151](https://github.com/wpfleger96/ai-agent-rules/issues/151)) ([e17d291](https://github.com/wpfleger96/ai-agent-rules/commit/e17d2917d5d8a07d76d8a801cb6c442edeea62dc))
+* **deps:** Update github-actions (major) ([#150](https://github.com/wpfleger96/ai-agent-rules/issues/150)) ([6811b56](https://github.com/wpfleger96/ai-agent-rules/commit/6811b5620a56881477c580f0336a5e5a71635856))
+
 ## [0.68.5](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.4...v0.68.5) (2026-06-24)
 
 
