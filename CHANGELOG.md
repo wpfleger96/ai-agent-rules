@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.69.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.69.0...v0.69.1) (2026-06-25)
+
+
+### Refactoring
+
+* **buzz:** remove legacy Sprout symlink paths ([#154](https://github.com/wpfleger96/ai-agent-rules/issues/154)) ([0edee9d](https://github.com/wpfleger96/ai-agent-rules/commit/0edee9d4e6a712d839117619ed475158c1d39f82))
+
 ## [0.69.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.68.5...v0.69.0) (2026-06-25)
 
 
