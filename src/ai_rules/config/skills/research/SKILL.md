@@ -2,11 +2,9 @@
 name: research
 version: 1.0.1
 description: >-
-  Conduct multi-agent research on any topic. Use when the user asks to
-  'research', 'investigate', 'deep dive', 'comprehensive analysis',
-  'what do we know about', or when a question requires synthesizing information
-  from multiple sources. Scales from simple inline answers to 10 parallel
-  research agents based on query complexity.
+  Multi-agent research on any topic. Use when the user asks to research,
+  investigate, or deep-dive a question requiring multiple sources. Scales
+  from inline answers to 10 parallel research agents based on complexity.
 allowed-tools: Agent, AskUserQuestion, Bash, Read, WebFetch, WebSearch, Write
 model: opus
 ---

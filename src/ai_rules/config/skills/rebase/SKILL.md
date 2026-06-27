@@ -1,10 +1,7 @@
 ---
 name: rebase
 version: 1.1.1
-description: >-
-  Rebase a branch onto main (or a target). Squash-first strategy, semantic
-  verification of auto-merged files, generated-file regeneration, and safe
-  force-push. Use when rebasing PRs or branches that are behind their base.
+description: Rebase a branch onto main (or a target) with squash-first strategy, semantic merge verification, and safe force-push.
 allowed-tools: Agent, Bash, Edit, Glob, Grep, Read, Write
 model: opus
 ---

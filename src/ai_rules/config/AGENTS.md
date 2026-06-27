@@ -3,7 +3,7 @@
 ## Quick Reference Checklist
 
 **Before completing tasks:**
-☐ Worktree for code changes | ☐ Read README & docs | ☐ Create TODO list (multi-step) | ☐ Explore before implementing | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ DRY & single responsibility | ☐ WHY comments only | ☐ Remove trailing whitespace | ☐ File ends with newline | ☐ Test behavior not implementation | ☐ AWS: --profile & --region | ☐ Keep simple (9/10 minimalism/elegance/correctness) | ☐ Ask clarifying questions | ☐ GitHub: git pull, then explore locally | ☐ Cross-reference stacked/related PRs | ☐ Config issues → Personal Infrastructure table
+☐ Worktree for code changes | ☐ Create TODO list (multi-step) | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ Test behavior not implementation | ☐ AWS: --profile & --region | ☐ Keep simple (9/10 minimalism/elegance/correctness) | ☐ Ask clarifying questions | ☐ GitHub: git pull, then explore locally | ☐ Cross-reference stacked/related PRs | ☐ Config issues → Personal Infrastructure table
 
 ---
 
@@ -22,39 +22,24 @@
 
 ---
 
-### gh-infra Fork Workflow
+### Fork Workflows
 
-**Rule:** When making changes to gh-infra, always follow the fork workflow — never commit directly to `dev`.
+**Rule:** When making changes to gh-infra or enpass-cli, always follow the fork workflow — never commit directly to `dev`.
 
-- `origin` = `wpfleger96/gh-infra` (personal fork), `upstream` = `babarot/gh-infra` (canonical)
-- `dev` branch is the dogfood branch — all github-config CI workflows install gh-infra from `wpfleger96/gh-infra -b dev`
-- PR branches target upstream `main` (for eventual merge by the maintainer)
-- **After pushing a fix to a PR branch, also merge it into `dev`** so dogfooding picks it up immediately:
+- After pushing a fix to a PR branch, also merge it into `dev` so dogfooding picks it up immediately:
   ```
   git checkout dev && git merge wpfleger96/<type>/<slug> --no-ff -m "chore: merge <slug> into dev" && git push origin dev
   ```
 - `dev` has dev-only content (its own AGENTS.md with deeper context) that must never go upstream
-- For fixes that touch code only on `dev` (not yet in upstream `main`), stack the PR branch on the relevant upstream PR branch — GitHub recomputes diffs dynamically once the base PR merges
-- Local dev binary: `cd ~/Development/Personal/gh-infra && go build -o gh-infra ./cmd/gh-infra/`
-- No `Co-authored-by` / `Signed-off-by` trailers in gh-infra commits — git is configured with maintainer identity
+- For fixes that touch code only on `dev` (not yet in upstream), stack the PR branch on the relevant upstream PR branch — GitHub recomputes diffs dynamically once the base PR merges
 
----
-
-### enpass-cli Fork Workflow
-
-**Rule:** When making changes to enpass-cli, always follow the fork workflow — never commit directly to `dev`.
-
-- `origin` = `wpfleger96/enpass-cli` (personal fork), `upstream` = `hazcod/enpass-cli` (canonical)
-- `dev` branch is the dogfood branch — local builds for homelabconfigs use `wpfleger96/enpass-cli -b dev`
-- PR branches target upstream `master` (upstream uses `master` not `main`)
-- **After pushing a fix to a PR branch, also merge it into `dev`** so dogfooding picks it up immediately:
-  ```
-  git checkout dev && git merge wpfleger96/<type>/<slug> --no-ff -m "chore: merge <slug> into dev" && git push origin dev
-  ```
-- `dev` has dev-only content (its own AGENTS.md with deeper context) that must never go upstream
-- For fixes that touch code only on `dev` (not yet in upstream `master`), stack the PR branch on the relevant upstream PR branch — GitHub recomputes diffs dynamically once the base PR merges
-- Local dev binary: `cd ~/Development/enpass-cli && make build`
-- Normal `Co-authored-by` / `Signed-off-by` trailer rules apply — git is configured with the user's own identity
+| | gh-infra | enpass-cli |
+|---|---|---|
+| Path | `~/Development/Personal/gh-infra` | `~/Development/enpass-cli` |
+| Upstream | `babarot/gh-infra` | `hazcod/enpass-cli` |
+| PR target | `main` | `master` |
+| Build | `go build -o gh-infra ./cmd/gh-infra/` | `make build` |
+| Trailers | None (maintainer identity) | Standard rules apply |
 
 ---
 
@@ -93,20 +78,14 @@
 
 **Rule:** Always delegate code implementation to parallel subagents — never write implementation diffs in the orchestrator context. Split by file/concern; one subagent per file or group of files sharing a broken intermediate state.
 
-**Delegate:** All code implementation | Non-implementation when context would exceed ~50% of window | Independent parallel subtasks
-**Handle inline:** Single-line mechanical changes | Highly sequential tasks needing prior step's output | Ambiguous tasks (clarify first)
+**Delegate:** All code implementation | Non-implementation when context >50% of window | Independent parallel subtasks
+**Inline:** Single-line mechanical | Sequential-dependent | Ambiguous (clarify first)
 
-**Subagent briefing (self-containment protocol):**
-Subagents have ZERO access to the parent conversation. Every briefing must include:
-- One atomic objective | Output format | Tool guidance | Scope boundaries ("do NOT implement X — another agent handles that")
-- Implementation briefings additionally: file ownership list (prohibit touching unlisted files), plan context with interfaces to satisfy, forbidden files owned by parallel agents
+**Subagent briefing (self-containment protocol):** Subagents have ZERO access to the parent conversation. Every briefing must include: atomic objective, output format, tool guidance, scope boundaries. Implementation briefings additionally: file ownership list, plan context with interfaces, forbidden files owned by parallel agents.
 
 Analysis tasks: `sonnet` for execution-heavy, `opus` for judgment-heavy.
 
 **Synthesizing results:** Organize by theme not by agent. Surface conflicts explicitly. Convergent findings = strong evidence. Write summary last.
-
-### Documentation First
-**Rule:** Read README.md, CONTRIBUTING.md, docs/, .github/, Makefile/Justfile before actions.
 
 ### Project Tooling (CRITICAL - Check BEFORE Running Commands)
 
@@ -123,17 +102,11 @@ Analysis tasks: `sonnet` for execution-heavy, `opus` for judgment-heavy.
 
 ### Software Engineering Standards
 
-**DRY Principle:** Extract repeated blocks (3+ occurrences)
-**Single Responsibility:** One concern per function/class
 **Clear Naming:** `get_user_by_email(email: str)` not `func1(x)`
 **Error Handling:** At boundaries only, specific exceptions
 **Input Validation:** Validate ALL user input and external API responses at system boundaries
 
-### Explore Then Implement
-**Rule:** Before new functionality, search for existing code to extend/reuse. Extend existing (80%+ coverage) vs create new. LLMs default to clean new code rather than integrating with existing code.
-
 ### Simplicity Over Engineering
-**Rule:** Three similar lines > premature abstraction | No helpers for one-time ops | Only requested features | Design for NOW
 
 **Quality gate (internal — do not print scores):** Before finalizing any implementation, evaluate your work on three dimensions:
 - **Minimalism:** Is every line, parameter, and abstraction load-bearing? Try to remove something — if you can without losing correctness, the score is below 9.
@@ -146,12 +119,7 @@ Iterate until all three are genuinely 9/10. A 9 means you actively tried to find
 
 **Rule:** Verify before assuming. Ask before guessing.
 
-**Workflow:**
-1. **UNDERSTAND** — Are requirements clear? Are there better approaches? What are the edge cases?
-2. **VERIFY** — Can I confirm all assumptions? (See verification rules below)
-3. **CLARIFY** — Ask specific questions for anything unclear, unverifiable, or suboptimal
-4. **PROPOSE** — Suggest alternatives with technical justification
-5. **IMPLEMENT** — Only after alignment on approach
+**Workflow:** Understand requirements → Verify assumptions → Clarify unknowns → Propose alternatives → Implement after alignment
 
 **Verification rules (MUST follow):**
 - **External/third-party APIs:** NEVER assume an API or service supports a feature without checking docs or asking the user.
@@ -182,20 +150,12 @@ Iterate until all three are genuinely 9/10. A 9 means you actively tried to find
 
 **Sync before exploring (CRITICAL):** Run `git pull` (or `git fetch origin` + check) in any local repo clone before reading code. GitHub's default branch is the single source of truth — your local clone is a cache that may be days or weeks stale. Skip only when the user explicitly says "look at my local changes" or you are working in your own worktree with in-progress changes.
 
-**Stale clone failure mode:** Without `git pull`, you may spend an entire session investigating a bug that was already fixed on `main`, or proposing changes that conflict with recently merged work. This is the most expensive class of wasted session — always sync first.
-
 **Path resolution:** `github.com/<org>/<repo_name>` → `~/Development/<repo_name>`
 
 **Workflow when given PR URLs:**
-1. Run `gh pr view <num> --repo <org>/<repo> --json headRefName` to get the branch name
-2. Resolve local path: `~/Development/<repo_name>`
-3. **`git pull`** in the repo root — sync with remote before any exploration
-4. Sanitize branch name (`/\:` → `-`) → check `~/Development/<repo_name>/.worktrees/<sanitized_branch>/`
-5. If worktree exists, explore there
-6. If NO worktree, check repo root: if on correct branch → explore; if on different branch and clean → `git checkout <branch>`; if dirty → ask user how to proceed
-7. Use Read, Grep, Glob, and `git diff` for all code exploration
-
-**Why:** Local reads are instant with full-text search. `gh` is for metadata and small diffs only.
+1. `gh pr view <num> --repo <org>/<repo> --json headRefName` → resolve `~/Development/<repo_name>` → `git pull`
+2. Sanitize branch name (`/\:` → `-`) → check `.worktrees/<sanitized_branch>/`, explore there if exists
+3. No worktree: correct branch → explore; wrong branch + clean → `git checkout <branch>`; dirty → ask user
 
 ### PR Maintenance After Pushing Commits
 
@@ -227,16 +187,7 @@ After every push: `gh pr view <number> --json title,body` → evaluate if title/
 **Related PRs (cross-repo):** Use fully qualified links:
 `Related: [other-repo#45](https://github.com/org/other-repo/pull/45)`
 
-**Sequential creation (critical — agents routinely fail this):**
-When creating PRs one at a time, PR 1 cannot reference not-yet-created PR 2. After creating all PRs, go back and edit every earlier PR to add the now-known references:
-1. Create PR 1 (full description, no forward references yet)
-2. Create PR 2 (include backward reference to PR 1)
-3. Edit PR 1 via `gh pr edit <number> --body "..."` to add forward reference to PR 2
-4. Repeat for any additional PRs in the set
-
-This applies identically to cross-repo PR sets — after opening PR 2 in Repo B, go back and edit PR 1 in Repo A.
-
-**Why:** Reviewers and CI systems navigate between related PRs. Missing cross-references cause PRs to merge without reviewers seeing the full picture.
+**Sequential creation (critical — agents routinely fail this):** After creating all PRs in a set, use `gh pr edit` to back-fill forward references into earlier PRs. Applies identically to cross-repo sets.
 
 ### Commit Messages
 **Rule:** Subject states WHAT changed. Body explains WHY -- the problem, motivation, or design decision. Never narrate what's visible in `git show --stat` or the diff itself.
@@ -255,24 +206,6 @@ This applies identically to cross-repo PR sets — after opening PR 2 in Repo B,
 
 **Body (2-4 lines, skip if self-explanatory):** Problem/motivation, design decisions, non-obvious side effects. Test: does the body add info a reviewer can't get from the diff?
 
-```
-# ❌ PROHIBITED - Method inventory, narrates the diff
-feat: extract SessionService from cli.py
-
-Extract session business logic into SessionService with 6 methods
-covering list/show/delete/enable/disable/resolve operations.
-Service layer complete with full test coverage.
-
-# ✅ CORRECT - Problem, decision, noteworthy side-effect
-refactor: extract session operations from cli.py into SessionService
-
-Session commands had 300+ lines of inline raw SQL and ORM queries
-interleaved with click.echo formatting. Preserves raw SQL approach
-for complex filtered queries rather than converting to ORM. Fixes
-None-safety bug in statistics display (obstructive_apneas > 0
-crashed when value was None).
-```
-
 ### Agent-Authored Commits
 
 **Rule:** When the agent is the git commit author — detected by checking `git config user.name` and confirming it is not the user's name — every commit must include both trailers:
@@ -289,20 +222,6 @@ Signed-off-by: Will Pfleger <email>
 ---
 
 ## Style & Formatting
-
-### Code Comments
-**Rule:** Only WHY comments explaining non-obvious rationale. NEVER WHAT comments restating code.
-
-```python
-delay = 2 ** retry_count  # Exponential backoff for Stripe rate limits
-managed.discard(plugin)  # Prevent re-pruning user-installed plugins
-```
-
-### Whitespace
-Remove ALL trailing whitespace | Blank lines have NO whitespace | Files end with single newline
-
-### Emojis
-Plain text only unless explicitly requested.
 
 ### Inline Code in Markdown
 **Rule:** Wrap all code identifiers in backticks in user-facing markdown (PR descriptions, docs, issue comments). Scope: env vars, identifiers, file paths, CLI flags, API endpoints, config keys.
@@ -348,8 +267,6 @@ Does NOT apply to: bullet list items, code blocks, tables.
 **Rule:** How the agent responds to the user directly.
 
 Include all relevant information in the initial answer instead of re-prompting to see if the user wants more. Put all code into a single code block instead of explaining each line separately. Get right to the point; be practical above all. Give in-depth explanations with deep technical details.
-
-When corrected, acknowledge and move on — no apologies, no self-flagellation ("I'm sorry," "I apologize," "my mistake," "you're right, I should have"). Acknowledgment wastes no tokens; performative apology wastes many.
 
 ---
 

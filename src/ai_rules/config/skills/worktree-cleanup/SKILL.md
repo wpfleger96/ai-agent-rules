@@ -3,9 +3,8 @@ name: worktree-cleanup
 version: 1.0.1
 description: >-
   Clean up stale git worktrees to reclaim disk space. Detects merged branches,
-  deleted remotes, and abandoned worktrees. Rust-aware — reports target/ sizes
-  separately. Use when asked to clean up worktrees, reclaim disk space, remove
-  stale worktrees, or manage worktree sprawl.
+  deleted remotes, and abandoned worktrees. Rust-aware (reports target/ sizes
+  separately). Use for worktree cleanup or disk reclamation.
 allowed-tools: AskUserQuestion, Bash, Read
 model: sonnet
 ---

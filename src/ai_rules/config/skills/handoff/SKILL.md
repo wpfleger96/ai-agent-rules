@@ -1,7 +1,10 @@
 ---
 name: handoff
 version: 1.0.0
-description: Generates a portable handoff document summarizing the current session (task, discussion, decisions, research, work done, current state, next steps) as a single copy-pasteable markdown block, so another agent can resume the work on a different device or terminal.
+description: >-
+  Generate a portable session handoff document (task, decisions, state, next
+  steps) as a single copy-pasteable markdown block for resuming on another
+  device or terminal.
 disable-model-invocation: true
 allowed-tools: Bash, Glob, Grep, Read
 model: opus
