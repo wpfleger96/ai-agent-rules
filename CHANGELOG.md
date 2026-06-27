@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.69.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.69.1...v0.69.2) (2026-06-27)
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#156](https://github.com/wpfleger96/ai-agent-rules/issues/156)) ([6562868](https://github.com/wpfleger96/ai-agent-rules/commit/65628682991acf345c38d22e0632262d15aeede1))
+
+
+### Refactoring
+
+* **agents-md:** remove redundant rules and condense verbose sections ([#159](https://github.com/wpfleger96/ai-agent-rules/issues/159)) ([4f79b6e](https://github.com/wpfleger96/ai-agent-rules/commit/4f79b6ed3fa833a5e536af5261e725079cac985d))
+
 ## [0.69.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.69.0...v0.69.1) (2026-06-25)
 
 
