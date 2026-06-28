@@ -7,11 +7,7 @@ import json
 from functools import cached_property
 from pathlib import Path
 
-from ai_rules.platform import (
-    Platform,
-    get_buzz_teams_dir,
-    is_platform,
-)
+from ai_rules.platform import get_buzz_teams_dir
 from ai_rules.tools.base import Tool
 
 
@@ -22,12 +18,6 @@ class BuzzTool(Tool):
     tool_id = "buzz"
     config_file_name = ""
     config_file_format = ""
-
-    @classmethod
-    def is_supported_on_current_platform(cls) -> bool:
-        from ai_rules.platform import Platform, is_platform
-
-        return is_platform(Platform.MACOS)
 
     @property
     def needs_cache(self) -> bool:
@@ -46,8 +36,6 @@ class BuzzTool(Tool):
 
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
-        if not is_platform(Platform.MACOS):
-            return []
         source = self.config_dir / "buzz"
         if not source.exists():
             return []

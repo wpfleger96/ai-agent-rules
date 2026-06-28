@@ -25,11 +25,10 @@ def test_target_registry_returns_unique_targets_in_lifecycle_order(
         "goose",
         "shared",
         "statusline",
+        "buzz",
     ]
     assert len(target_ids) == len(set(target_ids))
-    # BuzzTool is macOS-only, so TARGET_CLASSES has one more entry than the
-    # Linux-filtered list.
-    assert len(TARGET_CLASSES) == len(target_ids) + 1
+    assert len(TARGET_CLASSES) == len(target_ids)
 
 
 @pytest.mark.unit
