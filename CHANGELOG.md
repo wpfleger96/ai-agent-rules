@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## [0.69.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.69.2...v0.69.3) (2026-06-28)
+
+
+### Continuous Integration
+
+* sync CI workflow ([9da9dfa](https://github.com/wpfleger96/ai-agent-rules/commit/9da9dfad9d7d0a267dea62e80fe8479981991f6b))
+* sync CI workflow ([303211c](https://github.com/wpfleger96/ai-agent-rules/commit/303211c6f5cbc3386423d30440a527da14295299))
+* sync CI workflow ([79c1b3d](https://github.com/wpfleger96/ai-agent-rules/commit/79c1b3d1b600114f6e14e6ad68d0cbe9d4ea4a8d))
+* sync release workflow ([bd24cf6](https://github.com/wpfleger96/ai-agent-rules/commit/bd24cf645ca6552300c5c6f4b0c97e3c7cd06beb))
+* sync release workflow ([b20b75c](https://github.com/wpfleger96/ai-agent-rules/commit/b20b75c2a0af212694eea7bb53e00a84b5bdd0cb))
+
+
+### Documentation
+
+* suppress Claude-Session footer from PR descriptions and commits ([#161](https://github.com/wpfleger96/ai-agent-rules/issues/161)) ([fcd0063](https://github.com/wpfleger96/ai-agent-rules/commit/fcd00638a6e93b3d11d104f97ca949d5845b8bb4))
+
 ## [0.69.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.69.1...v0.69.2) (2026-06-27)
 
 
