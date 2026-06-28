@@ -65,6 +65,7 @@ Use structure from `references/templates.md`. Key principles:
 - Plain bullets (`-`), no bold/headers in body; no hard line wraps in prose paragraphs; no `&nbsp;` or non-breaking spaces — regular spaces only
 - Issue refs at end with proper keywords; all external references as clickable markdown links (see `references/templates.md`)
 - Never include a "Test Plan" or "Testing" section -- leave test planning to humans
+- Never append `Claude-Session:` links or agent attribution footers
 
 See `references/templates.md` for detailed structure and examples.
 
