@@ -177,6 +177,8 @@ After every push: `gh pr view <number> --json title,body` → evaluate if title/
 
 **NEVER mention internal workflow tools** (code-reviewer, crossfire, test-writer, etc.) in PR descriptions.
 
+**NEVER append `Claude-Session:` links or agent attribution footers** to PR descriptions or commit messages.
+
 ### PR Cross-Referencing
 
 **Rule:** Every PR that is part of a stack or has related PRs (same repo or cross-repo) must explicitly reference all related PRs. No PR description may contain a placeholder, TODO, or "TBD" for a cross-reference when the session ends.
