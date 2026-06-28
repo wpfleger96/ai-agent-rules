@@ -112,5 +112,23 @@ def get_statusline_config_dir() -> Path:
 
 
 def get_buzz_teams_dir(dev: bool = False) -> Path:
+    """Return Buzz teams directory.
+
+    macOS:       ~/Library/Application Support/<bundle>/agents/teams
+    Linux / WSL: $XDG_DATA_HOME/<bundle>/agents/teams (~/.local/share fallback)
+    Windows:     %APPDATA%\\<bundle>\\agents\\teams
+    """
     bundle = "xyz.block.buzz.app.dev" if dev else "xyz.block.buzz.app"
-    return Path.home() / "Library" / "Application Support" / bundle / "agents" / "teams"
+    if is_platform(Platform.WINDOWS):
+        return get_appdata_dir() / bundle / "agents" / "teams"
+    if is_platform(Platform.MACOS):
+        return (
+            Path.home()
+            / "Library"
+            / "Application Support"
+            / bundle
+            / "agents"
+            / "teams"
+        )
+    data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
+    return Path(data_home) / bundle / "agents" / "teams"

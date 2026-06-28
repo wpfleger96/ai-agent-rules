@@ -1,4 +1,4 @@
-"""Tests for BuzzTool and _is_specialized_path."""
+"""Tests for BuzzTool, get_buzz_teams_dir, and _is_specialized_path."""
 
 import json
 
@@ -9,7 +9,7 @@ import pytest
 from ai_rules.agents.claude import ClaudeAgent
 from ai_rules.cli.components.config import _is_specialized_path
 from ai_rules.config import Config
-from ai_rules.platform import Platform
+from ai_rules.platform import Platform, get_buzz_teams_dir
 from ai_rules.tools.buzz import BuzzTool
 
 # ---------------------------------------------------------------------------
@@ -44,7 +44,7 @@ def test_buzz_tool_symlinks_on_macos(
 
 
 @pytest.mark.unit
-def test_buzz_tool_symlinks_empty_on_linux(
+def test_buzz_tool_symlinks_on_linux(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.LINUX)
@@ -53,7 +53,7 @@ def test_buzz_tool_symlinks_empty_on_linux(
     _create_pack_manifest(buzz_dir)
     tool = BuzzTool(tmp_path, Config())
 
-    assert tool.symlinks == []
+    assert len(tool.symlinks) == 2
 
 
 @pytest.mark.unit
@@ -151,6 +151,106 @@ def test_buzz_tool_symlinks_use_pack_id_from_manifest(
 
     for target, _source in links:
         assert target.name == "com.example.custom-pack"
+
+
+# ---------------------------------------------------------------------------
+# get_buzz_teams_dir
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_get_buzz_teams_dir_macos(
+    monkeypatch: pytest.MonkeyPatch, mock_home: Path
+) -> None:
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.MACOS)
+
+    result = get_buzz_teams_dir(dev=False)
+
+    assert (
+        result
+        == mock_home
+        / "Library"
+        / "Application Support"
+        / "xyz.block.buzz.app"
+        / "agents"
+        / "teams"
+    )
+
+
+@pytest.mark.unit
+def test_get_buzz_teams_dir_macos_dev(
+    monkeypatch: pytest.MonkeyPatch, mock_home: Path
+) -> None:
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.MACOS)
+
+    result = get_buzz_teams_dir(dev=True)
+
+    assert (
+        result
+        == mock_home
+        / "Library"
+        / "Application Support"
+        / "xyz.block.buzz.app.dev"
+        / "agents"
+        / "teams"
+    )
+
+
+@pytest.mark.unit
+def test_get_buzz_teams_dir_linux_xdg(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.LINUX)
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+
+    result = get_buzz_teams_dir(dev=False)
+
+    assert result == tmp_path / "data" / "xyz.block.buzz.app" / "agents" / "teams"
+
+
+@pytest.mark.unit
+def test_get_buzz_teams_dir_linux_fallback(
+    monkeypatch: pytest.MonkeyPatch, mock_home: Path
+) -> None:
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.LINUX)
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+
+    result = get_buzz_teams_dir(dev=False)
+
+    assert (
+        result
+        == mock_home / ".local" / "share" / "xyz.block.buzz.app" / "agents" / "teams"
+    )
+
+
+@pytest.mark.unit
+def test_get_buzz_teams_dir_wsl(
+    monkeypatch: pytest.MonkeyPatch, mock_home: Path
+) -> None:
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.WSL)
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+
+    result = get_buzz_teams_dir(dev=False)
+
+    assert (
+        result
+        == mock_home / ".local" / "share" / "xyz.block.buzz.app" / "agents" / "teams"
+    )
+
+
+@pytest.mark.unit
+def test_get_buzz_teams_dir_windows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.WINDOWS)
+    monkeypatch.setenv("APPDATA", str(tmp_path / "AppData" / "Roaming"))
+
+    result = get_buzz_teams_dir(dev=False)
+
+    assert (
+        result
+        == tmp_path / "AppData" / "Roaming" / "xyz.block.buzz.app" / "agents" / "teams"
+    )
 
 
 # ---------------------------------------------------------------------------
