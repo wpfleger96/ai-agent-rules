@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.70.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.69.3...v0.70.0) (2026-06-28)
+
+
+### Features
+
+* expand BuzzTool to Linux/WSL and Windows ([#162](https://github.com/wpfleger96/ai-agent-rules/issues/162)) ([58c1fe8](https://github.com/wpfleger96/ai-agent-rules/commit/58c1fe8a05493a46518643a1925f47c4683156f4))
+
 ## [0.69.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.69.2...v0.69.3) (2026-06-28)
 
 
