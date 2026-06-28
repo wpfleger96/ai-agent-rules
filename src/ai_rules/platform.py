@@ -122,6 +122,13 @@ def get_buzz_teams_dir(dev: bool = False) -> Path:
     if is_platform(Platform.WINDOWS):
         return get_appdata_dir() / bundle / "agents" / "teams"
     if is_platform(Platform.MACOS):
-        return Path.home() / "Library" / "Application Support" / bundle / "agents" / "teams"
+        return (
+            Path.home()
+            / "Library"
+            / "Application Support"
+            / bundle
+            / "agents"
+            / "teams"
+        )
     data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
     return Path(data_home) / bundle / "agents" / "teams"

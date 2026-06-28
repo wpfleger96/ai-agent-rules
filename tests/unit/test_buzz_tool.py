@@ -159,21 +159,41 @@ def test_buzz_tool_symlinks_use_pack_id_from_manifest(
 
 
 @pytest.mark.unit
-def test_get_buzz_teams_dir_macos(monkeypatch: pytest.MonkeyPatch, mock_home: Path) -> None:
+def test_get_buzz_teams_dir_macos(
+    monkeypatch: pytest.MonkeyPatch, mock_home: Path
+) -> None:
     monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.MACOS)
 
     result = get_buzz_teams_dir(dev=False)
 
-    assert result == mock_home / "Library" / "Application Support" / "xyz.block.buzz.app" / "agents" / "teams"
+    assert (
+        result
+        == mock_home
+        / "Library"
+        / "Application Support"
+        / "xyz.block.buzz.app"
+        / "agents"
+        / "teams"
+    )
 
 
 @pytest.mark.unit
-def test_get_buzz_teams_dir_macos_dev(monkeypatch: pytest.MonkeyPatch, mock_home: Path) -> None:
+def test_get_buzz_teams_dir_macos_dev(
+    monkeypatch: pytest.MonkeyPatch, mock_home: Path
+) -> None:
     monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.MACOS)
 
     result = get_buzz_teams_dir(dev=True)
 
-    assert result == mock_home / "Library" / "Application Support" / "xyz.block.buzz.app.dev" / "agents" / "teams"
+    assert (
+        result
+        == mock_home
+        / "Library"
+        / "Application Support"
+        / "xyz.block.buzz.app.dev"
+        / "agents"
+        / "teams"
+    )
 
 
 @pytest.mark.unit
@@ -197,7 +217,10 @@ def test_get_buzz_teams_dir_linux_fallback(
 
     result = get_buzz_teams_dir(dev=False)
 
-    assert result == mock_home / ".local" / "share" / "xyz.block.buzz.app" / "agents" / "teams"
+    assert (
+        result
+        == mock_home / ".local" / "share" / "xyz.block.buzz.app" / "agents" / "teams"
+    )
 
 
 @pytest.mark.unit
@@ -209,7 +232,10 @@ def test_get_buzz_teams_dir_wsl(
 
     result = get_buzz_teams_dir(dev=False)
 
-    assert result == mock_home / ".local" / "share" / "xyz.block.buzz.app" / "agents" / "teams"
+    assert (
+        result
+        == mock_home / ".local" / "share" / "xyz.block.buzz.app" / "agents" / "teams"
+    )
 
 
 @pytest.mark.unit
@@ -221,7 +247,10 @@ def test_get_buzz_teams_dir_windows(
 
     result = get_buzz_teams_dir(dev=False)
 
-    assert result == tmp_path / "AppData" / "Roaming" / "xyz.block.buzz.app" / "agents" / "teams"
+    assert (
+        result
+        == tmp_path / "AppData" / "Roaming" / "xyz.block.buzz.app" / "agents" / "teams"
+    )
 
 
 # ---------------------------------------------------------------------------
