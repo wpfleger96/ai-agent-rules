@@ -519,7 +519,7 @@ _SELF_SPEC = ToolSpec(
     package_name="ai-agent-rules",
     display_name="ai-agent-rules",
     get_version=lambda: get_tool_version("ai-agent-rules"),
-    is_installed=lambda: True,
+    is_installed=lambda: get_tool_version("ai-agent-rules") is not None,
     github_repo=_SELF_GITHUB_REPO,
 )
 

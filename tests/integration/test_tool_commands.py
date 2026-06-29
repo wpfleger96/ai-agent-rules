@@ -17,7 +17,11 @@ class TestToolList:
 
 @pytest.mark.integration
 class TestToolShow:
-    def test_show_ai_agent_rules(self, runner):
+    def test_show_ai_agent_rules(self, runner, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_version",
+            lambda _: "1.0.0",
+        )
         result = runner.invoke(main, ["tool", "show", "ai-agent-rules"])
 
         assert result.exit_code == 0
