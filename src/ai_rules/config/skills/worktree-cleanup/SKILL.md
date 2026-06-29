@@ -1,6 +1,6 @@
 ---
 name: worktree-cleanup
-version: 1.0.1
+version: 1.1.0
 description: >-
   Clean up stale git worktrees to reclaim disk space. Detects merged branches,
   deleted remotes, and abandoned worktrees. Rust-aware (reports target/ sizes
@@ -42,6 +42,19 @@ If "Main repo root" is "NOT_IN_GIT_REPO" — stop and inform the user.
 git fetch --prune origin 2>&1
 ```
 
+4. Detect `gh` CLI availability and authentication. Run once; store result for use in check 4:
+
+```bash
+gh auth status 2>/dev/null && echo "GH_AVAILABLE" || echo "GH_UNAVAILABLE"
+```
+
+Extract the repo slug for later use (skip if `gh` is unavailable):
+
+```bash
+git remote get-url origin 2>/dev/null \
+  | sed 's/.*github\.com[:/]\(.*\)\.git$/\1/; s/.*github\.com[:/]\(.*\)$/\1/'
+```
+
 ## Phase 1: Discovery
 
 List all worktrees using porcelain format for machine parsing:
@@ -69,15 +82,22 @@ Run checks in this order:
  1. Locked? (porcelain output shows "locked")                              → LOCKED
  2. Directory missing? (porcelain shows "prunable")                        → PRUNABLE
  3. Corrupted? (directory exists but git rev-parse --git-dir fails)        → CORRUPTED
- 4. Dirty state?                                                           → ACTIVE
- 5. Unpushed commits?                                                      → ACTIVE
- 6. Active process using directory?                                        → ACTIVE
- 7. Branch merged to default branch?                                       → SAFE
- 8. Branch squash-merged to default branch?                                → SAFE
- 9. Remote tracking branch deleted?                                        → LIKELY_SAFE
-10. Last commit older than 30 days?                                        → STALE
-11. Otherwise                                                              → ACTIVE
+ 4. GitHub PR merged? (skip if gh unavailable or detached HEAD)            → SAFE
+    GitHub PR closed?                                                       → LIKELY_SAFE
+ 5. Dirty state?                                                           → ACTIVE
+ 6. Unpushed commits?                                                      → ACTIVE
+ 7. Active process using directory?                                        → ACTIVE
+ 8. Branch merged to default branch?                                       → SAFE
+ 9. Branch squash-merged to default branch?                                → SAFE
+10. Remote tracking branch deleted?                                        → LIKELY_SAFE
+11. Last commit older than 30 days?                                        → STALE
+12. Otherwise                                                              → ACTIVE
 ```
+
+**Why check 4 runs before dirty/unpushed:** A merged PR is the authoritative signal
+that work is safely upstream. Dirty state on a merged-PR branch is abandoned artifacts,
+not in-progress work — blocking removal on it would be a false positive. See Phase 4
+for how dirty SAFE worktrees are handled at removal time.
 
 ### Check Commands
 
@@ -89,13 +109,29 @@ git --no-optional-locks -C <path> rev-parse --git-dir 2>/dev/null
 ```
 Non-zero exit code when the directory exists on disk = corrupted worktree (`.git` file missing or broken link back to main repo). Report in the table as CORRUPTED and require individual approval for removal.
 
-**Check 4 — Dirty state:**
+**Check 4 — GitHub PR status:**
+
+Skip this check if: `gh` is unavailable/unauthenticated (from Phase 0 detection), the
+worktree is in detached HEAD state (no branch name to query), or the repo slug could
+not be determined.
+
+```bash
+gh pr list --repo <slug> --state all --head <branch-name> --limit 1 \
+  --json state --jq '.[0].state // "NONE"' 2>/dev/null
+```
+
+- `MERGED` → **SAFE**. Note in Status column if the worktree is also dirty: `PR #N merged ⚠ dirty`.
+- `CLOSED` → **LIKELY_SAFE**. Note if dirty: `PR #N closed ⚠ dirty`.
+- `OPEN` → ACTIVE confirmed — continue to check 5.
+- `NONE` (empty output) or command failure → continue to check 5.
+
+**Check 5 — Dirty state:**
 ```bash
 git --no-optional-locks -C <path> status --porcelain 2>/dev/null
 ```
 Non-empty output = dirty (uncommitted changes, staged changes, or untracked files).
 
-**Check 5 — Unpushed commits:**
+**Check 6 — Unpushed commits:**
 ```bash
 git --no-optional-locks -C <path> log @{upstream}..HEAD --oneline 2>/dev/null
 ```
@@ -103,9 +139,9 @@ Non-empty = unpushed commits → ACTIVE. If this command fails (no upstream set)
 ```bash
 git --no-optional-locks -C <path> log origin/<default-branch>..HEAD --oneline 2>/dev/null
 ```
-Check the **exit code** of the fallback: if non-zero (default branch ref doesn't exist or other failure), treat as "unpushed status unknown" → classify ACTIVE. If exit code is zero and output is empty, the branch has no unpushed commits — continue to check 6. This ordering is intentionally conservative: unknown status defaults to ACTIVE.
+Check the **exit code** of the fallback: if non-zero (default branch ref doesn't exist or other failure), treat as "unpushed status unknown" → classify ACTIVE. If exit code is zero and output is empty, the branch has no unpushed commits — continue to check 7. This ordering is intentionally conservative: unknown status defaults to ACTIVE.
 
-**Check 6 — Active process:**
+**Check 7 — Active process:**
 
 On macOS (Platform = "Darwin"):
 ```bash
@@ -118,7 +154,7 @@ fuser <path> 2>/dev/null
 ```
 Any output = directory in use. `+d` checks only the specified directory, not subdirectories — processes with files open deeper in the tree are not detected. This is a deliberate tradeoff: `+D` (recursive) is prohibitively slow on worktrees with large `target/` directories. The `.git` check catches git lock files held by active agent sessions. The `git worktree remove` safety check in Phase 4 (without `--force`) is the true safety net for dirty state.
 
-**Check 7 — Branch merged:**
+**Check 8 — Branch merged:**
 
 Extract the branch name from the porcelain `branch` field (strip `refs/heads/` prefix). For detached HEAD worktrees, use the HEAD sha from porcelain output:
 ```bash
@@ -126,23 +162,27 @@ git merge-base --is-ancestor <branch-tip> origin/<default-branch>
 ```
 Exit code 0 = merged.
 
-**Check 8 — Squash-merged:**
+**Check 9 — Squash-merged:**
 
-Only run this if check 7 says NOT merged. For detached HEAD worktrees (no branch name), skip this check — fall through to check 9. Many GitHub workflows use squash-merge, which creates new commits that are not ancestors:
+Only run this if check 8 says NOT merged. For detached HEAD worktrees (no branch name), skip this check — fall through to check 10. Many GitHub workflows use squash-merge, which creates new commits that are not ancestors:
 ```bash
 git cherry origin/<default-branch> <branch-name> 2>/dev/null
 ```
-If output is **empty**, this check is inconclusive — fall through to check 9. If ALL non-empty output lines are prefixed with `-`, the branch content is upstream (squash-merged). If any line starts with `+`, there are commits not yet upstream.
+**`<branch-name>` is the LOCAL branch name (strip `refs/heads/` prefix from the
+porcelain `branch` field) — NOT `origin/<branch-name>`.** Using `origin/<branch-name>`
+silently errors when the remote has been deleted, causing a false fall-through to ACTIVE.
 
-**Check 9 — Remote branch deleted:**
+If output is **empty**, this check is inconclusive — fall through to check 10. If ALL non-empty output lines are prefixed with `-`, the branch content is upstream (squash-merged). If any line starts with `+`, there are commits not yet upstream.
 
-For detached HEAD worktrees (no branch name), skip this check — fall through to check 10.
+**Check 10 — Remote branch deleted:**
+
+For detached HEAD worktrees (no branch name), skip this check — fall through to check 11.
 ```bash
 git rev-parse --verify refs/remotes/origin/<branch-name> 2>/dev/null
 ```
 Non-zero exit = remote branch no longer exists (was deleted after `git fetch --prune`).
 
-**Check 10 — Staleness:**
+**Check 11 — Staleness:**
 ```bash
 git --no-optional-locks -C <path> log -1 --format=%ct 2>/dev/null
 ```
@@ -171,14 +211,18 @@ Present a structured report. Group worktrees by classification tier (SAFE first,
 **Repo:** <main repo root>
 **Worktrees:** <count> (excluding main)
 **Default branch:** <default branch>
+**GitHub PR checks:** enabled | disabled (gh not available)
 
-| # | Branch | Class | Total | Build Artifacts | Age | Status |
-|---|--------|-------|-------|-----------------|-----|--------|
-| 1 | wpfleger/old-feat | SAFE | 3.2 GB | target/: 1.1 GB | 45d | merged |
-| 2 | wpfleger/closed-pr | LIKELY_SAFE | 2.8 GB | target/: 940 MB | 30d | remote gone |
-| ... | | | | | | |
+| # | Branch | Class | Total | Build Artifacts | Age | PR | Status |
+|---|--------|-------|-------|-----------------|-----|----|--------|
+| 1 | wpfleger/old-feat | SAFE | 3.2 GB | target/: 1.1 GB | 45d | #42 MERGED | merged |
+| 2 | wpfleger/dirty-merged | SAFE | 1.4 GB | N/A | 3d | #51 MERGED | PR merged ⚠ dirty |
+| 3 | wpfleger/closed-pr | LIKELY_SAFE | 2.8 GB | target/: 940 MB | 30d | #38 CLOSED | remote gone |
+| 4 | wpfleger/no-pr | LIKELY_SAFE | 400 MB | N/A | 35d | — | remote gone |
+| ... | | | | | | | |
 
 For PRUNABLE worktrees (directory already deleted), show N/A for Total and Build Artifacts columns.
+For the PR column, show "—" when no PR was found or gh is unavailable.
 
 ### Summary
 
@@ -228,17 +272,25 @@ Present each STALE or CORRUPTED worktree individually using `AskUserQuestion`:
 
 For each worktree approved for removal:
 
-1. Remove the worktree:
-```bash
-git worktree remove <path>
-```
-If this fails (git's built-in dirty check catches something the analysis missed), report the failure and skip to the next worktree. Do NOT use `--force`.
+1. Remove the worktree. The command depends on whether the worktree has dirty state:
 
-2. Delete the local branch. If the worktree was in detached HEAD state, skip branch deletion — there is no branch to delete. For branches classified as SAFE via ancestor check (check 7):
+   **Clean worktrees** (normal case):
+   ```bash
+   git worktree remove <path>
+   ```
+   If this fails (git's built-in dirty check catches something the analysis missed), report the failure and skip to the next worktree. Do NOT use `--force`.
+
+   **Dirty SAFE worktrees** (classified SAFE via merged-PR check, check 4):
+   ```bash
+   git worktree remove --force <path>
+   ```
+   Use `--force` only when the worktree was explicitly classified SAFE because its PR is confirmed merged — these uncommitted changes are abandoned artifacts on a merged branch. Never use `--force` for STALE, CORRUPTED, or LIKELY_SAFE worktrees.
+
+2. Delete the local branch. If the worktree was in detached HEAD state, skip branch deletion — there is no branch to delete. For branches classified as SAFE via ancestor check (check 8):
 ```bash
 git branch -d <branch-name>
 ```
-For branches classified as SAFE via squash-merge detection (check 8), `-d` will fail because git doesn't recognize squash merges as proper merges:
+For branches classified as SAFE via squash-merge detection (check 9) or GitHub PR (check 4), `-d` will fail because git doesn't recognize squash merges as proper merges:
 ```bash
 git branch -D <branch-name>
 ```
@@ -266,12 +318,12 @@ Remaining worktrees: N
 ## Rules
 
 1. **Never remove the main worktree** — skip it in all phases
-2. **Never auto-remove with dirty state** — unpushed commits, uncommitted changes, or untracked files block automatic removal
+2. **Never auto-remove ACTIVE worktrees** — open PRs, unpushed commits, or uncommitted changes that reached check 5 (i.e., not overridden by a merged PR in check 4) block automatic removal
 3. **Never remove locked worktrees** — report them but do not offer removal
 4. **Always show the report before any removal** — the user must see the full picture first
 5. **Always confirm via AskUserQuestion** — no destructive actions without explicit user approval
 6. **Use `git worktree remove`, never `rm -rf`** — ensures git metadata is cleaned atomically
-7. **Never use `--force` on `git worktree remove`** — if git's built-in safety check fails, respect it
+7. **`--force` only for merged-PR dirty worktrees** — use `git worktree remove --force` only when a worktree is classified SAFE via check 4 (confirmed-merged GitHub PR) and has dirty state; never use `--force` for any other classification
 8. **Batch parallel Bash calls** where possible — run multiple `du`, `git status`, `git log` checks in a single Bash invocation to minimize round-trips
 
 ## Abort & Recovery
