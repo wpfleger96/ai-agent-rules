@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.70.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.0...v0.70.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* install ai-agent-rules when bootstrapped via uvx ([#164](https://github.com/wpfleger96/ai-agent-rules/issues/164)) ([05096aa](https://github.com/wpfleger96/ai-agent-rules/commit/05096aa019324ce6d42e6fccc39e4098f2bbe25f))
+
 ## [0.70.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.69.3...v0.70.0) (2026-06-28)
 
 
