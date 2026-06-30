@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.70.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.1...v0.70.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* **worktree-cleanup:** add GitHub PR check and fix git cherry branch name ([#167](https://github.com/wpfleger96/ai-agent-rules/issues/167)) ([d937493](https://github.com/wpfleger96/ai-agent-rules/commit/d937493b3a1ed4ee7351d3b942f92f4a5bdc784a))
+
+
+### Chores
+
+* sync pre-commit hook ([cb7b05a](https://github.com/wpfleger96/ai-agent-rules/commit/cb7b05aff4248293234e790610826bb78e248b67))
+
 ## [0.70.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.0...v0.70.1) (2026-06-29)
 
 
