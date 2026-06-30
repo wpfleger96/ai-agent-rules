@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.70.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.2...v0.70.3) (2026-06-30)
+
+
+### Chores
+
+* **buzz:** update Paul's model and remove GPT 5.5 from Thufir's prompt ([#168](https://github.com/wpfleger96/ai-agent-rules/issues/168)) ([705e34e](https://github.com/wpfleger96/ai-agent-rules/commit/705e34e3a4db58646e265693a0ea840cdc53c37e))
+
 ## [0.70.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.1...v0.70.2) (2026-06-30)
 
 
