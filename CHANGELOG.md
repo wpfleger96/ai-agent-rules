@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.70.5](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.4...v0.70.5) (2026-07-01)
+
+
+### Chores
+
+* **buzz:** align Paul's persona metadata with installed format ([#172](https://github.com/wpfleger96/ai-agent-rules/issues/172)) ([6f0e0ea](https://github.com/wpfleger96/ai-agent-rules/commit/6f0e0ead0ba693e757f1b9fd5da0e840bdd31968))
+
 ## [0.70.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.3...v0.70.4) (2026-07-01)
 
 
