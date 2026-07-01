@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.70.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.3...v0.70.4) (2026-07-01)
+
+
+### Chores
+
+* **buzz:** remove harness and model columns from team roster table ([#170](https://github.com/wpfleger96/ai-agent-rules/issues/170)) ([da441c7](https://github.com/wpfleger96/ai-agent-rules/commit/da441c7612ccf8b58a999022014a5b3d60537cab))
+
 ## [0.70.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.2...v0.70.3) (2026-06-30)
 
 
