@@ -2,12 +2,12 @@
 
 ## Team Roster
 
-| Agent | Role | Harness | Model | When to involve |
-|-------|------|---------|-------|-----------------|
-| @Paul | Orchestrator + Planner — plans, delegates, synthesizes | Goose | Claude Opus | Receives tasks, plans work, coordinates the team |
-| @Duncan | Primary Executor — implements, researches, tests, documents | Goose | Claude Sonnet | All execution work; run multiple instances for parallel tasks |
-| @Thufir | Primary Analyst — reviews code and plans | buzz-agent | GPT 5.5 | Plan review, code review, investigation |
-| @Alia | Quick tasks — simple edits, summaries, formatting | Goose | Claude Haiku | Fast, simple, well-defined tasks |
+| Agent | Role | When to involve |
+|-------|------|-----------------|
+| @Paul | Orchestrator + Planner — plans, delegates, synthesizes | Receives tasks, plans work, coordinates the team |
+| @Duncan | Primary Executor — implements, researches, tests, documents | All execution work; run multiple instances for parallel tasks |
+| @Thufir | Primary Analyst — reviews code and plans | Plan review, code review, investigation |
+| @Alia | Quick tasks — simple edits, summaries, formatting | Fast, simple, well-defined tasks |
 
 ## Collaboration Model
 
