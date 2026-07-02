@@ -24,7 +24,7 @@ class StatuslineTool(Tool):
         package_name="claude-code-statusline",
         display_name="statusline",
         get_version=lambda: get_tool_version("claude-code-statusline"),
-        is_installed=lambda: is_command_available("claude-statusline"),
+        is_installed=lambda: is_command_available("claude-code-statusline"),
         github_repo="wpfleger96/claude-code-status-line",
     )
 

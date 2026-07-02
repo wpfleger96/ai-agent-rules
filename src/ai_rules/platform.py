@@ -103,12 +103,12 @@ def get_goose_config_dir() -> Path:
 def get_statusline_config_dir() -> Path:
     """Return Statusline config directory.
 
-    Windows: %APPDATA%/claude-statusline
-    Unix: ~/.config/claude-statusline (tilde path -- callers expand as needed)
+    Windows: %APPDATA%/claude-code-statusline
+    Unix: ~/.config/claude-code-statusline (tilde path -- callers expand as needed)
     """
     if is_platform(Platform.WINDOWS):
-        return get_appdata_dir() / "claude-statusline"
-    return Path("~/.config/claude-statusline")
+        return get_appdata_dir() / "claude-code-statusline"
+    return Path("~/.config/claude-code-statusline")
 
 
 def get_buzz_teams_dir(dev: bool = False) -> Path:

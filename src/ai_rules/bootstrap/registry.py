@@ -49,7 +49,7 @@ def _get_statusline_spec() -> ToolSpec:
 ACTIVE_TOOLS: tuple[ActiveToolSpec, ...] = (
     ActiveToolSpec(
         tool_id="statusline",
-        command_name="claude-statusline",
+        command_name="claude-code-statusline",
         get_install_spec=_get_statusline_spec,
     ),
 )

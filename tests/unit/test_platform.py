@@ -207,10 +207,10 @@ class TestGetStatuslineConfigDir:
         )
         monkeypatch.setenv("APPDATA", "C:\\Users\\test\\AppData\\Roaming")
         result = get_statusline_config_dir()
-        assert "claude-statusline" in str(result)
+        assert "claude-code-statusline" in str(result)
 
     def test_unix(self, monkeypatch):
         from pathlib import Path
 
         result = get_statusline_config_dir()
-        assert result == Path("~/.config/claude-statusline")
+        assert result == Path("~/.config/claude-code-statusline")
