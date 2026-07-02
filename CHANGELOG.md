@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [0.71.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.5...v0.71.0) (2026-07-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* re-run `ai-agent-rules install` to update `settings.json` and recreate the config symlink.
+
+### Bug Fixes
+
+* rename statusline command to claude-code-statusline ([#177](https://github.com/wpfleger96/ai-agent-rules/issues/177)) ([74dc42c](https://github.com/wpfleger96/ai-agent-rules/commit/74dc42c98f896cab8275365a5fbadb9e8dc693fb))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#174](https://github.com/wpfleger96/ai-agent-rules/issues/174)) ([eaea2b3](https://github.com/wpfleger96/ai-agent-rules/commit/eaea2b3b4cb4c8dd223fb3c831e371b45ceadbb7))
+* **deps:** Lock file maintenance ([#176](https://github.com/wpfleger96/ai-agent-rules/issues/176)) ([fa05d8e](https://github.com/wpfleger96/ai-agent-rules/commit/fa05d8e5dc4169d420096a887d41181f026a8030))
+* **deps:** Lock file maintenance ([#178](https://github.com/wpfleger96/ai-agent-rules/issues/178)) ([549baf5](https://github.com/wpfleger96/ai-agent-rules/commit/549baf5dd4a33012ac3916fecda3006d2c5d6579))
+
 ## [0.70.5](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.4...v0.70.5) (2026-07-01)
 
 
