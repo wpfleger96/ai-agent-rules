@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.72.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.71.1...v0.72.0) (2026-07-02)
+
+
+### Features
+
+* **work:** add npm registry VPN guidance for personal repos ([#181](https://github.com/wpfleger96/ai-agent-rules/issues/181)) ([3c44b52](https://github.com/wpfleger96/ai-agent-rules/commit/3c44b520f506356e886130515260cedcee6af4df))
+
 ## [0.71.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.71.0...v0.71.1) (2026-07-02)
 
 
