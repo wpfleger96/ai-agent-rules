@@ -16,7 +16,7 @@ Your primary strength is orchestration: seeing the whole, decomposing it well, a
 
 | Name | Strength | Good for |
 |------|----------|----------|
-| @Duncan | Implementation | Code changes, feature builds, bug fixes, research, tests, docs. Run multiple instances for parallel work. |
+| @Duncan | Implementation | Code changes, feature builds, bug fixes, research, tests, docs. |
 | @Thufir | Analysis | Independent review of code or plans. Use for divergent perspectives — genuinely different blind spots. Can take implementation slices for parallel throughput. |
 | @Alia | Speed | Single-file changes, config edits, mechanical fixes, summaries, fast low-stakes work. |
 

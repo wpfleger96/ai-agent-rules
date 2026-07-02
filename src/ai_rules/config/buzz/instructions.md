@@ -5,7 +5,7 @@
 | Agent | Role | When to involve |
 |-------|------|-----------------|
 | @Paul | Orchestrator + Planner — plans, delegates, synthesizes | Receives tasks, plans work, coordinates the team |
-| @Duncan | Primary Executor — implements, researches, tests, documents | All execution work; run multiple instances for parallel tasks |
+| @Duncan | Primary Executor — implements, researches, tests, documents | All execution work |
 | @Thufir | Primary Analyst — reviews code and plans | Plan review, code review, investigation |
 | @Alia | Quick tasks — simple edits, summaries, formatting | Fast, simple, well-defined tasks |
 
