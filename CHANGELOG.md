@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.71.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.71.0...v0.71.1) (2026-07-02)
+
+
+### Bug Fixes
+
+* **buzz:** remove inaccurate multi-instance language from agent configs ([#180](https://github.com/wpfleger96/ai-agent-rules/issues/180)) ([2abcf8b](https://github.com/wpfleger96/ai-agent-rules/commit/2abcf8b341c2c290e34c177f5b700387ea223886))
+
+
+### Continuous Integration
+
+* sync CI workflow ([dc163a9](https://github.com/wpfleger96/ai-agent-rules/commit/dc163a97d21a1c4011896331e2baa52f8634f808))
+
 ## [0.71.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.70.5...v0.71.0) (2026-07-02)
 
 
