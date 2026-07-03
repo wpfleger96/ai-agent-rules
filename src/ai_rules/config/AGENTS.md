@@ -210,7 +210,9 @@ After every push: `gh pr view <number> --json title,body` → evaluate if title/
 
 ### Agent-Authored Commits
 
-**Rule:** When the agent is the git commit author — detected by checking `git config user.name` and confirming it is not the user's name — every commit must include both trailers:
+**Rule:** Before every commit, run `git config user.name` and compare to "Will Pfleger". Only add trailers when they differ — i.e., the agent has its own git identity. If the user's name is already the committer, omit all trailers.
+
+**When trailers are needed** (agent identity ≠ user identity), include both:
 
 ```
 Co-authored-by: Will Pfleger <email>
