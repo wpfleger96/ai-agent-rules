@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.72.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.72.0...v0.72.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* gate commit trailer rule on explicit identity check ([#183](https://github.com/wpfleger96/ai-agent-rules/issues/183)) ([56cfc54](https://github.com/wpfleger96/ai-agent-rules/commit/56cfc546c761fd35c0745dd037019655ee4eb15a))
+
 ## [0.72.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.71.1...v0.72.0) (2026-07-02)
 
 
