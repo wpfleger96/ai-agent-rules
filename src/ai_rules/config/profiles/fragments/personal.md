@@ -4,11 +4,11 @@
 
 | Issue area | Source repo | Path | Deployment |
 |------------|-------------|------|------------|
-| AI agent configs (AGENTS.md, settings, MCP servers, hooks, skills, profiles) | `ai-rules` | `~/Development/Personal/ai-rules` | Symlinks — editing the live file modifies the source directly. CLI: `ai-agent-rules`. |
-| Shell/terminal, git global config, editor settings (VS Code, Cursor), SSH signing, AI agent binary installs | `shell-configs` | `~/Development/Personal/shell-configs` | Managed section injection — NOT symlinks. Delimited blocks inside config files are overwritten on `shell-configs install`; content outside blocks persists. CLI: `shell-configs`. |
-| Claude Code statusline (model, tokens, cost, git branch bar) | `claude-code-status-line` | `~/Development/Personal/claude-code-status-line` | Wired into `~/.claude/settings.json`. |
-| GitHub repo settings (branch protection, merge rules, labels, Renovate) | `github-config` | `~/Development/Personal/github-config` | Declarative YAML manifests applied via `gh-infra`. |
-| `gh-infra` fork workflow | `gh-infra` | `~/Development/Personal/gh-infra` | Fork of `babarot/gh-infra`. `origin` = `wpfleger96/gh-infra`, `upstream` = `babarot/gh-infra`. See fork workflow section below. |
+| AI agent configs (AGENTS.md, settings, MCP servers, hooks, skills, profiles) | `ai-rules` | `~/Development/ai-rules` | Symlinks — editing the live file modifies the source directly. CLI: `ai-agent-rules`. |
+| Shell/terminal, git global config, editor settings (VS Code, Cursor), SSH signing, AI agent binary installs | `shell-configs` | `~/Development/shell-configs` | Managed section injection — NOT symlinks. Delimited blocks inside config files are overwritten on `shell-configs install`; content outside blocks persists. CLI: `shell-configs`. |
+| Claude Code statusline (model, tokens, cost, git branch bar) | `claude-code-status-line` | `~/Development/claude-code-status-line` | Wired into `~/.claude/settings.json`. |
+| GitHub repo settings (branch protection, merge rules, labels, Renovate) | `github-config` | `~/Development/github-config` | Declarative YAML manifests applied via `gh-infra`. |
+| `gh-infra` fork workflow | `gh-infra` | `~/Development/gh-infra` | Fork of `babarot/gh-infra`. `origin` = `wpfleger96/gh-infra`, `upstream` = `babarot/gh-infra`. See fork workflow section below. |
 | `enpass-cli` fork workflow | `enpass-cli` | `~/Development/enpass-cli` | Fork of `hazcod/enpass-cli`. `origin` = `wpfleger96/enpass-cli`, `upstream` = `hazcod/enpass-cli`. See fork workflow section below. |
 
 ---
@@ -26,7 +26,7 @@
 
 | | gh-infra | enpass-cli |
 |---|---|---|
-| Path | `~/Development/Personal/gh-infra` | `~/Development/enpass-cli` |
+| Path | `~/Development/gh-infra` | `~/Development/enpass-cli` |
 | Upstream | `babarot/gh-infra` | `hazcod/enpass-cli` |
 | PR target | `main` | `master` |
 | Build | `go build -o gh-infra ./cmd/gh-infra/` | `make build` |

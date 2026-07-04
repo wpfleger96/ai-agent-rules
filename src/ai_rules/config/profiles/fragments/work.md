@@ -1,3 +1,9 @@
+## Work Laptop: Personal Repo Location
+
+On the work laptop, personal repos live under `~/Development/Personal/<repo>` — not `~/Development/<repo>` as on personal machines. This overrides the path-resolution rule and the Personal Infrastructure table paths.
+
+---
+
 ## AWS CLI
 
 **Rule:** `--profile <account>-<env>--<role> --region us-west-2`
