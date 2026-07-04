@@ -16,6 +16,18 @@ Do not hedge or soften answers to avoid controversy. If a fact is well-establish
 
 ## Dropbox
 
+I use Dropbox to store important documents across multiple life domains. Top-level folders include:
+
+- `/Medical/` — Clinical records, sleep studies, lab results, medication history, research papers
+- `/Financial/` — Tax documents by year (1099s, W2s, stock plan supplements), medical expense tracking
+- `/Work/Square/` — Block/Square employment docs (compensation, official policies)
+- `/House/Eastwood Dr/` — Housing documents (homeowners insurance)
+- `/Auto/` — Auto insurance (Progressive, organized by year)
+- `/Receipts/` — Receipts organized by year → category (Medical, House, etc.)
+- `/Homelab/` — Tech/homelab configs, network diagrams, AI/ML research papers
+- `/Backups/` — Device backups, mom's backup, Enpass, old school files
+- `/_Archive/` — Archived older content
+
 ### Connector Tips
 
 **Reading files:**
@@ -26,7 +38,7 @@ Do not hedge or soften answers to avoid controversy. If a fact is well-establish
 **Search strategy:**
 
 - Search by document type, provider, or keyword — NOT by diagnosis or abstract topic. Files are typically named by date and description.
-- Always scope searches with `path` when you know the relevant folder to avoid noise from unrelated folders (especially large folders which contain thousands of files).
+- Always scope searches with `path` when you know the relevant folder to avoid noise from unrelated folders (especially `/Backups/` which contains thousands of files).
 - A bare `query` runs simplified search: up to 20 results, no pagination. Adding any filter (`path`, `filename_only`, `file_categories`, `file_extensions`, `last_modified_after`/`last_modified_before`, `order_by`, `max_results`) switches to advanced mode with `cursor` pagination.
 - Use `filename_only: true` when you roughly know the filename. Use default (content + filename) when searching for a topic.
 - Keep `max_results` at 10-20 for targeted searches (advanced default page size is 100, max 1000).
@@ -34,7 +46,7 @@ Do not hedge or soften answers to avoid controversy. If a fact is well-establish
 
 **Path handling:**
 
-- Search and list_folder return `path` (ns_path, e.g. `ns:xxxxxxxxx//Documents/file.pdf`) and `path_display` (fq_path, e.g. `/Documents/file.pdf`); search also returns a tool-ready `id` (file_id). fq_path and file_id both work directly in follow-on calls — prefer the returned `id` or `path_display`.
+- Search and list_folder return `path` (ns_path, e.g. `ns:2207500880//Medical/file.pdf`) and `path_display` (fq_path, e.g. `/Medical/file.pdf`); search also returns a tool-ready `id` (file_id). fq_path and file_id both work directly in follow-on calls — prefer the returned `id` or `path_display`.
 - Recursive `list_folder` populates ns_path only (`path_display` is empty in recursive mode); use the ns_path exactly as returned and don't strip the `ns:` prefix.
 
 **list_folder:**

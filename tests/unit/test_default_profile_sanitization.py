@@ -32,6 +32,13 @@ MARKER_EXEMPTIONS: dict[str, set[str]] = {
     },
 }
 
+# Files (relative to config/) exempt from the sweep entirely: author metadata
+# and personal reference material that the CLI never deploys to users.
+EXEMPT_FILES: set[str] = {
+    "buzz/.plugin/plugin.json",
+    "chat_agent_hints.md",
+}
+
 
 @pytest.fixture(scope="module")
 def config_root() -> Path:
@@ -43,9 +50,8 @@ class TestDefaultProfileSanitization:
     def test_config_tree_outside_profiles_has_no_personal_markers(
         self, config_root: Path
     ) -> None:
-        """Walk config/ (excluding profiles/ and buzz/.plugin/plugin.json) and assert no personal markers appear."""
+        """Walk config/ (excluding profiles/ and exempt files) and assert no personal markers appear."""
         profiles_dir = config_root / "profiles"
-        exempt_file = config_root / "buzz" / ".plugin" / "plugin.json"
 
         violations: list[str] = []
 
@@ -54,7 +60,7 @@ class TestDefaultProfileSanitization:
                 continue
             if path.is_relative_to(profiles_dir):
                 continue
-            if path == exempt_file:
+            if path.relative_to(config_root).as_posix() in EXEMPT_FILES:
                 continue
             # Skip bytecode artifacts: test runs compile config/skills scripts,
             # and .pyc files embed absolute source paths from the local checkout.
