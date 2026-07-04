@@ -668,3 +668,34 @@ agents_md_file: fragments/extra.md
         loader = ProfileLoader(profiles_dir=profiles_dir)
         with pytest.raises(ProfileError, match="cannot both be set"):
             loader.load_profile("bad")
+
+    def test_both_keys_error_wins_over_missing_file(self, profiles_dir):
+        (profiles_dir / "bad.yaml").write_text("""\
+name: bad
+agents_md: "Inline content"
+agents_md_file: fragments/missing.md
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        with pytest.raises(ProfileError, match="cannot both be set"):
+            loader.load_profile("bad")
+
+    def test_parent_traversal_raises_profile_error(self, profiles_dir):
+        (profiles_dir / "bad.yaml").write_text("""\
+name: bad
+agents_md_file: fragments/../../outside.md
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        with pytest.raises(ProfileError, match="relative"):
+            loader.load_profile("bad")
+
+    def test_directory_named_md_raises_profile_error(self, profiles_dir):
+        fragments = profiles_dir / "fragments"
+        fragments.mkdir()
+        (fragments / "dir.md").mkdir()
+        (profiles_dir / "bad.yaml").write_text("""\
+name: bad
+agents_md_file: fragments/dir.md
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        with pytest.raises(ProfileError, match="does not exist"):
+            loader.load_profile("bad")
