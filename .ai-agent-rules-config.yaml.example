@@ -76,6 +76,21 @@ settings_overrides:
   #   provider: "anthropic"
 
 # ============================================================================
+# AGENTS.MD ADDITIONS
+# ============================================================================
+# Multiline string appended to the end of the deployed ~/AGENTS.md, after any
+# content contributed by the active profile. Use this to add personal or
+# machine-specific rules without forking the repo or editing profile files.
+#
+# Example:
+# agents_md: |
+#   ## My Custom Rules
+#
+#   - Always use tabs in Makefiles
+#   - Prefer explicit error handling over silent fallbacks
+#
+
+# ============================================================================
 # MANAGED TOOLS
 # ============================================================================
 # Per-tool install source preferences (machine-local override for profile defaults)

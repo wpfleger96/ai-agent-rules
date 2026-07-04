@@ -218,7 +218,8 @@ WORK_DIR="<path from step 1>"
 [ -d "$WORK_DIR" ] || { echo "ERROR: WORK_DIR does not exist: $WORK_DIR"; exit 1; }
 
 CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
-GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -f ~/.env/gemini_cli.key ] && echo "yes" || echo "no")
+GEMINI_KEY="${GEMINI_API_KEY:-$([ -f ~/.env/gemini_cli.key ] && cat ~/.env/gemini_cli.key)}"
+GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -n "$GEMINI_KEY" ] && echo "yes" || echo "no")
 
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$REPO_ROOT"  # Gemini's ImportProcessor resolves @-refs relative to cwd — ENOENT from subdirs
@@ -244,7 +245,7 @@ fi
 
 if [ "$GEMINI_AVAILABLE" = "yes" ]; then
   GEMINI_RAN="yes"
-  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) timeout 600 gemini --yolo \
+  GEMINI_API_KEY="$GEMINI_KEY" timeout 600 gemini --yolo \
     --include-directories "$WORK_DIR" \
     -p "Read the file at $WORK_DIR/prompt.txt and follow the review instructions inside it." \
     > "$GEMINI_OUT" 2>&1 &

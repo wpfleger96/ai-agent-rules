@@ -563,3 +563,108 @@ agents_md: ""
 
         # Empty string on child is falsy — parent content carries through unchanged
         assert profile.agents_md == "Parent content"
+
+
+@pytest.mark.unit
+class TestAgentsMdFile:
+    """Tests for agents_md_file profile key — loads markdown fragment from file."""
+
+    def test_loads_fragment_content_into_agents_md(self, profiles_dir):
+        fragments = profiles_dir / "fragments"
+        fragments.mkdir()
+        (fragments / "extra.md").write_text("# Extra rules\nBe helpful.")
+        (profiles_dir / "work.yaml").write_text("""\
+name: work
+agents_md_file: fragments/extra.md
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("work")
+
+        assert profile.agents_md == "# Extra rules\nBe helpful."
+
+    def test_inheritance_both_agents_md_file(self, profiles_dir):
+        fragments = profiles_dir / "fragments"
+        fragments.mkdir()
+        (fragments / "parent.md").write_text("Parent fragment")
+        (fragments / "child.md").write_text("Child fragment")
+        (profiles_dir / "parent.yaml").write_text("""\
+name: parent
+agents_md_file: fragments/parent.md
+""")
+        (profiles_dir / "child.yaml").write_text("""\
+name: child
+extends: parent
+agents_md_file: fragments/child.md
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        # _merge_profiles rstrips "\n" from each side before joining with "\n\n"
+        assert profile.agents_md == "Parent fragment\n\nChild fragment"
+
+    def test_mixed_parent_file_child_inline(self, profiles_dir):
+        fragments = profiles_dir / "fragments"
+        fragments.mkdir()
+        (fragments / "base.md").write_text("Base fragment")
+        (profiles_dir / "parent.yaml").write_text("""\
+name: parent
+agents_md_file: fragments/base.md
+""")
+        (profiles_dir / "child.yaml").write_text("""\
+name: child
+extends: parent
+agents_md: "Child inline"
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert profile.agents_md == "Base fragment\n\nChild inline"
+
+    def test_missing_file_raises_profile_error(self, profiles_dir):
+        (profiles_dir / "bad.yaml").write_text("""\
+name: bad
+agents_md_file: fragments/missing.md
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        with pytest.raises(ProfileError, match="does not exist"):
+            loader.load_profile("bad")
+
+    def test_absolute_path_raises_profile_error(self, profiles_dir):
+        (profiles_dir / "bad.yaml").write_text("""\
+name: bad
+agents_md_file: /abs/path.md
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        with pytest.raises(ProfileError, match="relative"):
+            loader.load_profile("bad")
+
+    def test_tilde_path_raises_profile_error(self, profiles_dir):
+        (profiles_dir / "bad.yaml").write_text("""\
+name: bad
+agents_md_file: ~/path.md
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        with pytest.raises(ProfileError, match="relative"):
+            loader.load_profile("bad")
+
+    def test_non_md_extension_raises_profile_error(self, profiles_dir):
+        (profiles_dir / "bad.yaml").write_text("""\
+name: bad
+agents_md_file: extra.txt
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        with pytest.raises(ProfileError, match=r"\.md"):
+            loader.load_profile("bad")
+
+    def test_both_agents_md_and_agents_md_file_raises_profile_error(self, profiles_dir):
+        fragments = profiles_dir / "fragments"
+        fragments.mkdir()
+        (fragments / "extra.md").write_text("Fragment content")
+        (profiles_dir / "bad.yaml").write_text("""\
+name: bad
+agents_md: "Inline content"
+agents_md_file: fragments/extra.md
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        with pytest.raises(ProfileError, match="cannot both be set"):
+            loader.load_profile("bad")

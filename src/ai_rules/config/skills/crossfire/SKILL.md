@@ -60,7 +60,8 @@ Once you have the artifact and optional review focus, proceed immediately to **O
 
 ```bash
 CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
-GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -f ~/.env/gemini_cli.key ] && echo "yes" || echo "no")
+GEMINI_KEY="${GEMINI_API_KEY:-$([ -f ~/.env/gemini_cli.key ] && cat ~/.env/gemini_cli.key)}"
+GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -n "$GEMINI_KEY" ] && echo "yes" || echo "no")
 ```
 
 If neither CLI is available, inform the user and stop:
@@ -155,7 +156,7 @@ fi
 
 # Gemini (background) — only if available
 if [ "$GEMINI_AVAILABLE" = "yes" ]; then
-  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) timeout 600 gemini --yolo \
+  GEMINI_API_KEY="$GEMINI_KEY" timeout 600 gemini --yolo \
     --include-directories "$PROMPT_DIR" \
     -p "Read the file at $PROMPT_FILE and follow the review instructions inside it." \
     > "$GEMINI_OUT" 2>&1 &

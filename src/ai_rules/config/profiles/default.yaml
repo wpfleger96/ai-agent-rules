@@ -1,5 +1,2 @@
 name: default
 description: Default configuration (no overrides)
-marketplaces:
-  - name: cc-marketplace
-    source: ananddtyagi/cc-marketplace

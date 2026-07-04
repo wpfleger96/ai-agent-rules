@@ -3,43 +3,7 @@
 ## Quick Reference Checklist
 
 **Before completing tasks:**
-☐ Worktree for code changes | ☐ Create TODO list (multi-step) | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ Test behavior not implementation | ☐ AWS: --profile & --region | ☐ Keep simple (9/10 minimalism/elegance/correctness) | ☐ Ask clarifying questions | ☐ GitHub: git pull, then explore locally | ☐ Cross-reference stacked/related PRs | ☐ Config issues → Personal Infrastructure table
-
----
-
-## Personal Infrastructure
-
-**Rule:** When debugging config, shell, git, editor, or agent behavior issues, check the relevant source repo before guessing or asking the user.
-
-| Issue area | Source repo | Path | Deployment |
-|------------|-------------|------|------------|
-| AI agent configs (AGENTS.md, settings, MCP servers, hooks, skills, profiles) | `ai-rules` | `~/Development/Personal/ai-rules` | Symlinks — editing the live file modifies the source directly. CLI: `ai-agent-rules`. |
-| Shell/terminal, git global config, editor settings (VS Code, Cursor), SSH signing, AI agent binary installs | `shell-configs` | `~/Development/Personal/shell-configs` | Managed section injection — NOT symlinks. Delimited blocks inside config files are overwritten on `shell-configs install`; content outside blocks persists. CLI: `shell-configs`. |
-| Claude Code statusline (model, tokens, cost, git branch bar) | `claude-code-status-line` | `~/Development/Personal/claude-code-status-line` | Wired into `~/.claude/settings.json`. |
-| GitHub repo settings (branch protection, merge rules, labels, Renovate) | `github-config` | `~/Development/Personal/github-config` | Declarative YAML manifests applied via `gh-infra`. |
-| `gh-infra` fork workflow | `gh-infra` | `~/Development/Personal/gh-infra` | Fork of `babarot/gh-infra`. `origin` = `wpfleger96/gh-infra`, `upstream` = `babarot/gh-infra`. See fork workflow section below. |
-| `enpass-cli` fork workflow | `enpass-cli` | `~/Development/enpass-cli` | Fork of `hazcod/enpass-cli`. `origin` = `wpfleger96/enpass-cli`, `upstream` = `hazcod/enpass-cli`. See fork workflow section below. |
-
----
-
-### Fork Workflows
-
-**Rule:** When making changes to gh-infra or enpass-cli, always follow the fork workflow — never commit directly to `dev`.
-
-- After pushing a fix to a PR branch, also merge it into `dev` so dogfooding picks it up immediately:
-  ```
-  git checkout dev && git merge wpfleger96/<type>/<slug> --no-ff -m "chore: merge <slug> into dev" && git push origin dev
-  ```
-- `dev` has dev-only content (its own AGENTS.md with deeper context) that must never go upstream
-- For fixes that touch code only on `dev` (not yet in upstream), stack the PR branch on the relevant upstream PR branch — GitHub recomputes diffs dynamically once the base PR merges
-
-| | gh-infra | enpass-cli |
-|---|---|---|
-| Path | `~/Development/Personal/gh-infra` | `~/Development/enpass-cli` |
-| Upstream | `babarot/gh-infra` | `hazcod/enpass-cli` |
-| PR target | `main` | `master` |
-| Build | `go build -o gh-infra ./cmd/gh-infra/` | `make build` |
-| Trailers | None (maintainer identity) | Standard rules apply |
+☐ Worktree for code changes | ☐ Create TODO list (multi-step) | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ Test behavior not implementation | ☐ Keep simple (9/10 minimalism/elegance/correctness) | ☐ Ask clarifying questions | ☐ GitHub: git pull, then explore locally | ☐ Cross-reference stacked/related PRs
 
 ---
 
@@ -68,7 +32,7 @@
 | Claude Code | Use `EnterWorktree` tool (creates worktree and switches session directory) |
 | Other agents | `git worktree add .worktrees/<worktree-name> -b <branch-name>` from repo root, then `cd` into it |
 
-**Branch naming:** `<username>/<descriptive-slug>` — e.g., `wpfleger/git-worktree-enforcement`.
+**Branch naming:** `<username>/<descriptive-slug>` — e.g., `alice/git-worktree-enforcement`.
 
 **Worktree folder naming:** Derive from branch name — replace `/`, `\`, `:` with `-` (matches `_wt_sanitize_dirname`).
 
@@ -139,18 +103,11 @@ Iterate until all three are genuinely 9/10. A 9 means you actively tried to find
 **Skip:** Getters/setters | Framework code | Trivial types | Private details
 **Structure:** Arrange-act-assert | Names: `test_<scenario>_<result>` | Independent | Deterministic
 
-### AWS CLI
-**Rule:** `--profile <account>-<env>--<role> --region us-west-2`
-**Format:** `--profile data-lake-staging--admin` (✅) not `--profile staging-admin` (❌)
-**Regex:** `^[a-z-]+-(dev|staging|production)--[a-z-]+$`
-
 ### GitHub Integration
 
 **Rule:** When given a GitHub URL (PR, issue, repo), **prefer exploring code locally** over reading it through `gh` CLI. Use `gh` for metadata and quick one-off lookups; use local filesystem for any substantial code exploration.
 
 **Sync before exploring (CRITICAL):** Run `git pull` (or `git fetch origin` + check) in any local repo clone before reading code. GitHub's default branch is the single source of truth — your local clone is a cache that may be days or weeks stale. Skip only when the user explicitly says "look at my local changes" or you are working in your own worktree with in-progress changes.
-
-**Path resolution:** `github.com/<org>/<repo_name>` → `~/Development/<repo_name>`
 
 **Workflow when given PR URLs:**
 1. `gh pr view <num> --repo <org>/<repo> --json headRefName` → resolve `~/Development/<repo_name>` → `git pull`
@@ -175,7 +132,7 @@ After every push: `gh pr view <number> --json title,body` → evaluate if title/
 
 **NEVER narrate the development process** — no "after review," "following feedback," "consolidated from," or references to review rounds. Describe the final state only.
 
-**NEVER mention internal workflow tools** (code-reviewer, crossfire, test-writer, etc.) in PR descriptions.
+**NEVER mention internal workflow tooling or agent skills** used during development in PR descriptions.
 
 **NEVER append `Claude-Session:` links or agent attribution footers** to PR descriptions or commit messages.
 
@@ -207,21 +164,6 @@ After every push: `gh pr view <number> --json title,body` → evaluate if title/
 | `chore:` | Dependencies, CI, config, tooling | Anything touching application logic |
 
 **Body (2-4 lines, skip if self-explanatory):** Problem/motivation, design decisions, non-obvious side effects. Test: does the body add info a reviewer can't get from the diff?
-
-### Agent-Authored Commits
-
-**Rule:** Before every commit, run `git config user.name` and compare to "Will Pfleger". Only add trailers when they differ — i.e., the agent has its own git identity. If the user's name is already the committer, omit all trailers.
-
-**When trailers are needed** (agent identity ≠ user identity), include both:
-
-```
-Co-authored-by: Will Pfleger <email>
-Signed-off-by: Will Pfleger <email>
-```
-
-**Discover email:** Run `git log --format="%aN <%aE>" | grep -i "will pfleger" | head -1` in the repo. Never hardcode.
-
-**Why:** `Co-authored-by` ensures proper GitHub attribution. `Signed-off-by` satisfies DCO checks requiring human sign-off on agent-authored commits. Applies to commit messages only — not PR descriptions.
 
 ---
 
@@ -259,13 +201,6 @@ Does NOT apply to: bullet list items, code blocks, tables.
 
 ### Non-Breaking Spaces
 **Rule:** NEVER use `&nbsp;` or U+00A0 in any output. Zero exceptions. Use regular space characters. Always.
-
-### Writing Voice
-**Rule:** When drafting content posted under the user's name (GitHub comments, PR descriptions/reviews, Slack messages, emails), match the user's natural voice. Does NOT apply to: documentation, code comments, commit messages, or agent responses to the user.
-
-**Casual, first-person, hedged.** "I think," "I opened" — not impersonal voice. Casual greetings ("hey @name"), hedge disagreements with softeners. Narrative flow with natural conjunctions, not bullet lists or bold headers for conversational prose.
-
-**Minimal formatting.** Backticks for code identifiers, skip bold/italic for emphasis. No performative framing ("Thanks for...", "Let me know if you have questions!").
 
 ### Response Style
 **Rule:** How the agent responds to the user directly.
