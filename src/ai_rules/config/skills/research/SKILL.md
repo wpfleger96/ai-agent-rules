@@ -6,7 +6,7 @@ description: >-
   investigate, or deep-dive a question requiring multiple sources. Scales
   from inline answers to 10 parallel research agents based on complexity.
 allowed-tools: Agent, AskUserQuestion, Bash, Read, WebFetch, WebSearch, Write
-model: opus
+model: fable
 ---
 
 ## Context

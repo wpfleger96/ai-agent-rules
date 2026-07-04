@@ -440,7 +440,7 @@ class TestBundledSkillFrontmatter:
         "allowed-tools",
         "model",
     ]
-    KNOWN_MODELS = {"haiku", "sonnet", "opus"}
+    KNOWN_MODELS = {"haiku", "sonnet", "opus", "fable"}
 
     @staticmethod
     def _frontmatter(skill_md: Path) -> tuple[dict, list[str]]:
