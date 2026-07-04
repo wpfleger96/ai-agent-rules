@@ -1,4 +1,6 @@
 ---
+# This file is managed by ai-agent-rules. Do not edit manually.
+# https://github.com/wpfleger96/ai-agent-rules
 name: pr-creator
 version: 1.0.0
 description: Creates GitHub pull requests with comprehensive descriptions by analyzing git history and code changes

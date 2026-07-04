@@ -1,4 +1,6 @@
 ---
+# This file is managed by ai-agent-rules. Do not edit manually.
+# https://github.com/wpfleger96/ai-agent-rules
 name: agents-md
 version: 1.0.1
 description: Create or update AGENTS.md with repo-specific patterns, conventions, commands, and gotchas for LLM coding agents. Use after implementing features that introduce new patterns worth documenting.

@@ -1,4 +1,6 @@
 ---
+# This file is managed by ai-agent-rules. Do not edit manually.
+# https://github.com/wpfleger96/ai-agent-rules
 name: code-reviewer
 version: 1.0.1
 description: Performs thorough code review on local changes or PRs. Use this skill proactively after implementing code changes to catch issues before commit/push. Also use when reviewing PRs from other engineers.
@@ -218,7 +220,7 @@ WORK_DIR="<path from step 1>"
 [ -d "$WORK_DIR" ] || { echo "ERROR: WORK_DIR does not exist: $WORK_DIR"; exit 1; }
 
 CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
-GEMINI_KEY="${GEMINI_API_KEY:-$([ -f ~/.env/gemini_cli.key ] && cat ~/.env/gemini_cli.key)}"
+GEMINI_KEY="${GEMINI_API_KEY:-$(cat ~/.env/gemini_cli.key 2>/dev/null || true)}"
 GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -n "$GEMINI_KEY" ] && echo "yes" || echo "no")
 
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)

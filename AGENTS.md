@@ -139,6 +139,7 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
   - Tracks managed plugins in `~/.claude/plugins/ai-agent-rules-managed.json`
   - Warns about manually-installed plugins not in config (doesn't auto-remove)
 - Agent-specific hints (CLAUDE.md, .goosehints) use `@~/AGENTS.md` to reference main file (token-saving)
+- **Managed-file provenance header** — every deployed non-JSON config source starts with `This file is managed by ai-agent-rules. Do not edit manually.` plus the repo URL (`#` comments for YAML/TOML, `<!-- -->` for markdown, `#` lines inside frontmatter for `SKILL.md`). JSON cannot carry comments, so JSON configs are exempt. Enforced by `TestManagedFileProvenance` in `tests/unit/test_config_files.py`
 
 ## Testing
 

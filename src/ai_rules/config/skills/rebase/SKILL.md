@@ -1,4 +1,6 @@
 ---
+# This file is managed by ai-agent-rules. Do not edit manually.
+# https://github.com/wpfleger96/ai-agent-rules
 name: rebase
 version: 1.1.1
 description: Rebase a branch onto main (or a target) with squash-first strategy, semantic merge verification, and safe force-push.

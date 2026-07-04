@@ -11,6 +11,10 @@ import pytest
 
 from ai_rules.profiles import ProfileLoader
 
+# The provenance header intentionally names the managing repo; its URL is
+# public repo identity, not leaked personal config. Strip it before scanning.
+PROVENANCE_URL = "https://github.com/wpfleger96/ai-agent-rules"
+
 PERSONAL_MARKERS: list[str] = [
     "wpfleger",
     "will pfleger",
@@ -69,7 +73,7 @@ class TestDefaultProfileSanitization:
 
             rel_str = path.relative_to(config_root).as_posix()
             text = path.read_text(encoding="utf-8", errors="ignore")
-            text_lower = text.lower()
+            text_lower = text.replace(PROVENANCE_URL, "").lower()
 
             for marker in PERSONAL_MARKERS:
                 exempted = MARKER_EXEMPTIONS.get(marker, set())
@@ -111,7 +115,12 @@ class TestDefaultProfileSanitization:
 
     def test_base_agents_md_has_no_personal_markers(self, config_root: Path) -> None:
         """The base config/AGENTS.md must contain no personal markers."""
-        agents_lower = (config_root / "AGENTS.md").read_text(encoding="utf-8").lower()
+        agents_lower = (
+            (config_root / "AGENTS.md")
+            .read_text(encoding="utf-8")
+            .replace(PROVENANCE_URL, "")
+            .lower()
+        )
         for marker in PERSONAL_MARKERS:
             assert marker.lower() not in agents_lower, (
                 f"Personal marker {marker!r} found in config/AGENTS.md"
