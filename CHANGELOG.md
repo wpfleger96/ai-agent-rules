@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## [0.73.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.72.1...v0.73.0) (2026-07-04)
+
+
+### Features
+
+* depersonalize defaults, add agents_md_file and provenance headers ([#186](https://github.com/wpfleger96/ai-agent-rules/issues/186)) ([cac8f2d](https://github.com/wpfleger96/ai-agent-rules/commit/cac8f2df11e983c68a08b4b4d3ee2e66982181da))
+
+
+### Bug Fixes
+
+* code-reviewer skill should inherit model and research should use Fable ([fec3e88](https://github.com/wpfleger96/ai-agent-rules/commit/fec3e88069e92e029be1063cf380053051d4b777))
+
+
+### Chores
+
+* sync pre-commit hook ([1b5753e](https://github.com/wpfleger96/ai-agent-rules/commit/1b5753eae35f49cb9bf2f4f3dabf063152495d80))
+
+
+### Continuous Integration
+
+* sync CI workflow ([17de7ef](https://github.com/wpfleger96/ai-agent-rules/commit/17de7efd204e0c231d6a9280f975a8971cb14733))
+
 ## [0.72.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.72.0...v0.72.1) (2026-07-03)
 
 
