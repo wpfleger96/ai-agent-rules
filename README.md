@@ -318,7 +318,7 @@ ai-agent-rules profile switch work             # Switch to a different profile
 ai-agent-rules install --profile work          # Install with a specific profile
 ```
 
-Three built-in profiles with inheritance: `default -> personal -> work`. Profiles support these keys:
+Three built-in profiles ship with the tool, with inheritance chain `default -> personal -> work`. `default` is generic and suitable for anyone. `personal` and `work` are the author's own presets (for example, `personal` enables `bypassPermissions`) and are not generic recommendations. Profiles support these keys:
 
 ```yaml
 # profiles/work.yaml
@@ -334,15 +334,35 @@ plugins: []
 marketplaces: []
 managed_tools:             # Optional tool install sources
   install_sources: {}
-agents_md: |               # Appended to base AGENTS.md (accumulates through inheritance)
-  Extra agent hints here
+agents_md_file: fragments/work.md  # Path relative to profiles dir; content appended to base
+                                   # AGENTS.md, accumulating through inheritance parent-first.
+                                   # Mutually exclusive with inline agents_md in the same profile.
+                                   # Inline agents_md: | remains supported for short snippets.
 exclude_symlinks: []
 mcp_overrides: {}
 ```
 
-User-defined profiles live at `~/.ai-agent-rules/profiles/<name>.yaml`. Priority order (lowest to highest): profile overrides → local `~/.ai-agent-rules-config.yaml`. Your local config always wins.
+User-defined profile files (e.g. `~/.ai-agent-rules/profiles/<name>.yaml`) are not currently supported. Per-machine customization goes in `~/.ai-agent-rules-config.yaml`. Priority order (lowest to highest): profile overrides → local `~/.ai-agent-rules-config.yaml`. Your local config always wins.
 
 The active profile persists in `~/.ai-agent-rules/state.yaml` across sessions.
+
+### Using the default profile
+
+If you are not the author of this repo, install with the `default` profile to get generic engineering defaults that work for anyone. You can personalize without forking by adding a `~/.ai-agent-rules-config.yaml` file: use `agents_md` to append your own rules to `~/AGENTS.md`, and `settings_overrides` to adjust agent settings for your machine. If you want a fully custom setup with multiple named profiles, fork the repo and add your own profile YAML files and fragment files under `src/ai_rules/config/profiles/`.
+
+```yaml
+# ~/.ai-agent-rules-config.yaml
+agents_md: |
+  ## My Team Standards
+
+  - Always write tests for new features
+  - Use conventional commits
+  - Prefer explicit error handling over silent fallbacks
+
+settings_overrides:
+  claude:
+    model: "claude-sonnet-4-6"
+```
 
 ### Plugin Management
 
@@ -382,6 +402,7 @@ src/ai_rules/config/
 ├── gemini/                # -> ~/.gemini/
 ├── goose/                 # -> ~/.config/goose/
 ├── profiles/              # Built-in profiles (default, personal, work)
+│   └── fragments/         # Profile AGENTS.md fragment files (referenced via agents_md_file)
 ├── skills/                # 10 shared skills -> multiple agent skill dirs
 │   └── */SKILL.md
 └── buzz/                  # Multi-agent coordinator prompts

@@ -1,3 +1,5 @@
+# This file is managed by ai-agent-rules. Do not edit manually.
+# https://github.com/wpfleger96/ai-agent-rules
 OPENAI_BASE_PATH: v1/chat/completions
 GOOSE_MODE: auto
 GOOSE_ROUTER_TOOL_SELECTION_STRATEGY: default

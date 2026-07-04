@@ -237,3 +237,49 @@ class TestProfileFileSyntax:
         codex = profile.settings_overrides["codex"]
         assert codex.get("service_tier") == "fast"
         assert codex.get("features", {}).get("fast_mode") is True
+
+
+PROVENANCE_LINE = "This file is managed by ai-agent-rules. Do not edit manually."
+PROVENANCE_URL = "https://github.com/wpfleger96/ai-agent-rules"
+
+# Deployed config sources that carry a provenance header. JSON files are
+# excluded — JSON cannot carry comments (mirrors github-config's convention).
+PROVENANCE_HASH_FILES = [
+    "codex/config.toml",
+    "goose/config.yaml",
+    "statusline/config.yaml",
+]
+PROVENANCE_MARKDOWN_FILES = [
+    "AGENTS.md",
+    "claude/CLAUDE.md",
+    "codex/AGENTS.md",
+    "gemini/GEMINI.md",
+    "amp/AGENTS.md",
+    "goose/.goosehints",
+    "buzz/instructions.md",
+]
+
+
+class TestManagedFileProvenance:
+    """Every deployed non-JSON config source must start with a provenance header."""
+
+    @pytest.mark.parametrize("rel_path", PROVENANCE_HASH_FILES)
+    def test_hash_comment_files_have_provenance_header(self, config_root, rel_path):
+        lines = (config_root / rel_path).read_text(encoding="utf-8").splitlines()
+        assert lines[0] == f"# {PROVENANCE_LINE}", rel_path
+        assert lines[1] == f"# {PROVENANCE_URL}", rel_path
+
+    @pytest.mark.parametrize("rel_path", PROVENANCE_MARKDOWN_FILES)
+    def test_markdown_files_have_provenance_header(self, config_root, rel_path):
+        lines = (config_root / rel_path).read_text(encoding="utf-8").splitlines()
+        assert lines[0] == f"<!-- {PROVENANCE_LINE}", rel_path
+        assert lines[1] == f"     {PROVENANCE_URL} -->", rel_path
+
+    def test_all_skills_have_provenance_header_in_frontmatter(self, config_root):
+        skill_files = sorted((config_root / "skills").glob("*/SKILL.md"))
+        assert skill_files, "no skills found — glob broken?"
+        for skill_file in skill_files:
+            lines = skill_file.read_text(encoding="utf-8").splitlines()
+            assert lines[0] == "---", skill_file
+            assert lines[1] == f"# {PROVENANCE_LINE}", skill_file
+            assert lines[2] == f"# {PROVENANCE_URL}", skill_file

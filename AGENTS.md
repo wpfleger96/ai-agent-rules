@@ -101,7 +101,7 @@ src/ai_rules/
     │   ├── agents-md/, code-reviewer/, continue-crash/, crossfire/
     │   ├── dev-docs/, doc-writer/, pr-creator/, prompt-critique/
     │   ├── prompt-engineer/, test-writer/
-    ├── profiles/       # Built-in profiles (default.yaml, personal.yaml, work.yaml)
+    ├── profiles/       # Built-in profiles (default.yaml, personal.yaml, work.yaml); fragments/ for agents_md_file content
     └── buzz/           # Multi-agent Buzz coordinator prompts
 tests/
 ├── fixtures/           # Test fixture files
@@ -123,9 +123,10 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
 - **State file**: `~/.ai-agent-rules/state.yaml` (tracks active profile, last install time)
 - **Profiles**: Named collections of overrides (default, personal, work) with inheritance
   - Built-in: `config/profiles/{default,personal,work}.yaml`
-  - User: `~/.ai-agent-rules/profiles/*.yaml`
+  - User-defined profile files are not supported; per-machine customization uses `~/.ai-agent-rules-config.yaml`
   - Inheritance via `extends:` key (e.g., work extends default)
   - Commands: `profile list`, `profile show`, `profile current`, `profile switch`
+  - `agents_md_file`: path relative to `profiles/` dir; content loaded into `agents_md` at profile load; mutually exclusive with inline `agents_md` in the same profile file; accumulates parent-first through inheritance
 - `settings_overrides` for machine-specific agent settings
 - Cache-based override merging for all agents with preserved fields
   - **Critical**: Preserves agent-managed fields during cache rebuild:
@@ -138,6 +139,7 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
   - Tracks managed plugins in `~/.claude/plugins/ai-agent-rules-managed.json`
   - Warns about manually-installed plugins not in config (doesn't auto-remove)
 - Agent-specific hints (CLAUDE.md, .goosehints) use `@~/AGENTS.md` to reference main file (token-saving)
+- **Managed-file provenance header** — every deployed non-JSON config source starts with `This file is managed by ai-agent-rules. Do not edit manually.` plus the repo URL (`#` comments for YAML/TOML, `<!-- -->` for markdown, `#` lines inside frontmatter for `SKILL.md`). JSON cannot carry comments, so JSON configs are exempt. Enforced by `TestManagedFileProvenance` in `tests/unit/test_config_files.py`
 
 ## Testing
 

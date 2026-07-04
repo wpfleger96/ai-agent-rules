@@ -118,6 +118,17 @@ class ProfileLoader:
 
         self._validate_profile_data(data, name)
 
+        if "agents_md_file" in data:
+            fragment_path = self._profiles_dir / data["agents_md_file"]
+            try:
+                agents_md = fragment_path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as e:
+                raise ProfileError(
+                    f"Profile '{name}': cannot read agents_md_file '{fragment_path}': {e}"
+                ) from e
+        else:
+            agents_md = data.get("agents_md", "")
+
         profile = Profile(
             name=data.get("name", name),
             description=data.get("description", ""),
@@ -128,7 +139,7 @@ class ProfileLoader:
             plugins=data.get("plugins", []),
             marketplaces=data.get("marketplaces", []),
             managed_tools=data.get("managed_tools", {}),
-            agents_md=data.get("agents_md", ""),
+            agents_md=agents_md,
         )
 
         if profile.extends:
@@ -187,6 +198,29 @@ class ProfileLoader:
             )
         if "agents_md" in data and not isinstance(data["agents_md"], str):
             raise ProfileError(f"Profile '{profile_name}': agents_md must be a string")
+        if "agents_md" in data and "agents_md_file" in data:
+            raise ProfileError(
+                f"Profile '{profile_name}': agents_md and agents_md_file cannot both be set"
+            )
+        if "agents_md_file" in data:
+            if not isinstance(data["agents_md_file"], str):
+                raise ProfileError(
+                    f"Profile '{profile_name}': agents_md_file must be a string"
+                )
+            val = data["agents_md_file"]
+            if val.startswith("/") or val.startswith("~") or ".." in Path(val).parts:
+                raise ProfileError(
+                    f"Profile '{profile_name}': agents_md_file must be a path relative to the profiles directory"
+                )
+            if not val.endswith(".md"):
+                raise ProfileError(
+                    f"Profile '{profile_name}': agents_md_file must end with .md"
+                )
+            resolved = self._profiles_dir / val
+            if not resolved.is_file():
+                raise ProfileError(
+                    f"Profile '{profile_name}': agents_md_file '{resolved}' does not exist"
+                )
 
     def _merge_profiles(self, parent: Profile, child: Profile) -> Profile:
         """Merge parent profile into child, with child taking precedence."""

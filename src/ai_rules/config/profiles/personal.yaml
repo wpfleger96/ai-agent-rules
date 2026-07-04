@@ -1,6 +1,7 @@
 name: personal
-description: Personal configuration with additional tools and integrations
+description: Author's personal preset (not a generic recommendation)
 extends: default
+agents_md_file: fragments/personal.md
 settings_overrides:
   claude:
     model: opusplan

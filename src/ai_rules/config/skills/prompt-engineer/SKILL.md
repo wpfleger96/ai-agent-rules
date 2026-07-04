@@ -1,4 +1,6 @@
 ---
+# This file is managed by ai-agent-rules. Do not edit manually.
+# https://github.com/wpfleger96/ai-agent-rules
 name: prompt-engineer
 version: 1.0.1
 description: Expert guidance for writing and optimizing LLM prompts. Use when creating or updating AGENTS.md, CLAUDE.md, SKILL.md, system prompts, or custom instructions.

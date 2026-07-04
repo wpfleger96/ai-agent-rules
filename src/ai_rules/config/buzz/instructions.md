@@ -1,3 +1,5 @@
+<!-- This file is managed by ai-agent-rules. Do not edit manually.
+     https://github.com/wpfleger96/ai-agent-rules -->
 # Team Instructions
 
 ## Team Roster
@@ -37,7 +39,7 @@ Every change is scored on three named axes before it ships:
 
 **A named defect hard-blocks the handoff** until it's fixed.
 
-**Circuit breaker.** The agent who opened a review loop owns the pass count and announces the budget when opening the loop — **1 pass for Chore/Small tasks, 2 passes for Standard/Large**. If an axis is still sub-9 after the budget is exhausted, OR two reviewers disagree on whether a defect is real, the loop owner stops iterating and escalates to Will with: the defect, both positions, and their recommendation. Escalation is the only exit besides a cleared gate.
+**Circuit breaker.** The agent who opened a review loop owns the pass count and announces the budget when opening the loop — **1 pass for Chore/Small tasks, 2 passes for Standard/Large**. If an axis is still sub-9 after the budget is exhausted, OR two reviewers disagree on whether a defect is real, the loop owner stops iterating and escalates to the user with: the defect, both positions, and their recommendation. Escalation is the only exit besides a cleared gate.
 
 **Chore exemption.** Chores skip Thufir review — the implementer's correctness self-score is the gate; ship on green. Paul-dictated fixes where Paul supplied the exact text also skip review. **Exception:** a fix to a Thufir-flagged CRITICAL/IMPORTANT finding always gets re-review regardless of size — it inherits the risk of the defect it resolves. The exemption rides on correct classification, which is Paul's; a change needing all three axes was never a Chore, and misrouting it is Paul's error to catch, not a hole in the gate.
 </quality_gate>

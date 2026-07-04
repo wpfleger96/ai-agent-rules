@@ -1,4 +1,6 @@
 ---
+# This file is managed by ai-agent-rules. Do not edit manually.
+# https://github.com/wpfleger96/ai-agent-rules
 name: worktree-cleanup
 version: 1.1.0
 description: >-
@@ -215,10 +217,10 @@ Present a structured report. Group worktrees by classification tier (SAFE first,
 
 | # | Branch | Class | Total | Build Artifacts | Age | PR | Status |
 |---|--------|-------|-------|-----------------|-----|----|--------|
-| 1 | wpfleger/old-feat | SAFE | 3.2 GB | target/: 1.1 GB | 45d | #42 MERGED | merged |
-| 2 | wpfleger/dirty-merged | SAFE | 1.4 GB | N/A | 3d | #51 MERGED | PR merged ⚠ dirty |
-| 3 | wpfleger/closed-pr | LIKELY_SAFE | 2.8 GB | target/: 940 MB | 30d | #38 CLOSED | remote gone |
-| 4 | wpfleger/no-pr | LIKELY_SAFE | 400 MB | N/A | 35d | — | remote gone |
+| 1 | alice/old-feat | SAFE | 3.2 GB | target/: 1.1 GB | 45d | #42 MERGED | merged |
+| 2 | alice/dirty-merged | SAFE | 1.4 GB | N/A | 3d | #51 MERGED | PR merged ⚠ dirty |
+| 3 | alice/closed-pr | LIKELY_SAFE | 2.8 GB | target/: 940 MB | 30d | #38 CLOSED | remote gone |
+| 4 | alice/no-pr | LIKELY_SAFE | 400 MB | N/A | 35d | — | remote gone |
 | ... | | | | | | | |
 
 For PRUNABLE worktrees (directory already deleted), show N/A for Total and Build Artifacts columns.
