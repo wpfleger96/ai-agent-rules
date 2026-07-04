@@ -11,9 +11,6 @@ settings_overrides:
   statusline:
     terminal_title:
       enabled: true
-marketplaces:
-  - name: cc-marketplace
-    source: ananddtyagi/cc-marketplace
 plugins:
   - name: pyright-lsp
     marketplace: claude-plugins-official
