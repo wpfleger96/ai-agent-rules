@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.73.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.73.0...v0.73.1) (2026-07-05)
+
+
+### Bug Fixes
+
+* scope implementation delegation rule to top-level orchestrator ([#187](https://github.com/wpfleger96/ai-agent-rules/issues/187)) ([ee4f9fb](https://github.com/wpfleger96/ai-agent-rules/commit/ee4f9fb83b6161ca338fce283a814a9d176d454b))
+
 ## [0.73.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.72.1...v0.73.0) (2026-07-04)
 
 
