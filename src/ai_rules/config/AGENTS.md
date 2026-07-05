@@ -42,12 +42,14 @@
 
 ### Delegation & Multi-Agent Orchestration
 
+**Who this applies to:** the top-level orchestrator only — the session conversing directly with the user. **If you are a subagent** (your prompt is a task brief from another agent, not a conversation with a human), this section does NOT apply to you: you are the terminal worker. Implement everything in your brief directly with your own tools and never spawn agents for implementation. Delegation depth is exactly one.
+
 **Rule:** Always delegate code implementation to parallel subagents — never write implementation diffs in the orchestrator context. Split by file/concern; one subagent per file or group of files sharing a broken intermediate state.
 
 **Delegate:** All code implementation | Non-implementation when context >50% of window | Independent parallel subtasks
 **Inline:** Single-line mechanical | Sequential-dependent | Ambiguous (clarify first)
 
-**Subagent briefing (self-containment protocol):** Subagents have ZERO access to the parent conversation. Every briefing must include: atomic objective, output format, tool guidance, scope boundaries. Implementation briefings additionally: file ownership list, plan context with interfaces, forbidden files owned by parallel agents.
+**Subagent briefing (self-containment protocol):** Subagents have ZERO access to the parent conversation. Every briefing must include: atomic objective, output format, tool guidance, scope boundaries, and an explicit "you are the worker — implement directly, do not delegate further" line. Implementation briefings additionally: file ownership list, plan context with interfaces, forbidden files owned by parallel agents.
 
 Analysis tasks: `sonnet` for execution-heavy, `opus` for judgment-heavy.
 
