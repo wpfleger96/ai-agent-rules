@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.74.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.73.1...v0.74.0) (2026-07-05)
+
+
+### Features
+
+* **handoff:** allow model invocation for dedicated processing ([b6c8177](https://github.com/wpfleger96/ai-agent-rules/commit/b6c81772b52380e083905954ca62ad4e4f41009c))
+
 ## [0.73.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.73.0...v0.73.1) (2026-07-05)
 
 
