@@ -7,9 +7,7 @@ description: >-
   Generate a portable session handoff document (task, decisions, state, next
   steps) as a single copy-pasteable markdown block for resuming on another
   device or terminal.
-disable-model-invocation: true
 allowed-tools: Bash, Glob, Grep, Read
-model: opus
 ---
 
 ## Context
