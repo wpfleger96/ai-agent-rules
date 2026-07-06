@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.75.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.74.0...v0.75.0) (2026-07-06)
+
+
+### Features
+
+* **buzz:** raise Standard/Large quality-gate budget to 3 passes ([#190](https://github.com/wpfleger96/ai-agent-rules/issues/190)) ([ec4c4f6](https://github.com/wpfleger96/ai-agent-rules/commit/ec4c4f6e5bb1374f35868a51cfa97d4013e85661))
+
 ## [0.74.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.73.1...v0.74.0) (2026-07-05)
 
 
