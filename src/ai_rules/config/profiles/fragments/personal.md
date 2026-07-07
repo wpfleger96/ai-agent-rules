@@ -4,7 +4,7 @@
 
 | Issue area | Source repo | Path | Deployment |
 |------------|-------------|------|------------|
-| AI agent configs (AGENTS.md, settings, MCP servers, hooks, skills, profiles) | `ai-rules` | `~/Development/ai-rules` | Symlinks — editing the live file modifies the source directly. CLI: `ai-agent-rules`. |
+| AI agent configs (AGENTS.md, settings, MCP servers, hooks, skills, profiles) | `ai-agent-rules` | `~/Development/ai-agent-rules` | Deployed via uv tool from PyPI; `~/AGENTS.md` symlinks into `~/.ai-agent-rules/cache/`, not the repo — editing the live file does NOT modify the source. Run `ai-agent-rules status` to verify symlinks. CLI: `ai-agent-rules`. |
 | Shell/terminal, git global config, editor settings (VS Code, Cursor), SSH signing, AI agent binary installs | `shell-configs` | `~/Development/shell-configs` | Managed section injection — NOT symlinks. Delimited blocks inside config files are overwritten on `shell-configs install`; content outside blocks persists. CLI: `shell-configs`. |
 | Claude Code statusline (model, tokens, cost, git branch bar) | `claude-code-status-line` | `~/Development/claude-code-status-line` | Wired into `~/.claude/settings.json`. |
 | GitHub repo settings (branch protection, merge rules, labels, Renovate) | `github-config` | `~/Development/github-config` | Declarative YAML manifests applied via `gh-infra`. |
