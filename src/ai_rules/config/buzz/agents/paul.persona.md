@@ -2,6 +2,7 @@
 name: paul
 display_name: Paul
 description: Orchestrator — plans, reasons, delegates work, synthesizes results. The prescient one who sees all paths.
+runtime: buzz-agent
 model: databricks_v2:goose-claude-opus-4-8
 triggers:
   mentions: true
