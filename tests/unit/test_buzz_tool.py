@@ -284,3 +284,105 @@ def test_is_specialized_path_returns_false_for_agent_without_agents_path(
     settings_path = Path("~/.claude/settings.json")
 
     assert _is_specialized_path(agent, settings_path) is False
+
+
+# ---------------------------------------------------------------------------
+# BuzzTool.get_deprecated_symlinks — legacy Sprout cleanup
+# ---------------------------------------------------------------------------
+
+_SPROUT_BUNDLES = ("xyz.block.sprout.app", "xyz.block.sprout.app.dev")
+
+
+def _sprout_legacy_path(mock_home: Path, bundle: str, pack_id: str) -> Path:
+    return (
+        mock_home
+        / "Library"
+        / "Application Support"
+        / bundle
+        / "agents"
+        / "teams"
+        / pack_id
+    )
+
+
+@pytest.mark.unit
+def test_legacy_sprout_symlinks_removed_on_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_home: Path
+) -> None:
+    from ai_rules.cli import cleanup_deprecated_symlinks
+
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.MACOS)
+
+    pack_id = "com.test.my-pack"
+    buzz_dir = tmp_path / "buzz"
+    buzz_dir.mkdir()
+    _create_pack_manifest(buzz_dir, pack_id=pack_id)
+
+    for bundle in _SPROUT_BUNDLES:
+        legacy = _sprout_legacy_path(mock_home, bundle, pack_id)
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        legacy.symlink_to(buzz_dir)
+
+    tool = BuzzTool(tmp_path, Config())
+    removed = cleanup_deprecated_symlinks([tool], tmp_path, dry_run=False)
+
+    assert removed == 2
+    for bundle in _SPROUT_BUNDLES:
+        legacy = _sprout_legacy_path(mock_home, bundle, pack_id)
+        assert not legacy.exists()
+        assert not legacy.is_symlink()
+
+
+@pytest.mark.unit
+def test_legacy_sprout_regular_file_left_untouched_on_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_home: Path
+) -> None:
+    from ai_rules.cli import cleanup_deprecated_symlinks
+
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.MACOS)
+
+    pack_id = "com.test.my-pack"
+    buzz_dir = tmp_path / "buzz"
+    buzz_dir.mkdir()
+    _create_pack_manifest(buzz_dir, pack_id=pack_id)
+
+    for bundle in _SPROUT_BUNDLES:
+        legacy = _sprout_legacy_path(mock_home, bundle, pack_id)
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        legacy.write_text("not a symlink")
+
+    tool = BuzzTool(tmp_path, Config())
+    removed = cleanup_deprecated_symlinks([tool], tmp_path, dry_run=False)
+
+    assert removed == 0
+    for bundle in _SPROUT_BUNDLES:
+        legacy = _sprout_legacy_path(mock_home, bundle, pack_id)
+        assert legacy.exists()
+        assert legacy.read_text() == "not a symlink"
+
+
+@pytest.mark.unit
+def test_legacy_sprout_cleanup_no_error_when_paths_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_home: Path
+) -> None:
+    from ai_rules.cli import cleanup_deprecated_symlinks
+
+    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.MACOS)
+
+    buzz_dir = tmp_path / "buzz"
+    buzz_dir.mkdir()
+    _create_pack_manifest(buzz_dir)
+
+    tool = BuzzTool(tmp_path, Config())
+    removed = cleanup_deprecated_symlinks([tool], tmp_path, dry_run=False)
+
+    assert removed == 0
+
+
+@pytest.mark.unit
+def test_legacy_sprout_deprecated_symlinks_empty_when_manifest_absent(
+    tmp_path: Path,
+) -> None:
+    tool = BuzzTool(tmp_path, Config())
+
+    assert tool.get_deprecated_symlinks() == []
