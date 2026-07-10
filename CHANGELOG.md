@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [0.75.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.0...v0.75.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* **buzz:** declare persona runtimes and remove legacy sprout symlinks ([#197](https://github.com/wpfleger96/ai-agent-rules/issues/197)) ([e441b3f](https://github.com/wpfleger96/ai-agent-rules/commit/e441b3f13d6d05aa7f2e7630092e47ee9a77b5ad))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#194](https://github.com/wpfleger96/ai-agent-rules/issues/194)) ([a01edc9](https://github.com/wpfleger96/ai-agent-rules/commit/a01edc97e91d2653abc30c99e4a40c99bb16bf25))
+* **deps:** Lock file maintenance ([#196](https://github.com/wpfleger96/ai-agent-rules/issues/196)) ([4622ae3](https://github.com/wpfleger96/ai-agent-rules/commit/4622ae3ddbee29622295315436ad16fcf86cb53a))
+
+
+### Documentation
+
+* define PR relatedness and fix ai-agent-rules infra row ([#192](https://github.com/wpfleger96/ai-agent-rules/issues/192)) ([fbc4294](https://github.com/wpfleger96/ai-agent-rules/commit/fbc429498e05dd25e693c23f80d5d8ee58e88d71))
+
 ## [0.75.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.74.0...v0.75.0) (2026-07-06)
 
 
