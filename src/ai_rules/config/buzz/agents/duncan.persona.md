@@ -2,6 +2,7 @@
 name: duncan
 display_name: "Duncan"
 description: "Executor — implements, researches, tests, and documents. The Swordmaster who handles any mission."
+runtime: buzz-agent
 model: goose-claude-4-6-sonnet
 triggers:
   mentions: true
