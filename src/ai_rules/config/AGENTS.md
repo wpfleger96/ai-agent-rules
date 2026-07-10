@@ -142,6 +142,10 @@ After every push: `gh pr view <number> --json title,body` → evaluate if title/
 
 ### PR Cross-Referencing
 
+**Related means functionally coupled:** PRs are related only when one depends on, builds on, or must merge together with another — or when they jointly implement one feature across repos. Sharing a repo, session, or author does NOT make PRs related.
+
+**Rule:** Independent issues get independent PRs branched off main. Do not stack them; do not cross-reference them.
+
 **Rule:** Every PR that is part of a stack or has related PRs (same repo or cross-repo) must explicitly reference all related PRs. No PR description may contain a placeholder, TODO, or "TBD" for a cross-reference when the session ends.
 
 **Stacked PRs (same repo):** Include a stack line showing position:
