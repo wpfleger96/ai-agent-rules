@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.75.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.1...v0.75.2) (2026-07-11)
+
+
+### Refactoring
+
+* **buzz:** trim persona prompts and dedupe shared team protocol ([#198](https://github.com/wpfleger96/ai-agent-rules/issues/198)) ([a26fab8](https://github.com/wpfleger96/ai-agent-rules/commit/a26fab84601e206fe267e408d686524c0ac472d7))
+
 ## [0.75.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.0...v0.75.1) (2026-07-10)
 
 
