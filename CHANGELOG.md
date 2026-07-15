@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.75.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.2...v0.75.3) (2026-07-15)
+
+
+### Refactoring
+
+* **code-reviewer:** remove crossfire variant ([#200](https://github.com/wpfleger96/ai-agent-rules/issues/200)) ([3b3f08f](https://github.com/wpfleger96/ai-agent-rules/commit/3b3f08f719035b3fe5c3fb03b9fcaf07b3187358))
+
 ## [0.75.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.1...v0.75.2) (2026-07-11)
 
 
