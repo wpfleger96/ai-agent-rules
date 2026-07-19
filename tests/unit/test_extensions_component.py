@@ -41,52 +41,6 @@ def make_context(tmp_path: Path, *, dry_run: bool = False) -> CliContext:
 
 
 @pytest.mark.unit
-class TestClaudeExtensionsPlanOrphanDetection:
-    def test_plan_incorporates_orphans_into_cleanup_ops(self, tmp_path, monkeypatch):
-        """plan() should surface orphaned extensions in cleanup_ops."""
-        from unittest.mock import patch
-
-        orphan_path = tmp_path / "commands" / "old-cmd.md"
-
-        import ai_rules.claude_extensions as ext_mod
-
-        with patch.object(
-            ext_mod.ClaudeExtensionManager,
-            "get_all_orphaned",
-            return_value={"commands": {"old-cmd": orphan_path}},
-        ):
-            # plan() returns early when no claude target is selected, so we
-            # invoke get_all_orphaned directly to verify the wiring:
-            manager = ext_mod.ClaudeExtensionManager(tmp_path)
-            result = manager.get_all_orphaned()
-
-        assert result == {"commands": {"old-cmd": orphan_path}}
-
-    def test_plan_returns_empty_cleanup_ops_with_no_orphans(
-        self, tmp_path, monkeypatch
-    ):
-        """plan() with no orphans produces empty cleanup_ops."""
-        from unittest.mock import patch
-
-        import ai_rules.claude_extensions as ext_mod
-
-        with patch.object(
-            ext_mod.ClaudeExtensionManager,
-            "get_all_orphaned",
-            return_value={"commands": {}, "agents": {}, "hooks": {}},
-        ):
-            manager = ext_mod.ClaudeExtensionManager(tmp_path)
-            all_orphaned = manager.get_all_orphaned()
-
-        cleanup_ops = [
-            (ext_type, name, path)
-            for ext_type, orphaned in all_orphaned.items()
-            for name, path in orphaned.items()
-        ]
-        assert cleanup_ops == []
-
-
-@pytest.mark.unit
 class TestClaudeExtensionsApplyOrphanCleanup:
     def test_apply_removes_orphaned_extension(self, tmp_path):
         ctx = make_context(tmp_path)

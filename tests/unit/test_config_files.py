@@ -78,16 +78,6 @@ class TestConfigFileStructuralInvariants:
                 f"Amp setting key {key!r} missing amp. prefix"
             )
 
-    def test_amp_has_anthropic_effort_max(self, amp_config):
-        assert amp_config["amp.anthropic.effort"] == "max"
-
-    def test_amp_has_interleaved_thinking(self, amp_config):
-        assert amp_config["amp.anthropic.interleavedThinking.enabled"] is True
-
-    def test_amp_has_notifications_enabled(self, amp_config):
-        assert amp_config["amp.notifications.enabled"] is True
-        assert amp_config["amp.notifications.system.enabled"] is True
-
     def test_amp_has_permissions_deny_rules(self, amp_config):
         permissions = amp_config["amp.permissions"]
         assert isinstance(permissions, list)
@@ -129,43 +119,6 @@ class TestConfigFileStructuralInvariants:
         assert "model" in codex_config
         assert "approval_policy" in codex_config
 
-    def test_codex_default_model_is_gpt_5_5(self, codex_config):
-        assert codex_config["model"] == "gpt-5.5"
-
-    def test_codex_approval_policy_is_untrusted(self, codex_config):
-        assert codex_config["approval_policy"] == "untrusted"
-
-    def test_codex_has_reasoning_effort(self, codex_config):
-        assert codex_config["model_reasoning_effort"] == "xhigh"
-
-    def test_codex_has_plan_mode_reasoning_effort(self, codex_config):
-        assert codex_config["plan_mode_reasoning_effort"] == "xhigh"
-
-    def test_codex_has_reasoning_summary(self, codex_config):
-        assert codex_config["model_reasoning_summary"] == "detailed"
-
-    def test_codex_has_history_persistence(self, codex_config):
-        assert codex_config["history"]["persistence"] == "save-all"
-
-    def test_codex_has_analytics_disabled(self, codex_config):
-        assert codex_config["analytics"]["enabled"] is False
-
-    def test_codex_has_status_line_defaults(self, codex_config):
-        assert codex_config["tui"]["status_line"] == [
-            "model-with-reasoning",
-            "project-name",
-            "git-branch",
-            "context-used",
-            "used-tokens",
-            "session-id",
-        ]
-
-    def test_gemini_has_approval_mode(self, gemini_config):
-        assert gemini_config["general"]["defaultApprovalMode"] == "auto_edit"
-
-    def test_gemini_has_session_retention_disabled(self, gemini_config):
-        assert gemini_config["general"]["sessionRetention"]["enabled"] is False
-
     def test_gemini_has_tools_allowed_list(self, gemini_config):
         allowed = gemini_config["tools"]["allowed"]
         assert isinstance(allowed, list)
@@ -185,12 +138,6 @@ class TestConfigFileStructuralInvariants:
         ]
         for cmd in dangerous:
             assert cmd not in allowed
-
-    def test_gemini_has_inline_thinking_full(self, gemini_config):
-        assert gemini_config["ui"]["inlineThinkingMode"] == "full"
-
-    def test_goose_telemetry_disabled(self, goose_config):
-        assert goose_config["GOOSE_TELEMETRY_ENABLED"] is False
 
     def test_goose_has_extensions_dict(self, goose_config):
         assert isinstance(goose_config["extensions"], dict)

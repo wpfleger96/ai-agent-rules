@@ -1,8 +1,11 @@
 """Integration tests for exclude commands."""
 
+import pytest
 import yaml
 
 from ai_rules.cli import main
+
+pytestmark = pytest.mark.integration
 
 
 class TestExcludeAddCommand:

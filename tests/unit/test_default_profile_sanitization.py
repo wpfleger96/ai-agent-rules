@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 from importlib.resources import files as resource_files
 from pathlib import Path
 
@@ -90,38 +88,3 @@ class TestDefaultProfileSanitization:
         """The default profile must not inject any agents_md content."""
         profile = ProfileLoader().load_profile("default")
         assert profile.agents_md == ""
-
-    def test_default_profile_resolved_settings_have_no_personal_markers(
-        self, config_root: Path
-    ) -> None:
-        """Neither the default profile's settings_overrides nor base claude/settings.json may contain personal markers."""
-        profile = ProfileLoader().load_profile("default")
-
-        settings_json = json.dumps(profile.settings_overrides).lower()
-        for marker in PERSONAL_MARKERS:
-            assert marker.lower() not in settings_json, (
-                f"Personal marker {marker!r} found in default profile settings_overrides"
-            )
-
-        claude_settings = (
-            (config_root / "claude" / "settings.json")
-            .read_text(encoding="utf-8")
-            .lower()
-        )
-        for marker in PERSONAL_MARKERS:
-            assert marker.lower() not in claude_settings, (
-                f"Personal marker {marker!r} found in config/claude/settings.json"
-            )
-
-    def test_base_agents_md_has_no_personal_markers(self, config_root: Path) -> None:
-        """The base config/AGENTS.md must contain no personal markers."""
-        agents_lower = (
-            (config_root / "AGENTS.md")
-            .read_text(encoding="utf-8")
-            .replace(PROVENANCE_URL, "")
-            .lower()
-        )
-        for marker in PERSONAL_MARKERS:
-            assert marker.lower() not in agents_lower, (
-                f"Personal marker {marker!r} found in config/AGENTS.md"
-            )

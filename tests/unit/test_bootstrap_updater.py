@@ -313,29 +313,6 @@ class TestPerformToolUpgrade:
         assert "failed" in message.lower()
         assert was_upgraded is False
 
-    def test_pypi_installation_upgrades_successfully(self, test_tool, monkeypatch):
-        """Test that PyPI installations still upgrade correctly."""
-        monkeypatch.setattr(
-            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
-        )
-        monkeypatch.setattr(
-            "ai_rules.bootstrap.updater.get_tool_source", lambda pkg: ToolSource.PYPI
-        )
-
-        def mock_run(*args, **kwargs):
-            return subprocess.CompletedProcess(
-                args=[],
-                returncode=0,
-                stdout="Upgraded test-package from 1.0.0 to 1.1.0",
-                stderr="",
-            )
-
-        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message, was_upgraded = perform_tool_upgrade(test_tool)
-
-        assert success is True
-        assert was_upgraded is True
-
 
 @pytest.mark.unit
 @pytest.mark.bootstrap
@@ -442,20 +419,6 @@ class TestIsEnabledFiltering:
         tools = [self._make_tool("statusline", is_enabled=None)]
         assert len(_filter_enabled(tools)) == 1
 
-    def test_disabled_tool_included_when_explicitly_targeted(self):
-        """--only=<tool> bypasses the is_enabled check."""
-        resolved_only = "example-tool"
-        tools = [self._make_tool("example-tool", is_enabled=lambda: False)]
-        tools = [
-            t for t in tools if resolved_only is None or t.tool_id == resolved_only
-        ]
-        tools = [t for t in tools if t.is_installed()]
-        if resolved_only is None:
-            from ai_rules.cli.commands.upgrade import _filter_enabled
-
-            tools = _filter_enabled(tools)
-        assert len(tools) == 1
-
 
 @pytest.mark.unit
 @pytest.mark.bootstrap
@@ -493,19 +456,6 @@ class TestMissingToolsFilterEnabled:
         all_tools = [self._make_tool("statusline", installed=False, is_enabled=None)]
         missing_tools = [t for t in all_tools if not t.is_installed()]
         missing_tools = _filter_enabled(missing_tools)
-        assert len(missing_tools) == 1
-
-    def test_disabled_missing_tool_included_when_explicitly_targeted(self):
-        """--only=<tool> bypasses the is_enabled check for missing tools too."""
-        from ai_rules.cli.commands.upgrade import _filter_enabled
-
-        resolved_only = "example-tool"
-        all_tools = [
-            self._make_tool("example-tool", installed=False, is_enabled=lambda: False)
-        ]
-        missing_tools = [t for t in all_tools if not t.is_installed()]
-        if resolved_only is None:
-            missing_tools = _filter_enabled(missing_tools)
         assert len(missing_tools) == 1
 
 

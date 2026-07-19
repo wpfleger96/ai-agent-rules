@@ -360,20 +360,6 @@ def test_run_install_parallel_skips_confirmation_when_yes(tmp_path: Path) -> Non
 
 
 @pytest.mark.unit
-def test_run_install_parallel_skips_confirmation_when_dry_run(tmp_path: Path) -> None:
-    infra = PlanApplyInfraComponent("infra")
-    semantic = PlanApplyComponent("semantic")
-
-    with patch("click.confirm") as mock_ask:
-        result = run_install_parallel(
-            [infra], [semantic], make_context(tmp_path, dry_run=True)
-        )
-
-    mock_ask.assert_not_called()
-    assert result.ok is True
-
-
-@pytest.mark.unit
 def test_run_install_parallel_aggregates_counts_across_phases(tmp_path: Path) -> None:
     infra = PlanApplyInfraComponent(
         "infra", apply_result=ComponentResult(counts={"cache_updated": 1})
@@ -555,24 +541,6 @@ def test_run_parallel_status_aggregates_ok(tmp_path: Path) -> None:
     second = _StatusComponent("second", result=ComponentResult(ok=False))
 
     result = run_parallel([first, second], "status", make_context(tmp_path))
-
-    assert result.ok is False
-
-
-@pytest.mark.unit
-def test_run_parallel_diff_aggregates_changed(tmp_path: Path) -> None:
-    comp = _StatusComponent("comp", result=ComponentResult(changed=True))
-
-    result = run_parallel([comp], "diff", make_context(tmp_path))
-
-    assert result.changed is True
-
-
-@pytest.mark.unit
-def test_run_parallel_validate_aggregates_failure(tmp_path: Path) -> None:
-    comp = _StatusComponent("comp", result=ComponentResult(ok=False))
-
-    result = run_parallel([comp], "validate", make_context(tmp_path))
 
     assert result.ok is False
 

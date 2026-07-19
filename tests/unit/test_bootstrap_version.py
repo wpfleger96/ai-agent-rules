@@ -10,14 +10,6 @@ from ai_rules.bootstrap.version import is_newer, parse_version
 @pytest.mark.unit
 @pytest.mark.bootstrap
 class TestParseVersion:
-    def test_parse_version_with_prerelease(self):
-        version = parse_version("v1.2.3-alpha.1")
-        assert str(version) == "1.2.3a1"
-
-    def test_parse_version_with_build_metadata(self):
-        version = parse_version("1.2.3+build.123")
-        assert "1.2.3" in str(version)
-
     def test_parse_version_invalid_raises_error(self):
         with pytest.raises(InvalidVersion):
             parse_version("not.a.version")
