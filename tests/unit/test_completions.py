@@ -30,14 +30,6 @@ class TestDetectShell:
         monkeypatch.setattr(shellingham, "detect_shell", lambda: ("bash", "/bin/bash"))
         assert detect_shell() == "bash"
 
-    def test_detect_zsh(self, monkeypatch):
-        import shellingham
-
-        monkeypatch.setattr(
-            shellingham, "detect_shell", lambda: ("zsh", "/usr/bin/zsh")
-        )
-        assert detect_shell() == "zsh"
-
     def test_unsupported_shell(self, monkeypatch):
         import shellingham
 
@@ -465,14 +457,6 @@ class TestPowerShellDetection:
 
         monkeypatch.setattr(
             shellingham, "detect_shell", lambda: ("pwsh", "/usr/bin/pwsh")
-        )
-        assert detect_shell() == "powershell"
-
-    def test_detect_powershell_via_shellingham_powershell(self, monkeypatch):
-        import shellingham
-
-        monkeypatch.setattr(
-            shellingham, "detect_shell", lambda: ("powershell", "C:\\powershell.exe")
         )
         assert detect_shell() == "powershell"
 

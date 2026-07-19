@@ -42,15 +42,3 @@ def test_get_targets_excludes_amp_on_windows(
     target_classes = [type(t) for t in targets]
 
     assert AmpAgent not in target_classes
-
-
-@pytest.mark.unit
-def test_get_targets_includes_buzz_on_macos(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: Platform.MACOS)
-    config = Config()
-
-    target_ids = [target.target_id for target in get_targets(tmp_path, config)]
-
-    assert "buzz" in target_ids

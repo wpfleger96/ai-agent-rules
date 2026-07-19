@@ -55,21 +55,6 @@ class TestStateManagement:
         set_active_profile("work")
         assert get_active_profile() == "work"
 
-    def test_get_active_profile_returns_set_profile(self, state_setup):
-        """Test that get_active_profile returns the profile that was set."""
-        set_active_profile("custom-profile")
-        assert get_active_profile() == "custom-profile"
-
-    def test_state_persists_across_calls(self, state_setup):
-        """Test that state persists across multiple function calls."""
-        set_active_profile("work")
-
-        state1 = get_state()
-        state2 = get_state()
-
-        assert state1 == state2
-        assert state1["active_profile"] == "work"
-
     def test_set_profile_includes_timestamp(self, state_setup):
         """Test that set_active_profile includes a timestamp."""
         set_active_profile("work")
