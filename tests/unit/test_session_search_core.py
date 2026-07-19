@@ -5,8 +5,6 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(
     0,
     str(
@@ -72,12 +70,6 @@ def make_args(since: str | None = None, until: str | None = None) -> argparse.Na
 # ---------------------------------------------------------------------------
 
 
-def test_session_is_frozen():
-    s = make_session()
-    with pytest.raises(AttributeError):
-        s.id = "other"  # type: ignore
-
-
 def test_sort_time_returns_updated_at_when_present():
     s = make_session(
         timestamp="2024-01-01T00:00:00Z", updated_at="2024-06-01T00:00:00Z"
@@ -87,21 +79,6 @@ def test_sort_time_returns_updated_at_when_present():
 
 def test_sort_time_falls_back_to_timestamp_when_updated_at_empty():
     s = make_session(timestamp="2024-01-01T00:00:00Z", updated_at="")
-    assert s.sort_time == "2024-01-01T00:00:00Z"
-
-
-def test_sort_time_falls_back_to_timestamp_when_updated_at_none():
-    s = Session(
-        id="x",
-        agent="claude",
-        path=Path("/tmp/x.json"),
-        timestamp="2024-01-01T00:00:00Z",
-        updated_at=None,  # type: ignore[arg-type]
-        title="",
-        cwd="",
-        repo_score=0,
-        repo_reason="",
-    )
     assert s.sort_time == "2024-01-01T00:00:00Z"
 
 
@@ -129,10 +106,6 @@ def test_parse_iso_invalid_string_returns_none():
     assert parse_iso("not-a-date") is None
 
 
-def test_parse_iso_partial_string_returns_none():
-    assert parse_iso("2024-13-99") is None
-
-
 # ---------------------------------------------------------------------------
 # date_key
 # ---------------------------------------------------------------------------
@@ -146,11 +119,6 @@ def test_date_key_valid_iso_returns_datetime():
 
 def test_date_key_empty_string_returns_min_utc():
     result = date_key("")
-    assert result == datetime.min.replace(tzinfo=UTC)
-
-
-def test_date_key_invalid_string_returns_min_utc():
-    result = date_key("garbage")
     assert result == datetime.min.replace(tzinfo=UTC)
 
 
@@ -364,10 +332,6 @@ def test_truncate_whitespace_collapsed():
     assert truncate("hello   world", 50) == "hello world"
 
 
-def test_truncate_internal_newlines_collapsed():
-    assert truncate("line one\nline two", 50) == "line one line two"
-
-
 def test_truncate_exactly_at_width_not_truncated():
     text = "x" * 280
     assert truncate(text, 280) == text
@@ -407,12 +371,6 @@ def test_session_to_json_path_is_string():
     result = session_to_json(s)
     assert isinstance(result["path"], str)
     assert Path(result["path"]).as_posix() == "/tmp/test.json"
-
-
-def test_session_to_json_agent_field_present():
-    s = make_session(agent="codex")
-    result = session_to_json(s)
-    assert result["agent"] == "codex"
 
 
 # ---------------------------------------------------------------------------

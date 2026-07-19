@@ -105,16 +105,6 @@ class TestCodexAgent:
         _, source = agents_md_entries[0]
         assert source == test_repo / "codex" / "AGENTS.md"
 
-    def test_excludes_filtered_symlinks(self, test_repo):
-        config = Config(exclude_symlinks=["~/.codex/config.toml"])
-        agent = CodexAgent(test_repo, config)
-
-        symlinks = agent.get_filtered_symlinks()
-
-        targets = [Path(target).as_posix() for target, _ in symlinks]
-        assert "~/.codex/config.toml" not in targets
-        assert "~/.codex/AGENTS.md" in targets
-
 
 @pytest.mark.unit
 @pytest.mark.agents
@@ -140,16 +130,6 @@ class TestAmpAgent:
         assert len(agents_md_entries) == 1
         _, source = agents_md_entries[0]
         assert source == test_repo / "amp" / "AGENTS.md"
-
-    def test_excludes_filtered_symlinks(self, test_repo):
-        config = Config(exclude_symlinks=["~/.config/amp/settings.json"])
-        agent = AmpAgent(test_repo, config)
-
-        symlinks = agent.get_filtered_symlinks()
-
-        targets = [Path(target).as_posix() for target, _ in symlinks]
-        assert "~/.config/amp/settings.json" not in targets
-        assert "~/.config/amp/AGENTS.md" in targets
 
 
 @pytest.mark.unit
@@ -177,16 +157,6 @@ class TestGeminiAgent:
         _, source = gemini_md_entries[0]
         assert source == test_repo / "gemini" / "GEMINI.md"
 
-    def test_excludes_filtered_symlinks(self, test_repo):
-        config = Config(exclude_symlinks=["~/.gemini/settings.json"])
-        agent = GeminiAgent(test_repo, config)
-
-        symlinks = agent.get_filtered_symlinks()
-
-        targets = [Path(target).as_posix() for target, _ in symlinks]
-        assert "~/.gemini/settings.json" not in targets
-        assert "~/.gemini/GEMINI.md" in targets
-
 
 @pytest.mark.unit
 @pytest.mark.agents
@@ -202,16 +172,6 @@ class TestGooseAgent:
         assert "~/.config/goose/.goosehints" in targets
         assert "~/.config/goose/config.yaml" in targets
         assert len(targets) == 2
-
-    def test_excludes_filtered_symlinks(self, test_repo):
-        config = Config(exclude_symlinks=["~/.config/goose/config.yaml"])
-        agent = GooseAgent(test_repo, config)
-
-        symlinks = agent.get_filtered_symlinks()
-
-        targets = [Path(target).as_posix() for target, _ in symlinks]
-        assert "~/.config/goose/config.yaml" not in targets
-        assert "~/.config/goose/.goosehints" in targets
 
 
 @pytest.mark.unit

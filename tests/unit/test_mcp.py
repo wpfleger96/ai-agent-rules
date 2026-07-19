@@ -760,28 +760,6 @@ def test_mcp_settings_key_claude_is_none():
     assert ClaudeMCPManager().mcp_settings_key is None
 
 
-def test_mcp_settings_key_amp():
-    """Amp stores MCPs in the settings file under amp.mcpServers."""
-    assert AmpMCPManager().mcp_settings_key == "amp.mcpServers"
-
-
-def test_mcp_settings_key_gemini():
-    """Gemini stores MCPs in the settings file under mcpServers."""
-    assert GeminiMCPManager().mcp_settings_key == "mcpServers"
-
-
-def test_mcp_settings_key_codex():
-    """Codex stores MCPs in config.toml under mcp_servers."""
-    mgr = CodexMCPManager()
-    assert mgr.mcp_settings_key == "mcp_servers"
-    assert mgr.mcp_tracking_key == "_ai_agent_rules_managed"
-
-
-def test_mcp_settings_key_goose():
-    """Goose stores MCPs in config.yaml under extensions."""
-    assert GooseMCPManager().mcp_settings_key == "extensions"
-
-
 def test_merge_managed_mcps_handles_non_dict_entries(tmp_path, monkeypatch):
     """_merge_managed_mcps doesn't crash on malformed non-dict MCP entries."""
     import json

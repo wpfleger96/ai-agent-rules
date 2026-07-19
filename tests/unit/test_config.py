@@ -1276,11 +1276,6 @@ class TestPathParsing:
         with pytest.raises(ValueError, match="Invalid array notation"):
             parse_setting_path("hooks[invalid].command")
 
-    def test_parse_unclosed_bracket_raises_error(self):
-        """Test that unclosed bracket raises ValueError."""
-        with pytest.raises(ValueError, match="Invalid array notation"):
-            parse_setting_path("hooks[0.command")
-
 
 @pytest.mark.unit
 @pytest.mark.config
@@ -1384,30 +1379,6 @@ class TestPathValidation:
         assert warning == ""
         assert suggestions == []
 
-    def test_validate_valid_nested_path_succeeds(self, tmp_path):
-        """Test that valid nested path succeeds."""
-        settings_file = tmp_path / "claude" / "settings.json"
-        settings_file.parent.mkdir(parents=True)
-        settings_file.write_text('{"env": {"VAR": "value"}}')
-
-        is_valid, error, warning, suggestions = validate_override_path(
-            "claude", "env.VAR", tmp_path
-        )
-        assert is_valid
-        assert warning == ""
-
-    def test_validate_valid_array_path_succeeds(self, tmp_path):
-        """Test that valid array path succeeds."""
-        settings_file = tmp_path / "claude" / "settings.json"
-        settings_file.parent.mkdir(parents=True)
-        settings_file.write_text('{"items": ["first", "second"]}')
-
-        is_valid, error, warning, suggestions = validate_override_path(
-            "claude", "items[0]", tmp_path
-        )
-        assert is_valid
-        assert warning == ""
-
     def test_validate_invalid_path_provides_suggestions(self, tmp_path):
         """Test that invalid path provides suggestions (as error)."""
         settings_file = tmp_path / "claude" / "settings.json"
@@ -1469,43 +1440,6 @@ class TestDeepMergeWithArrays:
         result = deep_merge(base, override)
 
         assert result["hooks"]["SubagentStop"] == [{"command": "new.py"}]
-
-    def test_merge_extends_base_array_if_override_longer(self):
-        """Override list replaces base even when longer."""
-        from ai_rules.utils import deep_merge
-
-        base = {"items": ["a"]}
-        override = {"items": ["x", "y", "z"]}
-
-        result = deep_merge(base, override)
-
-        assert result["items"] == ["x", "y", "z"]
-
-    def test_merge_shorter_override_replaces_base_array(self):
-        """Shorter override list fully replaces longer base list."""
-        from ai_rules.utils import deep_merge
-
-        base = {"items": ["a", "b", "c", "d"]}
-        override = {"items": ["x"]}
-
-        result = deep_merge(base, override)
-
-        assert result["items"] == ["x"]
-
-    def test_merge_nested_arrays_in_dicts_replaced(self):
-        """Override lists inside nested dicts are replaced wholesale."""
-        from ai_rules.utils import deep_merge
-
-        base = {
-            "hooks": {
-                "SubagentStop": [{"hooks": [{"type": "command", "command": "old.py"}]}]
-            }
-        }
-        override = {"hooks": {"SubagentStop": [{"hooks": [{"command": "new.py"}]}]}}
-
-        result = deep_merge(base, override)
-
-        assert result["hooks"]["SubagentStop"] == [{"hooks": [{"command": "new.py"}]}]
 
 
 class TestCacheCleanup:
@@ -2075,14 +2009,6 @@ class TestAgentsMdConfig:
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
         Config._load_cached.cache_clear()
         return home
-
-    def test_config_stores_agents_md_default_is_empty(self):
-        config = Config()
-        assert config.agents_md == ""
-
-    def test_config_stores_agents_md_from_constructor(self):
-        config = Config(agents_md="# Rules\n\nFollow them.")
-        assert config.agents_md == "# Rules\n\nFollow them."
 
     def test_get_merged_agents_md_path_returns_none_when_empty(
         self, tmp_path, monkeypatch

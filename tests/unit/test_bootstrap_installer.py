@@ -785,21 +785,3 @@ class TestGetToolConfigDirWindows:
         monkeypatch.setenv("UV_TOOL_DIR", "/custom/tools")
         result = get_tool_config_dir("ai-agent-rules")
         assert result.as_posix().startswith("/custom/tools")
-
-
-class _MockTraversable:
-    """Mock for importlib.resources traversable that returns empty mcps.json."""
-
-    def __init__(self, data: dict):
-        self._data = data
-
-    def __truediv__(self, other):
-        return _MockTraversable(self._data)
-
-    def is_file(self):
-        return True
-
-    def read_text(self):
-        import json
-
-        return json.dumps(self._data)
