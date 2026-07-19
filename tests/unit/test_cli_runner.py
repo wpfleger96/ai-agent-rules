@@ -479,6 +479,23 @@ def test_run_install_user_cancels_confirmation(tmp_path: Path) -> None:
     assert semantic.calls == 0
 
 
+@pytest.mark.unit
+def test_run_install_parallel_user_cancels_confirmation(tmp_path: Path) -> None:
+    infra = PlanApplyInfraComponent("infra")
+    semantic = PlanApplyComponent("semantic")
+
+    with (
+        patch("ai_rules.cli.check_first_run", return_value=True),
+        patch("ai_rules.cli._display_pending_changes", return_value=True),
+        patch("click.confirm", side_effect=click.exceptions.Abort()),
+    ):
+        result = run_install_parallel([infra], [semantic], make_context(tmp_path))
+
+    assert result.aborted is True
+    assert semantic.plan_calls == 0
+    assert semantic.apply_calls == 0
+
+
 class _StatusComponent(Component):
     component_id = "status-test"
     filterable = True
