@@ -21,7 +21,7 @@ just                          # Lint, format, and type check
 just test                     # Run tests
 just test-unit                # Run unit tests only
 just test-integration         # Run integration tests only
-just test-e2e                         # Run E2E tests (subprocess, real CLI, all 3 OSes in CI)
+just test-e2e                         # Run E2E tests (subprocess, real CLI; CI: ubuntu via ci.yml, macos/windows via e2e.yml)
 uv run ai-agent-rules <cmd>         # Run CLI
 
 # GitHub installation
