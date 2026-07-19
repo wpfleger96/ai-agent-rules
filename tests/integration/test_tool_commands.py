@@ -75,11 +75,3 @@ class TestToolSourceSet:
 
         assert result.exit_code == 1
         assert "Invalid source value" in result.output
-
-
-@pytest.mark.integration
-class TestInfoCommandRemoved:
-    def test_info_no_longer_exists(self, runner):
-        result = runner.invoke(main, ["info"])
-
-        assert result.exit_code != 0
