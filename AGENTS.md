@@ -227,6 +227,8 @@ just test-e2e                   # E2E only — runs real CLI as subprocess, no m
    - Do NOT add a `~/.gemini/skills/` directory — it causes "Skill conflict detected" warnings in headless invocations
    - This is why `AGENT_SKILLS_DIRS` in `config.py` intentionally excludes Gemini
 
+12. **Response-style rules are duplicated on purpose** - `config/AGENTS.md` (coding agents) and `config/chat_agent_hints.md` (copy/pasted into chat apps) share a response-style core but cannot share includes — the chat file must stay self-contained. When editing response-style rules in one, check whether the other needs the same change.
+
 ## Skills
 
 **Skills:** Explore `config/skills/*/SKILL.md` for available skills (15 total: agents-md, code-reviewer, continue-crash, crossfire, dev-docs, doc-writer, kb, pr-creator, prompt-critique, prompt-engineer, rebase, research, session-search, test-writer, worktree-cleanup).
