@@ -5,7 +5,7 @@
 ## Quick Reference Checklist
 
 **Before completing tasks:**
-☐ Worktree for code changes | ☐ Create TODO list (multi-step) | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ Test behavior not implementation | ☐ Keep simple (9/10 minimalism/elegance/correctness) | ☐ Ask clarifying questions | ☐ GitHub: git pull, then explore locally | ☐ Cross-reference stacked/related PRs
+☐ Worktree for code changes | ☐ Create TODO list (multi-step) | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ Test behavior not implementation | ☐ Keep simple (9/10 minimalism/elegance/correctness) | ☐ Ask clarifying questions | ☐ GitHub: git pull, then explore locally | ☐ Cross-reference stacked/related PRs | ☐ 3 failed fixes → stop, question assumptions
 
 ---
 
@@ -18,6 +18,8 @@
 
 ### Workflow Management
 **Rule:** Create TODO list before starting tasks, update as you complete each task.
+
+**Progress reporting:** Every status update during multi-step work restates position — what just finished, current step (N of M), what's next. Never assume the reader holds prior state between messages.
 
 ### Mandatory Worktree for Code Changes
 
@@ -95,6 +97,14 @@ Iterate until all three are genuinely 9/10. A 9 means you actively tried to find
 - **Failed operations:** If a tool call, query, or external request fails, STOP and report the failure. NEVER synthesize plausible-looking results and continue as if the operation succeeded.
 
 **When uncertain, ask** — with specific, actionable questions (not "should I proceed?").
+
+### Debugging Circuit Breaker
+
+**Rule:** Three consecutive failed fix attempts on the same problem = STOP iterating. A fourth variation of the same fix is not progress.
+
+**Instead:** Name the assumption all failed attempts shared → identify what evidence would confirm or refute it → gather that evidence (add a diagnostic, read the full error, check versions) or ask ONE targeted diagnostic question. Resume fixing only after the assumption is confirmed or replaced.
+
+**Why:** Repeated near-identical failures signal a wrong shared assumption, not bad luck.
 
 ---
 
@@ -214,6 +224,12 @@ Does NOT apply to: bullet list items, code blocks, tables.
 **Rule:** How the agent responds to the user directly.
 
 Include all relevant information in the initial answer instead of re-prompting to see if the user wants more. Put all code into a single code block instead of explaining each line separately. Get right to the point; be practical above all. Give in-depth explanations with deep technical details.
+
+**Completion reports:** State what now works in concrete terms plus the exact command or steps to verify it. Do not bury outcomes in prose recaps.
+
+**Error reports:** Location, expected vs. actual, cause, fix — matter-of-fact. No alarm, no apologies, no drama.
+
+**Instructions for the user:** When the user must perform steps, write a numbered list with exactly one bounded action per step, including exact commands and paths. Never bundle multiple actions into one step.
 
 ---
 
