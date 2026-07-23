@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [0.75.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.3...v0.75.4) (2026-07-23)
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#203](https://github.com/wpfleger96/ai-agent-rules/issues/203)) ([f2208d8](https://github.com/wpfleger96/ai-agent-rules/commit/f2208d8329f3e37c94f6fb44af65830f76808543))
+* **deps:** Lock file maintenance ([#208](https://github.com/wpfleger96/ai-agent-rules/issues/208)) ([a7f4bfb](https://github.com/wpfleger96/ai-agent-rules/commit/a7f4bfbdb9413d98103a27f345f2791440856a19))
+
+
+### Documentation
+
+* add action-first and debug-loop rules to agent instructions ([#205](https://github.com/wpfleger96/ai-agent-rules/issues/205)) ([20e06fc](https://github.com/wpfleger96/ai-agent-rules/commit/20e06fc88948c8a851d93897a21d648cfc45581f))
+
+
+### Testing
+
+* prune redundant tests and dedupe ubuntu e2e runs ([#206](https://github.com/wpfleger96/ai-agent-rules/issues/206)) ([a272dc3](https://github.com/wpfleger96/ai-agent-rules/commit/a272dc34c0a4c70757fed9092923dbc1d13efb34))
+
 ## [0.75.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.2...v0.75.3) (2026-07-15)
 
 
