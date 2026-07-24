@@ -130,7 +130,7 @@
     "defaultMode": "default"
   },
   "model": "opusplan",
-  "effortLevel": "high",
+  "effortLevel": "xhigh",
   "statusLine": {
     "type": "command",
     "command": "claude-code-statusline"
