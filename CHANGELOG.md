@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## [0.75.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.3...v0.75.4) (2026-07-24)
+
+
+### Chores
+
+* **claude:** use effortLevel key for effort, restore adaptive thinking ([#207](https://github.com/wpfleger96/ai-agent-rules/issues/207)) ([0e08d49](https://github.com/wpfleger96/ai-agent-rules/commit/0e08d49f4af35d28d650195cc08c1b7ce7cbced9))
+* **deps:** Lock file maintenance ([#203](https://github.com/wpfleger96/ai-agent-rules/issues/203)) ([f2208d8](https://github.com/wpfleger96/ai-agent-rules/commit/f2208d8329f3e37c94f6fb44af65830f76808543))
+* **deps:** Lock file maintenance ([#208](https://github.com/wpfleger96/ai-agent-rules/issues/208)) ([a7f4bfb](https://github.com/wpfleger96/ai-agent-rules/commit/a7f4bfbdb9413d98103a27f345f2791440856a19))
+* **deps:** Update astral-sh/setup-uv action to v8.3.2 ([#202](https://github.com/wpfleger96/ai-agent-rules/issues/202)) ([81c4789](https://github.com/wpfleger96/ai-agent-rules/commit/81c47899cac011781fbb29a11736c507d97a1f67))
+
+
+### Continuous Integration
+
+* sync CI workflow ([c3d896e](https://github.com/wpfleger96/ai-agent-rules/commit/c3d896e2064b6645de80594e3651a134890c16c9))
+* sync publish workflow ([00d6767](https://github.com/wpfleger96/ai-agent-rules/commit/00d67675637bfc97a1f4bf780903fc44f9eafd0d))
+* sync release workflow ([713ad42](https://github.com/wpfleger96/ai-agent-rules/commit/713ad420495160bce208612be6aaabb6f507a971))
+
+
+### Documentation
+
+* add action-first and debug-loop rules to agent instructions ([#205](https://github.com/wpfleger96/ai-agent-rules/issues/205)) ([20e06fc](https://github.com/wpfleger96/ai-agent-rules/commit/20e06fc88948c8a851d93897a21d648cfc45581f))
+
+
+### Testing
+
+* prune redundant tests and dedupe ubuntu e2e runs ([#206](https://github.com/wpfleger96/ai-agent-rules/issues/206)) ([a272dc3](https://github.com/wpfleger96/ai-agent-rules/commit/a272dc34c0a4c70757fed9092923dbc1d13efb34))
+
 ## [0.75.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.2...v0.75.3) (2026-07-15)
 
 
