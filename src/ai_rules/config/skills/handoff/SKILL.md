@@ -98,8 +98,7 @@ Do not redo work listed under "Work Completed".
 - Added `src/foo/bar.py:42` — handles X. Example:
 
   ```python
-  def bar():
-      ...
+  def bar(): ...
   ```
 
 ## Current State

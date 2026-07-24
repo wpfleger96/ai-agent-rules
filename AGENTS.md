@@ -208,9 +208,13 @@ just test-e2e                   # E2E only — runs real CLI as subprocess, no m
 9. **Optional tool registry** — Adding/retiring an optional tool requires ONE registry entry in `bootstrap/registry.py`. Never add per-tool functions:
    ```python
    # ✅ Add to DEPRECATED_TOOLS to retire a tool (cleanup on next install)
-   DeprecatedToolSpec(tool_id="foo", package_name="foo-pkg", command_name="foo", is_mcp=False)
+   DeprecatedToolSpec(
+       tool_id="foo", package_name="foo-pkg", command_name="foo", is_mcp=False
+   )
    # ✅ Add to ACTIVE_TOOLS to manage a new tool
-   ActiveToolSpec(tool_id="bar", command_name="bar-cli", get_install_spec=lambda: BarTool.INSTALL_SPEC)
+   ActiveToolSpec(
+       tool_id="bar", command_name="bar-cli", get_install_spec=lambda: BarTool.INSTALL_SPEC
+   )
    # ❌ Do NOT add ensure_foo_installed() / ensure_foo_uninstalled() functions
    ```
    - `DeprecatedToolSpec.is_still_in_use` — True means "skip cleanup" (user still wants it)

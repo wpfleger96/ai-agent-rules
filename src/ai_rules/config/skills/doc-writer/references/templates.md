@@ -270,13 +270,7 @@ class APIClient:
         response = client.get("/users/123")
     """
 
-    def __init__(
-        self,
-        api_key: str,
-        timeout: int = 30,
-        max_retries: int = 3
-    ):
-        ...
+    def __init__(self, api_key: str, timeout: int = 30, max_retries: int = 3): ...
 
     def get(self, path: str, params: dict = None) -> Response:
         """Send GET request.
@@ -326,10 +320,7 @@ auth = Authenticator(db, secret_key="your-secret")
 
 ```python
 # Validate and hash password
-user = auth.register(
-    email="user@example.com",
-    password="secure_password_123"
-)
+user = auth.register(email="user@example.com", password="secure_password_123")
 
 print(f"User created: {user.id}")
 ```
@@ -338,10 +329,7 @@ print(f"User created: {user.id}")
 
 ```python
 # Returns token on success, None on failure
-token = auth.login(
-    email="user@example.com",
-    password="secure_password_123"
-)
+token = auth.login(email="user@example.com", password="secure_password_123")
 
 if token:
     print(f"Access token: {token}")
@@ -412,6 +400,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
@@ -434,6 +423,7 @@ engine = create_engine("postgresql://localhost/myapi")
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
+
 @app.route("/users", methods=["POST"])
 def create_user():
     session = Session()
@@ -441,6 +431,7 @@ def create_user():
     session.add(user)
     session.commit()
     return jsonify({"id": user.id}), 201
+
 
 @app.route("/users/<int:user_id>")
 def get_user(user_id):
