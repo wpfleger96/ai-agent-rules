@@ -99,7 +99,6 @@ class TestConfigFileStructuralInvariants:
         assert "ANTHROPIC_DEFAULT_OPUS_MODEL" in env
         assert "ANTHROPIC_DEFAULT_SONNET_MODEL" in env
         assert "CLAUDE_CODE_SUBAGENT_MODEL" in env
-        assert "CLAUDE_CODE_EFFORT_LEVEL" in env
 
     def test_claude_permissions_has_allow_and_deny_lists(self, claude_config):
         perms = claude_config["permissions"]

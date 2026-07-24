@@ -15,8 +15,6 @@ class TestClaudeDeepMerge:
             "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
             "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-6",
-            "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
-            "CLAUDE_CODE_EFFORT_LEVEL": "max",
         },
         "permissions": {
             "allow": ["Bash(cat:*)", "Read(*)"],
@@ -44,16 +42,14 @@ class TestClaudeDeepMerge:
             result["env"]["ANTHROPIC_DEFAULT_HAIKU_MODEL"]
             == "claude-haiku-4-5-20251001"
         )
-        assert result["env"]["CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING"] == "1"
-        assert result["env"]["CLAUDE_CODE_EFFORT_LEVEL"] == "max"
-        assert len(result["env"]) == 6
+        assert len(result["env"]) == 4
 
     def test_env_new_key_added(self):
         override = {"env": {"NEW_CUSTOM_VAR": "custom_value"}}
         result = deep_merge(self.BASE, override)
 
         assert result["env"]["NEW_CUSTOM_VAR"] == "custom_value"
-        assert len(result["env"]) == 7
+        assert len(result["env"]) == 5
         assert result["env"]["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "claude-sonnet-4-6"
 
     def test_permissions_allow_array_replaced_wholesale(self):
