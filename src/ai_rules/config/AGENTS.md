@@ -42,6 +42,13 @@
 
 **Why:** Concurrent agents need isolated workspaces to avoid conflicting edits.
 
+**Worktree isolation errors:** Worktree-isolated sessions block Bash commands that can't be statically verified to stay inside the worktree. Skills and tools that spawn complex shell pipelines (e.g., `code-reviewer`) will fail with "this command is too complex to verify that it stays inside the worktree." Recovery (main sessions only — subagents with `isolation: worktree` cannot use `ExitWorktree`):
+
+1. `ToolSearch` → `select:ExitWorktree` (deferred tool — schema must be loaded first)
+2. `ExitWorktree` with `keep` (preserves worktree and branch on disk)
+3. Run the blocked skill/tool (now outside isolation)
+4. `EnterWorktree` to re-enter the same worktree and resume work
+
 ### Delegation & Multi-Agent Orchestration
 
 **Who this applies to:** the top-level orchestrator only — the session conversing directly with the user. **If you are a subagent** (your prompt is a task brief from another agent, not a conversation with a human), this section does NOT apply to you: you are the terminal worker. Implement everything in your brief directly with your own tools and never spawn agents for implementation. Delegation depth is exactly one.
