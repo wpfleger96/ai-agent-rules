@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## [0.75.5](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.4...v0.75.5) (2026-08-08)
+
+
+### Chores
+
+* **claude:** disable claude.ai MCP connector sync ([#215](https://github.com/wpfleger96/ai-agent-rules/issues/215)) ([410ff39](https://github.com/wpfleger96/ai-agent-rules/commit/410ff390171a0fdc2d3654a776299d15e9f83f1c))
+* **deps:** Lock file maintenance ([#209](https://github.com/wpfleger96/ai-agent-rules/issues/209)) ([3811832](https://github.com/wpfleger96/ai-agent-rules/commit/38118327d745b12467463eecabacbf154d260078))
+* **deps:** Lock file maintenance ([#212](https://github.com/wpfleger96/ai-agent-rules/issues/212)) ([1d13718](https://github.com/wpfleger96/ai-agent-rules/commit/1d13718b1408525401981e76c82e25c8c1d6dc67))
+* **deps:** Lock file maintenance ([#213](https://github.com/wpfleger96/ai-agent-rules/issues/213)) ([276a61a](https://github.com/wpfleger96/ai-agent-rules/commit/276a61a622d97c84ff662c571fe5f44ca0da84ef))
+* **deps:** Lock file maintenance ([#214](https://github.com/wpfleger96/ai-agent-rules/issues/214)) ([0b41f81](https://github.com/wpfleger96/ai-agent-rules/commit/0b41f81b523e20b7b0726ddb409753f0f88315b3))
+* **deps:** Update github-actions (major) ([#211](https://github.com/wpfleger96/ai-agent-rules/issues/211)) ([7fefd1b](https://github.com/wpfleger96/ai-agent-rules/commit/7fefd1bca970b5fd0bb8d3790d0750b4e23d6020))
+
+
+### Continuous Integration
+
+* sync CI workflow ([f9bf3ef](https://github.com/wpfleger96/ai-agent-rules/commit/f9bf3ef7dfbf927635f735d3b0b3f7f3d4d3d60d))
+* sync CI workflow ([4abe57a](https://github.com/wpfleger96/ai-agent-rules/commit/4abe57aa61d26654c6605b08af045a4acb7472bc))
+* sync publish workflow ([df3a5fa](https://github.com/wpfleger96/ai-agent-rules/commit/df3a5fa563d1d925caf70e50a87ea42fc5d739eb))
+* sync release workflow ([dcd5167](https://github.com/wpfleger96/ai-agent-rules/commit/dcd516706a844a8c40eb013dcf15a0dafdb3cc92))
+* sync release workflow ([1a9e1f4](https://github.com/wpfleger96/ai-agent-rules/commit/1a9e1f430226248a3e7551b6c3ef73bb62d5ce8b))
+
+
+### Documentation
+
+* **agents:** add worktree isolation error recovery instructions ([#216](https://github.com/wpfleger96/ai-agent-rules/issues/216)) ([6e3dbf6](https://github.com/wpfleger96/ai-agent-rules/commit/6e3dbf6f3c926234a19d56c8359b769b607df209))
+
 ## [0.75.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.3...v0.75.4) (2026-07-24)
 
 
