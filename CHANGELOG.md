@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [0.75.6](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.5...v0.75.6) (2026-08-11)
+
+
+### Bug Fixes
+
+* **code-reviewer:** use opus for review subagents ([#218](https://github.com/wpfleger96/ai-agent-rules/issues/218)) ([78d3ca4](https://github.com/wpfleger96/ai-agent-rules/commit/78d3ca404d1c1b57318329d54be97df8a41176c2))
+
+
+### Chores
+
+* **deps:** Update python Docker tag to v3.14 ([#193](https://github.com/wpfleger96/ai-agent-rules/issues/193)) ([14c5a99](https://github.com/wpfleger96/ai-agent-rules/commit/14c5a99502bba89f5514fb8774e8ddc4780cc13b))
+* sync Justfile ([b9f36bb](https://github.com/wpfleger96/ai-agent-rules/commit/b9f36bbeafaa1ef781ea4c7adad375378c6e0d00))
+
+
+### Continuous Integration
+
+* sync CI workflow ([ef00ab8](https://github.com/wpfleger96/ai-agent-rules/commit/ef00ab843184455348d5ac3f2d145d72370cb46e))
+
 ## [0.75.5](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.4...v0.75.5) (2026-08-08)
 
 
