@@ -2,7 +2,7 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: code-reviewer
-version: 1.1.0
+version: 1.1.1
 description: Performs thorough code review on local changes or PRs. Use this skill proactively after implementing code changes to catch issues before commit/push. Also use when reviewing PRs from other engineers.
 agent: general-purpose
 allowed-tools: Agent, AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
@@ -156,10 +156,10 @@ Load the briefing template from `references/subagent-template.md` and construct 
 
 | Agent | Model | Lens Focus | Scope Boundaries | Condition |
 |-------|-------|------------|-----------------|-----------|
-| Security & Reliability | `sonnet` | Injection, auth, data exposure, error handling, edge cases, dependency hygiene | Do NOT review for design fit, over-engineering, test coverage, or performance | Always |
-| Design & Simplicity | `sonnet` | Architecture fit, abstraction level, over-engineering, duplication, maintainability, project conventions | Do NOT review for security vulnerabilities, test coverage, or performance cost | Always |
-| Functionality & Testing | `sonnet` | Correctness, intended behavior, test coverage, test quality, user-facing edge cases, API contract accuracy | Do NOT review for security vulnerabilities, design patterns, or performance | Always |
-| Performance & Scalability | `sonnet` | Algorithmic complexity, query efficiency, I/O patterns, memory growth, hot-path regressions | Do NOT review for security, design architecture, correctness, or test quality | Only when `performance_relevant = true` |
+| Security & Reliability | `opus` | Injection, auth, data exposure, error handling, edge cases, dependency hygiene | Do NOT review for design fit, over-engineering, test coverage, or performance | Always |
+| Design & Simplicity | `opus` | Architecture fit, abstraction level, over-engineering, duplication, maintainability, project conventions | Do NOT review for security vulnerabilities, test coverage, or performance cost | Always |
+| Functionality & Testing | `opus` | Correctness, intended behavior, test coverage, test quality, user-facing edge cases, API contract accuracy | Do NOT review for security vulnerabilities, design patterns, or performance | Always |
+| Performance & Scalability | `opus` | Algorithmic complexity, query efficiency, I/O patterns, memory growth, hot-path regressions | Do NOT review for security, design architecture, correctness, or test quality | Only when `performance_relevant = true` |
 
 If the diff was flagged as performance-relevant in the Performance Relevance classification, launch all four agents. Otherwise, launch only the three core agents (Security & Reliability, Design & Simplicity, Functionality & Testing).
 
