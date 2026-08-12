@@ -52,16 +52,41 @@ class TestCodeReviewerSkillContract:
         """The Phase 2B Functionality specialist must own the executed mutation check.
 
         Boundary diffs route to Phase 2B, whose Functionality briefing comes from
-        this section; if the mutation protocol is not here, the one deterministic
-        #3398 catch is on a path boundary PRs never take.
+        this section; if the mutation protocol is not here — or its direction is
+        inverted — the one deterministic #3398 catch is lost. Assertions anchor on
+        semantic invariants, not capitalization, so benign rewording survives while
+        a reversed revert-direction trips.
         """
-        section = _section(template_md, "Functionality & Testing Agent")
-        assert "Mutation check" in section
-        assert "EXECUTE" in section
-        # The full executable recipe, not a passing mention.
-        assert "revert" in section.lower()
-        assert "full suite" in section.lower()
-        assert "RED" in section
+        section = _section(template_md, "Functionality & Testing Agent").lower()
+
+        # Ownership + execution: the specialist runs the check, never merely reads it.
+        assert "mutation check" in section
+        assert "execute" in section
+        assert "you own this" in section
+
+        # Direction is load-bearing: revert PRODUCTION code, keep the added tests.
+        # An inversion to "revert only the test hunks" must trip the negative check.
+        assert "revert only the production" in section
+        assert "keep the added tests" in section
+        assert "revert only the test" not in section
+
+        # Diff-verify the mutated tree before running the suite.
+        assert "git diff" in section
+        assert "confirm" in section
+
+        # Run the project's full suite via its own tooling, not an ad-hoc subset.
+        assert "full suite" in section
+        assert "tooling" in section
+
+        # Removing the fix must make the suite fail; staying green is a blocking miss.
+        # No capitalization-pinned "RED" — a reword to "fails" stays valid.
+        assert "stays green" in section
+        assert "blocking" in section
+
+        # Clean up the scratch worktree; inability to run is reported upward, never skipped.
+        assert "remove the scratch worktree" in section
+        assert "cannot execute" in section
+        assert "precondition" in section
 
     def test_mutation_protocol_has_single_authoritative_home(
         self, skill_md: str, template_md: str
