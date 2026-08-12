@@ -2,7 +2,7 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: code-reviewer
-version: 1.1.1
+version: 1.2.0
 description: Performs thorough code review on local changes or PRs. Use this skill proactively after implementing code changes to catch issues before commit/push. Also use when reviewing PRs from other engineers.
 agent: general-purpose
 allowed-tools: Agent, AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
@@ -55,9 +55,12 @@ If no changes found, inform user and stop.
 Review a pull request opened by another engineer.
 
 **Gather changes:**
-1. Run `gh pr view <PR> --json title,body,author,baseRefName` for PR context
+1. Run `gh pr view <PR> --json title,body,author,baseRefName,url` for PR context
 2. Run `gh pr diff <PR>` for the diff
 3. Run `gh pr checks <PR>` for CI status (note failures)
+4. Determine the PR's target `owner/repo` from the canonical `url` returned by step 1 — parse `owner/repo` out of the `https://github.com/owner/repo/pull/N` URL. This resolves identically whether the reviewer was handed a full PR URL or a bare number inside a checkout, and always names the true target repo (unlike `headRepository`, which is the fork for cross-repo PRs). A bare PR number supplied outside any checkout is reported as an unresolvable named blocker — step 1's `gh pr view` already exits non-zero in that case; do not paper over it. Then parse the PR body for closing references: bare `Fixes/Closes/Resolves #N` (case-insensitive) resolve against that target repo; qualified refs (`owner/repo#N` or a full `https://github.com/owner/repo/issues/N` URL) keep their explicit repo. For each, run `gh issue view <N> --repo <owner/repo> --json title,body`. Carry each issue's stated scope into Phase 1 for the scope-drift check below. If a lookup fails, treat it as a named blocker to the scope-drift check — report the unresolved issue explicitly; do not continue as if no linked issue existed.
+
+**Scope-drift check (mandatory when a linked issue exists):** Compare the implementation's actual scope against the issue's stated scope. Divergence is a finding at 🟡 minimum, escalating to 🔴 when the drift widens a security, credential, or auth surface (e.g., an issue scoped to "goose + provider openai" implemented as "every harness"). The PR title and body themselves often announce the drift.
 
 **Context:** Reviewing another engineer's work. Be constructive—they may have context you don't. Consider existing PR discussion before duplicating feedback.
 
@@ -76,6 +79,27 @@ Compute from the gathered diff:
 | Small | <50 lines AND ≤2 files | Single-agent inline review (Phase 2A) |
 | Medium | 50-300 lines OR 3-10 files | Multi-agent orchestrated review (Phase 2B) |
 | Large | >300 lines OR >10 files | Multi-agent orchestrated review (Phase 2B) |
+
+**Boundary override:** If the Boundary Relevance scan below sets `boundary_relevant = true`, the diff routes to Phase 2B orchestrated review regardless of line/file count. A 30-line credential change must not take the inline path — its blast radius is set by the boundary it touches, not its size.
+
+### Boundary Relevance
+
+Scan the diff text to determine whether the change touches a system boundary where behavior is set by contracts outside this repository. The triggers are two-tier:
+
+**Tier 1 — hard runtime-boundary constructs (set `boundary_relevant = true` directly, no further judgment):**
+- Environment variable reads or writes (`env::var`, `env::set_var`, `process.env`, `os.environ`, `env.insert`, `setenv`, `getenv`, and named vars matching `*_API_KEY`, `*_TOKEN`, `*_SECRET`)
+- Process spawn or exec (`Command::new`, `.spawn(`, `subprocess`, `execve`, `posix_spawn`, `child_process`)
+- Auth/authorization header construction (`Authorization:`, `X-Api-Key`, bearer-header assembly)
+- Credential assignment — a secret/token/key value being read from or written to a variable that a runtime path consumes
+
+**Tier 2 — broad lexical hints (set `boundary_relevant = true` ONLY after a one-line semantic confirmation that the changed value actually crosses a process, auth, or network-contract boundary at runtime):**
+- Credential/secret words in identifiers (`api_key`, `access_token`, `client_secret`, `password`, `bearer`, `credential`)
+- Network endpoint words and URL literals (`base_url`, `endpoint`, `https://`, host/port construction)
+- Bare `exec` outside the Tier-1 spawn constructs
+
+For each Tier-2 hit, write one sentence stating whether the changed value crosses a real boundary (e.g., "`password` here is a local form-state field, not a credential sent to an external service → not boundary-relevant" vs. "`https://` here is the base URL passed to an external API client → boundary-relevant"). Only set the flag when that confirmation is affirmative.
+
+This scan runs for diffs of ALL sizes — it is the one classification that overrides size-based routing. Do NOT set `boundary_relevant` for: comment-only or documentation-only mentions of these terms, test fixtures that stub credentials, or type-annotation-only changes that touch none of the above at runtime.
 
 ### Performance Relevance
 
@@ -99,9 +123,9 @@ Before reviewing code, establish understanding:
 - What existing patterns or conventions should be followed?
 - **Review in context**: Read the entire modified files, not just the diff. Understanding surrounding code is essential.
 
-### Phase 2A: Inline Review (Small Diffs Only)
+### Phase 2A: Inline Review (Non-Boundary Small Diffs Only)
 
-For Small complexity diffs, execute the review inline using all four lenses sequentially:
+For Small complexity diffs that are NOT `boundary_relevant`, execute the review inline using the four lenses below sequentially. Any `boundary_relevant` diff — regardless of size — routes to Phase 2B instead (see the Boundary override above).
 
 **Lens 0: Design & Integration**
 - Does the change integrate well with existing architecture?
@@ -133,13 +157,14 @@ For Small complexity diffs, execute the review inline using all four lenses sequ
 - Do tests verify behavior, not implementation details?
 - Is coverage sufficient for the risk level?
 - Are tests focused on what matters, not trivial cases?
+- **Mutation check (fix PRs only, EXECUTE — do not merely read):** Run the authoritative mutation protocol defined in the Functionality & Testing lens of `references/subagent-template.md`: revert only the production hunks in a scratch worktree, verify the reversal, run the full suite, expect RED. A suite that stays green with the fix removed = 🔴 "untested at its seam". Inability to execute = a named unmet precondition, never a silent skip.
 - For changed APIs or function signatures: are docstrings and documentation still accurate?
 
 After applying all lenses, proceed directly to Phase 3.
 
-### Phase 2B: Orchestrated Review (Medium/Large Diffs)
+### Phase 2B: Orchestrated Review (Medium/Large or Boundary Diffs)
 
-For Medium and Large complexity diffs, spawn parallel Claude subagents — each with a fresh context window focused on a single review lens. This produces higher quality findings because each agent dedicates its full context to one concern without cross-lens contamination.
+For Medium and Large complexity diffs — and for any `boundary_relevant` diff regardless of size — spawn parallel Claude subagents, each with a fresh context window focused on a single review lens. This produces higher quality findings because each agent dedicates its full context to one concern without cross-lens contamination.
 
 #### Step 1: Prepare review context
 
@@ -152,7 +177,7 @@ Gather for subagent briefings:
 
 Load the briefing template from `references/subagent-template.md` and construct one briefing per specialist. Launch all agents in parallel — this is critical for speed.
 
-**Claude subagents (for Medium/Large):**
+**Claude subagents (for Medium/Large/Boundary):**
 
 | Agent | Model | Lens Focus | Scope Boundaries | Condition |
 |-------|-------|------------|-----------------|-----------|
@@ -160,8 +185,9 @@ Load the briefing template from `references/subagent-template.md` and construct 
 | Design & Simplicity | `opus` | Architecture fit, abstraction level, over-engineering, duplication, maintainability, project conventions | Do NOT review for security vulnerabilities, test coverage, or performance cost | Always |
 | Functionality & Testing | `opus` | Correctness, intended behavior, test coverage, test quality, user-facing edge cases, API contract accuracy | Do NOT review for security vulnerabilities, design patterns, or performance | Always |
 | Performance & Scalability | `opus` | Algorithmic complexity, query efficiency, I/O patterns, memory growth, hot-path regressions | Do NOT review for security, design architecture, correctness, or test quality | Only when `performance_relevant = true` |
+| Boundary & External Contract | `opus` | External-consumer contracts for touched env vars/credentials/endpoints, downstream behavior each value activates, paired-value integrity, issue-scope match | Do NOT review for in-repo design, general security patterns, test quality, or performance | Only when `boundary_relevant = true` |
 
-If the diff was flagged as performance-relevant in the Performance Relevance classification, launch all four agents. Otherwise, launch only the three core agents (Security & Reliability, Design & Simplicity, Functionality & Testing).
+If the diff was flagged as performance-relevant in the Performance Relevance classification, launch the Performance & Scalability agent. If the diff was flagged as boundary-relevant in the Boundary Relevance classification, launch the Boundary & External Contract agent. Always launch the three core agents (Security & Reliability, Design & Simplicity, Functionality & Testing); add the conditional agents on top when their flags are set.
 
 Each subagent receives: the full diff, instruction to read modified files in full (not just diff hunks), its assigned lens with key questions from the template, explicit scope boundaries, and the severity framework (🔴 MUST FIX / 🟡 SHOULD FIX / 🟢 CONSIDER).
 
@@ -210,7 +236,8 @@ Synthesize findings from all Claude subagents:
 
 **Step 2: De-duplicate and score confidence**
 - Finding flagged by 2+ independent agents = **HIGH confidence** — merge at the highest severity reported
-- Finding flagged by only 1 agent = noted with attribution
+- Finding flagged by only 1 agent, with that agent self-reporting HIGH confidence, is ALSO treated as HIGH confidence once the orchestrator concurs at Step 2.5. The lenses have mutually exclusive scopes, so a security or boundary 🔴 can only ever come from one agent — requiring cross-agent convergence would make those findings structurally unreachable.
+- Finding flagged by only 1 agent at MEDIUM/LOW confidence = noted with attribution
 - Identical findings from multiple agents: keep the one with the most specific file:line citation
 
 **Step 2.5: Cross-agent verification**
@@ -222,11 +249,17 @@ Before producing the final output, perform two verification checks:
 2. **Gap check:** Ask: "Are there concerns that fall between the scope boundaries of the agents that none of them would have been positioned to catch?" Surface any such concerns as orchestrator-attributed findings with appropriate severity.
 
 **Step 3: Produce unified output**
-Organize findings by severity tier (🔴 then 🟡 then 🟢), NOT by which agent found them. For each finding, note if it was confirmed by multiple agents. Include a methodology note (e.g., "Reviewed via 3 parallel Claude specialists" or "Reviewed via 4 Claude specialists (incl. Performance)").
+Organize findings by severity tier (🔴 then 🟡 then 🟢), NOT by which agent found them. For each finding, note if it was confirmed by multiple agents. Include a methodology note listing the specialists actually launched (e.g., "Reviewed via 3 parallel Claude specialists", "Reviewed via 4 Claude specialists (incl. Performance)", or "Reviewed via 4 Claude specialists (incl. Boundary & External Contract)").
 
-**Net verdict (PR Mode only):**
-- REQUEST_CHANGES if any HIGH-confidence 🔴 MUST FIX exists
-- APPROVE otherwise, even if single-source findings exist
+**Net verdict (PR Mode only)** — evaluate in this order and stop at the first match:
+
+1. **REQUEST_CHANGES** — any verified HIGH-confidence 🔴 MUST FIX exists (including a single-agent 🔴 raised to HIGH confidence per Step 2 with orchestrator concurrence). A verified blocker always wins; it is never suppressed by the Comment cap below.
+2. **Comment** — no verified blocker, but an APPLICABLE mandatory check has not executed. Name the unmet check. Applicability:
+   - Linked-issue scope-drift comparison applies only when the PR has a linked issue.
+   - Mutation check applies only to fix PRs.
+   - External-contract trace applies to every `boundary_relevant` diff.
+   - A live-behavior probe applies when a correctness claim depends on behavior the reviewer cannot observe statically (a real network endpoint, a real spawned child's environment). If such a probe is needed but the reviewer cannot run it, the verdict is Comment with that precondition named — never APPROVE on unverified boundary behavior.
+3. **APPROVE** — no verified blocker and every applicable mandatory check has executed. The forward-momentum philosophy stays intact for all non-boundary changes; single-source non-blocking findings do not prevent approval.
 
 ## Review Principles
 

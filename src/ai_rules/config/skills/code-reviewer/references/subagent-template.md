@@ -111,6 +111,14 @@ CRITICAL RULES:
 - For UI changes: will the user experience work as expected?
 - For any changed public API, function signature, or user-facing behavior: is the corresponding documentation (docstrings, README, changelog) still accurate?
 
+**Mutation check (fix PRs only — you OWN this; EXECUTE it, do not merely read):**
+This is the authoritative mutation protocol; every other reference in the skill points here. When the PR is a bug fix, prove the tests observe the fix at its seam:
+1. In a scratch git worktree checked out at the PR head, revert ONLY the production (non-test) hunks. When a production hunk and a test hunk share a file — or a single hunk mixes both — keep the added tests and revert only the production lines, so the mutated tree retains the new tests but drops the fix.
+2. Before running, `git diff` the mutated tree against the PR head and confirm it contains exactly that intended production reversal and nothing else.
+3. Run the project's FULL suite via its own tooling (Justfile → Makefile → package.json detection order the rules already mandate).
+4. Remove the scratch worktree when done.
+Expected result: the suite goes RED. If it stays green with the fix removed, the fix is untested at its seam → 🔴 blocking. If you cannot execute this (no runnable suite, missing tooling), report it upward as a named unmet review precondition — never silently skip it or treat it as an optional choice.
+
 ### Performance & Scalability Agent
 **Focus:** Algorithmic complexity, query efficiency, I/O patterns, memory growth, hot-path regressions, resource utilization
 **Condition:** Only activated when the diff touches performance-sensitive code (database queries, loops over collections, data structure operations, I/O in loops)
@@ -119,3 +127,12 @@ CRITICAL RULES:
 - Are there database queries or I/O operations inside loops that could be batched or hoisted?
 - Could any new data structures grow unboundedly in proportion to user/data volume?
 - Are there repeated computations or I/O calls that could be cached or deduplicated?
+
+### Boundary & External Contract Agent
+**Focus:** Contracts of binaries and services OUTSIDE this repo that consume the touched env vars, credentials, or endpoints; downstream behavior each value activates; paired-value integrity; match between actual blast radius and the originating issue's stated scope
+**Condition:** Only activated when the diff touches a system boundary (env-var reads/writes, spawn/exec, credential/token/secret identifiers, network endpoint URLs, or auth headers — i.e., `boundary_relevant = true`)
+**Key questions (adapt per diff):**
+- Which external binaries or services consume the touched values, and what do their env/API contracts require? Answer from THEIR docs or source, not this repo.
+- What behavior does each touched value activate downstream? (e.g., does an external tool treat `OPENAI_API_KEY` as an OpenAI-platform credential and ignore a separately supplied `*_BASE_URL`?)
+- Are paired values carried together where the contract demands it (an API key with its base URL, a token with its endpoint) rather than split across variables the consumer won't read together?
+- Does the change affect only the surface the originating issue scoped, or does it silently widen the surface across other harnesses, providers, or callers?
