@@ -111,6 +111,14 @@ CRITICAL RULES:
 - For UI changes: will the user experience work as expected?
 - For any changed public API, function signature, or user-facing behavior: is the corresponding documentation (docstrings, README, changelog) still accurate?
 
+**Mutation check (fix PRs only — you OWN this; EXECUTE it, do not merely read):**
+This is the authoritative mutation protocol; every other reference in the skill points here. When the PR is a bug fix, prove the tests observe the fix at its seam:
+1. In a scratch git worktree checked out at the PR head, revert ONLY the production (non-test) hunks. When a production hunk and a test hunk share a file — or a single hunk mixes both — keep the added tests and revert only the production lines, so the mutated tree retains the new tests but drops the fix.
+2. Before running, `git diff` the mutated tree against the PR head and confirm it contains exactly that intended production reversal and nothing else.
+3. Run the project's FULL suite via its own tooling (Justfile → Makefile → package.json detection order the rules already mandate).
+4. Remove the scratch worktree when done.
+Expected result: the suite goes RED. If it stays green with the fix removed, the fix is untested at its seam → 🔴 blocking. If you cannot execute this (no runnable suite, missing tooling), report it upward as a named unmet review precondition — never silently skip it or treat it as an optional choice.
+
 ### Performance & Scalability Agent
 **Focus:** Algorithmic complexity, query efficiency, I/O patterns, memory growth, hot-path regressions, resource utilization
 **Condition:** Only activated when the diff touches performance-sensitive code (database queries, loops over collections, data structure operations, I/O in loops)
@@ -128,4 +136,3 @@ CRITICAL RULES:
 - What behavior does each touched value activate downstream? (e.g., does an external tool treat `OPENAI_API_KEY` as an OpenAI-platform credential and ignore a separately supplied `*_BASE_URL`?)
 - Are paired values carried together where the contract demands it (an API key with its base URL, a token with its endpoint) rather than split across variables the consumer won't read together?
 - Does the change affect only the surface the originating issue scoped, or does it silently widen the surface across other harnesses, providers, or callers?
-- Would deleting the production wiring still leave the tests green? (If the reviewer can run it, this mutation check is decisive; if not, name it as an unmet precondition.)
