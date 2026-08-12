@@ -119,3 +119,13 @@ CRITICAL RULES:
 - Are there database queries or I/O operations inside loops that could be batched or hoisted?
 - Could any new data structures grow unboundedly in proportion to user/data volume?
 - Are there repeated computations or I/O calls that could be cached or deduplicated?
+
+### Boundary & External Contract Agent
+**Focus:** Contracts of binaries and services OUTSIDE this repo that consume the touched env vars, credentials, or endpoints; downstream behavior each value activates; paired-value integrity; match between actual blast radius and the originating issue's stated scope
+**Condition:** Only activated when the diff touches a system boundary (env-var reads/writes, spawn/exec, credential/token/secret identifiers, network endpoint URLs, or auth headers — i.e., `boundary_relevant = true`)
+**Key questions (adapt per diff):**
+- Which external binaries or services consume the touched values, and what do their env/API contracts require? Answer from THEIR docs or source, not this repo.
+- What behavior does each touched value activate downstream? (e.g., does an external tool treat `OPENAI_API_KEY` as an OpenAI-platform credential and ignore a separately supplied `*_BASE_URL`?)
+- Are paired values carried together where the contract demands it (an API key with its base URL, a token with its endpoint) rather than split across variables the consumer won't read together?
+- Does the change affect only the surface the originating issue scoped, or does it silently widen the surface across other harnesses, providers, or callers?
+- Would deleting the production wiring still leave the tests green? (If the reviewer can run it, this mutation check is decisive; if not, name it as an unmet precondition.)
