@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.76.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.6...v0.76.0) (2026-08-12)
+
+
+### Features
+
+* **code-reviewer:** add boundary review for env/credential/spawn changes ([#219](https://github.com/wpfleger96/ai-agent-rules/issues/219)) ([5608301](https://github.com/wpfleger96/ai-agent-rules/commit/5608301b62108b4e3ada8fcb6eae13a14d5756f6))
+
 ## [0.75.6](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.5...v0.75.6) (2026-08-11)
 
 
