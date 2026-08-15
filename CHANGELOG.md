@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.76.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.0...v0.76.1) (2026-08-15)
+
+
+### Bug Fixes
+
+* default subagent model ([6493502](https://github.com/wpfleger96/ai-agent-rules/commit/6493502aa84e53652640550401fbf2e605266e48))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#221](https://github.com/wpfleger96/ai-agent-rules/issues/221)) ([8f822bd](https://github.com/wpfleger96/ai-agent-rules/commit/8f822bdb592547102f5edfdc6d83219907261c4c))
+
 ## [0.76.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.75.6...v0.76.0) (2026-08-12)
 
 
