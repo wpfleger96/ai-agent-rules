@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.76.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.1...v0.76.2) (2026-08-15)
+
+
+### Bug Fixes
+
+* model configs ([28bb034](https://github.com/wpfleger96/ai-agent-rules/commit/28bb034359868bd35b4e0dd15d267fcd91243d83))
+
 ## [0.76.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.0...v0.76.1) (2026-08-15)
 
 
