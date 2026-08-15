@@ -124,10 +124,7 @@
       "WebFetch",
       "WebSearch"
     ],
-    "deny": [
-      "Bash(gh pr merge:*)",
-      "Bash(rm -r:*)"
-    ],
+    "deny": [],
     "defaultMode": "default"
   },
   "model": "opusplan",
