@@ -4,6 +4,7 @@
 name: test-writer
 version: 1.0.1
 description: Write, update, or review tests. Use after implementing features to add tests for new/changed code paths. Covers testing strategy, framework selection, and coverage analysis.
+disabled: true
 allowed-tools: Bash, Edit, Glob, Grep, Read, TodoWrite, Write
 model: sonnet
 ---

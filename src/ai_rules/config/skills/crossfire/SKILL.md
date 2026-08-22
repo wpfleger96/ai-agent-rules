@@ -4,6 +4,7 @@
 name: crossfire
 version: 1.0.0
 description: Get multi-model perspectives (Codex + Gemini) on any work product. Use at any development stage — planning, design, implementation, testing — to catch blind spots the primary agent might miss.
+disabled: true
 allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read
 model: sonnet
 ---
