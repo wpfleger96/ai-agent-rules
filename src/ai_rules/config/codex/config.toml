@@ -1,6 +1,6 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
 approval_policy = "on-request"
 model_reasoning_effort = "xhigh"
 plan_mode_reasoning_effort = "xhigh"
@@ -24,4 +24,4 @@ persistence = "save-all"
 enabled = false
 
 [tui.model_availability_nux]
-"gpt-5.5" = 1
+"gpt-5.6-sol" = 1
