@@ -7,6 +7,7 @@ description: >-
   Search previous agent sessions and conversations (Claude Code, Codex, Gemini,
   Goose, Amp, Buzz). Use to find session transcripts, recover prior outputs, or
   compare recent sessions for a repository.
+disabled: true
 allowed-tools: Agent, Bash, Glob, Grep, Read
 model: sonnet
 ---
