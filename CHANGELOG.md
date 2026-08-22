@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.76.5](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.4...v0.76.5) (2026-08-22)
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#228](https://github.com/wpfleger96/ai-agent-rules/issues/228)) ([69bba5c](https://github.com/wpfleger96/ai-agent-rules/commit/69bba5c39910bb0961ede4ee06993381e8e22f77))
+* **deps:** Update astral-sh/setup-uv action to v10 ([#225](https://github.com/wpfleger96/ai-agent-rules/issues/225)) ([296ab79](https://github.com/wpfleger96/ai-agent-rules/commit/296ab7928d0db140b56b039dadc0094ff9844258))
+* **skills:** disable agents-md, crossfire, doc-writer, test-writer, prompt-engineer, session-search ([#231](https://github.com/wpfleger96/ai-agent-rules/issues/231)) ([fc3c7df](https://github.com/wpfleger96/ai-agent-rules/commit/fc3c7df3265c0bcd03b66dfafdf2db0d447e5c10))
+
 ## [0.76.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.3...v0.76.4) (2026-08-22)
 
 
