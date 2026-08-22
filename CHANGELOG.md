@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.76.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.3...v0.76.4) (2026-08-22)
+
+
+### Bug Fixes
+
+* **codex:** replace removed approval_policy "untrusted" with "on-request" ([#229](https://github.com/wpfleger96/ai-agent-rules/issues/229)) ([0f038bb](https://github.com/wpfleger96/ai-agent-rules/commit/0f038bb2ab4819d70e35106f3c2025b52e25c184))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#226](https://github.com/wpfleger96/ai-agent-rules/issues/226)) ([8ed69d9](https://github.com/wpfleger96/ai-agent-rules/commit/8ed69d963f7f8cc970bf64bebe04c7c52478ee6d))
+
 ## [0.76.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.2...v0.76.3) (2026-08-15)
 
 
