@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.76.7](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.6...v0.76.7) (2026-08-23)
+
+
+### Bug Fixes
+
+* forgot to include codex xhigh-&gt;high too ([e277ef4](https://github.com/wpfleger96/ai-agent-rules/commit/e277ef4ff24d1424b1b75bad2781a198c3624bcd))
+
 ## [0.76.6](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.5...v0.76.6) (2026-08-23)
 
 
