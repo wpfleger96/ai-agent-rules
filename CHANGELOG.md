@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.76.8](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.7...v0.76.8) (2026-08-23)
+
+
+### Bug Fixes
+
+* enhance Codex statusline ([6e70998](https://github.com/wpfleger96/ai-agent-rules/commit/6e70998438feafb489f1285a18fd4936ccf616d6))
+
 ## [0.76.7](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.6...v0.76.7) (2026-08-23)
 
 
