@@ -14,7 +14,10 @@ status_line = [
   "git-branch",
   "context-used",
   "used-tokens",
+  "estimated-thread-cost",
   "session-id",
+  "five-hour-limit",
+  "weekly-limit",
 ]
 
 [history]
