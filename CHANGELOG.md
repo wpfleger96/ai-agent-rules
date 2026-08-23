@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.76.6](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.5...v0.76.6) (2026-08-23)
+
+
+### Bug Fixes
+
+* change default effort level to high ([fbb44c1](https://github.com/wpfleger96/ai-agent-rules/commit/fbb44c14f9a89327870939537881dd2e88531dcf))
+
 ## [0.76.5](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.4...v0.76.5) (2026-08-22)
 
 
