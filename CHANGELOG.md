@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## [0.76.9](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.8...v0.76.9) (2026-09-04)
+
+
+### Bug Fixes
+
+* disable CC session URL in commits ([b84e6de](https://github.com/wpfleger96/ai-agent-rules/commit/b84e6dea4c60be15ca434bbaa0972963c3d6c80c))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#235](https://github.com/wpfleger96/ai-agent-rules/issues/235)) ([5332318](https://github.com/wpfleger96/ai-agent-rules/commit/5332318173227d468a80f272fdc5081c16fefbf1))
+* **deps:** Lock file maintenance ([#237](https://github.com/wpfleger96/ai-agent-rules/issues/237)) ([676386c](https://github.com/wpfleger96/ai-agent-rules/commit/676386c3b46d268fdf4334c495e9c5f099496eaf))
+* **deps:** Lock file maintenance ([#238](https://github.com/wpfleger96/ai-agent-rules/issues/238)) ([34a78ad](https://github.com/wpfleger96/ai-agent-rules/commit/34a78ad4c66acfdcf27af3847146770997367557))
+
 ## [0.76.8](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.7...v0.76.8) (2026-08-23)
 
 
