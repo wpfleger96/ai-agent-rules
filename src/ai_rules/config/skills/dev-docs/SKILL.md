@@ -2,8 +2,8 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: dev-docs
-version: 1.0.1
-description: Creates or updates PLAN.md based on session - auto-detects create vs update mode
+version: 1.0.2
+description: Create or update a task-specific PLAN__<TASK>.md in the project root from the session's approved plan and implementation evidence. Use when starting multi-session work, after ExitPlanMode, or when asked to record or refresh progress; auto-detects create vs update.
 allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, TodoWrite, Write
 model: sonnet
 ---
@@ -30,12 +30,9 @@ Automatically creates task-specific PLAN files (`PLAN__<TASK>.md`) or updates ex
 - Valid: ✓ `AUTH_FLOW`, ✓ `API_MIGRATION`, ✓ `SLACK_FORMATTING`
 - Invalid: ✗ `auth_flow` (lowercase), ✗ `AUTH__FLOW` (double underscore)
 
-## CRITICAL: File Location
+## File Location
 
-**ALWAYS write PLAN files to the project root, NEVER to a worktree path or ~/.claude/plans/**
-
-- Target path: `{project_root}/PLAN__<TASK>.md`
-- `{project_root}` is the "Project root" value from the Context section above
+Write PLAN files to `{project_root}/PLAN__<TASK>.md`, where `{project_root}` is the "Project root" value from Context. A PLAN file is the single source of truth across sessions and worktrees, so it never goes in a worktree path, in `~/.claude/plans/` (Claude Code's internal storage, unrelated to this skill), or at the monorepo root when CWD is an app subdirectory.
 
 **How project root is resolved:**
 
@@ -53,11 +50,6 @@ This handles worktrees (CWD may be inside `<repo>/.worktrees/<name>/`) and monor
 | Monorepo | `/repos/mono` | `/repos/mono/builderbot-slack` | `/repos/mono/builderbot-slack` |
 | Worktree + monorepo | `/repos/mono` | `/repos/mono/.worktrees/feat/builderbot-slack` | `/repos/mono/builderbot-slack` |
 
-**Never use:**
-- A worktree path (e.g., `<repo>/.worktrees/<name>/`) as the PLAN file location
-- `~/.claude/plans/` — this is Claude Code's internal storage, unrelated to this skill
-- The monorepo root when CWD is an app subdirectory within it
-
 ## Phase 1: Determine Mode
 
 Use pre-executed context:
@@ -72,15 +64,11 @@ Use pre-executed context:
 
 ### For Create Mode
 
-⚠️ **ANTI-RECENCY BIAS**: Recent work dominates attention. The FIRST ExitPlanMode has the complete vision. Document ALL work (completed, current, AND future).
-
-**Extract plans:**
-1. Find ALL ExitPlanMode calls in session
-2. Extract each in chronological order
-3. **CRITICAL**: Read FIRST call for complete vision
-4. **PRESERVE original structure** - match original organization
-5. Synthesize complete plan ensuring ALL items captured
-6. Generate task name from main theme
+**Extract plans:** Build from the FIRST ExitPlanMode call in the session — it carries the complete scope; later calls refine or extend it.
+1. Find all ExitPlanMode calls in chronological order
+2. Synthesize the complete plan from the first call, preserving its structure and applying later revisions
+3. Include work not yet started as [TODO]
+4. Generate task name from main theme
 
 **Search for implementation evidence:**
 1. Review activity after last ExitPlanMode
@@ -175,24 +163,11 @@ When restructuring (moving sections to a new PLAN file, consolidating, or splitt
 - [BLOCKED] → Cannot proceed (include reason)
 - [CANCELLED - plan changed] → No longer relevant
 
-## Critical Requirements
+## Requirements Recap
 
-**All Modes:**
-- Analyze session activity for evidence
-- Match ALL tasks to evidence, assign statuses intelligently
-- Include evidence-free tasks as [TODO] - never skip planned work
-- Use 3-space indentation, preserve hierarchy
-- Verify PLAN file passes cold-start test: could a new agent resume work using only this file?
-- NEVER remove design narrative (goals, research, architecture decisions, reference tables) — see Content Preservation Rules
-
-**Create Mode:**
-- **PREVENT RECENCY BIAS**: Prioritize FIRST ExitPlanMode
-- **PRESERVE STRUCTURE**: Match original organization exactly
-- Document entire plan regardless of progress
-- Generate valid task name, create in project root (NEVER in worktree path or ~/.claude/plans/)
-
-**Update Mode:**
-- Use Edit tool with exact matching
-- Handle evolution: add new, mark deprecated as cancelled
+- Every planned task appears with a status; evidence-free tasks are [TODO], never omitted
+- 3-space indentation, hierarchy preserved
+- Design narrative is never removed (see Content Preservation Rules)
+- The file passes the cold-start test: a new agent can resume from it alone
 
 See `references/templates.md` for detailed PLAN.md structure and examples.

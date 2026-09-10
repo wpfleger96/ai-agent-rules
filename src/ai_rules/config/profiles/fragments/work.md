@@ -19,10 +19,7 @@ metadata errors (e.g., "Metadata field Name not found") because the corporate WA
 intercepts traffic to `pypi.org` and routes it through Artifactory, which can't process
 modern Python wheel metadata (Metadata-Version 2.4+).
 
-**The fix is a simple VPN toggle — nothing else.** The package metadata is NOT broken.
-The local uv cache is NOT corrupted. Do NOT attempt to clear caches, reinstall packages,
-debug metadata, or investigate package build configurations. Just disconnect the VPN,
-run the uv command, and reconnect:
+The cause is the VPN interception, not the package metadata and not the local uv cache, so the whole fix is a VPN toggle: don't clear caches, reinstall packages, or debug metadata. Disconnect, run the uv command, reconnect:
 
 ```bash
 warp-cli disconnect

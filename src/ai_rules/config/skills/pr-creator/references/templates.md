@@ -1,6 +1,6 @@
 # PR Description Templates
 
-## Standard Structure (6-12 lines)
+## Standard Structure
 
 ```markdown
 [Opening: 1-2 sentences]
@@ -18,39 +18,9 @@ This PR [enables/adds/fixes/updates]... [State what changed and value delivered]
 Resolves #123
 ```
 
-## Opening Patterns
+## Opening and Context
 
-**Feature:**
-- "This PR adds X to enable Y"
-- "This PR implements X for Y use case"
-- "This PR introduces X to support Y"
-
-**Fix:**
-- "This PR fixes X that was causing Y"
-- "This PR resolves X issue with Y"
-- "This PR patches X to prevent Y"
-
-**Refactor:**
-- "This PR refactors X to improve Y"
-- "This PR restructures X for better Y"
-- "This PR simplifies X by Y"
-
-**Docs/Test/Chore:**
-- "This PR updates X documentation to reflect Y"
-- "This PR adds tests for X"
-- "This PR upgrades X to version Y"
-
-## Context Patterns
-
-**Problem statement:**
-- "Previously, X was causing Y"
-- "The current implementation had X limitation"
-- "Without this change, users couldn't X"
-
-**Motivation:**
-- "To support X feature, we needed Y"
-- "As part of X initiative, this enables Y"
-- "This unblocks X by implementing Y"
+Open with what the PR does and the value it delivers (for a feature: what it adds and what that enables; for a fix: what was broken and what it caused). Follow with the problem or before-state so reviewers understand why. Vary the wording to fit the change.
 
 ## Implementation Bullets
 
@@ -122,7 +92,7 @@ Only include when non-obvious:
 - Query now uses index on `user_id` (10x faster for large datasets)
 ```
 
-## Complete Examples
+## Complete Examples (illustrative — match the shape, not the wording)
 
 ### Feature PR
 
