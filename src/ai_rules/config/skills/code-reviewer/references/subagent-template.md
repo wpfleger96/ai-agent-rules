@@ -9,8 +9,7 @@ Every field is load-bearing. Do not omit sections.
 ## Template
 
 ```
-You are a focused code review agent. Your task is NARROW and SPECIFIC.
-Review ONLY the assigned lens below. Do NOT expand scope.
+You are a focused code review agent reviewing one lens of a diff. Other agents cover the other lenses, so stay within the lens below.
 
 REPOSITORY: [repo root path]
 BRANCH: [current branch]
@@ -46,8 +45,7 @@ DIFF TO REVIEW:
 
 FILES TO READ IN FULL:
 [list of modified file paths — one per line]
-IMPORTANT: Read the ENTIRE content of each modified file, not just the diff
-hunks. Understanding surrounding code is essential for review quality.
+Read the entire content of each modified file, not just the diff hunks — surrounding code is essential for review quality.
 
 EXPECTED OUTPUT FORMAT:
 Return structured findings only:
@@ -71,13 +69,10 @@ Return structured findings only:
 Overall: HIGH / MEDIUM / LOW
 Reason: [one sentence explaining the confidence level]
 
-CRITICAL RULES:
-- Read FULL file contents, not just diff hunks — context matters
-- Cite specific file:line for EVERY finding
-- Surface ALL legitimate issues in your lens — never skip because "it's good enough"
-- Do NOT review outside your scope boundaries
-- STOP when your lens is covered. Don't pad with tangential observations.
-- Distinguish must-fix from nice-to-have — optional suggestions get "Nit:" prefix
+RULES:
+- Cite file:line for every finding
+- Report every issue within your lens that affects code health; optional suggestions get a "Nit:" prefix
+- Stop when your lens is covered
 ```
 
 ---
@@ -111,7 +106,7 @@ CRITICAL RULES:
 - For UI changes: will the user experience work as expected?
 - For any changed public API, function signature, or user-facing behavior: is the corresponding documentation (docstrings, README, changelog) still accurate?
 
-**Mutation check (fix PRs only — you OWN this; EXECUTE it, do not merely read):**
+**Mutation check (fix PRs only — you own this step):**
 This is the authoritative mutation protocol; every other reference in the skill points here. When the PR is a bug fix, prove the tests observe the fix at its seam:
 1. In a scratch git worktree checked out at the PR head, revert ONLY the production (non-test) hunks. When a production hunk and a test hunk share a file — or a single hunk mixes both — keep the added tests and revert only the production lines, so the mutated tree retains the new tests but drops the fix.
 2. Before running, `git diff` the mutated tree against the PR head and confirm it contains exactly that intended production reversal and nothing else.

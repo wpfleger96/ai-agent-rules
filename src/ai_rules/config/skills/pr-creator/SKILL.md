@@ -2,8 +2,8 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: pr-creator
-version: 1.0.0
-description: Creates GitHub pull requests with comprehensive descriptions by analyzing git history and code changes
+version: 1.0.1
+description: Create a GitHub pull request (draft by default) with a concise description derived from the branch's commits and diff. Use when the user asks to open a PR or a pushed branch is ready for review; pass `open` for a non-draft PR.
 allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 model: sonnet
 ---
@@ -60,7 +60,7 @@ gh issue list --limit 20  # Search for related open issues
 
 Use structure from `references/templates.md`. Key principles:
 
-- **6-12 lines maximum**
+- Short enough to read in one pass — reviewers skim
 - Three sections: Opening (1-2 sentences), Context (1-3 sentences), Implementation (2-4 bullets)
 - Professional but conversational tone
 - Specific technical terms, no marketing language; backtick-wrap code identifiers (env vars, functions, paths, endpoints)
@@ -114,7 +114,7 @@ EOF
 
 **Accuracy:** Inspect actual commits via git | Review code changes via diff | Don't rely solely on commit messages | Verify issue refs exist | Derive URLs for external references from context (never hardcode base URLs)
 
-**Structure:** Follow 3-section format (opening, context, implementation) | 6-12 lines maximum | Proper issue ref formatting
+**Structure:** Follow 3-section format (opening, context, implementation) | Proper issue ref formatting
 
 **Branch Management:** Verify branch pushed before PR | Use `git push -u origin HEAD` if needed | Confirm base branch correct | Block PRs with PLAN files
 

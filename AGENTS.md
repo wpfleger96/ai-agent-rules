@@ -98,9 +98,9 @@ src/ai_rules/
     ├── gemini/         # Gemini configs (GEMINI.md, settings.json)
     ├── goose/          # Goose configs (.goosehints, config.yaml)
     ├── skills/         # **SHARED** skills (symlinked to Claude, Goose, Codex, Amp)
-    │   ├── agents-md/, code-reviewer/, continue-crash/, crossfire/
-    │   ├── dev-docs/, doc-writer/, pr-creator/, prompt-critique/
-    │   ├── prompt-engineer/, test-writer/
+    │   ├── agents-md/, code-reviewer/, continue-crash/, crossfire/, dev-docs/
+    │   ├── doc-writer/, handoff/, pr-creator/, rebase/, research/
+    │   ├── session-search/, test-writer/, worktree-cleanup/
     ├── profiles/       # Built-in profiles (default.yaml, personal.yaml, work.yaml); fragments/ for agents_md_file content
     └── buzz/           # Multi-agent Buzz coordinator prompts
 tests/
@@ -235,7 +235,7 @@ just test-e2e                   # E2E only — runs real CLI as subprocess, no m
 
 ## Skills
 
-**Skills:** Explore `config/skills/*/SKILL.md` for available skills (15 total: agents-md, code-reviewer, continue-crash, crossfire, dev-docs, doc-writer, kb, pr-creator, prompt-critique, prompt-engineer, rebase, research, session-search, test-writer, worktree-cleanup).
+**Skills:** Explore `config/skills/*/SKILL.md` for available skills (13 total: agents-md, code-reviewer, continue-crash, crossfire, dev-docs, doc-writer, handoff, pr-creator, rebase, research, session-search, test-writer, worktree-cleanup).
 - **SHARED across agents** - symlinked to `~/.claude/skills/`, `~/.config/goose/skills/`, `~/.config/agents/skills/` (Amp), `~/.agents/skills/` (Codex)
 - Managed by SharedAgent (displays under "Shared:" in status)
 - To add a skill: Create subdir in `config/skills/` with `SKILL.md`
