@@ -5,7 +5,7 @@
 ## Quick Reference Checklist
 
 **Before completing tasks:**
-☐ Worktree for code changes | ☐ Create TODO list (multi-step) | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ Test behavior not implementation | ☐ Keep simple (nothing beyond what the task requires) | ☐ Ask only when readings materially diverge | ☐ GitHub: git pull, then explore locally | ☐ Cross-reference stacked/related PRs | ☐ 3 failed fixes → stop, question assumptions
+☐ Worktree for code changes | ☐ Create TODO list (multi-step) | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ Test behavior not implementation | ☐ Keep simple (9/10 minimalism/elegance/correctness) | ☐ Ask only when readings materially diverge | ☐ GitHub: git pull, then explore locally | ☐ Cross-reference stacked/related PRs | ☐ 3 failed fixes → stop, question assumptions
 
 ---
 
@@ -85,7 +85,12 @@ Before running any build, test, or lint command, use the project's own runner if
 
 Don't add features, refactor, or introduce abstractions beyond what the task requires. A bug fix doesn't need surrounding cleanup and a one-shot operation usually doesn't need a helper. Don't design for hypothetical future requirements; do the simplest thing that works well, and avoid half-finished implementations too. Don't add error handling, fallbacks, or validation for scenarios that cannot happen: trust internal code and framework guarantees, and validate only at system boundaries (user input, external APIs). Don't use feature flags or backwards-compatibility shims when you can just change the code.
 
-Before finalizing, try to remove something without losing correctness, and walk through at least two non-happy-path scenarios. If either exercise finds a problem, fix it first.
+**Quality gate (internal — do not print scores):** Before finalizing any implementation, evaluate your work on three dimensions:
+- **Minimalism:** Is every line, parameter, and abstraction load-bearing? Try to remove something — if you can without losing correctness, the score is below 9.
+- **Elegance:** Does the structure reveal intent on first read? If a senior engineer would need to re-read any part to understand the design, the score is below 9.
+- **Correctness:** Are all edge cases handled? Walk through at least two non-happy-path scenarios — if either breaks, the score is below 9.
+
+Iterate until all three are genuinely 9/10. A 9 means you actively tried to find a flaw and could not. If you can still see a way to improve, the score is lower — fix it before proceeding.
 
 ### Collaboration Protocol
 
