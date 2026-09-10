@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.76.10](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.9...v0.76.10) (2026-09-10)
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#239](https://github.com/wpfleger96/ai-agent-rules/issues/239)) ([b418711](https://github.com/wpfleger96/ai-agent-rules/commit/b4187117a409737b11211ecebd68c90eb4924832))
+
 ## [0.76.9](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.8...v0.76.9) (2026-09-04)
 
 
