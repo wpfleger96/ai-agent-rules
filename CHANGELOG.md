@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [0.77.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.9...v0.77.0) (2026-09-23)
+
+
+### Features
+
+* **claude:** default to Opus 5.5 and auto permission mode ([#243](https://github.com/wpfleger96/ai-agent-rules/issues/243)) ([9ae358f](https://github.com/wpfleger96/ai-agent-rules/commit/9ae358f463e7bc337e4e80bac14996b9cd7a36da))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#239](https://github.com/wpfleger96/ai-agent-rules/issues/239)) ([b418711](https://github.com/wpfleger96/ai-agent-rules/commit/b4187117a409737b11211ecebd68c90eb4924832))
+* **deps:** Lock file maintenance ([#242](https://github.com/wpfleger96/ai-agent-rules/issues/242)) ([ac7a742](https://github.com/wpfleger96/ai-agent-rules/commit/ac7a7425129b6c5732cd8884e6290d81535ed92e))
+
 ## [0.76.9](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.8...v0.76.9) (2026-09-04)
 
 
