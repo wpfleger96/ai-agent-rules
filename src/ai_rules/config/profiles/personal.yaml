@@ -7,7 +7,7 @@ settings_overrides:
     model: opusplan
     remoteControlAtStartup: true
     permissions:
-      defaultMode: bypassPermissions
+      defaultMode: auto
   statusline:
     terminal_title:
       enabled: true

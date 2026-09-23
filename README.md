@@ -318,7 +318,7 @@ ai-agent-rules profile switch work             # Switch to a different profile
 ai-agent-rules install --profile work          # Install with a specific profile
 ```
 
-Three built-in profiles ship with the tool, with inheritance chain `default -> personal -> work`. `default` is generic and suitable for anyone. `personal` and `work` are the author's own presets (for example, `personal` enables `bypassPermissions`) and are not generic recommendations. Profiles support these keys:
+Three built-in profiles ship with the tool, with inheritance chain `default -> personal -> work`. `default` is generic and suitable for anyone. `personal` and `work` are the author's own presets (for example, `personal` enables `auto` permission mode) and are not generic recommendations. Profiles support these keys:
 
 ```yaml
 # profiles/work.yaml
