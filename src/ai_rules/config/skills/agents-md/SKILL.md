@@ -2,7 +2,7 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: agents-md
-version: 1.0.1
+version: 1.0.2
 description: Create or update AGENTS.md with repo-specific patterns, conventions, commands, and gotchas for LLM coding agents. Use after implementing features that introduce new patterns worth documenting.
 disabled: true
 allowed-tools: Bash, Edit, Glob, Grep, Read, TodoWrite, Write
@@ -33,13 +33,7 @@ Check if `AGENTS.md` exists at repository root:
 - **CREATE:** Generate new AGENTS.md from scratch
 - **UPDATE:** Read existing file, add/update sections preserving user customizations
 
-### Step 2: Invoke prompt-engineer Skill
-
-**REQUIRED:** Use Skill tool to invoke `prompt-engineer` skill.
-
-**Why:** AGENTS.md is for LLM agents. Apply prompt engineering principles: explicit instructions, important info first (primacy bias), specific over vague, examples over explanations.
-
-### Step 3: Systematic Exploration
+### Step 2: Systematic Exploration
 
 Explore repository to gather content for AGENTS.md sections:
 
@@ -63,7 +57,7 @@ Explore repository to gather content for AGENTS.md sections:
 - Testing: framework, locations, commands
 - Key files by task: map tasks to specific files
 
-### Step 4: Write or Update AGENTS.md
+### Step 3: Write or Update AGENTS.md
 
 Generate AGENTS.md using this structure (see `references/templates.md` for full template):
 
@@ -83,7 +77,7 @@ Generate AGENTS.md using this structure (see `references/templates.md` for full 
 - Commands first (most used)
 - No sensitive info (no API keys, credentials, tokens)
 
-### Step 5: File Operations
+### Step 4: File Operations
 
 **CREATE mode:**
 1. Generate complete AGENTS.md

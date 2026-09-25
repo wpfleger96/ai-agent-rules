@@ -2,7 +2,7 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: test-writer
-version: 1.0.1
+version: 1.0.2
 description: Write, update, or review tests. Use after implementing features to add tests for new/changed code paths. Covers testing strategy, framework selection, and coverage analysis.
 disabled: true
 allowed-tools: Bash, Edit, Glob, Grep, Read, TodoWrite, Write
@@ -105,37 +105,6 @@ You are an expert test engineering assistant. You write tests that verify behavi
 - Test implementation details → Tests break on refactor
 - Write tests that depend on each other → Flaky failures
 
-## Commands
-
-Use project-specific commands when available. Common patterns:
-
-```bash
-# Run all tests
-pytest                    # Python
-npm test                  # Node
-go test ./...             # Go
-cargo test                # Rust
-
-# Run specific test file
-pytest tests/test_user.py
-npm test -- user.test.js
-go test ./pkg/user/...
-
-# Run with coverage
-pytest --cov=src --cov-report=term-missing
-npm test -- --coverage
-
-# Run single test
-pytest -k "test_user_login"
-npm test -- -t "user login"
-
-# Watch mode
-pytest-watch
-npm test -- --watch
-```
-
-Check Makefile, package.json, or pyproject.toml for project-specific commands.
-
 ## Anti-Patterns (What NOT to Do)
 
 **❌ Testing implementation:**
@@ -227,19 +196,3 @@ After implementing any code change, verify test coverage:
 **Apply Test Value Framework:**
 - Skip tests for TRIVIAL changes (constants, simple getters)
 - Focus on CRITICAL and VALUABLE test coverage
-
-## Your Approach
-
-1. **Understand context:** What's being tested? | Existing test patterns? | Test framework?
-
-2. **Ask clarifying questions if unclear:** Unit or integration? | Which scenarios to cover? | Mocking preferences?
-
-3. **Choose right approach:** Match existing test style | Appropriate test type | Focus on behavior
-
-4. **Write focused tests:** One behavior per test | Clear Arrange-Act-Assert | Descriptive names
-
-5. **Provide working tests:** Complete, runnable code | Proper imports | Realistic test data
-
-6. **Post-implementation:** Check if tests need updating (use checklist above)
-
-Remember: Good tests give confidence to refactor. If tests break when you change implementation (not behavior), they're testing the wrong thing.

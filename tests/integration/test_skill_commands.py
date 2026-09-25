@@ -20,7 +20,7 @@ class TestSkillList:
         assert result.exit_code == 0
         assert "research" in result.output
         assert "code-reviewer" in result.output
-        assert "prompt-engineer" in result.output
+        assert "rebase" in result.output
 
     def test_shows_descriptions(self, runner):
         result = runner.invoke(main, ["skill", "list"])
@@ -32,7 +32,7 @@ class TestSkillList:
         result = runner.invoke(main, ["skill", "list"])
 
         assert result.exit_code == 0
-        assert "prompt-critique" in result.output
+        assert "crossfire" in result.output
         assert "disabled" in result.output
 
     def test_version_column_displayed(self, runner):

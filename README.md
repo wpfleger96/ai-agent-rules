@@ -403,7 +403,7 @@ src/ai_rules/config/
 ├── goose/                 # -> ~/.config/goose/
 ├── profiles/              # Built-in profiles (default, personal, work)
 │   └── fragments/         # Profile AGENTS.md fragment files (referenced via agents_md_file)
-├── skills/                # 10 shared skills -> multiple agent skill dirs
+├── skills/                # 13 shared skills -> multiple agent skill dirs
 │   └── */SKILL.md
 └── buzz/                  # Multi-agent coordinator prompts
 ```
