@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.78.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.77.0...v0.78.0) (2026-09-27)
+
+
+### Features
+
+* **claude:** default to opus instead of opusplan ([#246](https://github.com/wpfleger96/ai-agent-rules/issues/246)) ([6256a25](https://github.com/wpfleger96/ai-agent-rules/commit/6256a25c1543a389f08a15cbf1200505a5da620c))
+
+
+### Chores
+
+* **deps:** Update astral-sh/setup-uv action to v10.1.0 ([#244](https://github.com/wpfleger96/ai-agent-rules/issues/244)) ([06b9330](https://github.com/wpfleger96/ai-agent-rules/commit/06b9330b9c33c8f8b874dc1de77432b8b3227f9c))
+
 ## [0.77.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.9...v0.77.0) (2026-09-23)
 
 
