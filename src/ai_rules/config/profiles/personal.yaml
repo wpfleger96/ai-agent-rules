@@ -4,7 +4,7 @@ extends: default
 agents_md_file: fragments/personal.md
 settings_overrides:
   claude:
-    model: opusplan
+    model: opus
     remoteControlAtStartup: true
     permissions:
       defaultMode: auto
