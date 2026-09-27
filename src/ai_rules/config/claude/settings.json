@@ -128,7 +128,7 @@
     "deny": [],
     "defaultMode": "default"
   },
-  "model": "opusplan",
+  "model": "opus",
   "effortLevel": "high",
   "statusLine": {
     "type": "command",
