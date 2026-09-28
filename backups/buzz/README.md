@@ -1,6 +1,6 @@
 # Buzz team backup: Sietch Tabr
 
-`sietch-tabr.team.json` is a Buzz team snapshot export (`buzz-team-snapshot` v1). It holds the Sietch Tabr team's name, description and instructions, plus each member's name, system prompt, runtime, provider, model, session policy and avatar. It was exported with memories off, and it carries no keys, credentials or env vars.
+`sietch-tabr.team.json` is a Buzz team snapshot export (`buzz-team-snapshot` v1). It is the export plus one hand edit: Paul's avatar, which the export stored as a relay media URL, is embedded as a `data:image/png` URL built from a clean PNG (image chunks only). It holds the Sietch Tabr team's name, description and instructions, plus each member's name, system prompt, runtime, provider, model, session policy and avatar. It was exported with memories off, and it carries no keys, credentials or env vars.
 
 This directory sits outside `src/`, so it is not packaged into the `ai-agent-rules` wheel and `ai-rules install` never deploys it.
 
@@ -19,7 +19,7 @@ Team export has no field for effort, it takes parallelism from each agent's save
 | Gurney | buzz-agent / openai / `gpt-6-astra` | unset (default) | 10 |
 | Hayt | buzz-agent / anthropic / `claude-opus-5-5` | low | 10 |
 
-Effort is set with the `BUZZ_AGENT_THINKING_EFFORT` env var on the agent. Paul's avatar is exported as an `https://` media URL, not embedded, so it depends on that relay media staying available. The other five avatars are embedded.
+Effort is set with the `BUZZ_AGENT_THINKING_EFFORT` env var on the agent. All six avatars are embedded, so a restore doesn't depend on relay media.
 
 ## Restore
 
@@ -33,3 +33,4 @@ Effort is set with the `BUZZ_AGENT_THINKING_EFFORT` env var on the agent. Paul's
 1. In Buzz, open Agents → Sietch Tabr → Share → Export team.
 2. Set Memories to **Team only** and File format to **JSON**.
 3. Overwrite `sietch-tabr.team.json` with the export, and update the table if effort or parallelism changed.
+4. Re-embed any member whose `avatarUrl` is an `https://` URL as a `data:image/png;base64,…` URL. Current Buzz stores uploaded avatars as relay links, which need relay sign-in and last only as long as the relay keeps the file.
