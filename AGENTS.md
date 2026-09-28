@@ -101,8 +101,7 @@ src/ai_rules/
     │   ├── agents-md/, code-reviewer/, continue-crash/, crossfire/
     │   ├── dev-docs/, doc-writer/, pr-creator/, prompt-critique/
     │   ├── prompt-engineer/, test-writer/
-    ├── profiles/       # Built-in profiles (default.yaml, personal.yaml, work.yaml); fragments/ for agents_md_file content
-    └── buzz/           # Multi-agent Buzz coordinator prompts
+    └── profiles/       # Built-in profiles (default.yaml, personal.yaml, work.yaml); fragments/ for agents_md_file content
 tests/
 ├── fixtures/           # Test fixture files
 ├── unit/               # No filesystem side effects

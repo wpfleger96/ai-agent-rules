@@ -11,6 +11,7 @@ refactor of the symlink/merge pipeline preserves real on-disk behavior.
 from __future__ import annotations
 
 import json
+import sys
 
 from pathlib import Path
 
@@ -219,3 +220,71 @@ class TestAgentSelection:
         assert (home / "AGENTS.md").is_symlink()  # shared always included
         assert not (home / ".codex" / "AGENTS.md").exists()
         assert not (home / ".gemini" / "GEMINI.md").exists()
+
+
+def _legacy_pack_links(home: Path) -> list[Path]:
+    """The stale persona-pack links SharedAgent tombstones, for the host OS."""
+    if is_windows():
+        app_data = home / "AppData" / "Roaming"
+    elif sys.platform == "darwin":
+        app_data = home / "Library" / "Application Support"
+    else:
+        app_data = home / ".local" / "share"
+    return [
+        app_data / bundle / "agents" / "teams" / "com.wpfleger.sietch-tabr"
+        for bundle in (
+            "xyz.block.buzz.app",
+            "xyz.block.buzz.app.dev",
+            "xyz.block.sprout.app",
+            "xyz.block.sprout.app.dev",
+        )
+    ]
+
+
+@pytest.mark.e2e
+@pytest.mark.skipif(is_windows(), reason="symlink creation needs privileges")
+class TestDeprecatedSymlinkCleanup:
+    def test_cleanup_only_install_removes_stale_links(
+        self, isolated_home, toy_config, tmp_path
+    ):
+        """Cleanup runs even when no ordinary config symlinks remain to plan."""
+        from tests.e2e.helpers import make_cli_runner
+
+        home, env = isolated_home
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            "version: 1\nexclude_symlinks:\n  - ~/AGENTS.md\n", encoding="utf-8"
+        )
+        links = _legacy_pack_links(home)
+        for link in links:
+            link.parent.mkdir(parents=True)
+            link.symlink_to(tmp_path / "gone", target_is_directory=True)
+        run = make_cli_runner(home, env)
+        args = [
+            "install",
+            "-y",
+            "--skip-completions",
+            "--only",
+            "config",
+            "--agents",
+            "shared",
+            "--config-dir",
+            str(toy_config),
+        ]
+
+        dry = run([*args, "--dry-run"])
+        dry_out = strip_ansi(dry.stdout + dry.stderr)
+        assert dry.returncode == 0, dry_out
+        assert all(link.is_symlink() for link in links)
+        assert "Summary: Would remove 4" in dry_out
+
+        real = run(args)
+        real_out = strip_ansi(real.stdout + real.stderr)
+        assert real.returncode == 0, real_out
+        assert not any(link.is_symlink() for link in links)
+        assert "removed 4" in real_out
+        assert "No changes" not in real_out
+
+        repeat = run(args)
+        repeat_out = strip_ansi(repeat.stdout + repeat.stderr)
+        assert repeat.returncode == 0, repeat_out
+        assert "Summary: No changes" in repeat_out
