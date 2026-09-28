@@ -202,7 +202,6 @@ PROVENANCE_MARKDOWN_FILES = [
     "gemini/GEMINI.md",
     "amp/AGENTS.md",
     "goose/.goosehints",
-    "buzz/instructions.md",
 ]
 
 
