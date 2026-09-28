@@ -12,7 +12,6 @@ from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent
 from ai_rules.config import Config
 from ai_rules.targets.base import ConfigTarget
-from ai_rules.tools.buzz import BuzzTool
 from ai_rules.tools.statusline import StatuslineTool
 
 TARGET_CLASSES: tuple[type[ConfigTarget], ...] = (
@@ -23,7 +22,6 @@ TARGET_CLASSES: tuple[type[ConfigTarget], ...] = (
     GooseAgent,
     SharedAgent,
     StatuslineTool,
-    BuzzTool,
 )
 
 

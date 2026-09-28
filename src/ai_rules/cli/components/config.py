@@ -111,8 +111,16 @@ class ConfigComponent(Component):
 
         copy_targets = _get_copy_mode_targets(list(ctx.selected_targets))
 
+        # Mirrors cleanup_deprecated_symlinks' predicate so cleanup-only work
+        # still reaches apply(); dangling links count.
+        has_deprecated = any(
+            path.expanduser().is_symlink()
+            for agent in ctx.selected_targets
+            for path in agent.get_deprecated_symlinks()
+        )
+
         return ConfigPlan(
-            has_changes=bool(symlink_ops),
+            has_changes=bool(symlink_ops) or has_deprecated,
             symlink_ops=symlink_ops,
             excluded_count=excluded_count,
             copy_targets=copy_targets,
@@ -136,14 +144,14 @@ class ConfigComponent(Component):
 
             counts[print_symlink_result(result, target, source, message)] += 1
 
-        cleanup_deprecated_symlinks(
+        removed = cleanup_deprecated_symlinks(
             list(ctx.selected_targets), ctx.config_dir, ctx.dry_run
         )
 
         return ComponentResult(
             ok=counts["errors"] == 0,
-            changed=bool(counts["created"] or counts["updated"]),
-            counts={**counts, "excluded": plan.excluded_count},
+            changed=bool(counts["created"] or counts["updated"] or removed),
+            counts={**counts, "excluded": plan.excluded_count, "removed": removed},
         )
 
     def install(self, ctx: CliContext) -> ComponentResult:
@@ -184,14 +192,14 @@ class ConfigComponent(Component):
 
                 counts[print_symlink_result(result, target, source, message)] += 1
 
-        cleanup_deprecated_symlinks(
+        removed = cleanup_deprecated_symlinks(
             list(ctx.selected_targets), ctx.config_dir, ctx.dry_run
         )
 
         return ComponentResult(
             ok=counts["errors"] == 0,
-            changed=bool(counts["created"] or counts["updated"]),
-            counts={**counts, "excluded": excluded},
+            changed=bool(counts["created"] or counts["updated"] or removed),
+            counts={**counts, "excluded": excluded, "removed": removed},
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:

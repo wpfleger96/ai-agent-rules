@@ -2,14 +2,37 @@
 
 from __future__ import annotations
 
+import os
+
 from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ai_rules.agents.base import Agent
+from ai_rules.platform import Platform, get_appdata_dir, is_platform
 
 if TYPE_CHECKING:
     from ai_rules.skills import SkillStatus
+
+
+# Tombstone — removal-only. ai-rules used to symlink its Sietch Tabr persona
+# pack into these app data dirs; Buzz stopped reading folder-based packs in
+# block/buzz#1846. Installs remove the stale links. Do NOT re-add a pack target.
+_LEGACY_PACK_ID = "com.wpfleger.sietch-tabr"
+_LEGACY_APP_BUNDLES = (
+    "xyz.block.buzz.app",
+    "xyz.block.buzz.app.dev",
+    "xyz.block.sprout.app",
+    "xyz.block.sprout.app.dev",
+)
+
+
+def _get_app_data_dir() -> Path:
+    if is_platform(Platform.WINDOWS):
+        return get_appdata_dir()
+    if is_platform(Platform.MACOS):
+        return Path.home() / "Library" / "Application Support"
+    return Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share")))
 
 
 class SharedAgent(Agent):
@@ -131,3 +154,11 @@ class SharedAgent(Agent):
             user_skills_dirs=list(get_agent_skills_dirs().values()),
         )
         return manager.get_status()
+
+    def get_deprecated_symlinks(self) -> list[Path]:
+        """Return stale Buzz/Sprout persona pack symlinks for cleanup."""
+        app_data = _get_app_data_dir()
+        return [
+            app_data / bundle / "agents" / "teams" / _LEGACY_PACK_ID
+            for bundle in _LEGACY_APP_BUNDLES
+        ]

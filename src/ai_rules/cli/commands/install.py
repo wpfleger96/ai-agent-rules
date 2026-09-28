@@ -152,6 +152,7 @@ def install(
         install_components_result.counts.get("excluded", 0),
         install_components_result.counts.get("errors", 0),
         install_components_result.counts.get("unchanged", 0),
+        install_components_result.counts.get("removed", 0),
     )
 
     if not install_components_result.ok:
