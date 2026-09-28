@@ -272,9 +272,19 @@ class TestDeprecatedSymlinkCleanup:
         ]
 
         dry = run([*args, "--dry-run"])
-        assert dry.returncode == 0, strip_ansi(dry.stdout + dry.stderr)
+        dry_out = strip_ansi(dry.stdout + dry.stderr)
+        assert dry.returncode == 0, dry_out
         assert all(link.is_symlink() for link in links)
+        assert "Summary: Would remove 4" in dry_out
 
         real = run(args)
-        assert real.returncode == 0, strip_ansi(real.stdout + real.stderr)
+        real_out = strip_ansi(real.stdout + real.stderr)
+        assert real.returncode == 0, real_out
         assert not any(link.is_symlink() for link in links)
+        assert "removed 4" in real_out
+        assert "No changes" not in real_out
+
+        repeat = run(args)
+        repeat_out = strip_ansi(repeat.stdout + repeat.stderr)
+        assert repeat.returncode == 0, repeat_out
+        assert "Summary: No changes" in repeat_out

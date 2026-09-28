@@ -273,13 +273,14 @@ def format_summary(
     excluded: int = 0,
     errors: int = 0,
     unchanged: int = 0,
+    removed: int = 0,
 ) -> None:
     """Format and print operation summary."""
     from ai_rules.cli.display import console, print_error
 
     console.print()
 
-    has_actions = created or updated or skipped or errors
+    has_actions = created or updated or removed or skipped or errors
     if not has_actions and unchanged > 0:
         console.print(f"[bold]Summary:[/bold] All up to date ({unchanged} unchanged)")
     elif dry_run:
@@ -288,6 +289,8 @@ def format_summary(
             parts.append(f"create {created}")
         if updated:
             parts.append(f"update {updated}")
+        if removed:
+            parts.append(f"remove {removed}")
         if skipped:
             parts.append(f"skip {skipped}")
         if unchanged:
@@ -303,6 +306,8 @@ def format_summary(
             parts.append(f"Created {created}")
         if updated:
             parts.append(f"updated {updated}")
+        if removed:
+            parts.append(f"removed {removed}")
         if skipped:
             parts.append(f"skipped {skipped}")
         if unchanged:
