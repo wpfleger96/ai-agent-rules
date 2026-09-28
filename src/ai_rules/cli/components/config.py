@@ -111,8 +111,16 @@ class ConfigComponent(Component):
 
         copy_targets = _get_copy_mode_targets(list(ctx.selected_targets))
 
+        # Mirrors cleanup_deprecated_symlinks' predicate so cleanup-only work
+        # still reaches apply(); dangling links count.
+        has_deprecated = any(
+            path.expanduser().is_symlink()
+            for agent in ctx.selected_targets
+            for path in agent.get_deprecated_symlinks()
+        )
+
         return ConfigPlan(
-            has_changes=bool(symlink_ops),
+            has_changes=bool(symlink_ops) or has_deprecated,
             symlink_ops=symlink_ops,
             excluded_count=excluded_count,
             copy_targets=copy_targets,
