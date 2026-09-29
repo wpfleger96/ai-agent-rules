@@ -2,6 +2,8 @@ name: personal
 description: Author's personal preset (not a generic recommendation)
 extends: default
 agents_md_file: fragments/personal.md
+skills:
+  - writing-as-will
 settings_overrides:
   claude:
     model: opus

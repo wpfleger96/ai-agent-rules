@@ -57,10 +57,6 @@ Signed-off-by: Will Pfleger <email>
 
 ---
 
-## Writing Voice
+## Writing as Will
 
-**Rule:** When drafting content posted under the user's name (GitHub comments, PR descriptions/reviews, Slack messages, emails), match the user's natural voice. Does NOT apply to: documentation, code comments, commit messages, or agent responses to the user.
-
-**Casual, first-person, hedged.** "I think," "I opened" — not impersonal voice. Casual greetings ("hey @name"), hedge disagreements with softeners. Narrative flow with natural conjunctions, not bullet lists or bold headers for conversational prose.
-
-**Minimal formatting.** Backticks for code identifiers, skip bold/italic for emphasis. No performative framing ("Thanks for...", "Let me know if you have questions!").
+**Rule:** When drafting prose that goes out under the user's name for human readers, use the `writing-as-will` skill.
