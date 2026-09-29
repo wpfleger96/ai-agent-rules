@@ -116,6 +116,7 @@ class SharedAgent(Agent):
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of shared symlinks for agent-agnostic configurations."""
         from ai_rules.config import get_agent_skills_dirs
+        from ai_rules.profiles import ProfileError
         from ai_rules.skills import deployable_skills
 
         result = []
@@ -128,9 +129,13 @@ class SharedAgent(Agent):
             agents_md_source = self.config_dir / "AGENTS.md"
         result.append((Path("~/AGENTS.md"), agents_md_source))
 
-        for name, skill_folder in deployable_skills(
-            self.config_dir, self.config.skills
-        ).items():
+        try:
+            skills = deployable_skills(self.config_dir, self.config.skills)
+        except (
+            ProfileError
+        ):  # only reachable from uninstall; other commands validate first
+            skills = deployable_skills(self.config_dir)
+        for name, skill_folder in skills.items():
             for agent_skills_dir in get_agent_skills_dirs().values():
                 result.append((agent_skills_dir / name, skill_folder))
 

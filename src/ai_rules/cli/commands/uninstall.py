@@ -18,7 +18,11 @@ def uninstall(yes: bool, agents: str | None, component_filter: str | None) -> No
     from ai_rules.cli.runner import run_parallel
 
     cli_ctx = cli_facade.build_cli_context(
-        UNINSTALL_COMPONENTS, agents, component_filter, yes=yes
+        UNINSTALL_COMPONENTS,
+        agents,
+        component_filter,
+        yes=yes,
+        validate_profile_skills=False,  # uninstall must work even with a broken profile
     )
 
     if not yes:

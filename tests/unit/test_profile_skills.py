@@ -162,6 +162,15 @@ class TestWriters:
         SkillsComponent().uninstall(ctx)
         assert _links(user_dir) == set()
 
+    def test_uninstall_ignores_broken_profile(self, config_dir, user_dir):
+        _install(_ctx(config_dir, skills=["mine"]))
+        broken = _ctx(config_dir, skills=["mine", "missing"])
+        assert SkillsComponent().uninstall(broken).ok
+        assert _links(user_dir) == set()
+        assert {t for t, _ in broken.selected_targets[0].symlinks} >= {
+            user_dir / "shared-a"
+        }
+
 
 @pytest.mark.unit
 class TestUserLinksPreserved:
