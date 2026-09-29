@@ -104,5 +104,6 @@ def test_mcp_write_into_missing_folder_is_a_clean_error(isolated_home, tmp_path)
     output = result.stdout + result.stderr
     assert result.returncode == 1, output
     assert "Traceback" not in output
-    assert ".claude.json" in output and "gone" in output
+    unwrapped = output.replace("\n", "")  # Rich wraps long paths at terminal width
+    assert ".claude.json" in unwrapped and "gone" in unwrapped
     assert (home / ".claude.json").is_symlink()
