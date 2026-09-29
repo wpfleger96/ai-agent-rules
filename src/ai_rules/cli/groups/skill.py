@@ -23,11 +23,14 @@ def skill() -> None:
 
 def _skill_manager(config_dir: Path) -> SkillManager:
     """Manager scoped to the shared skills plus the active profile's own skills."""
+    from ai_rules.cli.helpers import _validate_profile_skills
     from ai_rules.config import Config
     from ai_rules.skills import SkillManager
 
+    config = Config.load()
+    _validate_profile_skills(config_dir, config)
     return SkillManager(
-        config_dir=config_dir, agent_id="", profile_skills=Config.load().skills
+        config_dir=config_dir, agent_id="", profile_skills=config.skills
     )
 
 
@@ -128,10 +131,11 @@ def skill_show(name: str, url: bool, download_url: bool, raw: bool) -> None:
             print_error(f"Unknown skill '{name}'. Available: {available}")
             sys.exit(1)
 
+        subdir = managed[name].parent.relative_to(config_dir)
         if download_url:
-            result = SkillManager.get_download_url(name)
+            result = SkillManager.get_download_url(name, subdir)
         else:
-            result = SkillManager.get_skill_url(name)
+            result = SkillManager.get_skill_url(name, subdir)
 
         if result is None:
             print_error(

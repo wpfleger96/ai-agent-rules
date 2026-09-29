@@ -227,19 +227,15 @@ class ProfileLoader:
                 )
 
     def _validate_skills(self, skills: Any, profile_name: str) -> None:
-        """Profile skills must name dirs under profiles/skills/ that don't shadow shared skills."""
+        """Profile skills must be plain directory names; existence is checked against the deploy config dir."""
         if not isinstance(skills, list) or not all(isinstance(s, str) for s in skills):
             raise ProfileError(
                 f"Profile '{profile_name}': skills must be a list of names"
             )
         for name in skills:
-            if not (self._profiles_dir / "skills" / name / "SKILL.md").is_file():
+            if name in ("", ".", "..") or "/" in name or "\\" in name:
                 raise ProfileError(
-                    f"Profile '{profile_name}': unknown skill '{name}' (expected profiles/skills/{name}/SKILL.md)"
-                )
-            if (self._profiles_dir.parent / "skills" / name).exists():
-                raise ProfileError(
-                    f"Profile '{profile_name}': skill '{name}' collides with a shared skill"
+                    f"Profile '{profile_name}': invalid skill name '{name}'"
                 )
 
     def _merge_profiles(self, parent: Profile, child: Profile) -> Profile:

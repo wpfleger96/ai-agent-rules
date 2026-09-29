@@ -1,12 +1,17 @@
 """Profile-owned skills: additive to shared skills and removed when no longer deployed."""
 
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
+import click
 import pytest
 
-from ai_rules.cli.components.skills import _enabled_skill_folders, _stale_skill_links
+from rich.console import Console
+
+from ai_rules.agents.shared import SharedAgent
+from ai_rules.cli.components.skills import SkillsComponent, _stale_skill_links
+from ai_rules.cli.context import CliContext
+from ai_rules.cli.helpers import _validate_profile_skills
 from ai_rules.config import Config
 from ai_rules.profiles import ProfileError, ProfileLoader
 from ai_rules.skills import SkillManager, deployable_skills
@@ -25,19 +30,60 @@ def config_dir(tmp_path):
     _skill(root / "skills", "shared-a")
     _skill(root / "skills", "shared-off", "disabled: true\n")
     _skill(root / "profiles" / "skills", "mine")
+    _skill(root / "profiles" / "skills", "mine-off", "disabled: true\n")
     (root / "profiles" / "personal.yaml").write_text("name: personal\nskills: [mine]\n")
     (root / "profiles" / "work.yaml").write_text("name: work\nextends: personal\n")
     return root
 
 
-def _ctx(config_dir: Path, **config: Any) -> Any:
-    return SimpleNamespace(config_dir=config_dir, config=Config(**config))
+@pytest.fixture
+def user_dir(tmp_path, monkeypatch):
+    d = tmp_path / "home_skills"
+    d.mkdir()
+    monkeypatch.setattr("ai_rules.config.get_agent_skills_dirs", lambda: {"claude": d})
+    return d
 
 
-def _install_links(ctx: Any, user_dir: Path) -> None:
-    user_dir.mkdir(exist_ok=True)
-    for folder in _enabled_skill_folders(ctx):
-        (user_dir / folder.name).symlink_to(folder, target_is_directory=True)
+def _ctx(config_dir: Path, **config: Any) -> CliContext:
+    cfg = Config(**config)
+    agent = SharedAgent(config_dir, cfg)
+    return CliContext(
+        console=Console(quiet=True),
+        config_dir=config_dir,
+        config=cfg,
+        profile_name=None,
+        all_targets=(agent,),
+        selected_targets=(agent,),
+        yes=True,
+    )
+
+
+def _plan_apply(ctx: CliContext) -> None:
+    component = SkillsComponent()
+    component.apply(ctx, component.plan(ctx))
+
+
+def _install(ctx: CliContext) -> None:
+    assert SkillsComponent().install(ctx).ok
+
+
+WRITERS = pytest.mark.parametrize("write", [_plan_apply, _install])
+
+
+def _links(user_dir: Path) -> set[str]:
+    return {p.name for p in user_dir.iterdir()}
+
+
+def _visible(config_dir: Path, user_dir: Path, profile_skills: list[str]) -> set[str]:
+    manager = SkillManager(config_dir, "", [user_dir], profile_skills=profile_skills)
+    status = manager.get_status()
+    return {
+        *status.managed_installed,
+        *status.managed_pending,
+        *status.unmanaged,
+        *(s.name for s in manager.list_bundled_skills(include_disabled=True)),
+        *(n for n in ["mine"] if manager.get_skill_content(n) is not None),
+    }
 
 
 @pytest.mark.unit
@@ -63,71 +109,129 @@ class TestAdditive:
         )
         assert sorted(deployable_skills(config_dir)) == expected
 
-    def test_shared_status_and_list_unchanged(self, config_dir, tmp_path):
-        user_dir = tmp_path / "home_skills"
-        _install_links(_ctx(config_dir, skills=["mine"]), user_dir)
-        default = SkillManager(config_dir, "", [user_dir])
-        personal = SkillManager(config_dir, "", [user_dir], profile_skills=["mine"])
-
-        assert set(personal.get_status().managed_installed) == {"shared-a", "mine"}
-        assert [s.name for s in personal.list_bundled_skills()] == ["shared-a", "mine"]
-        assert [s.name for s in default.list_bundled_skills()] == ["shared-a"]
+    @WRITERS
+    def test_default_and_personal_deploy_same_shared_set(
+        self, config_dir, user_dir, write
+    ):
+        write(_ctx(config_dir))
+        assert _links(user_dir) == {"shared-a"}
+        write(_ctx(config_dir, skills=["mine"]))
+        assert _links(user_dir) == {"shared-a", "mine"}
+        assert [
+            s.name
+            for s in SkillManager(config_dir, "").list_bundled_skills(
+                include_disabled=True
+            )
+        ] == ["shared-a", "shared-off"]
 
 
 @pytest.mark.unit
-class TestCleanup:
-    def test_switch_to_default_removes_profile_skill(self, config_dir, tmp_path):
-        user_dir = tmp_path / "home_skills"
-        _install_links(_ctx(config_dir, skills=["mine"]), user_dir)
+class TestWriters:
+    @WRITERS
+    def test_switch_to_default_removes_profile_skill(self, config_dir, user_dir, write):
+        write(_ctx(config_dir, skills=["mine"]))
+        assert (user_dir / "mine").is_symlink()
 
-        default_ctx = _ctx(config_dir)
-        stale = _stale_skill_links(default_ctx, user_dir)
-        assert stale == [user_dir / "mine"]
-        assert _stale_skill_links(_ctx(config_dir, skills=["mine"]), user_dir) == []
+        write(_ctx(config_dir))
+        assert _links(user_dir) == {"shared-a"}
+        assert "mine" not in _visible(config_dir, user_dir, [])
 
-        for link in stale:
-            link.unlink()
-        manager = SkillManager(config_dir, "", [user_dir])
-        status = manager.get_status()
-        assert "mine" not in {
-            *status.managed_installed,
-            *status.managed_pending,
-            *status.unmanaged,
-        }
-        assert "mine" not in [
-            s.name for s in manager.list_bundled_skills(include_disabled=True)
-        ]
+    @WRITERS
+    def test_excluded_shared_skill_link_removed(self, config_dir, user_dir, write):
+        write(_ctx(config_dir))
+        write(_ctx(config_dir, exclude_symlinks=[str(user_dir / "shared-a")]))
+        assert not (user_dir / "shared-a").exists()
 
-    def test_excluded_shared_skill_link_removed(self, config_dir, tmp_path):
-        user_dir = tmp_path / "home_skills"
-        _install_links(_ctx(config_dir), user_dir)
+    @WRITERS
+    def test_disabled_profile_skill_never_deployed(self, config_dir, user_dir, write):
+        write(_ctx(config_dir, skills=["mine-off"]))
+        assert _links(user_dir) == {"shared-a"}
 
-        ctx = _ctx(config_dir, exclude_symlinks=[str(user_dir / "shared-a")])
-        assert _stale_skill_links(ctx, user_dir) == [user_dir / "shared-a"]
+    @WRITERS
+    def test_profile_only_config_dir(self, tmp_path, user_dir, write):
+        root = tmp_path / "profile-only"
+        _skill(root / "profiles" / "skills", "mine")
+        write(_ctx(root, skills=["mine"]))
+        assert _links(user_dir) == {"mine"}
+        write(_ctx(root))
+        assert _links(user_dir) == set()
 
-    def test_unmanaged_links_untouched(self, config_dir, tmp_path):
-        user_dir = tmp_path / "home_skills"
-        user_dir.mkdir()
-        (user_dir / "own").symlink_to(_skill(tmp_path / "elsewhere", "own"))
+    def test_uninstall_removes_profile_skill(self, config_dir, user_dir):
+        ctx = _ctx(config_dir, skills=["mine"])
+        _install(ctx)
+        SkillsComponent().uninstall(ctx)
+        assert _links(user_dir) == set()
+
+
+@pytest.mark.unit
+class TestUserLinksPreserved:
+    """Links main never removed must survive the new removal rules."""
+
+    def test_unrelated_path_with_package_marker(self, config_dir, tmp_path, user_dir):
+        own = _skill(tmp_path / "my-ai-rules-notes", "own")
+        (user_dir / "own").symlink_to(own)
         assert _stale_skill_links(_ctx(config_dir), user_dir) == []
+        _install(_ctx(config_dir))
+        assert (user_dir / "own").resolve() == own.resolve()
+
+    def test_alias_to_shared_skill(self, config_dir, user_dir):
+        (user_dir / "alias").symlink_to(config_dir / "skills" / "shared-a")
+        assert _stale_skill_links(_ctx(config_dir), user_dir) == []
+        _install(_ctx(config_dir))
+        assert (user_dir / "alias").is_symlink()
+
+    def test_stale_bundled_install_path_still_removed(
+        self, tmp_path, config_dir, user_dir
+    ):
+        old = _skill(
+            tmp_path / "old-venv" / "ai_rules" / "config" / "profiles" / "skills",
+            "gone",
+        )
+        (user_dir / "gone").symlink_to(old)
+        assert _stale_skill_links(_ctx(config_dir), user_dir) == [user_dir / "gone"]
 
 
 @pytest.mark.unit
-class TestProfileSkillsField:
+class TestValidation:
     def test_work_inherits_through_extends(self, config_dir):
         loader = ProfileLoader(profiles_dir=config_dir / "profiles")
         assert loader.load_profile("work").skills == ["mine"]
         assert loader.load_profile("default").skills == []
 
     def test_unknown_name_is_error(self, config_dir):
-        (config_dir / "profiles" / "bad.yaml").write_text("name: bad\nskills: [nope]\n")
-        with pytest.raises(ProfileError, match="unknown skill 'nope'"):
-            ProfileLoader(profiles_dir=config_dir / "profiles").load_profile("bad")
+        with pytest.raises(click.ClickException, match="unknown profile skill 'nope'"):
+            _validate_profile_skills(config_dir, Config(skills=["nope"]))
 
     def test_collision_with_shared_skill_is_error(self, config_dir):
         _skill(config_dir / "profiles" / "skills", "shared-a")
+        with pytest.raises(click.ClickException, match="collides with a shared skill"):
+            _validate_profile_skills(config_dir, Config(skills=["shared-a"]))
+
+    def test_escape_outside_profile_skills_is_error(self, config_dir, tmp_path):
+        _skill(config_dir / "profiles", "outside")
+        with pytest.raises(click.ClickException, match="unknown profile skill"):
+            _validate_profile_skills(config_dir, Config(skills=["../outside"]))
+
+    @pytest.mark.parametrize("name", ["", ".", "..", "../outside", "a/b", "a\\b"])
+    def test_loader_rejects_path_shaped_names(self, config_dir, name):
         (config_dir / "profiles" / "bad.yaml").write_text(
-            "name: bad\nskills: [shared-a]\n"
+            f"name: bad\nskills: ['{name}']\n"
         )
-        with pytest.raises(ProfileError, match="collides with a shared skill"):
+        with pytest.raises(ProfileError, match="invalid skill name"):
             ProfileLoader(profiles_dir=config_dir / "profiles").load_profile("bad")
+
+
+@pytest.mark.unit
+def test_skill_urls_follow_source_dir(monkeypatch):
+    monkeypatch.setattr(SkillManager, "_get_repo_url", staticmethod(lambda: "R"))
+    assert (
+        SkillManager.get_skill_url("x")
+        == "R/blob/main/src/ai_rules/config/skills/x/SKILL.md"
+    )
+    assert (
+        SkillManager.get_skill_url("x", Path("profiles/skills"))
+        == "R/blob/main/src/ai_rules/config/profiles/skills/x/SKILL.md"
+    )
+    download = SkillManager.get_download_url("x", Path("profiles/skills"))
+    assert download is not None
+    assert download.endswith("tree/main/src/ai_rules/config/profiles/skills/x")

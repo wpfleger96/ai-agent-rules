@@ -15,21 +15,39 @@ from ai_rules.utils import is_managed_target
 PROFILE_SKILLS_SUBDIR = Path("profiles") / "skills"
 
 
+def profile_skill_dirs(config_dir: Path, names: Iterable[str]) -> dict[str, Path]:
+    """Resolve profile-owned skill names against config_dir, rejecting unknown or colliding ones."""
+    from ai_rules.profiles import ProfileError
+
+    root = (config_dir / PROFILE_SKILLS_SUBDIR).resolve()
+    result = {}
+    for name in sorted(names):
+        skill_dir = config_dir / PROFILE_SKILLS_SUBDIR / name
+        if skill_dir.resolve().parent != root or not (skill_dir / "SKILL.md").is_file():
+            raise ProfileError(
+                f"unknown profile skill '{name}' (expected {PROFILE_SKILLS_SUBDIR / name}/SKILL.md in {config_dir})"
+            )
+        if (config_dir / "skills" / name).exists():
+            raise ProfileError(f"profile skill '{name}' collides with a shared skill")
+        result[name] = skill_dir
+    return result
+
+
 def deployable_skills(
     config_dir: Path, profile_skills: Iterable[str] = ()
 ) -> dict[str, Path]:
-    """Skills to deploy: every enabled shared skill plus the active profile's own skills."""
-    shared_dir = config_dir / "skills"
-    result = {
+    """Skills to deploy: every enabled shared skill plus the active profile's enabled own skills."""
+    candidates = {
         d.name: d
-        for d in sorted(shared_dir.glob("*"))
-        if d.is_dir()
-        and not d.name.startswith(".")
-        and not SkillManager.is_skill_disabled(d)
+        for d in sorted((config_dir / "skills").glob("*"))
+        if d.is_dir() and not d.name.startswith(".")
     }
-    for name in sorted(profile_skills):
-        result[name] = config_dir / PROFILE_SKILLS_SUBDIR / name
-    return result
+    candidates.update(profile_skill_dirs(config_dir, profile_skills))
+    return {
+        name: d
+        for name, d in candidates.items()
+        if not SkillManager.is_skill_disabled(d)
+    }
 
 
 @dataclass
@@ -280,16 +298,10 @@ class SkillManager:
         else:
             source_dir = self.config_dir / "skills"
 
-        if not source_dir.exists():
-            return []
-
         profile_dirs = (
             []
             if self.agent_id
-            else [
-                self.config_dir / PROFILE_SKILLS_SUBDIR / n
-                for n in sorted(self.profile_skills)
-            ]
+            else list(profile_skill_dirs(self.config_dir, self.profile_skills).values())
         )
         results = []
         for item in [*sorted(source_dir.glob("*")), *profile_dirs]:
@@ -335,15 +347,17 @@ class SkillManager:
         return None
 
     @staticmethod
-    def get_skill_url(name: str) -> str | None:
-        """Construct a versioned GitHub URL for a bundled skill."""
+    def get_skill_url(name: str, subdir: Path = Path("skills")) -> str | None:
+        """Construct a versioned GitHub URL for a bundled skill under config/<subdir>."""
         repo_url = SkillManager._get_repo_url()
         if not repo_url:
             return None
-        return f"{repo_url}/blob/main/src/ai_rules/config/skills/{name}/SKILL.md"
+        return f"{repo_url}/blob/main/src/ai_rules/config/{subdir.as_posix()}/{name}/SKILL.md"
 
     @staticmethod
-    def get_download_url(name: str | None = None) -> str | None:
+    def get_download_url(
+        name: str | None = None, subdir: Path = Path("skills")
+    ) -> str | None:
         """Construct a download-directory URL for skills.
 
         Args:
@@ -352,7 +366,7 @@ class SkillManager:
         repo_url = SkillManager._get_repo_url()
         if not repo_url:
             return None
-        skills_path = "src/ai_rules/config/skills"
+        skills_path = f"src/ai_rules/config/{subdir.as_posix()}"
         if name is not None:
             skills_path = f"{skills_path}/{name}"
         return f"https://download-directory.github.io/?url={repo_url}/tree/main/{skills_path}"
