@@ -239,16 +239,12 @@ class SkillsComponent(Component):
         )
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.skills import PROFILE_SKILLS_SUBDIR
         from ai_rules.symlinks import remove_symlink
 
         removed = 0
         skipped = 0
 
-        source_dirs = [
-            ctx.config_dir / "skills",
-            ctx.config_dir / PROFILE_SKILLS_SUBDIR,
-        ]
+        source_dirs = _managed_skill_roots(ctx.config_dir)
 
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
