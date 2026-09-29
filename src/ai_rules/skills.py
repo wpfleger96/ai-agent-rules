@@ -4,12 +4,32 @@ from __future__ import annotations
 
 import importlib.metadata
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
 
 from ai_rules.utils import is_managed_target
+
+PROFILE_SKILLS_SUBDIR = Path("profiles") / "skills"
+
+
+def deployable_skills(
+    config_dir: Path, profile_skills: Iterable[str] = ()
+) -> dict[str, Path]:
+    """Skills to deploy: every enabled shared skill plus the active profile's own skills."""
+    shared_dir = config_dir / "skills"
+    result = {
+        d.name: d
+        for d in sorted(shared_dir.glob("*"))
+        if d.is_dir()
+        and not d.name.startswith(".")
+        and not SkillManager.is_skill_disabled(d)
+    }
+    for name in sorted(profile_skills):
+        result[name] = config_dir / PROFILE_SKILLS_SUBDIR / name
+    return result
 
 
 @dataclass
@@ -49,6 +69,7 @@ class SkillManager:
         config_dir: Path,
         agent_id: str,
         user_skills_dirs: list[Path] | None = None,
+        profile_skills: Iterable[str] = (),
     ):
         """Initialize skill manager.
 
@@ -59,6 +80,7 @@ class SkillManager:
         """
         self.config_dir = config_dir
         self.agent_id = agent_id
+        self.profile_skills = list(profile_skills)
         if user_skills_dirs:
             self.user_skills_dirs = [p.expanduser() for p in user_skills_dirs]
         else:
@@ -107,11 +129,9 @@ class SkillManager:
 
     def _get_managed_skills(self) -> dict[str, Path]:
         """Get all managed skills from config_dir."""
-        if self.agent_id:
-            source_dir = self.config_dir / self.agent_id / "skills"
-        else:
-            source_dir = self.config_dir / "skills"
-
+        if not self.agent_id:
+            return deployable_skills(self.config_dir, self.profile_skills)
+        source_dir = self.config_dir / self.agent_id / "skills"
         if not source_dir.exists():
             return {}
 
@@ -263,8 +283,16 @@ class SkillManager:
         if not source_dir.exists():
             return []
 
+        profile_dirs = (
+            []
+            if self.agent_id
+            else [
+                self.config_dir / PROFILE_SKILLS_SUBDIR / n
+                for n in sorted(self.profile_skills)
+            ]
+        )
         results = []
-        for item in sorted(source_dir.glob("*")):
+        for item in [*sorted(source_dir.glob("*")), *profile_dirs]:
             if not item.is_dir():
                 continue
             metadata = self.parse_skill_md(item)
