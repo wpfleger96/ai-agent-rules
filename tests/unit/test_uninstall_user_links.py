@@ -6,6 +6,8 @@ the same entry inside an older package install (``.../ai_rules/config/...``).
 
 from __future__ import annotations
 
+import os
+
 from io import StringIO
 from pathlib import Path
 
@@ -14,13 +16,15 @@ import pytest
 from rich.console import Console
 
 from ai_rules.agents.claude import ClaudeAgent
+from ai_rules.agents.codex import CodexAgent
 from ai_rules.agents.shared import SharedAgent
 from ai_rules.claude_extensions import ClaudeExtensionManager
 from ai_rules.cli.components.config import ConfigComponent
 from ai_rules.cli.components.extensions import ClaudeExtensionsComponent
+from ai_rules.cli.components.settings import SettingsComponent
 from ai_rules.cli.components.skills import SkillsComponent
 from ai_rules.cli.context import CliContext, Component
-from ai_rules.config import Config
+from ai_rules.config import Config, get_managed_fields_path
 from ai_rules.targets.base import ConfigTarget
 
 
@@ -168,6 +172,49 @@ class TestSkillsUninstallOwnership:
         (config_dir / "skills" / "review-source-alias").symlink_to("research")
         link = skills_dir / "review-source-alias"
         link.symlink_to(config_dir / "skills" / "review-source-alias")
+
+        _uninstall_skills(config_dir)
+
+        assert not link.is_symlink()
+
+
+@pytest.mark.unit
+class TestSymlinkedHomeOwnership:
+    """HOME reached through a symlink at a different depth than the real home.
+
+    The alias sits in ``config/skills`` so that ``../../../<name>`` from the
+    link's spelled directory lands on the bundled skill, while from its real
+    directory it lands in the user's own folder.
+    """
+
+    @pytest.fixture
+    def alias_skills_dir(self, tmp_path, config_dir, monkeypatch):
+        real_home = tmp_path / "real" / "deep" / "home"
+        (real_home / ".agents" / "skills").mkdir(parents=True)
+        alias = config_dir / "skills" / "home"
+        alias.symlink_to(real_home, target_is_directory=True)
+        monkeypatch.setenv("HOME", str(alias))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: alias))
+        return alias / ".agents" / "skills"
+
+    def test_keeps_healthy_link_that_only_lexically_reaches_source(
+        self, tmp_path, config_dir, alias_skills_dir
+    ):
+        (tmp_path / "real" / "deep" / "research").mkdir()
+        link = alias_skills_dir / "research"
+        link.symlink_to("../../../research")
+
+        _uninstall_skills(config_dir)
+
+        assert link.is_symlink()
+
+    def test_removes_relative_link_physically_reaching_source(
+        self, tmp_path, config_dir, alias_skills_dir
+    ):
+        real_dir = (tmp_path / "real/deep/home/.agents/skills").resolve()
+        source = (config_dir / "skills" / "research").resolve()
+        link = alias_skills_dir / "research"
+        link.symlink_to(os.path.relpath(source, real_dir))
 
         _uninstall_skills(config_dir)
 
@@ -328,3 +375,95 @@ class TestDeprecatedUninstallOwnership:
 
         assert not claude_md.is_symlink()
         assert not pack.is_symlink()
+
+    def test_removes_deprecated_link_to_source_that_is_itself_an_alias(
+        self, tmp_path, config_dir, mock_home
+    ):
+        external = tmp_path / "dotfiles" / "AGENTS.md"
+        external.parent.mkdir(parents=True)
+        external.write_text("# shared\n")
+        (config_dir / "AGENTS.md").unlink()
+        (config_dir / "AGENTS.md").symlink_to(external)
+        claude_md = mock_home / "CLAUDE.md"
+        claude_md.symlink_to(config_dir / "AGENTS.md")
+
+        self._uninstall(config_dir)
+
+        assert not claude_md.is_symlink()
+
+
+@pytest.mark.unit
+class TestManifestSourceRoles:
+    """Only settings and the shared AGENTS.md accept bundled and cache forms."""
+
+    def test_keeps_codex_instructions_pointing_at_shared_agents_md(
+        self, config_dir, mock_home
+    ):
+        (config_dir / "codex").mkdir()
+        (config_dir / "codex" / "AGENTS.md").write_text("# codex\n")
+        link = mock_home / ".codex" / "AGENTS.md"
+        link.parent.mkdir()
+        link.symlink_to(config_dir / "AGENTS.md")
+
+        config = Config(exclude_symlinks=[])
+        _uninstall(ConfigComponent(), config_dir, CodexAgent(config_dir, config))
+
+        assert link.is_symlink()
+
+    def test_keeps_claude_instructions_pointing_at_cache(self, config_dir, mock_home):
+        link = mock_home / ".claude" / "CLAUDE.md"
+        link.parent.mkdir()
+        link.symlink_to(Config.get_cache_dir() / "claude" / "CLAUDE.md")
+
+        _uninstall_config(config_dir)
+
+        assert link.is_symlink()
+
+    @pytest.mark.parametrize("form", ["bundled", "cache"])
+    def test_removes_settings_link_in_either_form(self, config_dir, mock_home, form):
+        (config_dir / "claude" / "settings.json").write_text("{}")
+        link = mock_home / ".claude" / "settings.json"
+        link.parent.mkdir()
+        link.symlink_to(
+            config_dir / "claude" / "settings.json"
+            if form == "bundled"
+            else Config.get_cache_dir() / "claude" / "settings.json"
+        )
+
+        _uninstall_config(config_dir)
+
+        assert not link.is_symlink()
+
+    @pytest.mark.parametrize("form", ["bundled", "cache"])
+    def test_removes_shared_agents_md_link_in_either_form(
+        self, config_dir, mock_home, form
+    ):
+        link = mock_home / "AGENTS.md"
+        link.symlink_to(
+            config_dir / "AGENTS.md"
+            if form == "bundled"
+            else Config.get_cache_dir() / "shared" / "AGENTS.md"
+        )
+
+        config = Config(exclude_symlinks=[])
+        _uninstall(ConfigComponent(), config_dir, SharedAgent(config_dir, config))
+
+        assert not link.is_symlink()
+
+
+@pytest.mark.unit
+class TestGeneratedFileCleanup:
+    def test_keeps_user_symlink_at_managed_fields_tracker(
+        self, tmp_path, config_dir, mock_home
+    ):
+        mine = _unrelated(tmp_path, "managed-fields.json")
+        mine.parent.mkdir(parents=True)
+        mine.write_text("{}")
+        tracker = get_managed_fields_path()
+        tracker.parent.mkdir(parents=True, exist_ok=True)
+        tracker.symlink_to(mine)
+
+        _uninstall(SettingsComponent(), config_dir)
+
+        assert tracker.is_symlink()
+        assert mine.read_text() == "{}"

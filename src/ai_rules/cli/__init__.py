@@ -316,7 +316,11 @@ def cleanup_deprecated_symlinks(
     removed_count = 0
 
     for agent in selected_targets:
-        deprecated_paths = agent.get_deprecated_symlinks()
+        deprecated_paths = (
+            agent.get_deprecated_symlink_candidates()
+            if owned_only
+            else agent.get_deprecated_symlinks()
+        )
         source = agent.get_deprecated_symlink_source()
 
         for deprecated_path in deprecated_paths:

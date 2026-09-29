@@ -476,6 +476,14 @@ class ConfigTarget(ABC):
         """
         return []
 
+    def get_deprecated_symlink_candidates(self) -> list[Path]:
+        """Every deprecated location, unfiltered, for strict uninstall.
+
+        Targets whose ``get_deprecated_symlinks`` prefilters by target return
+        all known locations here so ``links_to_source`` alone decides.
+        """
+        return self.get_deprecated_symlinks()
+
     def get_deprecated_symlink_source(self) -> Path | None:
         """Bundled entry ai-rules used to link at the deprecated locations.
 

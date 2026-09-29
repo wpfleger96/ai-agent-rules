@@ -64,14 +64,16 @@ def is_managed_target(target_path: Path, config_dir: Path) -> bool:
 def links_to_source(link: Path, source: Path) -> bool:
     """Check if ``link`` is the symlink ai-rules creates for ``source``.
 
-    Ownership is decided from the link's raw target, lexically normalized, so
-    a source entry that is itself a symlink is matched by its own name rather
-    than by whatever it points to. The target must be ``source`` itself (its
-    directory may be spelled differently, e.g. through a symlinked parent) or
-    the same entry inside an older package install, i.e. a path ending in the
-    same ``ai_rules/...`` components (a previous Python version's
-    site-packages). Anything else, including a link the user replaced or one
-    into an unrelated folder, is not ours.
+    Ownership is decided from the link's raw target. Its directory part is
+    resolved physically, relative to the directory the link actually lives in,
+    so a ``..`` after a symlinked component (e.g. a symlinked HOME) climbs the
+    real tree rather than the spelled one. Its final name stays lexical, so a
+    source entry that is itself a symlink is matched by its own name rather
+    than by whatever it points to. The target must be ``source`` itself or the
+    same entry inside an older package install, i.e. a path ending in the same
+    ``ai_rules/...`` components (a previous Python version's site-packages).
+    Anything else, including a link the user replaced or one into an
+    unrelated folder, is not ours.
 
     Args:
         link: The symlink to classify (may be dangling)
@@ -80,17 +82,15 @@ def links_to_source(link: Path, source: Path) -> bool:
     link = link.expanduser().absolute()
     try:
         raw = link.readlink()
-    except (OSError, ValueError):
+        link_dir = link.parent.resolve()
+    except (OSError, ValueError, RuntimeError):
         return False
-    target = Path(os.path.normpath(link.parent / raw))
     expected = Path(os.path.normpath(source.expanduser().absolute()))
-    if target.name != expected.name:
+    if raw.name != expected.name:
         return False
-    try:
-        if target.parent.resolve() == expected.parent.resolve():
-            return True
-    except (OSError, RuntimeError):
-        pass
+    target = Path(os.path.realpath(link_dir / raw.parent)) / raw.name
+    if target.parent == Path(os.path.realpath(expected.parent)):
+        return True
     package_at = [i for i, part in enumerate(expected.parts) if part == PACKAGE_DIR]
     if not package_at:
         return False

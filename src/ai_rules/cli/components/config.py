@@ -38,23 +38,32 @@ def _get_copy_mode_targets(agents: list[ConfigTarget]) -> set[Path]:
     return result
 
 
-def _manifest_link_sources(target: ConfigTarget, source: Path) -> list[Path]:
+def _manifest_link_sources(
+    target: ConfigTarget, dest: Path, source: Path
+) -> list[Path]:
     """Sources ai-rules may have linked a manifest destination to.
 
-    Settings and AGENTS.md destinations switch between the bundled file and a
-    merged copy in the cache as overrides come and go, and the settings
-    component may delete that cache while uninstall runs. Either form of the
-    entry is ours.
+    A settings file and the shared ``~/AGENTS.md`` switch between the bundled
+    file and a merged copy in the cache as overrides come and go, and the
+    settings component may delete that cache while uninstall runs, so both
+    forms are accepted there. Every other destination has exactly one source.
     """
     from ai_rules.config import Config
 
-    name = source.name
-    return [
-        source,
-        Config.get_cache_dir() / target.target_id / name,
-        target.config_dir / target.target_id / name,
-        target.config_dir / name,
-    ]
+    dest = dest.expanduser()
+    settings_dest = getattr(target, "settings_symlink_target", None)
+    if settings_dest is not None and dest == settings_dest.expanduser():
+        name = target.config_file_name
+        return [
+            target.config_dir / target.target_id / name,
+            Config.get_cache_dir() / target.target_id / name,
+        ]
+    if target.target_id == "shared" and dest == Path("~/AGENTS.md").expanduser():
+        return [
+            target.config_dir / "AGENTS.md",
+            Config.get_cache_dir() / "shared" / "AGENTS.md",
+        ]
+    return [source]
 
 
 # status_code -> (severity, fixed annotation or None to use the check message)
@@ -406,7 +415,7 @@ class ConfigComponent(Component):
                     success, message = remove_file_copy(tgt, ctx.yes)
                 elif tgt.expanduser().is_symlink() and not any(
                     links_to_source(tgt, src)
-                    for src in _manifest_link_sources(target, source)
+                    for src in _manifest_link_sources(target, tgt, source)
                 ):
                     success, message = False, "not managed by ai-rules"
                 else:
