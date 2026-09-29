@@ -64,12 +64,12 @@ def is_managed_target(target_path: Path, config_dir: Path) -> bool:
 def links_to_source(link: Path, source: Path) -> bool:
     """Check if ``link`` is the symlink ai-rules creates for ``source``.
 
-    Ownership is decided from the link's raw target. Its directory part is
-    resolved physically, relative to the directory the link actually lives in,
-    so a ``..`` after a symlinked component (e.g. a symlinked HOME) climbs the
-    real tree rather than the spelled one. Its final name stays lexical, so a
-    source entry that is itself a symlink is matched by its own name rather
-    than by whatever it points to. The target must be ``source`` itself or the
+    Ownership is decided from the link's raw target. The directory parts of
+    both the target (relative to the directory the link actually lives in) and
+    ``source`` are resolved physically, so a ``..`` after a symlinked component
+    (e.g. a symlinked HOME) climbs the real tree rather than the spelled one.
+    Final names stay lexical, so a source entry that is itself a symlink is
+    matched by its own name rather than by whatever it points to. The target must be ``source`` itself or the
     same entry inside an older package install, i.e. a path ending in the same
     ``ai_rules/...`` components (a previous Python version's site-packages).
     Anything else, including a link the user replaced or one into an
@@ -85,11 +85,12 @@ def links_to_source(link: Path, source: Path) -> bool:
         link_dir = link.parent.resolve()
     except (OSError, ValueError, RuntimeError):
         return False
-    expected = Path(os.path.normpath(source.expanduser().absolute()))
-    if raw.name != expected.name:
+    source = source.expanduser().absolute()
+    if raw.name != source.name:
         return False
+    expected = Path(os.path.realpath(source.parent)) / source.name
     target = Path(os.path.realpath(link_dir / raw.parent)) / raw.name
-    if target.parent == Path(os.path.realpath(expected.parent)):
+    if target.parent == expected.parent:
         return True
     package_at = [i for i, part in enumerate(expected.parts) if part == PACKAGE_DIR]
     if not package_at:

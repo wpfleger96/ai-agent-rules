@@ -26,6 +26,7 @@ from ai_rules.cli.components.skills import SkillsComponent
 from ai_rules.cli.context import CliContext, Component
 from ai_rules.config import Config, get_managed_fields_path
 from ai_rules.targets.base import ConfigTarget
+from ai_rules.utils import links_to_source
 
 
 def _uninstall(component: Component, config_dir: Path, *targets: ConfigTarget) -> None:
@@ -219,6 +220,33 @@ class TestSymlinkedHomeOwnership:
         _uninstall_skills(config_dir)
 
         assert not link.is_symlink()
+
+
+@pytest.mark.unit
+class TestSourceSpelledThroughSymlinkThenParent:
+    """``HOME=alias/../home`` where ``alias`` is a symlink to a deeper folder.
+
+    Lexically the source is ``<root>/home/...``; physically it is
+    ``<root>/physical/home/...``. Only the physical one is ours.
+    """
+
+    def test_matches_physical_source_not_lexical_one(self, tmp_path):
+        (tmp_path / "physical" / "deep").mkdir(parents=True)
+        (tmp_path / "alias").symlink_to(tmp_path / "physical" / "deep")
+        cache = ".ai-agent-rules/cache/claude/settings.json"
+        source = tmp_path / "alias" / ".." / "home" / cache
+        for home in ("home", "physical/home"):
+            (tmp_path / home / cache).parent.mkdir(parents=True)
+            (tmp_path / home / cache).write_text("{}")
+        (tmp_path / "unrelated").mkdir()
+        unrelated = tmp_path / "unrelated" / "settings.json"
+        unrelated.symlink_to(tmp_path / "home" / cache)
+        (tmp_path / "ours").mkdir()
+        ours = tmp_path / "ours" / "settings.json"
+        ours.symlink_to(tmp_path / "physical" / "home" / cache)
+
+        assert not links_to_source(unrelated, source)
+        assert links_to_source(ours, source)
 
 
 @pytest.mark.unit
