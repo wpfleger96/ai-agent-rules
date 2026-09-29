@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## [0.79.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.78.0...v0.79.0) (2026-09-29)
+
+
+### Features
+
+* **profiles:** add profile-owned skills ([#251](https://github.com/wpfleger96/ai-agent-rules/issues/251)) ([8229776](https://github.com/wpfleger96/ai-agent-rules/commit/8229776bc25a82fdd80ff2b47a49b46b0de5db0c))
+* **skills:** add writing-as-will voice skill ([#250](https://github.com/wpfleger96/ai-agent-rules/issues/250)) ([8dc0b41](https://github.com/wpfleger96/ai-agent-rules/commit/8dc0b4105c07789fcddfd15d9d0c90097989d417))
+
+
+### Bug Fixes
+
+* **buzz:** remove dead persona-pack target and clean up stale symlinks ([#247](https://github.com/wpfleger96/ai-agent-rules/issues/247)) ([8b0d983](https://github.com/wpfleger96/ai-agent-rules/commit/8b0d9832a7e173067edc2ae145acabc678713f72))
+* **install:** write through user symlinks and link from physical paths ([#254](https://github.com/wpfleger96/ai-agent-rules/issues/254)) ([a83ebfa](https://github.com/wpfleger96/ai-agent-rules/commit/a83ebfa6cc50c77a08180f07c01636a056129f47))
+* **uninstall:** remove only links that point at ai-rules sources ([#252](https://github.com/wpfleger96/ai-agent-rules/issues/252)) ([a92cdd8](https://github.com/wpfleger96/ai-agent-rules/commit/a92cdd8ef8a7941d4628a419bdd6d1f134f3acbd))
+
+
+### Chores
+
+* **buzz:** add Sietch Tabr team snapshot backup ([#248](https://github.com/wpfleger96/ai-agent-rules/issues/248)) ([db34ae4](https://github.com/wpfleger96/ai-agent-rules/commit/db34ae4ea3fdcbd965465842a4d83ef3fff6a46a))
+* **buzz:** embed Paul's avatar in Sietch Tabr backup ([#249](https://github.com/wpfleger96/ai-agent-rules/issues/249)) ([77eceb2](https://github.com/wpfleger96/ai-agent-rules/commit/77eceb2bfbdd94c64e319e984899d8212bdae036))
+
 ## [0.78.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.77.0...v0.78.0) (2026-09-27)
 
 
