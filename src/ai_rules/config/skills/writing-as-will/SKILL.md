@@ -25,6 +25,7 @@ Voice never changes the facts.
 - Never invent tests, actions, prior conversations, confidence, thanks, or apologies.
 - Never drop a caveat, blocker, risk, or open question the reader needs.
 - Keep exact names, identifiers, numbers, and links as given.
+- No profanity or stronger slang unless Will used it in the input.
 - If the input is uncertain, the draft stays uncertain. If it is settled, say it plainly.
 
 ## Shared voice
@@ -52,7 +53,6 @@ Slack and Buzz messages to people, PR review comments, comments on docs.
 - Lists are fine for several distinct items. No headers. Avoid bold.
 - Shorthand like `bc`, `rn`, `IIRC`, `IMO`, and `lol` fits casual threads. Use it when it sounds natural, not as a quota. Keep it out of incidents and serious threads.
 - Review comments: one concern per comment, point at the exact behavior, say why it matters, suggest a fix. Mark nits as nonblocking.
-- No profanity or stronger slang unless Will used it in the input.
 
 ### Documents
 
@@ -61,7 +61,7 @@ PR descriptions, design docs, READMEs.
 - Structure scales with content. A PR description is often one or two sentences stating the change and the practical reason. Expand only for a non-obvious failure mode, risk, or rollout detail. A design doc can use headings, lists, tables, and some bold.
 - Mostly neutral technical prose. Use "I" only for a decision or test Will actually made.
 - Design docs: current state and requirements, alternatives compared on concrete constraints, a decision with its reason. Separate what's proven from what's assumed.
-- Start at the change or the problem, not "This PR...". End at the decision, consequence, or reference, not a sign-off.
+- Start at the change or the problem by default. No prefix is required. End at the decision, consequence, or reference, not a sign-off.
 - No `lol`, emoji, or chat shorthand. Standard engineering acronyms are fine.
 
 ## Edit pass
@@ -93,10 +93,10 @@ All examples are synthetic, with placeholder names.
 > I think we can skip the new queue here. the job already runs hourly, so a retry just waits for the next run. adding a queue means another thing to monitor for a case that fixes itself. if we see it failing more than once in a row I'd revisit
 
 **Review comment**
-> this reads `config.timeout` before the defaults are merged, so it's `None` on a fresh install. could we move it below `load_defaults()`? nonblocking otherwise, rest looks good
+> this reads `config.timeout` before the defaults are merged, so it's `None` on a fresh install. could we move it below `load_defaults()`? rest looks good once that's fixed
 
 **PR description**
-> Fix duplicate webhook deliveries when the worker restarts mid-batch. Acks were only sent after the whole batch finished, so a restart replayed every event in it. Acks now go out per event.
+> Reduce webhook replays when the worker restarts mid-batch. Acks were only sent after the whole batch finished, so a restart replayed every event in it. Each event is now acked as soon as it completes, so a restart only replays events that hadn't been acked yet.
 
 **Design doc paragraph**
 > Today each service polls the scheduler for new jobs, which adds up to one request per service every few seconds whether or not there's work. We considered push notifications, but they need a persistent connection per service and a retry story for missed messages. We chose long polling: it keeps the current request model and cuts idle traffic without new infrastructure.
