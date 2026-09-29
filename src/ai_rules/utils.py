@@ -80,9 +80,11 @@ def links_to_source(link: Path, source: Path) -> bool:
         link: The symlink to classify (may be dangling)
         source: The source entry ai-rules links to at this location
     """
+    from ai_rules.symlinks import read_link  # symlinks -> cli -> utils cycle
+
     link = link.expanduser().absolute()
     try:
-        raw = link.readlink()
+        raw = Path(read_link(link))
         link_dir = link.parent.resolve()
     except (OSError, ValueError, RuntimeError):
         return False

@@ -2,6 +2,7 @@
 
 import json
 import os
+import types
 
 from pathlib import Path
 
@@ -361,6 +362,11 @@ def test_link_switched_after_stat_is_refused(tmp_path, monkeypatch):
         ("\\\\?\\D:\\cache\\CLAUDE.md", "D:\\cache\\CLAUDE.md"),
         ("\\\\?\\UNC\\host\\share\\x", "\\\\host\\share\\x"),
         ("..\\cache\\CLAUDE.md", "..\\cache\\CLAUDE.md"),
+        ("\\\\?\\Volume{1234}\\x", "\\\\?\\Volume{1234}\\x"),
+        ("\\\\?\\C:\\cache.\\x", "\\\\?\\C:\\cache.\\x"),
+        ("\\\\?\\C:\\cache \\x", "\\\\?\\C:\\cache \\x"),
+        ("\\\\?\\C:\\a\\..\\x", "\\\\?\\C:\\a\\..\\x"),
+        ("\\\\?\\C:\\a/b\\x", "\\\\?\\C:\\a/b\\x"),
     ],
 )
 def test_read_link_drops_windows_extended_prefix(monkeypatch, raw, expected):
@@ -369,3 +375,35 @@ def test_read_link_drops_windows_extended_prefix(monkeypatch, raw, expected):
     monkeypatch.setattr(os, "readlink", lambda _link: raw)
 
     assert symlinks.read_link(link) == expected
+
+
+def _pretend_windows(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Report ``os.name == "nt"`` to symlinks only; pathlib stays native."""
+    fake_os = types.ModuleType("os")
+    fake_os.__dict__.update(vars(os), name="nt")
+    monkeypatch.setattr(symlinks, "os", fake_os)
+
+
+@pytest.mark.unit
+def test_link_entry_on_windows_does_not_guess_a_missing_folder(monkeypatch, tmp_path):
+    link = tmp_path / "settings.json"
+    link.symlink_to(tmp_path / "gone" / "settings.json")
+    _pretend_windows(monkeypatch)
+    monkeypatch.setattr(symlinks, "read_link", lambda _link: os.readlink(_link))
+
+    with pytest.raises(FileNotFoundError):
+        symlinks.link_entry(link)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("suffix", ["\\", "\\."])
+def test_write_target_on_windows_rejects_backslash_directory_suffix(
+    monkeypatch, tmp_path, suffix
+):
+    link = tmp_path / "settings.json"
+    link.symlink_to(tmp_path / "file")
+    _pretend_windows(monkeypatch)
+    monkeypatch.setattr(symlinks, "read_link", lambda _link: "file" + suffix)
+
+    with pytest.raises(NotADirectoryError):
+        symlinks.write_target(link)

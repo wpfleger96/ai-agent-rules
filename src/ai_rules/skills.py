@@ -10,7 +10,7 @@ from pathlib import Path
 
 import yaml
 
-from ai_rules.symlinks import link_entry, physical_path
+from ai_rules.symlinks import link_entry, physical_path, read_link
 from ai_rules.utils import is_managed_target
 
 PROFILE_SKILLS_SUBDIR = Path("profiles") / "skills"
@@ -199,7 +199,7 @@ class SkillManager:
                         orphaned[item.name].append(item)
                 except (OSError, RuntimeError):
                     try:
-                        raw_target = item.readlink()
+                        raw_target = Path(read_link(item))
                         if is_managed_target(raw_target, self.config_dir):
                             if item.name not in orphaned:
                                 orphaned[item.name] = []

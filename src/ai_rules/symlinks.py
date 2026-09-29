@@ -34,17 +34,28 @@ def physical_path(path: Path, strict: bool = False) -> Path:
 
 
 def read_link(link: Path) -> str:
-    """Return a symlink's text without Windows' ``\\\\?\\`` extended-length prefix.
+    """Return a symlink's text, dropping Windows' ``\\\\?\\`` prefix only when safe.
 
-    Windows reports absolute link text in that form, and ``realpath`` keeps a
-    prefix it was given, so identity comparisons would never match.
+    Windows reports absolute link text as ``\\\\?\\X:\\...`` or
+    ``\\\\?\\UNC\\...``, and ``realpath`` keeps a prefix it was given, so
+    identity comparisons would never match. Only those two forms are stripped,
+    and only when no part is empty or ends in ``.`` or a space and no ``/``
+    appears, since plain Win32 parsing rewrites those. Anything else,
+    including volume GUID paths, is returned raw so it fails to match.
     """
     text = os.readlink(link)
-    if os.name == "nt" and text.startswith("\\\\?\\"):
-        text = text[4:]
-        if text[:4].upper() == "UNC\\":
-            text = "\\\\" + text[4:]
-    return text
+    if os.name != "nt" or not text.startswith("\\\\?\\") or "/" in text:
+        return text
+    rest = text[4:]
+    if rest[:4].upper() == "UNC\\":
+        plain, parts = "\\\\" + rest[4:], rest[4:]
+    elif rest[1:3] == ":\\" and rest[0].isascii() and rest[0].isalpha():
+        plain, parts = rest, rest[3:]
+    else:
+        return text
+    if any(not p or p.endswith((".", " ")) for p in parts.split("\\")):
+        return text
+    return plain
 
 
 def link_entry(link: Path) -> Path:
@@ -61,6 +72,8 @@ def link_entry(link: Path) -> Path:
     try:
         return physical_path(base / text, strict=True)
     except FileNotFoundError:
+        if os.name == "nt":
+            raise
         absolute = text.startswith("/")
         entry = Path("/") if absolute else base
         names = text.split("/")[absolute:]
@@ -91,7 +104,7 @@ def write_target(path: Path) -> Path:
         if not real.is_symlink():
             break
         entry = read_link(real)
-        if entry.endswith(("/", "/.")):
+        if entry.endswith(("/", "/.") + (("\\", "\\.") if os.name == "nt" else ())):
             raise OSError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), str(real))
         real = physical_path(real.parent / entry, strict=True)
     else:
