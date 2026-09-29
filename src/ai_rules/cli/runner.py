@@ -232,15 +232,11 @@ def run_parallel(
 
 
 def run_uninstall_parallel(
-    components: Iterable[Component], ctx: CliContext
+    waves: Iterable[Iterable[Component]], ctx: CliContext
 ) -> ComponentRunResult:
-    """Uninstall in install's reverse order: components flagged
-    install_after_symlinks (MCPs) write through the settings links and cache
-    that the others delete, so they finish before the rest start."""
-    comp_list = list(components)
+    """Run uninstall one wave at a time; components within a wave run in parallel."""
     acc = _RunAccumulator()
-    for after_symlinks in (True, False):
-        wave = [c for c in comp_list if c.install_after_symlinks is after_symlinks]
+    for wave in map(list, waves):
         try:
             _fold_parallel(wave, "uninstall", ctx, acc)
         except Exception:
