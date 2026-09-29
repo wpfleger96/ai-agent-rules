@@ -58,9 +58,9 @@ gh issue list --limit 20  # Search for related open issues
 
 ### Step 3: Generate Draft Description
 
-Use structure from `references/templates.md`. Key principles:
+See `references/templates.md` for optional examples. Key principles:
 
-- Tone and shape: when the PR goes out under the user's name, follow the user's voice skill (`writing-as-will`) if it's available. Otherwise, write plain, factual prose scaled to the change
+- Tone and shape: when the PR goes out under the user's name, follow the user's voice skill (`writing-as-will`) only if it's installed. Otherwise, or when the PR isn't written as the user, write plain, factual prose scaled to the change
 - Specific technical terms, no marketing language; backtick-wrap code identifiers (env vars, functions, paths, endpoints)
 - Plain bullets (`-`), no bold/headers in body; no hard line wraps in prose paragraphs; no `&nbsp;` or non-breaking spaces — regular spaces only
 - Issue refs at end with proper keywords; all external references as clickable markdown links (see `references/templates.md`)
