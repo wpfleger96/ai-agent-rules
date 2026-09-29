@@ -227,13 +227,35 @@ def run_parallel(
     ctx: CliContext,
 ) -> ComponentRunResult:
     acc = _RunAccumulator()
+    _fold_parallel(list(components), method, ctx, acc)
+    return acc.to_result()
+
+
+def run_uninstall_parallel(
+    components: Iterable[Component], ctx: CliContext
+) -> ComponentRunResult:
+    """Uninstall in install's reverse order: components flagged
+    install_after_symlinks (MCPs) write through the settings links and cache
+    that the others delete, so they finish before the rest start."""
     comp_list = list(components)
+    acc = _RunAccumulator()
+    for after_symlinks in (True, False):
+        wave = [c for c in comp_list if c.install_after_symlinks is after_symlinks]
+        _fold_parallel(wave, "uninstall", ctx, acc)
+    return acc.to_result()
+
+
+def _fold_parallel(
+    comp_list: list[Component],
+    method: LifecycleOperation,
+    ctx: CliContext,
+    acc: _RunAccumulator,
+) -> None:
     results = run_components_parallel(comp_list, method, ctx)
     for comp in comp_list:
         if _should_skip(comp, ctx):
             continue
         acc.fold(comp, results.get(comp, ComponentResult()))
-    return acc.to_result()
 
 
 def get_console(ctx: CliContext) -> RichConsole:

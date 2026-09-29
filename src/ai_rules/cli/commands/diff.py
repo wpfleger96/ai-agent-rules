@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 import click
 
 import ai_rules.cli as cli_facade
@@ -24,3 +26,5 @@ def diff(agents: str | None, component_filter: str | None) -> None:
         console.print("[green]No differences found - all symlinks are correct![/green]")
     else:
         print_hint("Run 'ai-agent-rules install' to fix these differences")
+    if not result.ok:
+        sys.exit(1)
