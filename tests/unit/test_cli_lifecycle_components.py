@@ -179,6 +179,45 @@ def test_settings_component_removes_dangling_symlink_when_excluded(
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("layout", ["plain", "prefix", "alias_dotdot"])
+@pytest.mark.parametrize("into_cache", [True, False])
+def test_legacy_install_cleans_excluded_cache_link_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, layout: str, into_cache: bool
+) -> None:
+    physical = tmp_path / "physical" / "home"
+    physical.mkdir(parents=True)
+    home = physical
+    if layout == "prefix":
+        (tmp_path / "var").symlink_to(tmp_path / "physical")
+        home = tmp_path / "var" / "home"
+    elif layout == "alias_dotdot":
+        (tmp_path / "physical" / "deep").mkdir()
+        (tmp_path / "alias").symlink_to(tmp_path / "physical" / "deep")
+        home = tmp_path / "alias" / ".." / "home"
+    dest_dir = physical / "cache" if into_cache else tmp_path / "dotfiles"
+    dest_dir.mkdir()
+    (dest_dir / "settings.json").write_text("{}")
+    link = physical / "settings.json"
+    link.symlink_to(dest_dir / "settings.json")
+
+    class ExcludedTarget:
+        target_id = "claude"
+        name = "Claude"
+        needs_cache = False
+        is_settings_file_excluded = True
+        settings_symlink_target = home / "settings.json"
+        _base_settings_path = Path("/nonexistent/settings.json")
+
+    monkeypatch.setattr(Config, "get_cache_dir", lambda self: home / "cache")
+    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
+    ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
+
+    SettingsComponent().install(ctx)
+
+    assert link.is_symlink() != into_cache
+
+
+@pytest.mark.unit
 def test_claude_plugin_component_treats_missing_claude_cli_as_nonfatal(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -195,3 +234,106 @@ def test_claude_plugin_component_treats_missing_claude_cli_as_nonfatal(
 
     assert result.ok is True
     assert result.changed is False
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("entry", ["loop", "missing", "dangling"])
+@pytest.mark.parametrize("legacy", [True, False])
+def test_excluded_cleanup_trusts_only_resolvable_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, entry: str, legacy: bool
+) -> None:
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    if entry == "loop":
+        (tmp_path / "obstacle").symlink_to(tmp_path / "obstacle")
+    if entry != "dangling":
+        (cache / "settings.json").write_text("{}")
+        dest = tmp_path / "obstacle" / ".." / "cache" / "settings.json"
+    else:
+        dest = cache / "settings.json"
+    link = tmp_path / "settings.json"
+    link.symlink_to(dest)
+
+    class ExcludedTarget:
+        target_id = "claude"
+        name = "Claude"
+        needs_cache = False
+        is_settings_file_excluded = True
+        settings_symlink_target = link
+        _base_settings_path = Path("/nonexistent/settings.json")
+
+    monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
+    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
+    ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
+    component = SettingsComponent()
+
+    if legacy:
+        component.install(ctx)
+    else:
+        component.apply(ctx, component.plan(ctx))
+
+    assert link.is_symlink() == (entry != "dangling")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("layout", ["plain", "prefix"])
+@pytest.mark.parametrize(
+    "gone", ["agent", "cache", "user", "loop", "hidden", "hidden_loop", "hidden_abs"]
+)
+@pytest.mark.parametrize("legacy", [True, False])
+def test_excluded_cleanup_after_managed_folder_vanished(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    layout: str,
+    gone: str,
+    legacy: bool,
+) -> None:
+    physical = tmp_path / "physical"
+    home = physical
+    if layout == "prefix":
+        (tmp_path / "var").symlink_to(physical)
+        home = tmp_path / "var"
+    (physical / ".claude").mkdir(parents=True)
+    cache = home / ".ai-agent-rules" / "cache"
+    (physical / ".ai-agent-rules" / "cache").mkdir(parents=True)
+    link = physical / ".claude" / "settings.json"
+    if gone.startswith("hidden"):
+        agent = physical / ".ai-agent-rules" / "cache" / "claude"
+        agent.mkdir()
+        (agent / "settings.json").write_text("{}")
+        (physical / "loop").symlink_to(physical / "loop")
+        hop = "loop/../" if gone == "hidden_loop" else ""
+        (physical / "dotfiles").symlink_to(f"missing/../{hop}.ai-agent-rules/cache")
+        dest = physical / "dotfiles" / "claude" / "settings.json"
+        link.symlink_to(
+            dest if gone == "hidden_abs" else "../dotfiles/claude/settings.json"
+        )
+    elif gone == "user":
+        link.symlink_to("../dotfiles/claude/settings.json")
+    else:
+        link.symlink_to("../.ai-agent-rules/cache/claude/settings.json")
+        if gone == "cache":
+            (physical / ".ai-agent-rules" / "cache").rmdir()
+        elif gone == "loop":
+            agent = physical / ".ai-agent-rules" / "cache" / "claude"
+            agent.symlink_to(agent)
+
+    class ExcludedTarget:
+        target_id = "claude"
+        name = "Claude"
+        needs_cache = False
+        is_settings_file_excluded = True
+        settings_symlink_target = home / ".claude" / "settings.json"
+        _base_settings_path = Path("/nonexistent/settings.json")
+
+    monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
+    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
+    ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
+    component = SettingsComponent()
+
+    if legacy:
+        component.install(ctx)
+    else:
+        component.apply(ctx, component.plan(ctx))
+
+    assert link.is_symlink() == (gone not in ("agent", "cache"))

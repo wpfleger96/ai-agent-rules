@@ -129,21 +129,21 @@ class TestSkillsUninstallOwnership:
     ):
         link = skills_dir / "research"
         link.symlink_to(config_dir / "skills" / "research")
-        real_readlink, real_resolve = Path.readlink, Path.resolve
+        real_readlink, real_resolve = os.readlink, Path.resolve
 
         def fail_for_link(path: Path) -> None:
             if path == link:
                 raise OSError("unreadable")
 
-        def readlink(self: Path) -> Path:
-            fail_for_link(self)
-            return real_readlink(self)
+        def readlink(path: Path) -> str:
+            fail_for_link(Path(path))
+            return real_readlink(path)
 
         def resolve(self: Path, strict: bool = False) -> Path:
             fail_for_link(self)
             return real_resolve(self, strict)
 
-        monkeypatch.setattr(Path, "readlink", readlink)
+        monkeypatch.setattr(os, "readlink", readlink)
         monkeypatch.setattr(Path, "resolve", resolve)
 
         _uninstall_skills(config_dir)

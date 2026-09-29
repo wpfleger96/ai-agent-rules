@@ -143,8 +143,10 @@ class MCPComponent(Component):
         updated = 0
         skipped = 0
         errors = 0
+        write_failed = False
 
         from ai_rules.cli.display import (
+            print_error,
             print_skipped,
             print_success,
             print_warning,
@@ -171,9 +173,14 @@ class MCPComponent(Component):
             if target.name not in install_target_names:
                 continue
 
-            result, message, conflicts = target.install_mcps(
-                force=ctx.yes or ctx.force, dry_run=ctx.dry_run
-            )
+            try:
+                result, message, conflicts = target.install_mcps(
+                    force=ctx.yes or ctx.force, dry_run=ctx.dry_run
+                )
+            except OSError as e:
+                print_error(f"{target.name}: {e}")
+                write_failed = True
+                continue
 
             if result == OperationResult.UPDATED:
                 print_success(f"{target.name}: {message}", indent=2)
@@ -185,6 +192,7 @@ class MCPComponent(Component):
                 errors += 1
 
         return ComponentResult(
+            ok=not write_failed,
             changed=updated > 0,
             counts={
                 "mcp_updated": updated,
