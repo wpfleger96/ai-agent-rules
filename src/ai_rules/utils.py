@@ -66,14 +66,15 @@ def links_to_source(link: Path, source: Path) -> bool:
 
     Ownership is decided from the link's raw target. The directory parts of
     both the target (relative to the directory the link actually lives in) and
-    ``source`` are resolved physically, so a ``..`` after a symlinked component
-    (e.g. a symlinked HOME) climbs the real tree rather than the spelled one.
-    Final names stay lexical, so a source entry that is itself a symlink is
-    matched by its own name rather than by whatever it points to. The target must be ``source`` itself or the
-    same entry inside an older package install, i.e. a path ending in the same
-    ``ai_rules/...`` components (a previous Python version's site-packages).
-    Anything else, including a link the user replaced or one into an
-    unrelated folder, is not ours.
+    ``source`` are resolved physically, so a ``..`` after a symlinked
+    component (e.g. a symlinked HOME) climbs the real tree rather than the
+    spelled one. Final names stay lexical, so a source entry that is itself a
+    symlink is matched by its own name rather than by whatever it points to.
+    The target must be ``source`` itself or the same entry inside an older
+    package install, i.e. a path ending in the same ``ai_rules/...``
+    components (a previous Python version's site-packages). Anything else,
+    including a link the user replaced or one into an unrelated folder, is not
+    ours.
 
     Args:
         link: The symlink to classify (may be dangling)
