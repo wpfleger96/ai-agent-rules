@@ -96,3 +96,54 @@ def test_failed_component_result_exits_nonzero(tmp_path, monkeypatch, args, runn
     result = CliRunner().invoke(main, args)
 
     assert result.exit_code == 1, result.output
+
+
+class _Uninstaller(Component):
+    filterable = False
+
+    def __init__(self, label: str, *, after_symlinks: bool = False, error=None):
+        self.label = self.component_id = label
+        self.install_after_symlinks = after_symlinks
+        self.error = error
+        self.calls = 0
+
+    def uninstall(self, ctx: CliContext) -> ComponentResult:
+        self.calls += 1
+        if self.error:
+            raise self.error
+        return ComponentResult()
+
+
+@pytest.mark.unit
+def test_failed_mcp_wave_still_runs_remaining_uninstall(tmp_path, monkeypatch):
+    from ai_rules.cli import main
+
+    mcps = _Uninstaller("mcps", after_symlinks=True, error=RuntimeError("boom"))
+    config, cache = _Uninstaller("config"), _Uninstaller("cache")
+
+    result = run_uninstall_parallel([mcps, config, cache], _ctx(tmp_path))
+
+    assert (config.calls, cache.calls) == (1, 1)
+    assert result.ok is False
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    Config._load_cached.cache_clear()
+    monkeypatch.setattr(
+        "ai_rules.cli.components.UNINSTALL_COMPONENTS", (mcps, config, cache)
+    )
+    cli_result = CliRunner().invoke(main, ["uninstall", "-y"])
+
+    assert cli_result.exit_code == 1, cli_result.output
+    assert (config.calls, cache.calls) == (2, 2)
+
+
+@pytest.mark.unit
+def test_mcp_manager_lookup_failure_does_not_skip_later_agents(tmp_path):
+    broken = _agent("Amp", (OperationResult.REMOVED, "removed"))
+    broken.get_mcp_manager.side_effect = OSError(22, "Invalid argument")
+    claude = _agent("Claude", (OperationResult.REMOVED, "removed"))
+
+    result = MCPComponent().uninstall(_ctx(tmp_path, (broken, claude)))
+
+    claude.uninstall_mcps.assert_called_once()
+    assert result.ok is False

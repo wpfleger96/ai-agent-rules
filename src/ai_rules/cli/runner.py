@@ -241,7 +241,13 @@ def run_uninstall_parallel(
     acc = _RunAccumulator()
     for after_symlinks in (True, False):
         wave = [c for c in comp_list if c.install_after_symlinks is after_symlinks]
-        _fold_parallel(wave, "uninstall", ctx, acc)
+        try:
+            _fold_parallel(wave, "uninstall", ctx, acc)
+        except Exception:
+            # Already printed; a wave that fails whole must not block the next.
+            for comp in wave:
+                if not _should_skip(comp, ctx):
+                    acc.fold(comp, ComponentResult(ok=False, counts={"errors": 1}))
     return acc.to_result()
 
 

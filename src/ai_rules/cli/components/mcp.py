@@ -278,10 +278,9 @@ class MCPComponent(Component):
                 continue
             if target.is_settings_file_excluded:
                 continue
-            if target.get_mcp_manager() is None:
-                continue
-
             try:
+                if target.get_mcp_manager() is None:
+                    continue
                 result, message = target.uninstall_mcps()
             except Exception as e:
                 from ai_rules.cli.display import print_error
