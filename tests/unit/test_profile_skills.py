@@ -1,5 +1,7 @@
 """Profile-owned skills: additive to shared skills and removed when no longer deployed."""
 
+import os
+
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +74,10 @@ WRITERS = pytest.mark.parametrize("write", [_plan_apply, _install])
 
 def _links(user_dir: Path) -> set[str]:
     return {p.name for p in user_dir.iterdir()}
+
+
+def _link_targets(user_dir: Path) -> dict[str, str]:
+    return {p.name: os.readlink(p) for p in user_dir.iterdir()}
 
 
 def _visible(config_dir: Path, user_dir: Path, profile_skills: list[str]) -> set[str]:
@@ -286,9 +292,9 @@ def cli(tmp_path, monkeypatch, config_dir, user_dir):
     )
     monkeypatch.setattr("ai_rules.cli.get_config_dir", lambda: config_dir)
 
-    def run(*args: str) -> Any:
+    def run(*args: str, input: str | None = None) -> Any:
         Config._load_cached.cache_clear()  # each call is a fresh process in production
-        return CliRunner().invoke(main, list(args))
+        return CliRunner().invoke(main, list(args), input=input)
 
     return run, home
 
@@ -308,14 +314,43 @@ class TestCommands:
             == 0
         )
         state = (home / ".ai-agent-rules" / "state.yaml").read_bytes()
-        links = _links(user_dir)
+        links = _link_targets(user_dir)
         _set_profile_skills(config_dir, "[missing]")
 
         result = run("install", "--profile", "personal", "-y", "--only", "skills")
         assert result.exit_code == 1
         assert "unknown profile skill 'missing'" in result.output
         assert (home / ".ai-agent-rules" / "state.yaml").read_bytes() == state
-        assert _links(user_dir) == links
+        assert _link_targets(user_dir) == links
+
+    def test_rejected_switch_keeps_user_overrides(self, cli, config_dir, user_dir):
+        run, home = cli
+        assert (
+            run("install", "--profile", "default", "-y", "--only", "skills").exit_code
+            == 0
+        )
+        (config_dir / "profiles" / "personal.yaml").write_text(
+            "name: personal\nskills: [missing]\n"
+            "settings_overrides:\n  claude:\n    model: profile-model\n"
+        )
+        user_config = home / ".ai-agent-rules-config.yaml"
+        user_config.write_text(
+            "settings_overrides:\n  claude:\n    model: user-model\n"
+        )
+        before = (
+            user_config.read_bytes(),
+            (home / ".ai-agent-rules" / "state.yaml").read_bytes(),
+            _link_targets(user_dir),
+        )
+
+        result = run("profile", "switch", "personal", input="y\n")
+        assert result.exit_code == 1
+        assert "unknown profile skill 'missing'" in result.output
+        assert (
+            user_config.read_bytes(),
+            (home / ".ai-agent-rules" / "state.yaml").read_bytes(),
+            _link_targets(user_dir),
+        ) == before
 
     @pytest.mark.parametrize("broken", ["[mine, missing]", "['../outside']"])
     def test_uninstall_ignores_broken_profile(self, cli, config_dir, user_dir, broken):
