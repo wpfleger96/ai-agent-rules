@@ -599,6 +599,7 @@ class Config:
         marketplaces: list[dict[str, str]] | None = None,
         managed_tools: dict[str, Any] | None = None,
         agents_md: str = "",
+        skills: list[str] | None = None,
     ):
         self.exclude_symlinks = set(exclude_symlinks or [])
         self.settings_overrides = settings_overrides or {}
@@ -608,6 +609,7 @@ class Config:
         self.marketplaces = marketplaces or []
         self.managed_tools = managed_tools or {}
         self.agents_md = agents_md
+        self.skills = skills or []
 
     def get_plugin_configs(self) -> list[PluginConfig]:
         """Convert plugin dicts to PluginConfig objects."""
@@ -678,6 +680,7 @@ class Config:
             "marketplaces": copy.deepcopy(profile_data.marketplaces),
             "managed_tools": copy.deepcopy(profile_data.managed_tools),
             "agents_md": profile_data.agents_md,
+            "skills": list(profile_data.skills),
         }
 
         user_config_path = get_user_config_path()

@@ -77,19 +77,19 @@ def install(
     if profile is None:
         profile = get_active_profile() or "default"
 
-    if profile and not yes:
-        try:
-            loader = ProfileLoader()
-            profile_obj = loader.load_profile(profile)
-            user_config = Config.load_user_config()
-            profile_conflicts = _detect_profile_override_conflicts(
-                profile_obj, user_config
-            )
-            if profile_conflicts:
-                _handle_profile_conflicts(profile_conflicts, profile, user_config)
-        except ProfileNotFoundError as e:
-            print_error(str(e))
-            sys.exit(1)
+    try:
+        profile_obj = ProfileLoader().load_profile(profile)
+    except ProfileNotFoundError as e:
+        print_error(str(e))
+        sys.exit(1)
+    # Before any state or user-config write, so a rejected install changes nothing.
+    cli_facade.validate_profile_skills(config_dir, profile_obj.skills)
+
+    if not yes:
+        user_config = Config.load_user_config()
+        profile_conflicts = _detect_profile_override_conflicts(profile_obj, user_config)
+        if profile_conflicts:
+            _handle_profile_conflicts(profile_conflicts, profile, user_config)
 
     try:
         config = Config.load(profile=profile)

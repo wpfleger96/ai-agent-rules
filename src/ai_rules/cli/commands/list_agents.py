@@ -11,11 +11,13 @@ def list_agents_cmd() -> None:
     from rich.table import Table
 
     from ai_rules.cli.display import console
+    from ai_rules.cli.helpers import validate_profile_skills
     from ai_rules.config import Config
     from ai_rules.symlinks import check_symlink
 
     config_dir = cli_facade.get_config_dir()
     config = Config.load()
+    validate_profile_skills(config_dir, config.skills)
     targets = cli_facade.get_targets(config_dir, config)
 
     table = Table(title="Available AI Agents", show_header=True)

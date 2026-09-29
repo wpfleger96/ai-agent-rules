@@ -17,17 +17,77 @@ from ai_rules.cli.context import (
 from ai_rules.utils import is_managed_target
 
 
-def _enabled_skill_folders(skills_source_dir: Path) -> list[Path]:
-    """Get skill directories that are not hidden and not disabled."""
-    from ai_rules.skills import SkillManager
+def _enabled_skill_folders(ctx: CliContext) -> list[Path]:
+    """Skill directories the active profile deploys."""
+    from ai_rules.skills import deployable_skills
 
-    return sorted(
-        f
-        for f in skills_source_dir.glob("*")
-        if f.is_dir()
-        and not f.name.startswith(".")
-        and not SkillManager.is_skill_disabled(f)
+    return list(deployable_skills(ctx.config_dir, ctx.config.skills).values())
+
+
+_SHARED_PARENT = ("ai_rules", "config", "skills")
+_PROFILE_PARENT = ("ai_rules", "config", "profiles", "skills")
+
+
+def _managed_skill_roots(config_dir: Path) -> list[Path]:
+    from ai_rules.skills import PROFILE_SKILLS_SUBDIR
+
+    return [
+        (config_dir / "skills").resolve(),
+        (config_dir / PROFILE_SKILLS_SUBDIR).resolve(),
+    ]
+
+
+def _deployed_from(
+    link: Path, target: Path, root: Path, bundled: tuple[str, ...]
+) -> bool:
+    """True if link is exactly what install creates from root: same name, directly inside it.
+
+    The bundled parent also matches older installs (e.g. a previous site-packages);
+    aliases and links into unrelated trees never match.
+    """
+    parent = target.parent
+    return target.name == link.name and (
+        parent == root or parent.parts[-len(bundled) :] == bundled
     )
+
+
+def _stale_skill_links(ctx: CliContext, user_skills_dir: Path) -> list[Path]:
+    """Managed skill links the active profile no longer deploys."""
+    from ai_rules.skills import SkillManager, deployable_skills
+
+    if not user_skills_dir.exists():
+        return []
+    roots = _managed_skill_roots(ctx.config_dir)
+    wanted = deployable_skills(ctx.config_dir, ctx.config.skills)
+    stale = []
+    for existing in user_skills_dir.iterdir():
+        if not existing.is_symlink():
+            continue
+        try:
+            link_target = existing.resolve()
+        except (OSError, RuntimeError):
+            link_target = None
+
+        if link_target is None:
+            existing_raw = Path(os.readlink(existing))
+            if not existing_raw.is_absolute():
+                existing_raw = existing.parent / existing_raw
+            if any(is_managed_target(existing_raw, r) for r in roots):
+                stale.append(existing)
+            continue
+
+        if not any(is_managed_target(link_target, r) for r in roots):
+            continue
+        from_shared = _deployed_from(existing, link_target, roots[0], _SHARED_PARENT)
+        from_profile = _deployed_from(existing, link_target, roots[1], _PROFILE_PARENT)
+        if (
+            not link_target.exists()
+            or SkillManager.is_skill_disabled(link_target)
+            or ((from_shared or from_profile) and ctx.config.is_excluded(str(existing)))
+            or (from_profile and existing.name not in wanted)
+        ):
+            stale.append(existing)
+    return stale
 
 
 class SkillsComponent(Component):
@@ -46,17 +106,10 @@ class SkillsComponent(Component):
         return None
 
     def plan(self, ctx: CliContext) -> SkillsPlan:
-        from ai_rules.skills import SkillManager
-
-        skills_source_dir = ctx.config_dir / "skills"
-        if not skills_source_dir.exists():
-            return SkillsPlan()
-
-        skill_folders = _enabled_skill_folders(skills_source_dir)
+        skill_folders = _enabled_skill_folders(ctx)
 
         symlink_ops: list[tuple[Path, Path]] = []
         cleanup_ops: list[Path] = []
-        config_skills_abs = skills_source_dir.resolve()
         seen_dirs: set[Path] = set()
 
         for target in ctx.selected_targets:
@@ -80,31 +133,7 @@ class SkillsComponent(Component):
                         continue
                     symlink_ops.append((symlink_target, skill_folder))
 
-                if user_skills_dir.exists():
-                    for existing in user_skills_dir.iterdir():
-                        if not existing.is_symlink():
-                            continue
-                        try:
-                            link_target = existing.resolve()
-                        except (OSError, RuntimeError):
-                            link_target = None
-
-                        if link_target is None:
-                            existing_raw = Path(os.readlink(existing))
-                            if not existing_raw.is_absolute():
-                                existing_raw = existing.parent / existing_raw
-                            if not is_managed_target(existing_raw, config_skills_abs):
-                                continue
-                            cleanup_ops.append(existing)
-                            continue
-
-                        if not is_managed_target(link_target, config_skills_abs):
-                            continue
-
-                        if not link_target.exists():
-                            cleanup_ops.append(existing)
-                        elif SkillManager.is_skill_disabled(link_target):
-                            cleanup_ops.append(existing)
+                cleanup_ops.extend(_stale_skill_links(ctx, user_skills_dir))
 
         has_changes = bool(symlink_ops or cleanup_ops)
         return SkillsPlan(
@@ -148,11 +177,7 @@ class SkillsComponent(Component):
         )
 
     def install(self, ctx: CliContext) -> ComponentResult:
-        import os
 
-        from pathlib import Path
-
-        from ai_rules.skills import SkillManager
         from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
 
         created = 0
@@ -160,11 +185,7 @@ class SkillsComponent(Component):
         excluded = 0
         errors = 0
 
-        skills_source_dir = ctx.config_dir / "skills"
-        if not skills_source_dir.exists():
-            return ComponentResult(ok=True)
-
-        skill_folders = _enabled_skill_folders(skills_source_dir)
+        skill_folders = _enabled_skill_folders(ctx)
 
         seen_dirs: set[Path] = set()
 
@@ -202,32 +223,9 @@ class SkillsComponent(Component):
                     else:
                         created += 1
 
-                if not ctx.dry_run and user_skills_dir.exists():
-                    config_skills_abs = skills_source_dir.resolve()
-                    for existing in user_skills_dir.iterdir():
-                        if not existing.is_symlink():
-                            continue
-                        try:
-                            link_target = existing.resolve()
-                        except (OSError, RuntimeError):
-                            link_target = None
-
-                        if link_target is None:
-                            existing_raw = Path(os.readlink(existing))
-                            if not existing_raw.is_absolute():
-                                existing_raw = existing.parent / existing_raw
-                            if not is_managed_target(existing_raw, config_skills_abs):
-                                continue
-                            remove_symlink(existing, force=True)
-                            continue
-
-                        if not is_managed_target(link_target, config_skills_abs):
-                            continue
-
-                        if not link_target.exists():
-                            remove_symlink(existing, force=True)
-                        elif SkillManager.is_skill_disabled(link_target):
-                            remove_symlink(existing, force=True)
+                if not ctx.dry_run:
+                    for existing in _stale_skill_links(ctx, user_skills_dir):
+                        remove_symlink(existing, force=True)
 
         return ComponentResult(
             ok=errors == 0,
@@ -246,8 +244,7 @@ class SkillsComponent(Component):
         removed = 0
         skipped = 0
 
-        skills_source_dir = ctx.config_dir / "skills"
-        config_skills_abs = skills_source_dir.resolve()
+        roots = _managed_skill_roots(ctx.config_dir)
 
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
@@ -279,7 +276,7 @@ class SkillsComponent(Component):
                             except OSError:
                                 skipped += 1
                             continue
-                    if not is_managed_target(link_target, config_skills_abs):
+                    if not any(is_managed_target(link_target, r) for r in roots):
                         continue
 
                     success, _msg = remove_symlink(existing, force=ctx.yes)

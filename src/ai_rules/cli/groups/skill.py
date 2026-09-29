@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import sys
 
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 import click
 
 from click.shell_completion import CompletionItem
 
 import ai_rules.cli as cli_facade
+
+if TYPE_CHECKING:
+    from ai_rules.skills import SkillManager
 
 
 @click.group()
@@ -15,14 +21,26 @@ def skill() -> None:
     pass
 
 
+def _skill_manager(config_dir: Path) -> SkillManager:
+    """Manager scoped to the shared skills plus the active profile's own skills."""
+    from ai_rules.cli.helpers import validate_profile_skills
+    from ai_rules.config import Config
+    from ai_rules.skills import SkillManager
+
+    config = Config.load()
+    validate_profile_skills(config_dir, config.skills)
+    return SkillManager(
+        config_dir=config_dir, agent_id="", profile_skills=config.skills
+    )
+
+
 def complete_skills(
     ctx: click.Context, param: click.Parameter, incomplete: str
 ) -> list[CompletionItem]:
     """Complete skill names for skill subcommands."""
-    from ai_rules.skills import SkillManager
 
     config_dir = cli_facade.get_config_dir()
-    manager = SkillManager(config_dir=config_dir, agent_id="")
+    manager = _skill_manager(config_dir)
     skills = manager.list_bundled_skills()
     return [
         CompletionItem(s.name, help=s.description[:60])
@@ -57,7 +75,7 @@ def skill_list(download_url: bool) -> None:
         return
 
     config_dir = cli_facade.get_config_dir()
-    manager = SkillManager(config_dir=config_dir, agent_id="")
+    manager = _skill_manager(config_dir)
     skills = manager.list_bundled_skills(include_disabled=True)
 
     table = Table(title="Bundled Skills", show_header=True)
@@ -99,7 +117,7 @@ def skill_show(name: str, url: bool, download_url: bool, raw: bool) -> None:
     from ai_rules.skills import SkillManager
 
     config_dir = cli_facade.get_config_dir()
-    manager = SkillManager(config_dir=config_dir, agent_id="")
+    manager = _skill_manager(config_dir)
 
     if url and download_url:
         raise click.UsageError("--url and --download-url are mutually exclusive")
@@ -113,10 +131,11 @@ def skill_show(name: str, url: bool, download_url: bool, raw: bool) -> None:
             print_error(f"Unknown skill '{name}'. Available: {available}")
             sys.exit(1)
 
+        subdir = managed[name].parent.relative_to(config_dir)
         if download_url:
-            result = SkillManager.get_download_url(name)
+            result = SkillManager.get_download_url(name, subdir)
         else:
-            result = SkillManager.get_skill_url(name)
+            result = SkillManager.get_skill_url(name, subdir)
 
         if result is None:
             print_error(

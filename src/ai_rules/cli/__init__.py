@@ -50,6 +50,9 @@ from ai_rules.cli.helpers import (
 from ai_rules.cli.helpers import (
     select_targets as select_targets,
 )
+from ai_rules.cli.helpers import (
+    validate_profile_skills as validate_profile_skills,
+)
 
 if TYPE_CHECKING:
     from ai_rules.cli.context import CliContext
