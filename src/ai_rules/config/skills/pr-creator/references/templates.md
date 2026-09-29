@@ -1,6 +1,8 @@
 # PR Description Templates
 
-## Standard Structure (6-12 lines)
+## Optional Structure
+
+These are optional shapes, not required templates. A small PR can be one sentence, and no "This PR..." opener is required.
 
 ```markdown
 [Opening: 1-2 sentences]
@@ -18,7 +20,7 @@ This PR [enables/adds/fixes/updates]... [State what changed and value delivered]
 Resolves #123
 ```
 
-## Opening Patterns
+## Optional Opening Patterns
 
 **Feature:**
 - "This PR adds X to enable Y"
