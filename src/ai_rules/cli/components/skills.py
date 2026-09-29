@@ -14,7 +14,7 @@ from ai_rules.cli.context import (
     ComponentResult,
     SkillsPlan,
 )
-from ai_rules.utils import is_managed_target
+from ai_rules.utils import is_managed_target, links_to_source
 
 
 def _enabled_skill_folders(ctx: CliContext) -> list[Path]:
@@ -244,7 +244,7 @@ class SkillsComponent(Component):
         removed = 0
         skipped = 0
 
-        roots = _managed_skill_roots(ctx.config_dir)
+        source_dirs = _managed_skill_roots(ctx.config_dir)
 
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
@@ -260,23 +260,10 @@ class SkillsComponent(Component):
                     continue
 
                 for existing in user_skills_dir.iterdir():
-                    if not existing.is_symlink():
-                        continue
-                    try:
-                        link_target = existing.resolve()
-                    except (OSError, RuntimeError):
-                        try:
-                            link_target = existing.readlink()
-                            if not link_target.is_absolute():
-                                link_target = existing.parent / link_target
-                        except (OSError, RuntimeError):
-                            try:
-                                existing.unlink()
-                                removed += 1
-                            except OSError:
-                                skipped += 1
-                            continue
-                    if not any(is_managed_target(link_target, r) for r in roots):
+                    if not any(
+                        links_to_source(existing, d / existing.name)
+                        for d in source_dirs
+                    ):
                         continue
 
                     success, _msg = remove_symlink(existing, force=ctx.yes)

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ai_rules.utils import is_managed_target
+from ai_rules.utils import is_managed_target, links_to_source
 
 
 @dataclass
@@ -123,17 +123,8 @@ class ClaudeExtensionManager:
             if item.is_dir():
                 continue
 
-            try:
-                target = item.resolve()
-            except (OSError, RuntimeError):
-                try:
-                    target = item.readlink()
-                    if not target.is_absolute():
-                        target = item.parent / target
-                except (OSError, RuntimeError):
-                    continue
-
-            if is_managed_target(target, self.config_dir) and not target.exists():
+            source = self.config_dir / "claude" / user_dir.name / item.name
+            if links_to_source(item, source) and not item.exists():
                 orphaned[item.stem] = item
 
         return orphaned

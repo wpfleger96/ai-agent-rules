@@ -38,6 +38,34 @@ def _get_copy_mode_targets(agents: list[ConfigTarget]) -> set[Path]:
     return result
 
 
+def _manifest_link_sources(
+    target: ConfigTarget, dest: Path, source: Path
+) -> list[Path]:
+    """Sources ai-rules may have linked a manifest destination to.
+
+    A settings file and the shared ``~/AGENTS.md`` switch between the bundled
+    file and a merged copy in the cache as overrides come and go, and the
+    settings component may delete that cache while uninstall runs, so both
+    forms are accepted there. Every other destination has exactly one source.
+    """
+    from ai_rules.config import Config
+
+    dest = dest.expanduser()
+    settings_dest = getattr(target, "settings_symlink_target", None)
+    if settings_dest is not None and dest == settings_dest.expanduser():
+        name = target.config_file_name
+        return [
+            target.config_dir / target.target_id / name,
+            Config.get_cache_dir() / target.target_id / name,
+        ]
+    if target.target_id == "shared" and dest == Path("~/AGENTS.md").expanduser():
+        return [
+            target.config_dir / "AGENTS.md",
+            Config.get_cache_dir() / "shared" / "AGENTS.md",
+        ]
+    return [source]
+
+
 # status_code -> (severity, fixed annotation or None to use the check message)
 _STATUS_DISPLAY: dict[str, tuple[str, str | None]] = {
     "missing": ("error", "not installed"),
@@ -370,6 +398,7 @@ class ConfigComponent(Component):
         )
         from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import remove_file_copy, remove_symlink
+        from ai_rules.utils import links_to_source
 
         console = get_console(ctx)
         total_removed = 0
@@ -379,11 +408,16 @@ class ConfigComponent(Component):
         for target in ctx.selected_targets:
             console.print(f"\n[bold]{target.name}[/bold]")
 
-            for tgt, _source in target.get_filtered_symlinks():
+            for tgt, source in target.get_filtered_symlinks():
                 if _is_specialized_path(target, tgt):
                     continue
                 if tgt.expanduser() in copy_targets:
                     success, message = remove_file_copy(tgt, ctx.yes)
+                elif tgt.expanduser().is_symlink() and not any(
+                    links_to_source(tgt, src)
+                    for src in _manifest_link_sources(target, tgt, source)
+                ):
+                    success, message = False, "not managed by ai-rules"
                 else:
                     success, message = remove_symlink(tgt, ctx.yes)
 
@@ -397,7 +431,7 @@ class ConfigComponent(Component):
                     total_skipped += 1
 
         cleanup_deprecated_symlinks(
-            list(ctx.selected_targets), ctx.config_dir, ctx.dry_run
+            list(ctx.selected_targets), ctx.config_dir, ctx.dry_run, owned_only=True
         )
 
         return ComponentResult(

@@ -292,7 +292,10 @@ def cli_entrypoint() -> None:
 
 
 def cleanup_deprecated_symlinks(
-    selected_targets: list[ConfigTarget], config_dir: Path, dry_run: bool
+    selected_targets: list[ConfigTarget],
+    config_dir: Path,
+    dry_run: bool,
+    owned_only: bool = False,
 ) -> int:
     """Remove deprecated symlinks that point to our config files.
 
@@ -300,17 +303,25 @@ def cleanup_deprecated_symlinks(
         selected_targets: List of targets to check for deprecated symlinks
         config_dir: Path to the config directory (repo/config)
         dry_run: Don't actually remove symlinks
+        owned_only: Only remove symlinks that still point at the target's
+            deprecated source (current or older package install)
 
     Returns:
         Count of removed symlinks
     """
     from ai_rules.cli.display import print_would
     from ai_rules.symlinks import remove_symlink
+    from ai_rules.utils import links_to_source
 
     removed_count = 0
 
     for agent in selected_targets:
-        deprecated_paths = agent.get_deprecated_symlinks()
+        deprecated_paths = (
+            agent.get_deprecated_symlink_candidates()
+            if owned_only
+            else agent.get_deprecated_symlinks()
+        )
+        source = agent.get_deprecated_symlink_source()
 
         for deprecated_path in deprecated_paths:
             target = deprecated_path.expanduser()
@@ -319,6 +330,9 @@ def cleanup_deprecated_symlinks(
                 continue
 
             if not target.is_symlink():
+                continue
+
+            if owned_only and (source is None or not links_to_source(target, source)):
                 continue
 
             if dry_run:

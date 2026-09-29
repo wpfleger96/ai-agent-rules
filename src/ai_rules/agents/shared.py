@@ -156,3 +156,6 @@ class SharedAgent(Agent):
             app_data / bundle / "agents" / "teams" / _LEGACY_PACK_ID
             for bundle in _LEGACY_APP_BUNDLES
         ]
+
+    def get_deprecated_symlink_source(self) -> Path:
+        return self.config_dir / "buzz"

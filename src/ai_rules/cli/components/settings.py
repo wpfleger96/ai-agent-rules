@@ -172,13 +172,15 @@ class SettingsComponent(Component):
 
         cache_dir = Config.get_cache_dir()
         tracker_path = get_managed_fields_path()
+        # ai-rules writes the tracker as a regular file; a symlink there is the user's.
+        remove_tracker = tracker_path.exists() and not tracker_path.is_symlink()
 
         if ctx.dry_run:
             changed = False
             if cache_dir.exists():
                 print_dim(f"Would remove settings cache: {cache_dir}", indent=2)
                 changed = True
-            if tracker_path.exists():
+            if remove_tracker:
                 print_dim(
                     f"Would remove managed fields tracker: {tracker_path}", indent=2
                 )
@@ -194,7 +196,7 @@ class SettingsComponent(Component):
             print_success("Removed settings cache", indent=2)
             removed += 1
 
-        if tracker_path.exists():
+        if remove_tracker:
             tracker_path.unlink()
             print_success("Removed managed fields tracker", indent=2)
             removed += 1
