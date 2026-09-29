@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from ai_rules import symlinks
 from ai_rules.config import dump_config_file, write_file_atomic
 from ai_rules.mcp import ClaudeMCPManager
 from ai_rules.symlinks import SymlinkResult, check_symlink, create_symlink
@@ -351,3 +352,20 @@ def test_link_switched_after_stat_is_refused(tmp_path, monkeypatch):
         write_file_atomic(link, lambda f: f.write("new"))
 
     assert (first.read_text(), second.read_text()) == ("A", "B")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("\\\\?\\D:\\cache\\CLAUDE.md", "D:\\cache\\CLAUDE.md"),
+        ("\\\\?\\UNC\\host\\share\\x", "\\\\host\\share\\x"),
+        ("..\\cache\\CLAUDE.md", "..\\cache\\CLAUDE.md"),
+    ],
+)
+def test_read_link_drops_windows_extended_prefix(monkeypatch, raw, expected):
+    link = Path("link")
+    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr(os, "readlink", lambda _link: raw)
+
+    assert symlinks.read_link(link) == expected

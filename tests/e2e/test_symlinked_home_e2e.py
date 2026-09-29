@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from pathlib import Path
 
 import pytest
@@ -29,6 +31,11 @@ def symlinked_home(request, tmp_path):
         (tmp_path / "physical" / "deep").mkdir()
         (tmp_path / "alias").symlink_to(tmp_path / "physical" / "deep")
         home = tmp_path / "alias" / ".." / "home"
+        if sys.platform == "win32":
+            # Win32 removes ``..`` from the spelled path before following any
+            # link, so this HOME is tmp_path/home, not the alias's parent.
+            physical = tmp_path / "home"
+            physical.mkdir()
     config = build_config_dir(tmp_path / "rules")
     return make_cli_runner(home, make_home_env(home)), home, physical, config
 

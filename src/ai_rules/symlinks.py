@@ -33,6 +33,20 @@ def physical_path(path: Path, strict: bool = False) -> Path:
     return Path(os.path.realpath(path.parent, strict=strict)) / path.name
 
 
+def read_link(link: Path) -> str:
+    """Return a symlink's text without Windows' ``\\\\?\\`` extended-length prefix.
+
+    Windows reports absolute link text in that form, and ``realpath`` keeps a
+    prefix it was given, so identity comparisons would never match.
+    """
+    text = os.readlink(link)
+    if os.name == "nt" and text.startswith("\\\\?\\"):
+        text = text[4:]
+        if text[:4].upper() == "UNC\\":
+            text = "\\\\" + text[4:]
+    return text
+
+
 def link_entry(link: Path) -> Path:
     """Physical path of the entry a symlink names, without following that entry.
 
@@ -42,7 +56,7 @@ def link_entry(link: Path) -> Path:
     that exist must resolve strictly; only the part below the first absent
     name is trusted as text.
     """
-    text = os.readlink(link)
+    text = read_link(link)
     base = physical_path(link).parent
     try:
         return physical_path(base / text, strict=True)
@@ -76,7 +90,7 @@ def write_target(path: Path) -> Path:
     for _ in range(64):
         if not real.is_symlink():
             break
-        entry = os.readlink(real)
+        entry = read_link(real)
         if entry.endswith(("/", "/.")):
             raise OSError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), str(real))
         real = physical_path(real.parent / entry, strict=True)
@@ -139,7 +153,7 @@ def create_symlink(
             try:
                 current = link_entry(target)
             except OSError:
-                current = Path(os.readlink(target))
+                current = Path(read_link(target))
             if current == source and target.exists():
                 return (SymlinkResult.ALREADY_CORRECT, "Already correct")
             elif dry_run:
