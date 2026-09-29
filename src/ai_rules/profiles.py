@@ -227,16 +227,11 @@ class ProfileLoader:
                 )
 
     def _validate_skills(self, skills: Any, profile_name: str) -> None:
-        """Profile skills must be plain directory names; existence is checked against the deploy config dir."""
+        """Profile skills must be a list of strings; names are validated where they resolve (profile_skill_dirs)."""
         if not isinstance(skills, list) or not all(isinstance(s, str) for s in skills):
             raise ProfileError(
                 f"Profile '{profile_name}': skills must be a list of names"
             )
-        for name in skills:
-            if name in ("", ".", "..") or "/" in name or "\\" in name:
-                raise ProfileError(
-                    f"Profile '{profile_name}': invalid skill name '{name}'"
-                )
 
     def _merge_profiles(self, parent: Profile, child: Profile) -> Profile:
         """Merge parent profile into child, with child taking precedence."""

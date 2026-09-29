@@ -24,10 +24,8 @@ def _enabled_skill_folders(ctx: CliContext) -> list[Path]:
     return list(deployable_skills(ctx.config_dir, ctx.config.skills).values())
 
 
-_BUNDLED_SKILL_PARENTS = (
-    ("ai_rules", "config", "skills"),
-    ("ai_rules", "config", "profiles", "skills"),
-)
+_SHARED_PARENT = ("ai_rules", "config", "skills")
+_PROFILE_PARENT = ("ai_rules", "config", "profiles", "skills")
 
 
 def _managed_skill_roots(config_dir: Path) -> list[Path]:
@@ -39,16 +37,17 @@ def _managed_skill_roots(config_dir: Path) -> list[Path]:
     ]
 
 
-def _is_deployed_skill_link(link: Path, target: Path, roots: list[Path]) -> bool:
-    """True if link is exactly what install creates: same name, directly in a skills root.
+def _deployed_from(
+    link: Path, target: Path, root: Path, bundled: tuple[str, ...]
+) -> bool:
+    """True if link is exactly what install creates from root: same name, directly inside it.
 
-    Bundled parents from other installs (e.g. an older site-packages) also count;
-    aliases and links into unrelated trees do not.
+    The bundled parent also matches older installs (e.g. a previous site-packages);
+    aliases and links into unrelated trees never match.
     """
     parent = target.parent
     return target.name == link.name and (
-        parent in roots
-        or any(parent.parts[-len(p) :] == p for p in _BUNDLED_SKILL_PARENTS)
+        parent == root or parent.parts[-len(bundled) :] == bundled
     )
 
 
@@ -79,15 +78,13 @@ def _stale_skill_links(ctx: CliContext, user_skills_dir: Path) -> list[Path]:
 
         if not any(is_managed_target(link_target, r) for r in roots):
             continue
+        from_shared = _deployed_from(existing, link_target, roots[0], _SHARED_PARENT)
+        from_profile = _deployed_from(existing, link_target, roots[1], _PROFILE_PARENT)
         if (
             not link_target.exists()
             or SkillManager.is_skill_disabled(link_target)
-            or (
-                _is_deployed_skill_link(existing, link_target, roots)
-                and (
-                    existing.name not in wanted or ctx.config.is_excluded(str(existing))
-                )
-            )
+            or ((from_shared or from_profile) and ctx.config.is_excluded(str(existing)))
+            or (from_profile and existing.name not in wanted)
         ):
             stale.append(existing)
     return stale

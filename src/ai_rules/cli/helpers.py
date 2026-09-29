@@ -204,13 +204,13 @@ def only_option(
     )
 
 
-def _validate_profile_skills(config_dir: Path, config: Config) -> None:
+def validate_profile_skills(config_dir: Path, skills: list[str]) -> None:
     """Fail before any change if the active profile's skills don't resolve in config_dir."""
     from ai_rules.profiles import ProfileError
     from ai_rules.skills import profile_skill_dirs
 
     try:
-        profile_skill_dirs(config_dir, config.skills)
+        profile_skill_dirs(config_dir, skills)
     except ProfileError as e:
         raise click.ClickException(str(e)) from e
 
@@ -228,7 +228,6 @@ def build_cli_context(
     rebuild_cache: bool = False,
     skip_completions: bool = False,
     force: bool = False,
-    validate_profile_skills: bool = True,
 ) -> CliContext:
     """Load config, resolve target/component filters, and build a CliContext."""
     # Route through the facade so monkeypatching ai_rules.cli still applies.
@@ -242,8 +241,7 @@ def build_cli_context(
         config_dir = cli_facade.get_config_dir()
     if config is None:
         config = ConfigClass.load()
-    if validate_profile_skills:
-        _validate_profile_skills(config_dir, config)
+    validate_profile_skills(config_dir, config.skills)
     all_targets = cli_facade.get_targets(config_dir, config)
     selected_targets = cli_facade.select_targets(all_targets, agents)
     parsed_filter = cli_facade.select_components(components, component_filter)

@@ -23,12 +23,12 @@ def skill() -> None:
 
 def _skill_manager(config_dir: Path) -> SkillManager:
     """Manager scoped to the shared skills plus the active profile's own skills."""
-    from ai_rules.cli.helpers import _validate_profile_skills
+    from ai_rules.cli.helpers import validate_profile_skills
     from ai_rules.config import Config
     from ai_rules.skills import SkillManager
 
     config = Config.load()
-    _validate_profile_skills(config_dir, config)
+    validate_profile_skills(config_dir, config.skills)
     return SkillManager(
         config_dir=config_dir, agent_id="", profile_skills=config.skills
     )

@@ -22,8 +22,11 @@ def profile_skill_dirs(config_dir: Path, names: Iterable[str]) -> dict[str, Path
     root = (config_dir / PROFILE_SKILLS_SUBDIR).resolve()
     result = {}
     for name in sorted(names):
+        if not name or name.startswith(".") or "/" in name or "\\" in name:
+            raise ProfileError(f"invalid profile skill name '{name}'")
         skill_dir = config_dir / PROFILE_SKILLS_SUBDIR / name
-        if skill_dir.resolve().parent != root or not (skill_dir / "SKILL.md").is_file():
+        # Resolving to exactly root/name rejects escapes and aliases whose link name differs.
+        if skill_dir.resolve() != root / name or not (skill_dir / "SKILL.md").is_file():
             raise ProfileError(
                 f"unknown profile skill '{name}' (expected {PROFILE_SKILLS_SUBDIR / name}/SKILL.md in {config_dir})"
             )
@@ -33,20 +36,29 @@ def profile_skill_dirs(config_dir: Path, names: Iterable[str]) -> dict[str, Path
     return result
 
 
-def deployable_skills(
+def managed_skills(
     config_dir: Path, profile_skills: Iterable[str] = ()
 ) -> dict[str, Path]:
-    """Skills to deploy: every enabled shared skill plus the active profile's enabled own skills."""
+    """Enabled shared skills plus the active profile's enabled own skills."""
     candidates = {
-        d.name: d
-        for d in sorted((config_dir / "skills").glob("*"))
-        if d.is_dir() and not d.name.startswith(".")
+        d.name: d for d in sorted((config_dir / "skills").glob("*")) if d.is_dir()
     }
     candidates.update(profile_skill_dirs(config_dir, profile_skills))
     return {
         name: d
         for name, d in candidates.items()
         if not SkillManager.is_skill_disabled(d)
+    }
+
+
+def deployable_skills(
+    config_dir: Path, profile_skills: Iterable[str] = ()
+) -> dict[str, Path]:
+    """Managed skills that get symlinked; hidden directories never deploy."""
+    return {
+        name: d
+        for name, d in managed_skills(config_dir, profile_skills).items()
+        if not name.startswith(".")
     }
 
 
@@ -148,7 +160,7 @@ class SkillManager:
     def _get_managed_skills(self) -> dict[str, Path]:
         """Get all managed skills from config_dir."""
         if not self.agent_id:
-            return deployable_skills(self.config_dir, self.profile_skills)
+            return managed_skills(self.config_dir, self.profile_skills)
         source_dir = self.config_dir / self.agent_id / "skills"
         if not source_dir.exists():
             return {}
