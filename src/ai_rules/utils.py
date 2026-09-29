@@ -1,9 +1,13 @@
 """Shared utility functions."""
 
 import copy
+import os
 
 from pathlib import Path
 from typing import Any
+
+# Python package directory; older installs live under .../site-packages/ai_rules.
+PACKAGE_DIR = "ai_rules"
 
 # Substrings that identify a symlink target as belonging to this package,
 # regardless of which Python version's site-packages path it resolves under.
@@ -55,3 +59,40 @@ def is_managed_target(target_path: Path, config_dir: Path) -> bool:
     # pointing to a previous Python version's site-packages path.
     target_str = str(target_path)
     return any(marker in target_str for marker in PACKAGE_MARKERS)
+
+
+def links_to_source(link: Path, source: Path) -> bool:
+    """Check if ``link`` is the symlink ai-rules creates for ``source``.
+
+    Ownership is decided from the link's raw target, lexically normalized, so
+    a source entry that is itself a symlink is matched by its own name rather
+    than by whatever it points to. The target must be ``source`` itself (its
+    directory may be spelled differently, e.g. through a symlinked parent) or
+    the same entry inside an older package install, i.e. a path ending in the
+    same ``ai_rules/...`` components (a previous Python version's
+    site-packages). Anything else, including a link the user replaced or one
+    into an unrelated folder, is not ours.
+
+    Args:
+        link: The symlink to classify (may be dangling)
+        source: The source entry ai-rules links to at this location
+    """
+    link = link.expanduser().absolute()
+    try:
+        raw = link.readlink()
+    except (OSError, ValueError):
+        return False
+    target = Path(os.path.normpath(link.parent / raw))
+    expected = Path(os.path.normpath(source.expanduser().absolute()))
+    if target.name != expected.name:
+        return False
+    try:
+        if target.parent.resolve() == expected.parent.resolve():
+            return True
+    except (OSError, RuntimeError):
+        pass
+    package_at = [i for i, part in enumerate(expected.parts) if part == PACKAGE_DIR]
+    if not package_at:
+        return False
+    tail = expected.parts[package_at[-1] :]
+    return target.parts[-len(tail) :] == tail

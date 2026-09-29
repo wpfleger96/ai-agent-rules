@@ -475,3 +475,10 @@ class ConfigTarget(ABC):
             These will be removed during install if they point to our config files.
         """
         return []
+
+    def get_deprecated_symlink_source(self) -> Path | None:
+        """Bundled entry ai-rules used to link at the deprecated locations.
+
+        Uninstall removes a deprecated symlink only while it still points here.
+        """
+        return None
