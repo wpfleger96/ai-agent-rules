@@ -175,6 +175,7 @@ class ClaudeExtensionsComponent(Component):
         )
         from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import remove_symlink
+        from ai_rules.utils import links_to_source
 
         console = get_console(ctx)
         ext_manager = ClaudeExtensionManager(ctx.config_dir)
@@ -190,9 +191,17 @@ class ClaudeExtensionsComponent(Component):
             pattern = ClaudeExtensionManager.PATTERNS[ext_type]
             suffix = pattern.lstrip("*")
 
-            for name in managed:
+            for name, source in managed.items():
                 filename = f"{name}{suffix}"
                 target_path = user_dir / filename
+                if target_path.is_symlink() and not links_to_source(
+                    target_path, source
+                ):
+                    print_absent(
+                        f"{target_path} {dim('(not managed by ai-rules)')}", indent=2
+                    )
+                    skipped += 1
+                    continue
                 success, message = remove_symlink(target_path, force=ctx.yes)
 
                 if success:

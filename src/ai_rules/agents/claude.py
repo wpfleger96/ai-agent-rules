@@ -88,6 +88,12 @@ class ClaudeAgent(Agent):
                     pass
         return deprecated
 
+    def get_deprecated_symlink_candidates(self) -> list[Path]:
+        return [loc.expanduser() for loc in self._KNOWN_OLD_LOCATIONS]
+
+    def get_deprecated_symlink_source(self) -> Path:
+        return self.config_dir / "AGENTS.md"
+
     def get_mcp_manager(self) -> MCPManager:
         from ai_rules.mcp import ClaudeMCPManager
 
