@@ -10,6 +10,7 @@ from pathlib import Path
 
 import yaml
 
+from ai_rules.symlinks import link_entry, physical_path
 from ai_rules.utils import is_managed_target
 
 PROFILE_SKILLS_SUBDIR = Path("profiles") / "skills"
@@ -228,9 +229,9 @@ class SkillManager:
 
                 if item.is_symlink():
                     try:
-                        source = item.resolve()
-                        is_broken = not source.exists()
-                    except (OSError, RuntimeError):
+                        source = link_entry(item)
+                        is_broken = not item.exists()
+                    except OSError:
                         source = None
                         is_broken = True
                     entry = (item, source, is_broken)
@@ -260,12 +261,15 @@ class SkillManager:
                     for _, actual_source, is_broken in installations
                     if not is_broken
                     and actual_source
-                    and actual_source == expected_source.resolve()
+                    and actual_source == physical_path(expected_source)
                 )
 
                 has_issues = any(
                     is_broken
-                    or (actual_source and actual_source != expected_source.resolve())
+                    or (
+                        actual_source
+                        and actual_source != physical_path(expected_source)
+                    )
                     for _, actual_source, is_broken in installations
                 )
 

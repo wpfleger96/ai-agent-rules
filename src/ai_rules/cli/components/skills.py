@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from pathlib import Path
 
 from ai_rules.agents.base import Agent
@@ -14,6 +12,7 @@ from ai_rules.cli.context import (
     ComponentResult,
     SkillsPlan,
 )
+from ai_rules.symlinks import link_entry
 from ai_rules.utils import is_managed_target, links_to_source
 
 
@@ -64,18 +63,9 @@ def _stale_skill_links(ctx: CliContext, user_skills_dir: Path) -> list[Path]:
         if not existing.is_symlink():
             continue
         try:
-            link_target = existing.resolve()
-        except (OSError, RuntimeError):
-            link_target = None
-
-        if link_target is None:
-            existing_raw = Path(os.readlink(existing))
-            if not existing_raw.is_absolute():
-                existing_raw = existing.parent / existing_raw
-            if any(is_managed_target(existing_raw, r) for r in roots):
-                stale.append(existing)
+            link_target = link_entry(existing)
+        except OSError:
             continue
-
         if not any(is_managed_target(link_target, r) for r in roots):
             continue
         from_shared = _deployed_from(existing, link_target, roots[0], _SHARED_PARENT)

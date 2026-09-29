@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from pathlib import Path
 
 from ai_rules.cli.context import (
@@ -11,6 +13,7 @@ from ai_rules.cli.context import (
     ComponentResult,
     SettingsPlan,
 )
+from ai_rules.symlinks import link_entry
 
 
 class SettingsComponent(Component):
@@ -35,12 +38,11 @@ class SettingsComponent(Component):
                 continue
             expanded = symlink_target.expanduser()
             if expanded.is_symlink():
-                link_dest = expanded.resolve()
                 cache_dir = ctx.config.get_cache_dir()
                 if cache_dir:
                     try:
-                        link_dest.relative_to(cache_dir)
-                    except ValueError:
+                        link_entry(expanded).relative_to(os.path.realpath(cache_dir))
+                    except (OSError, ValueError):
                         continue
                     excluded_symlinks_to_clean.append(expanded)
 
@@ -113,12 +115,11 @@ class SettingsComponent(Component):
                 continue
             expanded = symlink_target.expanduser()
             if expanded.is_symlink():
-                link_dest = expanded.resolve()
                 cache_dir = ctx.config.get_cache_dir()
                 if cache_dir:
                     try:
-                        link_dest.relative_to(cache_dir)
-                    except ValueError:
+                        link_entry(expanded).relative_to(os.path.realpath(cache_dir))
+                    except (OSError, ValueError):
                         continue
                     expanded.unlink()
 

@@ -1,6 +1,7 @@
 """Profile-owned skills: additive to shared skills and removed when no longer deployed."""
 
 import os
+import shutil
 
 from pathlib import Path
 from typing import Any
@@ -376,3 +377,90 @@ class TestCommands:
         result = run("list-agents")
         assert result.exit_code == 1, result.output
         assert "unknown profile skill 'missing'" in result.output
+
+
+@pytest.mark.unit
+class TestSkillSourceAlias:
+    """A source skill that is a symlink keeps its own name as its identity."""
+
+    @pytest.fixture
+    def alias(self, config_dir, user_dir):
+        (config_dir / "skills" / "alias").symlink_to(config_dir / "skills" / "shared-a")
+        (user_dir / "alias").symlink_to(config_dir / "skills" / "alias")
+        return user_dir / "alias"
+
+    def test_status_agrees_it_is_installed(self, config_dir, user_dir, alias):
+        from ai_rules.symlinks import check_symlink
+
+        status = SkillManager(config_dir, "", [user_dir]).get_status()
+        assert "alias" in status.managed_installed
+        assert check_symlink(alias, config_dir / "skills" / "alias")[0] == "correct"
+
+    def test_excluded_alias_is_cleaned(self, config_dir, user_dir, alias):
+        ctx = _ctx(config_dir, exclude_symlinks=[str(alias)])
+        assert _stale_skill_links(ctx, user_dir) == [alias]
+
+
+@pytest.fixture(params=["plain", "prefix"])
+def four_agent_dirs(request, tmp_path, monkeypatch):
+    physical = tmp_path / "physical"
+    physical.mkdir()
+    home = physical
+    if request.param == "prefix":
+        (tmp_path / "var").symlink_to(physical)
+        home = tmp_path / "var"
+    dirs = {a: home / a / "skills" for a in ("claude", "codex", "goose", "amp")}
+    for d in dirs.values():
+        d.mkdir(parents=True)
+    monkeypatch.setattr("ai_rules.config.get_agent_skills_dirs", lambda: dirs)
+    return home, dirs
+
+
+@pytest.mark.unit
+class TestVanishedManagedFolder:
+    def test_removed_old_package_root_links_are_cleaned(
+        self, tmp_path, config_dir, four_agent_dirs
+    ):
+        _, dirs = four_agent_dirs
+        old = tmp_path / "old" / "site-packages" / "ai_rules" / "config" / "skills"
+        _skill(old, "demo-skill")
+        for d in dirs.values():
+            (d / "demo-skill").symlink_to(
+                os.path.relpath(old / "demo-skill", d.resolve())
+            )
+        shutil.rmtree(tmp_path / "old")
+
+        _install(_ctx(config_dir))
+
+        assert not any((d / "demo-skill").is_symlink() for d in dirs.values())
+
+    @pytest.mark.parametrize(
+        "entry",
+        [
+            "missing/../config/skills/x",
+            "loop/../config/skills/x",
+            "other/gone/x",
+            "bridge/x",
+            "bridge_loop/x",
+            "rel:bridge/x",
+        ],
+    )
+    def test_untrusted_or_unmanaged_links_survive(
+        self, tmp_path, config_dir, four_agent_dirs, entry
+    ):
+        _, dirs = four_agent_dirs
+        (tmp_path / "loop").symlink_to(tmp_path / "loop")
+        (tmp_path / "managed").symlink_to(config_dir / "skills")
+        (tmp_path / "bridge").symlink_to("missing/../managed")
+        (tmp_path / "bridge_loop").symlink_to("missing/../loop/../managed")
+        links = [d / "x" for d in dirs.values()]
+        for link in links:
+            if entry.startswith("rel:"):
+                rel = os.path.relpath(tmp_path, link.parent.resolve())
+                link.symlink_to(f"{rel}/{entry[4:]}")
+            else:
+                link.symlink_to(tmp_path / entry)
+
+        _install(_ctx(config_dir))
+
+        assert all(link.is_symlink() for link in links)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import re
 import shutil
 import sys
@@ -194,15 +195,26 @@ def _validate_for_format(
 def write_file_atomic(
     path: Path, write_fn: Callable[[Any], None], binary: bool = False
 ) -> None:
-    """Write a file atomically via tempfile + rename."""
-    fd, temp_path = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    """Write a file atomically via tempfile + rename.
+
+    Symlinks are written through: the file they point at is replaced and the
+    link itself is kept. A dangling link's target is created when its folder
+    exists.
+    """
+    from ai_rules.symlinks import write_target
+
+    try:
+        real = write_target(path)
+    except OSError as e:
+        raise OSError(f"Cannot write {path}: {e}") from e
+    fd, temp_path = tempfile.mkstemp(dir=real.parent, prefix=f".{real.name}.")
     try:
         mode = "wb" if binary else "w"
         with open(fd, mode, encoding=None if binary else "utf-8") as f:
             write_fn(f)
-        if path.exists():
-            shutil.copymode(path, temp_path)
-        shutil.move(temp_path, path)
+        if real.exists():
+            shutil.copymode(real, temp_path)
+        os.replace(temp_path, real)
     except Exception:
         Path(temp_path).unlink(missing_ok=True)
         raise
