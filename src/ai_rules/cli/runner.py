@@ -227,13 +227,37 @@ def run_parallel(
     ctx: CliContext,
 ) -> ComponentRunResult:
     acc = _RunAccumulator()
-    comp_list = list(components)
+    _fold_parallel(list(components), method, ctx, acc)
+    return acc.to_result()
+
+
+def run_uninstall_parallel(
+    waves: Iterable[Iterable[Component]], ctx: CliContext
+) -> ComponentRunResult:
+    """Run uninstall one wave at a time; components within a wave run in parallel."""
+    acc = _RunAccumulator()
+    for wave in map(list, waves):
+        try:
+            _fold_parallel(wave, "uninstall", ctx, acc)
+        except Exception:
+            # Already printed; a wave that fails whole must not block the next.
+            for comp in wave:
+                if not _should_skip(comp, ctx):
+                    acc.fold(comp, ComponentResult(ok=False, counts={"errors": 1}))
+    return acc.to_result()
+
+
+def _fold_parallel(
+    comp_list: list[Component],
+    method: LifecycleOperation,
+    ctx: CliContext,
+    acc: _RunAccumulator,
+) -> None:
     results = run_components_parallel(comp_list, method, ctx)
     for comp in comp_list:
         if _should_skip(comp, ctx):
             continue
         acc.fold(comp, results.get(comp, ComponentResult()))
-    return acc.to_result()
 
 
 def get_console(ctx: CliContext) -> RichConsole:

@@ -48,15 +48,23 @@ DIFF_COMPONENTS: tuple[Component, ...] = (
     SkillsComponent(),
 )
 
-UNINSTALL_COMPONENTS: tuple[Component, ...] = (
-    ConfigComponent(),
-    SkillsComponent(),
-    ClaudeExtensionsComponent(),
-    MCPComponent(),
-    ClaudePluginComponent(),
-    OptionalToolsComponent(),
-    AgentsMdComponent(),
-    SettingsComponent(),
+# Uninstall waves run in order. MCPs and plugins rewrite settings/MCP JSON
+# through the links and cache that later waves delete, and the whole-cache
+# delete runs after the per-file cache cleanup inside it.
+UNINSTALL_WAVES: tuple[tuple[Component, ...], ...] = (
+    (MCPComponent(), ClaudePluginComponent()),
+    (
+        ConfigComponent(),
+        SkillsComponent(),
+        ClaudeExtensionsComponent(),
+        OptionalToolsComponent(),
+        AgentsMdComponent(),
+    ),
+    (SettingsComponent(),),
+)
+
+UNINSTALL_COMPONENTS: tuple[Component, ...] = tuple(
+    c for wave in UNINSTALL_WAVES for c in wave
 )
 
 VALIDATE_COMPONENTS: tuple[Component, ...] = (SourceFilesComponent(),)

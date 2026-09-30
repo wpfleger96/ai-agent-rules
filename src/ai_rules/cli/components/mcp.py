@@ -272,16 +272,22 @@ class MCPComponent(Component):
     def uninstall(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.mcp import OperationResult
 
-        removed = 0
+        removed = errors = 0
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
                 continue
             if target.is_settings_file_excluded:
                 continue
-            if target.get_mcp_manager() is None:
-                continue
+            try:
+                if target.get_mcp_manager() is None:
+                    continue
+                result, message = target.uninstall_mcps()
+            except Exception as e:
+                from ai_rules.cli.display import print_error
 
-            result, message = target.uninstall_mcps()
+                print_error(f"{target.name}: {type(e).__name__}: {e}", indent=2)
+                errors += 1
+                continue
             if result == OperationResult.REMOVED:
                 from ai_rules.cli.display import print_success
 
@@ -292,4 +298,8 @@ class MCPComponent(Component):
 
                 print_unchanged(message, indent=2)
 
-        return ComponentResult(changed=removed > 0, counts={"removed": removed})
+        return ComponentResult(
+            ok=errors == 0,
+            changed=removed > 0,
+            counts={"removed": removed, "errors": errors},
+        )
