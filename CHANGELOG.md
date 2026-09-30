@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.80.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.79.0...v0.80.0) (2026-09-30)
+
+
+### Features
+
+* **config:** add rule for writing to readers who didn't watch the work ([#257](https://github.com/wpfleger96/ai-agent-rules/issues/257)) ([c325fca](https://github.com/wpfleger96/ai-agent-rules/commit/c325fca20dc34bd67c5364b75a8c04301e05c1f6))
+
+
+### Bug Fixes
+
+* **uninstall:** run cleanup in ordered writer, link, and cache waves ([#255](https://github.com/wpfleger96/ai-agent-rules/issues/255)) ([456e0d2](https://github.com/wpfleger96/ai-agent-rules/commit/456e0d2e6ddf4e268d1a896064dda1ddf1e57c64))
+
 ## [0.79.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.78.0...v0.79.0) (2026-09-29)
 
 
