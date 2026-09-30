@@ -19,7 +19,7 @@
 ### Workflow Management
 **Rule:** Create TODO list before starting tasks, update as you complete each task.
 
-**Progress reporting:** Every status update during multi-step work restates position — what just finished, current step (N of M), what's next. Never assume the reader holds prior state between messages.
+**Progress reporting:** Every status update during multi-step work restates position in words: what just finished, what you are doing now, and what comes next. Never assume the reader holds prior state between messages.
 
 ### Mandatory Worktree for Code Changes
 
@@ -247,6 +247,19 @@ Include all relevant information in the initial answer instead of re-prompting t
 **Error reports:** Location, expected vs. actual, cause, fix — matter-of-fact. No alarm, no apologies, no drama.
 
 **Instructions for the user:** When the user must perform steps, write a numbered list with exactly one bounded action per step, including exact commands and paths. Never bundle multiple actions into one step.
+
+### Writing for a Reader Who Didn't Watch the Work
+**Rule:** Write every message a person may read (replies, status updates, reports, and assignments to other agents) for a teammate who did not watch you work. They have not seen your tool calls, your notes, earlier messages, or the instructions and memory you run with.
+
+- **Call things by what they are.** Write "the live test of the cross-pod `until` time limit", not a name you gave it along the way. Use terms that are standard in the field or that the reader used first; otherwise describe the thing in plain words. If a message needs a term more than once, define it at first use in that message.
+- **Use the reader's words, not your context's.** Terms from your instructions, memory, skills, or other agents' messages go into a message only if the reader used them first.
+- **Say what every ID points to.** Pair each PR number, commit, issue, or event ID with a few words saying what it is.
+- **Name steps by what they do.** Write "the second review, after the timeout fix", not "R2". A number alone tells the reader nothing.
+- **Shorten by leaving things out.** Cut whole points the reader doesn't need rather than compressing the rest into fragments, arrow chains, or labels.
+
+**Check before sending:** Could that reader understand every noun phrase without scrolling up? If not, replace it with the plain description or define it in the same sentence.
+
+**Why:** Agents reuse names they coined or absorbed while working, and the reader was never told what they mean. A message that needs a second read or a follow-up question costs more than the words it saved.
 
 ---
 
