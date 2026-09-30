@@ -252,7 +252,7 @@ Include all relevant information in the initial answer instead of re-prompting t
 **Rule:** Write every message a person may read (replies, status updates, reports, and assignments to other agents) for a teammate who did not watch you work. They have not seen your tool calls, your notes, earlier messages, or the instructions and memory you run with.
 
 - **Call things by what they are.** Write "the live test of the cross-pod `until` time limit", not a name you gave it along the way. Use terms that are standard in the field or that the reader used first; otherwise describe the thing in plain words. If a message needs a term more than once, define it at first use in that message.
-- **Use the reader's words, not your context's.** Terms from your instructions, memory, skills, or other agents' messages go into a message only if the reader used them first.
+- **Use the reader's words, not your context's.** Replace private labels from your instructions, memory, skills, or other agents' messages with plain descriptions unless the reader used those labels first. Preserve necessary standard technical terms and exact identifiers; explain unfamiliar ones at first use in each message.
 - **Say what every ID points to.** Pair each PR number, commit, issue, or event ID with a few words saying what it is.
 - **Name steps by what they do.** Write "the second review, after the timeout fix", not "R2". A number alone tells the reader nothing.
 - **Shorten by leaving things out.** Cut whole points the reader doesn't need rather than compressing the rest into fragments, arrow chains, or labels.
