@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## [0.81.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.80.0...v0.81.0) (2026-10-08)
+
+
+### Features
+
+* **claude:** default sonnet and haiku models to 5.5 ([#263](https://github.com/wpfleger96/ai-agent-rules/issues/263)) ([c74efa3](https://github.com/wpfleger96/ai-agent-rules/commit/c74efa3336c2751fed0c49750252358e51b17b35))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#259](https://github.com/wpfleger96/ai-agent-rules/issues/259)) ([7458af1](https://github.com/wpfleger96/ai-agent-rules/commit/7458af1646bc7ca761692cd760a86731962b4bba))
+* **deps:** Lock file maintenance ([#261](https://github.com/wpfleger96/ai-agent-rules/issues/261)) ([34b3a2c](https://github.com/wpfleger96/ai-agent-rules/commit/34b3a2cf59460bd1546f02b0a55ff7c6452da1bf))
+* **deps:** Lock file maintenance ([#262](https://github.com/wpfleger96/ai-agent-rules/issues/262)) ([1224e5f](https://github.com/wpfleger96/ai-agent-rules/commit/1224e5fde84744407d3f26cd46f32aab1b25d134))
+* **deps:** Lock file maintenance ([#264](https://github.com/wpfleger96/ai-agent-rules/issues/264)) ([bfc9ab2](https://github.com/wpfleger96/ai-agent-rules/commit/bfc9ab2f796df2dd156a63f4989409d894ea5c9d))
+* **deps:** Update astral-sh/setup-uv action to v10.2.0 ([#258](https://github.com/wpfleger96/ai-agent-rules/issues/258)) ([00a6112](https://github.com/wpfleger96/ai-agent-rules/commit/00a61120662393866b970c79253018c6214f1432))
+
+
+### Continuous Integration
+
+* sync CI workflow ([e4c3c27](https://github.com/wpfleger96/ai-agent-rules/commit/e4c3c2758a417e88a5778970e068e366720f978c))
+* sync publish workflow ([53a3bc2](https://github.com/wpfleger96/ai-agent-rules/commit/53a3bc288d9be22de89bf4407c23c34d1899f985))
+* sync release workflow ([36f4cea](https://github.com/wpfleger96/ai-agent-rules/commit/36f4cea9407645a59931dbe5be68e0aa3a04f0ff))
+
 ## [0.80.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.79.0...v0.80.0) (2026-09-30)
 
 
