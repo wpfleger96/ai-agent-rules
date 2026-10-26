@@ -1334,7 +1334,46 @@ class TestGithubToken:
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", _run)
         assert _github_token() == "gh-token"
         assert _github_token() == "gh-token"
-        assert calls == [["gh", "auth", "token"]]
+        assert calls == [["gh", "auth", "token", "--hostname", "github.com"]]
+
+    def test_gh_pinned_to_github_com_despite_gh_host(self, monkeypatch):
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+        monkeypatch.setenv("GH_HOST", "enterprise.example")
+        self._gh_available(monkeypatch, True)
+        calls: list[list[str]] = []
+
+        def _run(cmd, **kwargs):
+            calls.append(cmd)
+            return subprocess.CompletedProcess(cmd, 0, stdout="tok\n", stderr="")
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", _run)
+        _github_token()
+        assert calls[0][-2:] == ["--hostname", "github.com"]
+
+    def test_env_token_whitespace_is_stripped(self, monkeypatch):
+        monkeypatch.setenv("GITHUB_TOKEN", "  env-token\n")
+        assert _github_token() == "env-token"
+
+    def test_malformed_token_never_reaches_error_or_logs(self, monkeypatch, caplog):
+        import logging
+
+        monkeypatch.setenv("GITHUB_TOKEN", "SYNTHETIC\nSECRET")
+        self._gh_available(monkeypatch, False)
+        monkeypatch.setattr("ai_rules.bootstrap.updater._github_token", _github_token)
+        seen_auth: list[str | None] = []
+
+        def _urlopen(req, *args, **kwargs):
+            seen_auth.append(req.get_header("Authorization"))
+            raise _http_error(403, "rate limit exceeded", {})
+
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.urllib.request.urlopen", _urlopen
+        )
+        with caplog.at_level(logging.DEBUG):
+            result = check_github_updates("owner/repo", "1.0.0")
+        assert seen_auth == [None]
+        assert "SECRET" not in (result.error or "")
+        assert "SECRET" not in caplog.text
 
     def test_gh_missing_means_no_token(self, monkeypatch):
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
@@ -1464,7 +1503,11 @@ class TestUpgradeFailedChecks:
         )
 
     def _run(
-        self, monkeypatch: pytest.MonkeyPatch, infos: dict[str, UpdateInfo]
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        infos: dict[str, UpdateInfo],
+        args: tuple[str, ...] = ("-y", "--skip-install"),
+        stdin: str | None = None,
     ) -> Any:
         from click.testing import CliRunner
 
@@ -1487,7 +1530,7 @@ class TestUpgradeFailedChecks:
             return True, "Upgrade successful", True
 
         monkeypatch.setattr("ai_rules.bootstrap.perform_tool_upgrade", _upgrade)
-        result = CliRunner().invoke(upgrade, ["-y", "--skip-install"])
+        result = CliRunner().invoke(upgrade, list(args), input=stdin)
         return result, upgraded
 
     def _failed(self) -> UpdateInfo:
@@ -1531,3 +1574,71 @@ class TestUpgradeFailedChecks:
         result, _ = self._run(monkeypatch, {"fine": current})
         assert result.exit_code == 0
         assert "All tools are up to date" in result.output
+
+    @pytest.mark.parametrize(
+        "args", [("--force", "--check"), ("--force", "-y", "--skip-install")]
+    )
+    def test_force_still_reports_failure_and_exits_nonzero(self, monkeypatch, args):
+        result, _ = self._run(monkeypatch, {"broken": self._failed()}, args=args)
+        assert result.exit_code == 1
+        assert "broken: HTTP 403" in result.output
+
+    def test_cancel_after_failed_check_exits_nonzero(self, monkeypatch):
+        update = UpdateInfo(
+            has_update=True,
+            current_version="1.0.0",
+            latest_version="2.0.0",
+            source="github",
+        )
+        result, upgraded = self._run(
+            monkeypatch,
+            {"outdated": update, "broken": self._failed()},
+            args=("--skip-install",),
+            stdin="n\n",
+        )
+        assert upgraded == []
+        assert result.exit_code == 1
+        assert "broken: HTTP 403" in result.output
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+def test_redirect_drops_authorization(monkeypatch):
+    """The real HTTPRedirectHandler must not forward the token to the new host."""
+    import io
+    import urllib.request
+    import urllib.response
+
+    from email.message import Message
+
+    seen: list[tuple[str, str | None]] = []
+
+    class FakeTransport(urllib.request.BaseHandler):
+        handler_order = 100
+
+        def https_open(self, req: urllib.request.Request) -> Any:
+            seen.append((req.full_url, req.get_header("Authorization")))
+            headers = Message()
+            if req.host == "api.github.com":
+                headers["Location"] = "https://outside.example/redirected"
+                body, code = b"", 302
+            else:
+                body, code = json.dumps([{"name": "v1.0.0"}]).encode(), 200
+            resp = urllib.response.addinfourl(
+                io.BytesIO(body), headers, req.full_url, code
+            )
+            resp.msg = "Found" if code == 302 else "OK"  # type: ignore[attr-defined]
+            return resp
+
+    opener = urllib.request.build_opener(FakeTransport())
+    monkeypatch.setattr("ai_rules.bootstrap.updater._github_token", lambda: "tok")
+    monkeypatch.setattr(
+        "ai_rules.bootstrap.updater.urllib.request.urlopen",
+        lambda req, timeout: opener.open(req, timeout=timeout),
+    )
+    result = check_github_updates("owner/repo", "1.0.0")
+    assert result.check_failed is False
+    assert seen == [
+        ("https://api.github.com/repos/owner/repo/tags", "Bearer tok"),
+        ("https://outside.example/redirected", None),
+    ]

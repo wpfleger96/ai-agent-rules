@@ -151,17 +151,16 @@ def upgrade(
                 failed_checks.append((tool.display_name, str(e)))
                 continue
 
-        if update_info and (update_info.has_update or force):
-            if update_info.check_failed and force:
-                print_warning(
-                    f"Update check failed for {tool.display_name}, forcing upgrade"
-                )
-            tool_updates.append((tool, update_info))
-        elif update_info and update_info.check_failed:
+        if update_info and update_info.check_failed:
             reason = update_info.error or "unknown error"
             print_warning(f"Could not check {tool.display_name} for updates: {reason}")
             failed_checks.append((tool.display_name, reason))
-        elif update_info and not update_info.has_update:
+
+        if update_info and (update_info.has_update or force):
+            if update_info.check_failed:
+                print_warning(f"Forcing {tool.display_name} upgrade anyway")
+            tool_updates.append((tool, update_info))
+        elif update_info and not update_info.check_failed:
             print_success(f"{tool.display_name} is already up to date!")
 
     console.print()
@@ -202,6 +201,8 @@ def upgrade(
             prompt = f"\nInstall {len(tool_updates)} updates?"
         if not click.confirm(prompt, default=True):
             print_warning("Cancelled")
+            if failed_checks:
+                _exit_for_failed_checks(failed_checks)
             return
 
     from ai_rules.state import get_active_profile

@@ -92,21 +92,32 @@ class ToolSpec:
 def _github_token() -> str | None:
     """Resolve a GitHub token once per process: GITHUB_TOKEN, then `gh auth token`.
 
-    Read-only and silent: any `gh` failure means no token.
+    Read-only and silent: any `gh` failure or malformed token means no token.
     """
-    if token := os.environ.get("GITHUB_TOKEN"):
+    if token := _valid_token(os.environ.get("GITHUB_TOKEN", "")):
         return token
     if not is_command_available("gh"):
         return None
     try:
         result = subprocess.run(
-            ["gh", "auth", "token"], capture_output=True, text=True, timeout=5
+            ["gh", "auth", "token", "--hostname", "github.com"],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
     except (OSError, subprocess.SubprocessError):
         return None
     if result.returncode != 0:
         return None
-    return result.stdout.strip() or None
+    return _valid_token(result.stdout)
+
+
+def _valid_token(raw: str) -> str | None:
+    """Strip a token; reject it if it could make an invalid (secret-echoing) header."""
+    token = raw.strip()
+    if token and token.isprintable() and not any(c.isspace() for c in token):
+        return token
+    return None
 
 
 def _github_api_get(path: str, user_agent: str, timeout: int) -> Any:
@@ -119,7 +130,9 @@ def _github_api_get(path: str, user_agent: str, timeout: int) -> Any:
         req = urllib.request.Request(f"{_GITHUB_API_URL}{path}")
         req.add_header("User-Agent", user_agent)
         if token:
-            req.add_header("Authorization", f"Bearer {token}")
+            # Unredirected: urllib copies normal headers to redirect targets,
+            # which may be another host. A redirected request runs anonymously.
+            req.add_unredirected_header("Authorization", f"Bearer {token}")
         with urllib.request.urlopen(req, timeout=timeout) as response:
             return json.loads(response.read().decode())
 
