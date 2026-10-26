@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## [0.81.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.0...v0.81.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* **upgrade:** report failed update checks and authenticate GitHub calls ([#271](https://github.com/wpfleger96/ai-agent-rules/issues/271)) ([db3667c](https://github.com/wpfleger96/ai-agent-rules/commit/db3667c482e94ca69dce38422127a7e66f0bdb2b))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#265](https://github.com/wpfleger96/ai-agent-rules/issues/265)) ([647506e](https://github.com/wpfleger96/ai-agent-rules/commit/647506ee9eae7676918ac3df455423c8ccdd6615))
+* **deps:** Lock file maintenance ([#267](https://github.com/wpfleger96/ai-agent-rules/issues/267)) ([578e095](https://github.com/wpfleger96/ai-agent-rules/commit/578e0955c8a041f42256aa2eff4c70bf20ad8d34))
+* **deps:** Lock file maintenance ([#269](https://github.com/wpfleger96/ai-agent-rules/issues/269)) ([1c5df89](https://github.com/wpfleger96/ai-agent-rules/commit/1c5df89b6c2a4cc51125e262083db6c91015cb1b))
+* **deps:** Lock file maintenance ([#270](https://github.com/wpfleger96/ai-agent-rules/issues/270)) ([238567b](https://github.com/wpfleger96/ai-agent-rules/commit/238567b3ba39d6dc35e623996e7da9854c812172))
+* sync Justfile ([09902ba](https://github.com/wpfleger96/ai-agent-rules/commit/09902bab0114fcec298f2d5e58db2b313a14e467))
+
+
+### Continuous Integration
+
+* sync CI workflow ([a728769](https://github.com/wpfleger96/ai-agent-rules/commit/a72876933206b6ebed2c20d81da24fea04336f9b))
+* sync publish workflow ([f51e7aa](https://github.com/wpfleger96/ai-agent-rules/commit/f51e7aaec45c8763b7acf373af49f92dd57164a1))
+* sync release workflow ([9236e79](https://github.com/wpfleger96/ai-agent-rules/commit/9236e7979aaed8e1f0c903bc3547c35f54a361e1))
+
 ## [0.81.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.80.0...v0.81.0) (2026-10-08)
 
 
