@@ -1,15 +1,19 @@
 """Update checking and application utilities."""
 
+import functools
 import json
 import logging
 import os
 import re
 import subprocess
 import tomllib
+import urllib.error
 import urllib.request
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 
@@ -28,6 +32,7 @@ from .installer import (
 from .version import is_newer
 
 _SELF_GITHUB_REPO = "wpfleger96/ai-agent-rules"
+_GITHUB_API_URL = "https://api.github.com"
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +65,7 @@ class UpdateInfo:
     source: str
     changelog_entries: list[tuple[str, str]] | None = None
     check_failed: bool = False
+    error: str | None = None
 
 
 @dataclass
@@ -80,6 +86,70 @@ class ToolSpec:
         if self.github_repo:
             return make_github_install_url(self.github_repo)
         return None
+
+
+@functools.cache
+def _github_token() -> str | None:
+    """Resolve a GitHub token once per process: GITHUB_TOKEN, then `gh auth token`.
+
+    Read-only and silent: any `gh` failure means no token.
+    """
+    if token := os.environ.get("GITHUB_TOKEN"):
+        return token
+    if not is_command_available("gh"):
+        return None
+    try:
+        result = subprocess.run(
+            ["gh", "auth", "token"], capture_output=True, text=True, timeout=5
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def _github_api_get(path: str, user_agent: str, timeout: int) -> Any:
+    """GET a GitHub API path, authenticated when a token is available.
+
+    A 401 (stale or invalid token) is retried once without the token.
+    """
+
+    def _get(token: str | None) -> Any:
+        req = urllib.request.Request(f"{_GITHUB_API_URL}{path}")
+        req.add_header("User-Agent", user_agent)
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            return json.loads(response.read().decode())
+
+    token = _github_token()
+    if token:
+        try:
+            return _get(token)
+        except urllib.error.HTTPError as e:
+            if e.code != 401:
+                raise
+    return _get(None)
+
+
+def _describe_error(e: Exception) -> str:
+    """Turn an update-check exception into a short user-facing reason."""
+    if isinstance(e, urllib.error.HTTPError):
+        reason = f"HTTP {e.code}: {e.reason}"
+        if e.code in (403, 429) and e.headers.get("x-ratelimit-remaining") == "0":
+            reset = e.headers.get("x-ratelimit-reset", "")
+            if reset.isdigit():
+                reset_at = datetime.fromtimestamp(int(reset)).strftime("%H:%M:%S")
+                reason += f" (resets at {reset_at})"
+        return reason
+    if isinstance(e, TimeoutError) or (
+        isinstance(e, urllib.error.URLError) and isinstance(e.reason, TimeoutError)
+    ):
+        return "request timed out"
+    if isinstance(e, urllib.error.URLError):
+        return f"network error: {e.reason}"
+    return f"{type(e).__name__}: {e}"
 
 
 def fetch_changelog_entries(
@@ -103,13 +173,9 @@ def fetch_changelog_entries(
         Returns empty list on any error (private repo, network failure, etc).
     """
     try:
-        url = f"https://api.github.com/repos/{repo}/releases"
-
-        req = urllib.request.Request(url)
-        req.add_header("User-Agent", f"ai-rules/{current_version}")
-
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            releases = json.loads(response.read().decode())
+        releases = _github_api_get(
+            f"/repos/{repo}/releases", f"ai-rules/{current_version}", timeout
+        )
 
         entries: list[tuple[str, str]] = []
         for release in releases:
@@ -185,12 +251,18 @@ def check_index_updates(
 
         if result.returncode != 0:
             logger.debug(f"uvx pip index versions failed: {result.stderr}")
+            stderr_lines = [ln for ln in result.stderr.splitlines() if ln.strip()]
             return UpdateInfo(
                 has_update=False,
                 current_version=current_version,
                 latest_version=current_version,
                 source="index",
                 check_failed=True,
+                error=(
+                    stderr_lines[-1].strip()[:200]
+                    if stderr_lines
+                    else f"uvx exited with code {result.returncode}"
+                ),
             )
 
         output = result.stdout.strip()
@@ -228,6 +300,7 @@ def check_index_updates(
             latest_version=current_version,
             source="index",
             check_failed=True,
+            error=f"package index check timed out after {timeout}s",
         )
     except Exception as e:
         logger.debug(f"Index check failed: {e}")
@@ -237,6 +310,7 @@ def check_index_updates(
             latest_version=current_version,
             source="index",
             check_failed=True,
+            error=_describe_error(e),
         )
 
 
@@ -254,13 +328,9 @@ def check_github_updates(
         UpdateInfo with update status
     """
     try:
-        url = f"https://api.github.com/repos/{repo}/tags"
-
-        req = urllib.request.Request(url)
-        req.add_header("User-Agent", f"ai-rules/{current_version}")
-
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            data = json.loads(response.read().decode())
+        data = _github_api_get(
+            f"/repos/{repo}/tags", f"ai-rules/{current_version}", timeout
+        )
 
         if not data or len(data) == 0:
             return UpdateInfo(
@@ -289,7 +359,7 @@ def check_github_updates(
             changelog_entries=changelog_entries,
         )
 
-    except (urllib.error.URLError, json.JSONDecodeError, KeyError, IndexError) as e:
+    except (OSError, ValueError, KeyError, IndexError) as e:
         logger.debug(f"GitHub check failed: {e}")
         return UpdateInfo(
             has_update=False,
@@ -297,6 +367,7 @@ def check_github_updates(
             latest_version=current_version,
             source="github",
             check_failed=True,
+            error=_describe_error(e),
         )
 
 

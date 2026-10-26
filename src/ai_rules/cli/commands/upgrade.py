@@ -17,6 +17,16 @@ def _filter_enabled(tools: list[ToolSpec]) -> list[ToolSpec]:
     return [t for t in tools if t.is_enabled is None or t.is_enabled()]
 
 
+def _exit_for_failed_checks(failed_checks: list[tuple[str, str]]) -> None:
+    """Report tools whose update check failed and exit non-zero."""
+    from ai_rules.cli.display import print_error
+
+    print_error(f"Could not check {len(failed_checks)} tool(s) for updates:")
+    for name, reason in failed_checks:
+        print_error(f"  {name}: {reason}")
+    sys.exit(1)
+
+
 def _only_choices() -> list[str]:
     from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES, get_updatable_tools
 
@@ -113,6 +123,7 @@ def upgrade(
         sys.exit(1)
 
     tool_updates = []
+    failed_checks: list[tuple[str, str]] = []
     for tool in tools:
         try:
             current = tool.get_version()
@@ -137,6 +148,7 @@ def upgrade(
                 update_info = check_tool_updates(tool)
             except Exception as e:
                 print_error(f"Failed to check {tool.display_name} updates: {e}")
+                failed_checks.append((tool.display_name, str(e)))
                 continue
 
         if update_info and (update_info.has_update or force):
@@ -146,13 +158,17 @@ def upgrade(
                 )
             tool_updates.append((tool, update_info))
         elif update_info and update_info.check_failed:
-            print_warning(f"Could not check {tool.display_name} for updates")
+            reason = update_info.error or "unknown error"
+            print_warning(f"Could not check {tool.display_name} for updates: {reason}")
+            failed_checks.append((tool.display_name, reason))
         elif update_info and not update_info.has_update:
             print_success(f"{tool.display_name} is already up to date!")
 
     console.print()
 
     if not tool_updates:
+        if failed_checks:
+            _exit_for_failed_checks(failed_checks)
         print_success("All tools are up to date!")
         return
 
@@ -175,6 +191,8 @@ def upgrade(
     if check:
         if tool_updates:
             print_hint("Run 'ai-agent-rules upgrade' to install")
+        if failed_checks:
+            _exit_for_failed_checks(failed_checks)
         return
 
     if not force and not yes:
@@ -288,3 +306,6 @@ def upgrade(
         except Exception as e:
             print_warning(f"Could not run install: {e}")
             print_hint("Run 'ai-agent-rules install --rebuild-cache' manually")
+
+    if failed_checks:
+        _exit_for_failed_checks(failed_checks)
