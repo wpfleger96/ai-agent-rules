@@ -115,7 +115,12 @@ def _github_token() -> str | None:
 def _valid_token(raw: str) -> str | None:
     """Strip a token; reject it if it could make an invalid (secret-echoing) header."""
     token = raw.strip()
-    if token and token.isprintable() and not any(c.isspace() for c in token):
+    if (
+        token
+        and token.isascii()
+        and token.isprintable()
+        and not any(c.isspace() for c in token)
+    ):
         return token
     return None
 

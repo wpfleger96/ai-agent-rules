@@ -1375,6 +1375,22 @@ class TestGithubToken:
         assert "SECRET" not in (result.error or "")
         assert "SECRET" not in caplog.text
 
+        monkeypatch.setenv("GITHUB_TOKEN", "SYNTHETIC\u2603SECRET")
+        _github_token.cache_clear()
+        seen_auth.clear()
+        ok = _mock_urlopen(b'[{"name": "v1.0.0"}]')
+
+        def _ok_urlopen(req, *args, **kwargs):
+            seen_auth.append(req.get_header("Authorization"))
+            return ok(req, *args, **kwargs)
+
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.urllib.request.urlopen", _ok_urlopen
+        )
+        result = check_github_updates("owner/repo", "1.0.0")
+        assert seen_auth == [None]
+        assert not result.check_failed
+
     def test_gh_missing_means_no_token(self, monkeypatch):
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
         self._gh_available(monkeypatch, False)
