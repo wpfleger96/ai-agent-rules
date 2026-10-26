@@ -98,7 +98,7 @@ def tool_list() -> None:
                 update_display = f"[cyan]{update_info.latest_version} available[/cyan]"
                 has_updates = True
             elif update_info and update_info.check_failed:
-                update_display = dim("(check failed)")
+                update_display = dim(f"(check failed: {update_info.error})")
         except Exception:
             update_display = dim("(check failed)")
 
@@ -175,7 +175,7 @@ def tool_show(tool_id: str) -> None:
                 f"  Update:   [cyan]{update_info.latest_version} available[/cyan]"
             )
         elif update_info and update_info.check_failed:
-            console.print(f"  Update:   {dim('(check failed)')}")
+            console.print(f"  Update:   {dim(f'(check failed: {update_info.error})')}")
         elif update_info:
             console.print("  Update:   [green]up to date[/green]")
     except Exception:

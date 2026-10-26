@@ -409,7 +409,8 @@ def _check_and_apply_upgrade(
             import logging
 
             logging.getLogger(__name__).debug(
-                f"Update check failed for {spec.display_name}, skipping upgrade"
+                f"Update check failed for {spec.display_name}, skipping upgrade: "
+                f"{update_info.error}"
             )
         elif update_info and update_info.has_update:
             if dry_run:

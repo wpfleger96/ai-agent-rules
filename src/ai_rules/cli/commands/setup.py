@@ -183,6 +183,10 @@ def setup(
                             else:
                                 print_error("Failed to upgrade ai-agent-rules")
                 else:
+                    if update_info and update_info.check_failed:
+                        print_warning(
+                            f"Could not check ai-agent-rules for updates: {update_info.error}"
+                        )
                     tool_install_success = True
             except Exception:
                 pass
