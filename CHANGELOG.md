@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.81.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.1...v0.81.2) (2026-10-29)
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#273](https://github.com/wpfleger96/ai-agent-rules/issues/273)) ([cef02a2](https://github.com/wpfleger96/ai-agent-rules/commit/cef02a2efb0ffbf26c6ef9dd25efa865ecd27fce))
+
+
+### Continuous Integration
+
+* sync CI workflow ([02249eb](https://github.com/wpfleger96/ai-agent-rules/commit/02249eb393c129d46fa9ce13731bc7e2b9fc734e))
+
 ## [0.81.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.0...v0.81.1) (2026-10-26)
 
 
