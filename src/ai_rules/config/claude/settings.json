@@ -2,6 +2,7 @@
   "autoUpdates": true,
   "disableClaudeAiConnectors": true,
   "autoMemoryEnabled": false,
+  "idleCompaction": false,
   "cleanupPeriodDays": 99999,
   "respectGitignore": false,
   "env": {
