@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## [0.81.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.1...v0.81.2) (2026-11-01)
+
+
+### Chores
+
+* **claude:** disable idle compaction in managed settings ([#274](https://github.com/wpfleger96/ai-agent-rules/issues/274)) ([199837d](https://github.com/wpfleger96/ai-agent-rules/commit/199837d3b62726b0fe73c30b0ad5510a4c170b98))
+* **deps:** Lock file maintenance ([#273](https://github.com/wpfleger96/ai-agent-rules/issues/273)) ([cef02a2](https://github.com/wpfleger96/ai-agent-rules/commit/cef02a2efb0ffbf26c6ef9dd25efa865ecd27fce))
+* **deps:** Update astral-sh/setup-uv action to v10.3.2 ([#268](https://github.com/wpfleger96/ai-agent-rules/issues/268)) ([4210560](https://github.com/wpfleger96/ai-agent-rules/commit/421056016ddaac2014d798818630c6b938b911b1))
+
+
+### Continuous Integration
+
+* sync CI workflow ([ac0e0aa](https://github.com/wpfleger96/ai-agent-rules/commit/ac0e0aa3a735afed4dd633df676896b1a4f9d85f))
+* sync CI workflow ([9f8974a](https://github.com/wpfleger96/ai-agent-rules/commit/9f8974a89c923ff290dc7a50f1c35f4dbbee6682))
+* sync CI workflow ([02249eb](https://github.com/wpfleger96/ai-agent-rules/commit/02249eb393c129d46fa9ce13731bc7e2b9fc734e))
+* sync publish workflow ([c6c754d](https://github.com/wpfleger96/ai-agent-rules/commit/c6c754de8441e8d2d8f4f36036542488ea12abc5))
+* sync publish workflow ([d5da9a3](https://github.com/wpfleger96/ai-agent-rules/commit/d5da9a3e64b7e18e89add65ae097321ae9b88b9e))
+* sync release workflow ([a56545a](https://github.com/wpfleger96/ai-agent-rules/commit/a56545a031574b681502d726b490d4762be1c3d9))
+* sync release workflow ([0333fed](https://github.com/wpfleger96/ai-agent-rules/commit/0333fedaf88496830eaaf971e879ac471f2f0fd0))
+
 ## [0.81.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.0...v0.81.1) (2026-10-26)
 
 
