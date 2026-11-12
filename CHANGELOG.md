@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [0.81.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.2...v0.81.3) (2026-11-12)
+
+
+### Chores
+
+* **claude:** bump default Fable model to claude-fable-5-2 ([#276](https://github.com/wpfleger96/ai-agent-rules/issues/276)) ([0985d54](https://github.com/wpfleger96/ai-agent-rules/commit/0985d54ec0197dc612343f31ab96f508cb31ad9d))
+* sync issue templates ([6655a9b](https://github.com/wpfleger96/ai-agent-rules/commit/6655a9bdd213ebc65b3fb914549fd856bf1395da))
+
+
+### Continuous Integration
+
+* sync shared files ([3bc54d1](https://github.com/wpfleger96/ai-agent-rules/commit/3bc54d1ff78ccbd26bd99f40491b3226ed700058))
+
 ## [0.81.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.1...v0.81.2) (2026-11-01)
 
 
