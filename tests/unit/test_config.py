@@ -1499,6 +1499,25 @@ class TestCacheCleanup:
         removed = config.cleanup_orphaned_cache(agents_needing_cache=set())
         assert removed == []
 
+    def test_cleanup_skips_linked_dir_in_cache(self, tmp_path, monkeypatch):
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+        outside = tmp_path / "user"
+        outside.mkdir()
+        (outside / "keep.txt").write_text("mine")
+        cache_dir = home / ".ai-agent-rules" / "cache"
+        cache_dir.mkdir(parents=True)
+        alias = cache_dir / "alias"
+        alias.symlink_to(outside, target_is_directory=True)
+
+        removed = Config().cleanup_orphaned_cache(agents_needing_cache=set())
+
+        assert removed == []
+        assert alias.is_symlink()
+        assert (outside / "keep.txt").read_text() == "mine"
+
 
 @pytest.mark.unit
 @pytest.mark.config

@@ -16,6 +16,12 @@ from ai_rules.cli.context import (
 from ai_rules.symlinks import link_entry
 
 
+def _agents_needing_cache(ctx: CliContext) -> set[str]:
+    # All targets, not just selected ones: a partial install must not delete
+    # caches that unselected agents still use.
+    return {target.target_id for target in ctx.all_targets if target.needs_cache}
+
+
 class SettingsComponent(Component):
     label = "Settings Cache"
     component_id = "settings"
@@ -46,11 +52,16 @@ class SettingsComponent(Component):
                         continue
                     excluded_symlinks_to_clean.append(expanded)
 
-        has_changes = bool(stale_targets or excluded_symlinks_to_clean)
+        orphaned_caches = ctx.config.find_orphaned_cache(_agents_needing_cache(ctx))
+
+        has_changes = bool(
+            stale_targets or excluded_symlinks_to_clean or orphaned_caches
+        )
         return SettingsPlan(
             has_changes=has_changes,
             stale_targets=stale_targets,
             excluded_symlinks_to_clean=excluded_symlinks_to_clean,
+            orphaned_caches=orphaned_caches,
         )
 
     def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
@@ -64,11 +75,14 @@ class SettingsComponent(Component):
                 print_dim(f"Would build settings cache: {target.name}", indent=2)
             for expanded in plan.excluded_symlinks_to_clean:
                 print_dim(f"Would remove settings symlink: {expanded}", indent=2)
+            for agent_id in plan.orphaned_caches:
+                print_dim(f"Would remove orphaned settings cache: {agent_id}", indent=2)
             return ComponentResult(
                 changed=plan.has_changes,
                 counts={
                     "updated": len(plan.stale_targets),
-                    "removed": len(plan.excluded_symlinks_to_clean),
+                    "removed": len(plan.excluded_symlinks_to_clean)
+                    + len(plan.orphaned_caches),
                 },
             )
 
@@ -88,9 +102,7 @@ class SettingsComponent(Component):
 
         from ai_rules.cli.display import print_done
 
-        orphaned = ctx.config.cleanup_orphaned_cache(
-            {target.target_id for target in ctx.all_targets if target.needs_cache}
-        )
+        orphaned = ctx.config.cleanup_orphaned_cache(_agents_needing_cache(ctx))
         if orphaned:
             print_done(
                 f"Cleaned up orphaned cache for: {', '.join(orphaned)}", indent=2

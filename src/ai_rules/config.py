@@ -933,6 +933,35 @@ class Config:
         with open(user_config_path, "w", encoding="utf-8") as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=True)
 
+    def find_orphaned_cache(self, agents_needing_cache: set[str]) -> list[str]:
+        """List cache dirs for agents that no longer need them, without removing.
+
+        Links inside the cache dir are never ai-rules caches, so they are skipped
+        rather than followed into whatever they point at.
+
+        Args:
+            agents_needing_cache: Set of agent IDs that need caches (overrides
+                or preserved_fields). Callers must compute this via Agent.needs_cache.
+
+        Returns:
+            Sorted list of orphaned agent IDs
+        """
+        effective = set(agents_needing_cache)
+        if self.agents_md:
+            effective.add("shared")
+
+        cache_dir = self.get_cache_dir()
+        if not cache_dir.exists():
+            return []
+
+        return sorted(
+            agent_dir.name
+            for agent_dir in cache_dir.iterdir()
+            if agent_dir.is_dir()
+            and not (agent_dir.is_symlink() or agent_dir.is_junction())
+            and agent_dir.name not in effective
+        )
+
     def cleanup_orphaned_cache(self, agents_needing_cache: set[str]) -> list[str]:
         """Remove cache files for agents that no longer need them.
 
@@ -943,20 +972,8 @@ class Config:
         Returns:
             List of agent IDs whose caches were removed
         """
-        effective = set(agents_needing_cache)
-        if self.agents_md:
-            effective.add("shared")
-
-        removed: list[str] = []
+        orphaned = self.find_orphaned_cache(agents_needing_cache)
         cache_dir = self.get_cache_dir()
-        if not cache_dir.exists():
-            return removed
-
-        for agent_dir in cache_dir.iterdir():
-            if agent_dir.is_dir():
-                agent_id = agent_dir.name
-                if agent_id not in effective:
-                    shutil.rmtree(agent_dir)
-                    removed.append(agent_id)
-
-        return removed
+        for agent_id in orphaned:
+            shutil.rmtree(cache_dir / agent_id)
+        return orphaned
