@@ -163,12 +163,23 @@ class ConfigComponent(Component):
         from ai_rules.symlinks import create_file_copy, create_symlink
 
         counts = {"created": 0, "updated": 0, "unchanged": 0, "skipped": 0, "errors": 0}
+        # The AGENTS.md cache build runs before this component, even under
+        # --only, but only reports in dry-run, so its file may not exist yet.
+        # Settings links need no such allowance: they fall back to the bundled
+        # file while their cache is missing.
+        agents_md_cache = ctx.config.get_merged_agents_md_path()
 
         for target, source in plan.symlink_ops:
             if target.expanduser() in plan.copy_targets:
                 result, message = create_file_copy(target, source, True, ctx.dry_run)
             else:
-                result, message = create_symlink(target, source, True, ctx.dry_run)
+                result, message = create_symlink(
+                    target,
+                    source,
+                    True,
+                    ctx.dry_run,
+                    pending_source=agents_md_cache,
+                )
 
             counts[print_symlink_result(result, target, source, message)] += 1
 

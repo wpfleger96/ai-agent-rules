@@ -132,11 +132,36 @@ class SymlinkResult(Enum):
     ERROR = "error"
 
 
+def _unbuilt_pending_source(
+    source_path: Path, pending_source: Path | None
+) -> Path | None:
+    """Physical path of ``source_path`` when it is ``pending_source`` and not built.
+
+    Only a not-found lookup counts as unbuilt. Any other OSError (permissions,
+    a loop, a file where a folder should be) would fail the real install too,
+    so it is left for the caller's strict check to report.
+    """
+    if pending_source is None:
+        return None
+    source = physical_path(source_path.absolute())
+    if source != physical_path(pending_source.absolute()):
+        return None
+    try:
+        os.stat(physical_path(source, strict=True))
+    except FileNotFoundError:
+        return source
+    except OSError:
+        return None
+    return None
+
+
 def create_symlink(
     target_path: Path,
     source_path: Path,
     force: bool = False,
     dry_run: bool = False,
+    *,
+    pending_source: Path | None = None,
 ) -> tuple[SymlinkResult, str]:
     """Create a symlink with safety checks.
 
@@ -145,21 +170,28 @@ def create_symlink(
         source_path: What the symlink should point to (e.g., repo/config/AGENTS.md)
         force: Skip confirmations
         dry_run: Don't actually create symlinks
+        pending_source: A source an earlier install step builds. In dry-run,
+            a missing source equal to it is planned as if present, not an
+            error, since that step only reports what it would build.
 
     Returns:
         Tuple of (result, message)
     """
     target = target_path.expanduser()
-    try:
-        source = physical_path(source_path.absolute(), strict=True)
-    except OSError as e:
-        return (SymlinkResult.ERROR, f"Source path is not reachable: {e}")
+    pending = _unbuilt_pending_source(source_path, pending_source) if dry_run else None
+    if pending is not None:
+        source = pending
+    else:
+        try:
+            source = physical_path(source_path.absolute(), strict=True)
+        except OSError as e:
+            return (SymlinkResult.ERROR, f"Source path is not reachable: {e}")
 
-    if not source.exists():
-        return (
-            SymlinkResult.ERROR,
-            f"Source file does not exist: {source}",
-        )
+        if not source.exists():
+            return (
+                SymlinkResult.ERROR,
+                f"Source file does not exist: {source}",
+            )
 
     if target.exists() or target.is_symlink():
         if target.is_symlink():
@@ -167,7 +199,8 @@ def create_symlink(
                 current = link_entry(target)
             except OSError:
                 current = Path(read_link(target))
-            if current == source and target.exists():
+            # A link naming the pending source dangles only until it is built.
+            if current == source and (target.exists() or pending is not None):
                 return (SymlinkResult.ALREADY_CORRECT, "Already correct")
             elif dry_run:
                 return (SymlinkResult.UPDATED, f"Would update: {current} → {source}")
