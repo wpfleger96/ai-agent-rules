@@ -188,23 +188,38 @@ class TestSettingsMergePreservation:
 
 
 @pytest.mark.e2e
-def test_dry_run_with_stale_settings_cache_reports_rebuild(isolated_home, tmp_path):
+def test_stale_settings_cache_dry_run_and_install_report_update(
+    isolated_home, tmp_path
+):
     from tests.e2e.helpers import strip_ansi
 
     home, env = isolated_home
     config = build_config_dir(tmp_path / "rules")
     run = make_cli_runner(home, env)
-    args = ["install", "-y", "--skip-completions", *ONLY, "--config-dir", str(config)]
-    assert run(args).returncode == 0
+    setup = ["install", "-y", "--skip-completions", *ONLY, "--config-dir", str(config)]
+    assert run(setup).returncode == 0
     source = config / "claude" / "settings.json"
     source.write_text(json.dumps({"theme": "changed"}), encoding="utf-8")
     settings_path = home / ".claude" / "settings.json"
     before = settings_path.read_text("utf-8")
+    install = ["install", "--agents", "claude", "--only", "settings"]
+    config_args = ["--config-dir", str(config)]
 
-    result = run([*args, "--dry-run"])
+    dry_run = run([*install, "--dry-run", *config_args])
 
-    out = strip_ansi(result.stdout + result.stderr)
-    assert result.returncode == 0, out
-    assert "Would rebuild settings cache: Claude Code" in out
-    assert "Summary: Would update 1" in out
+    out = strip_ansi(dry_run.stdout + dry_run.stderr)
+    assert dry_run.returncode == 0, out
+    assert "Would build settings cache: Claude Code" in out
+    assert _summary_line(out) == "Summary: Would update 1"
     assert settings_path.read_text("utf-8") == before
+
+    real = run([*install, "-y", *config_args])
+
+    out = strip_ansi(real.stdout + real.stderr)
+    assert real.returncode == 0, out
+    assert _summary_line(out) == "Summary: updated 1"
+    assert json.loads(settings_path.read_text("utf-8"))["theme"] == "changed"
+
+
+def _summary_line(output: str) -> str:
+    return next(line for line in output.splitlines() if line.startswith("Summary:"))

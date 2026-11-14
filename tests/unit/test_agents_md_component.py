@@ -96,10 +96,26 @@ class TestAgentsMdComponentApply:
 
         assert result.changed is True
         assert result.counts == {"updated": 1}
-        assert "Would rebuild AGENTS.md cache" in capsys.readouterr().out
+        assert "Would build AGENTS.md cache" in capsys.readouterr().out
         cache_path = config.get_merged_agents_md_path()
         assert cache_path is not None
         assert not cache_path.exists()
+
+    def test_stale_cache_apply_reports_rebuild_as_update(
+        self, test_repo: Path, mock_home: Path
+    ) -> None:
+        config = Config(agents_md="## Extra content")
+        shared = SharedAgent(test_repo, config)
+        ctx = make_context(test_repo, config=config, selected_targets=(shared,))
+        component = AgentsMdComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        assert result.changed is True
+        assert result.counts == {"updated": 1}
+        cache_path = config.get_merged_agents_md_path()
+        assert cache_path is not None
+        assert cache_path.exists()
 
 
 @pytest.mark.unit

@@ -61,7 +61,7 @@ class SettingsComponent(Component):
             from ai_rules.cli.display import print_dim
 
             for target in plan.stale_targets:
-                print_dim(f"Would rebuild settings cache: {target.name}", indent=2)
+                print_dim(f"Would build settings cache: {target.name}", indent=2)
             for expanded in plan.excluded_symlinks_to_clean:
                 print_dim(f"Would remove settings symlink: {expanded}", indent=2)
             return ComponentResult(
@@ -98,7 +98,10 @@ class SettingsComponent(Component):
 
         return ComponentResult(
             changed=bool(built or orphaned),
-            counts={"cache_updated": built, "cache_removed": len(orphaned)},
+            counts={
+                "updated": built,
+                "removed": len(plan.excluded_symlinks_to_clean) + len(orphaned),
+            },
         )
 
     def install(self, ctx: CliContext) -> ComponentResult:

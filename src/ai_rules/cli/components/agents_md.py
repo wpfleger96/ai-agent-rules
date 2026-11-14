@@ -39,7 +39,7 @@ class AgentsMdComponent(Component):
         if ctx.dry_run:
             from ai_rules.cli.display import print_dim
 
-            print_dim("Would rebuild AGENTS.md cache", indent=2)
+            print_dim("Would build AGENTS.md cache", indent=2)
             return ComponentResult(changed=True, counts={"updated": 1})
 
         from ai_rules.agents.shared import SharedAgent
@@ -51,7 +51,7 @@ class AgentsMdComponent(Component):
             return ComponentResult()
 
         shared.build_merged_agents_md(force_rebuild=ctx.rebuild_cache)
-        return ComponentResult(changed=True, counts={"cache_updated": 1})
+        return ComponentResult(changed=True, counts={"updated": 1})
 
     def install(self, ctx: CliContext) -> ComponentResult:
         if ctx.dry_run:

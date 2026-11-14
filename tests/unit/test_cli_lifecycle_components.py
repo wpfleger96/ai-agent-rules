@@ -139,7 +139,7 @@ def test_stale_settings_cache_in_dry_run_reports_update_without_writing(
 
     assert result.changed is True
     assert result.counts == {"updated": 1, "removed": 0}
-    assert "Would rebuild settings cache: Claude Code" in capsys.readouterr().out
+    assert "Would build settings cache: Claude Code" in capsys.readouterr().out
     assert cache_file.read_text() == '{"stale": true}'
 
 
@@ -171,6 +171,64 @@ def test_excluded_settings_symlink_in_dry_run_reports_removal_without_unlinking(
     output = "".join(capsys.readouterr().out.split())
     assert f"Wouldremovesettingssymlink:{link}" in output
     assert link.is_symlink()
+
+
+class RebuildingCacheTarget(StaleCacheTarget):
+    def __init__(self, base_settings_path: Path, cache_file: Path):
+        super().__init__(base_settings_path)
+        self.cache_file = cache_file
+
+    def build_merged_settings(self, force_rebuild: bool = False) -> Path | None:
+        self.cache_file.write_text("{}")
+        return self.cache_file
+
+
+@pytest.mark.unit
+def test_stale_settings_cache_apply_reports_rebuild_as_update(
+    tmp_path: Path, mock_home: Path
+) -> None:
+    base_settings_path = tmp_path / "settings.json"
+    base_settings_path.write_text("{}")
+    cache_file = mock_home / ".ai-agent-rules" / "cache" / "claude" / "settings.json"
+    cache_file.parent.mkdir(parents=True)
+    cache_file.write_text('{"stale": true}')
+    target = RebuildingCacheTarget(base_settings_path, cache_file)
+    ctx = make_context(tmp_path, all_targets=(target,), selected_targets=(target,))
+    component = SettingsComponent()
+
+    result = component.apply(ctx, component.plan(ctx))
+
+    assert result.changed is True
+    assert result.counts == {"updated": 1, "removed": 0}
+    assert cache_file.read_text() == "{}"
+
+
+@pytest.mark.unit
+def test_excluded_settings_symlink_apply_reports_unlink_as_removal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = tmp_path / "cache"
+    (cache / "other").mkdir(parents=True)
+    (cache / "other" / "settings.json").write_text("{}")
+    link = tmp_path / "settings.json"
+    link.symlink_to(cache / "other" / "settings.json")
+
+    class ExcludedTarget:
+        target_id = "claude"
+        name = "Claude Code"
+        needs_cache = False
+        is_settings_file_excluded = True
+        settings_symlink_target = link
+        _base_settings_path = Path("/nonexistent/settings.json")
+
+    monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
+    ctx = make_context(tmp_path, all_targets=(ExcludedTarget(), CacheTarget("other")))
+    component = SettingsComponent()
+
+    result = component.apply(ctx, component.plan(ctx))
+
+    assert result.counts == {"updated": 0, "removed": 1}
+    assert not link.is_symlink()
 
 
 @pytest.mark.unit

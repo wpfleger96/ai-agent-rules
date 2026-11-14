@@ -1,10 +1,10 @@
 Dry run mode - no changes will be made
 
-  Would rebuild settings cache: Amp
-  Would rebuild settings cache: Claude Code
-  Would rebuild settings cache: Codex CLI
-  Would rebuild settings cache: Gemini CLI
-  Would rebuild settings cache: Goose
+  Would build settings cache: Amp
+  Would build settings cache: Claude Code
+  Would build settings cache: Codex CLI
+  Would build settings cache: Gemini CLI
+  Would build settings cache: Goose
 
 
 Config Files
