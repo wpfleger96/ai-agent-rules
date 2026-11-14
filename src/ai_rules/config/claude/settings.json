@@ -121,7 +121,7 @@
       "Bash(xxd:*)",
       "Bash(yq:*)",
       "Bash(zcat:*)",
-      "Read(*)",
+      "Read",
       "Skill(*)",
       "WebFetch",
       "WebSearch"
