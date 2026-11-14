@@ -254,7 +254,18 @@ def check_index_updates(
         )
 
     try:
-        cmd = ["uvx", "--refresh", "pip", "index", "versions", package_name]
+        # --no-cache-dir: pip honors PyPI's 10-minute Cache-Control on the
+        # simple index, hiding just-published releases; uvx --refresh doesn't
+        # touch pip's own HTTP cache
+        cmd = [
+            "uvx",
+            "--refresh",
+            "pip",
+            "index",
+            "versions",
+            "--no-cache-dir",
+            package_name,
+        ]
 
         # Pass index URL explicitly since pip doesn't understand UV_* env vars
         if index_url := get_configured_index_url():
