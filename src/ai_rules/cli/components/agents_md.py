@@ -33,8 +33,14 @@ class AgentsMdComponent(Component):
         if not isinstance(plan, AgentsMdPlan):
             return ComponentResult()
 
-        if not plan.needs_rebuild or ctx.dry_run:
+        if not plan.needs_rebuild:
             return ComponentResult()
+
+        if ctx.dry_run:
+            from ai_rules.cli.display import print_dim
+
+            print_dim("Would rebuild AGENTS.md cache", indent=2)
+            return ComponentResult(changed=True, counts={"updated": 1})
 
         from ai_rules.agents.shared import SharedAgent
 

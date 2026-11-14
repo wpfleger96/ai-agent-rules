@@ -20,12 +20,14 @@ def make_context(
     *,
     config: Config | None = None,
     selected_targets: tuple = (),
+    dry_run: bool = False,
 ) -> CliContext:
     return CliContext(
         console=Console(file=StringIO()),
         config_dir=tmp_path,
         config=config or Config(),
         profile_name=None,
+        dry_run=dry_run,
         all_targets=selected_targets,
         selected_targets=selected_targets,
     )
@@ -71,6 +73,33 @@ class TestAgentsMdComponentInstall:
         result = AgentsMdComponent().install(ctx)
 
         assert result.changed is False
+
+
+@pytest.mark.unit
+class TestAgentsMdComponentApply:
+    """Test AgentsMdComponent plan/apply behavior."""
+
+    def test_stale_cache_in_dry_run_reports_update_without_writing(
+        self,
+        test_repo: Path,
+        mock_home: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        config = Config(agents_md="## Extra content")
+        shared = SharedAgent(test_repo, config)
+        ctx = make_context(
+            test_repo, config=config, selected_targets=(shared,), dry_run=True
+        )
+        component = AgentsMdComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        assert result.changed is True
+        assert result.counts == {"updated": 1}
+        assert "Would rebuild AGENTS.md cache" in capsys.readouterr().out
+        cache_path = config.get_merged_agents_md_path()
+        assert cache_path is not None
+        assert not cache_path.exists()
 
 
 @pytest.mark.unit

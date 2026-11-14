@@ -185,3 +185,26 @@ class TestSettingsMergePreservation:
         extensions = final.get("extensions", {})
         assert "user-ext" in extensions, "user extension must survive the rebuild"
         assert "airules-ext2" in extensions, "new ai-rules extension should be applied"
+
+
+@pytest.mark.e2e
+def test_dry_run_with_stale_settings_cache_reports_rebuild(isolated_home, tmp_path):
+    from tests.e2e.helpers import strip_ansi
+
+    home, env = isolated_home
+    config = build_config_dir(tmp_path / "rules")
+    run = make_cli_runner(home, env)
+    args = ["install", "-y", "--skip-completions", *ONLY, "--config-dir", str(config)]
+    assert run(args).returncode == 0
+    source = config / "claude" / "settings.json"
+    source.write_text(json.dumps({"theme": "changed"}), encoding="utf-8")
+    settings_path = home / ".claude" / "settings.json"
+    before = settings_path.read_text("utf-8")
+
+    result = run([*args, "--dry-run"])
+
+    out = strip_ansi(result.stdout + result.stderr)
+    assert result.returncode == 0, out
+    assert "Would rebuild settings cache: Claude Code" in out
+    assert "Summary: Would update 1" in out
+    assert settings_path.read_text("utf-8") == before

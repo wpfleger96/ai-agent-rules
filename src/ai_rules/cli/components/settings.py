@@ -58,7 +58,19 @@ class SettingsComponent(Component):
             return ComponentResult()
 
         if ctx.dry_run:
-            return ComponentResult()
+            from ai_rules.cli.display import print_dim
+
+            for target in plan.stale_targets:
+                print_dim(f"Would rebuild settings cache: {target.name}", indent=2)
+            for expanded in plan.excluded_symlinks_to_clean:
+                print_dim(f"Would remove settings symlink: {expanded}", indent=2)
+            return ComponentResult(
+                changed=plan.has_changes,
+                counts={
+                    "updated": len(plan.stale_targets),
+                    "removed": len(plan.excluded_symlinks_to_clean),
+                },
+            )
 
         built = 0
         for target in plan.stale_targets:
