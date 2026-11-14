@@ -1,5 +1,6 @@
 """Tests for component filtering by component_id."""
 
+from dataclasses import replace
 from io import StringIO
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -8,9 +9,9 @@ import pytest
 
 from rich.console import Console
 
-from ai_rules.cli.context import CliContext, Component, ComponentResult
+from ai_rules.cli.context import CliContext, Component, ComponentPlan, ComponentResult
 from ai_rules.cli.helpers import complete_components, select_components
-from ai_rules.cli.runner import run_components
+from ai_rules.cli.runner import run_install_parallel, run_parallel
 from ai_rules.config import Config
 
 
@@ -34,7 +35,10 @@ def FakeComponent(
             self._result = result or ComponentResult()
             self.calls = 0
 
-        def install(self, ctx: CliContext) -> ComponentResult:
+        def plan(self, ctx: CliContext) -> ComponentPlan:
+            return ComponentPlan(has_changes=True)
+
+        def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
             self.calls += 1
             return self._result
 
@@ -53,7 +57,10 @@ class InfraComponent(Component):
     def __init__(self) -> None:
         self.calls = 0
 
-    def install(self, ctx: CliContext) -> ComponentResult:
+    def plan(self, ctx: CliContext) -> ComponentPlan:
+        return ComponentPlan(has_changes=True)
+
+    def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
         self.calls += 1
         return ComponentResult()
 
@@ -77,27 +84,31 @@ def make_context(
 
 
 @pytest.mark.unit
-def test_run_components_filter_skips_non_matching(tmp_path: Path) -> None:
-    matching = FakeComponent("matching", "config")
-    skipped = FakeComponent("skipped", "settings")
-    ctx = make_context(tmp_path, component_filter=("config",))
-
-    run_components([matching, skipped], "install", ctx)
-
-    assert matching.calls == 1
-    assert skipped.calls == 0
-
-
-@pytest.mark.unit
-def test_run_components_filter_respects_filterable_false(tmp_path: Path) -> None:
+def test_run_parallel_filter_respects_filterable_false(tmp_path: Path) -> None:
     infra = InfraComponent()
     semantic = FakeComponent("semantic", "settings")
     ctx = make_context(tmp_path, component_filter=("config",))
 
-    run_components([infra, semantic], "install", ctx)
+    run_parallel([infra, semantic], "status", ctx)
 
     assert infra.calls == 1
     assert semantic.calls == 0
+
+
+@pytest.mark.unit
+def test_run_install_parallel_filter_skips_non_matching_semantic(
+    tmp_path: Path,
+) -> None:
+    infra = InfraComponent()
+    matching = FakeComponent("matching", "config")
+    skipped = FakeComponent("skipped", "settings")
+    ctx = make_context(tmp_path, component_filter=("config",))
+
+    run_install_parallel([infra], [matching, skipped], replace(ctx, yes=True))
+
+    assert infra.calls == 1
+    assert matching.calls == 1
+    assert skipped.calls == 0
 
 
 @pytest.mark.unit

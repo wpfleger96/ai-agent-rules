@@ -166,68 +166,6 @@ class SkillsComponent(Component):
             counts={"created": created, "unchanged": unchanged, "errors": errors},
         )
 
-    def install(self, ctx: CliContext) -> ComponentResult:
-
-        from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
-
-        created = 0
-        unchanged = 0
-        excluded = 0
-        errors = 0
-
-        skill_folders = _enabled_skill_folders(ctx)
-
-        seen_dirs: set[Path] = set()
-
-        for target in ctx.selected_targets:
-            if not isinstance(target, Agent):
-                continue
-
-            target_dirs = self._resolve_target_dirs(target)
-            if target_dirs is None:
-                continue
-
-            for _agent_id, skills_dir_path in target_dirs:
-                user_skills_dir = skills_dir_path.expanduser()
-                resolved_dir = user_skills_dir.resolve()
-                if resolved_dir in seen_dirs:
-                    continue
-                seen_dirs.add(resolved_dir)
-
-                for skill_folder in skill_folders:
-                    symlink_target = user_skills_dir / skill_folder.name
-                    if ctx.config.is_excluded(str(symlink_target)):
-                        excluded += 1
-                        continue
-
-                    result, _msg = create_symlink(
-                        symlink_target,
-                        skill_folder,
-                        force=ctx.yes,
-                        dry_run=ctx.dry_run,
-                    )
-                    if result == SymlinkResult.ERROR:
-                        errors += 1
-                    elif result == SymlinkResult.ALREADY_CORRECT:
-                        unchanged += 1
-                    else:
-                        created += 1
-
-                if not ctx.dry_run:
-                    for existing in _stale_skill_links(ctx, user_skills_dir):
-                        remove_symlink(existing, force=True)
-
-        return ComponentResult(
-            ok=errors == 0,
-            changed=created > 0,
-            counts={
-                "created": created,
-                "unchanged": unchanged,
-                "excluded": excluded,
-                "errors": errors,
-            },
-        )
-
     def uninstall(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.symlinks import remove_symlink
 

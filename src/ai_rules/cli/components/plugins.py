@@ -71,9 +71,6 @@ class ClaudePluginComponent(Component):
             counts={"plugin_errors": int(plugin_result == OperationResult.ERROR)},
         )
 
-    def install(self, ctx: CliContext) -> ComponentResult:
-        return self.apply(ctx, self.plan(ctx))
-
     def status(self, ctx: CliContext) -> ComponentResult:
         if not self._claude_selected(ctx):
             return ComponentResult()

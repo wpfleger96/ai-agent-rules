@@ -10,8 +10,8 @@ from rich.console import Console
 from ai_rules.cli.components.completions import CompletionsComponent
 from ai_rules.cli.components.plugins import ClaudePluginComponent
 from ai_rules.cli.components.settings import SettingsComponent
-from ai_rules.cli.context import CliContext, Component, ComponentResult
-from ai_rules.cli.runner import run_components
+from ai_rules.cli.context import CliContext, Component, ComponentPlan, ComponentResult
+from ai_rules.cli.runner import run_install_parallel
 from ai_rules.config import Config
 
 
@@ -33,6 +33,9 @@ class FailingCacheTarget:
     def __init__(self, base_settings_path: Path):
         self._base_settings_path = base_settings_path
 
+    def is_cache_stale(self) -> bool:
+        return True
+
     def build_merged_settings(self, force_rebuild: bool = False) -> Path | None:
         raise ValueError("invalid override")
 
@@ -50,12 +53,20 @@ class UnavailablePluginManager:
         raise AssertionError("plugin sync should not run without claude CLI")
 
 
-class FailIfRunComponent(Component):
-    label = "Must Not Run"
-    component_id = "fail-if-run"
+class RecordingComponent(Component):
+    label = "Recording"
+    component_id = "recording"
 
-    def install(self, ctx: CliContext) -> ComponentResult:
-        raise AssertionError("install pipeline should stop after cache build failure")
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def plan(self, ctx: CliContext) -> ComponentPlan:
+        self.calls += 1
+        return ComponentPlan(has_changes=True)
+
+    def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        self.calls += 1
+        return ComponentResult()
 
 
 def make_context(
@@ -66,6 +77,7 @@ def make_context(
     selected_targets: tuple[Any, ...] = (),
     skip_completions: bool = False,
     dry_run: bool = False,
+    yes: bool = False,
 ) -> CliContext:
     return CliContext(
         console=Console(file=StringIO()),
@@ -76,6 +88,7 @@ def make_context(
         all_targets=all_targets,
         selected_targets=selected_targets,
         skip_completions=skip_completions,
+        yes=yes,
     )
 
 
@@ -96,9 +109,11 @@ def test_cache_cleanup_uses_all_targets_not_selected_subset(
         selected_targets=(CacheTarget("claude"),),
     )
 
-    result = SettingsComponent().install(ctx)
+    component = SettingsComponent()
 
-    assert result.counts.get("cache_removed") == 1
+    result = component.apply(ctx, component.plan(ctx))
+
+    assert result.counts.get("removed") == 1
     assert claude_cache.exists()
     assert codex_cache.exists()
     assert not old_cache.exists()
@@ -240,17 +255,16 @@ def test_settings_cache_failure_aborts_install_components(tmp_path: Path) -> Non
         tmp_path,
         all_targets=(failing_target,),
         selected_targets=(failing_target,),
+        yes=True,
     )
+    downstream = RecordingComponent()
 
-    result = run_components(
-        (SettingsComponent(), FailIfRunComponent()),
-        "install",
-        ctx,
-    )
+    result = run_install_parallel([SettingsComponent()], [downstream], ctx)
 
     assert result.ok is False
     assert result.aborted is True
     assert result.counts == {"errors": 1}
+    assert downstream.calls == 0
 
 
 @pytest.mark.unit
@@ -262,9 +276,10 @@ def test_completions_component_honors_skip_completions(
 
     monkeypatch.setattr("ai_rules.completions.detect_shell", fail_detect_shell)
 
-    result = CompletionsComponent().install(
-        make_context(tmp_path, skip_completions=True)
-    )
+    ctx = make_context(tmp_path, skip_completions=True)
+    component = CompletionsComponent()
+
+    result = component.apply(ctx, component.plan(ctx))
 
     assert result.changed is False
 
@@ -301,7 +316,8 @@ def test_settings_component_removes_dangling_symlink_when_excluded(
         all_targets=(ExcludedTarget(),),
         selected_targets=(ExcludedTarget(),),
     )
-    SettingsComponent().install(ctx)
+    component = SettingsComponent()
+    component.apply(ctx, component.plan(ctx))
 
     assert not settings_symlink.exists()
     assert not settings_symlink.is_symlink()
@@ -310,7 +326,7 @@ def test_settings_component_removes_dangling_symlink_when_excluded(
 @pytest.mark.unit
 @pytest.mark.parametrize("layout", ["plain", "prefix", "alias_dotdot"])
 @pytest.mark.parametrize("into_cache", [True, False])
-def test_legacy_install_cleans_excluded_cache_link_only(
+def test_apply_cleans_excluded_cache_link_only(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, layout: str, into_cache: bool
 ) -> None:
     physical = tmp_path / "physical" / "home"
@@ -340,8 +356,9 @@ def test_legacy_install_cleans_excluded_cache_link_only(
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: home / "cache")
     monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
     ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
+    component = SettingsComponent()
 
-    SettingsComponent().install(ctx)
+    component.apply(ctx, component.plan(ctx))
 
     assert link.is_symlink() != into_cache
 
@@ -353,13 +370,10 @@ def test_claude_plugin_component_treats_missing_claude_cli_as_nonfatal(
     monkeypatch.setattr("ai_rules.plugins.PluginManager", UnavailablePluginManager)
     config = Config(plugins=[{"name": "example", "marketplace": "local"}])
 
-    result = ClaudePluginComponent().install(
-        make_context(
-            tmp_path,
-            config=config,
-            selected_targets=(Target("claude"),),
-        )
-    )
+    ctx = make_context(tmp_path, config=config, selected_targets=(Target("claude"),))
+    component = ClaudePluginComponent()
+
+    result = component.apply(ctx, component.plan(ctx))
 
     assert result.ok is True
     assert result.changed is False
@@ -367,9 +381,8 @@ def test_claude_plugin_component_treats_missing_claude_cli_as_nonfatal(
 
 @pytest.mark.unit
 @pytest.mark.parametrize("entry", ["loop", "missing", "dangling"])
-@pytest.mark.parametrize("legacy", [True, False])
 def test_excluded_cleanup_trusts_only_resolvable_identity(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, entry: str, legacy: bool
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, entry: str
 ) -> None:
     cache = tmp_path / "cache"
     cache.mkdir()
@@ -396,10 +409,7 @@ def test_excluded_cleanup_trusts_only_resolvable_identity(
     ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
     component = SettingsComponent()
 
-    if legacy:
-        component.install(ctx)
-    else:
-        component.apply(ctx, component.plan(ctx))
+    component.apply(ctx, component.plan(ctx))
 
     assert link.is_symlink() == (entry != "dangling")
 
@@ -409,13 +419,11 @@ def test_excluded_cleanup_trusts_only_resolvable_identity(
 @pytest.mark.parametrize(
     "gone", ["agent", "cache", "user", "loop", "hidden", "hidden_loop", "hidden_abs"]
 )
-@pytest.mark.parametrize("legacy", [True, False])
 def test_excluded_cleanup_after_managed_folder_vanished(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     layout: str,
     gone: str,
-    legacy: bool,
 ) -> None:
     physical = tmp_path / "physical"
     home = physical
@@ -460,9 +468,6 @@ def test_excluded_cleanup_after_managed_folder_vanished(
     ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
     component = SettingsComponent()
 
-    if legacy:
-        component.install(ctx)
-    else:
-        component.apply(ctx, component.plan(ctx))
+    component.apply(ctx, component.plan(ctx))
 
     assert link.is_symlink() == (gone not in ("agent", "cache"))

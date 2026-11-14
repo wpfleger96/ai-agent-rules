@@ -46,7 +46,9 @@ def test_mcp_install_skips_excluded_target(tmp_path: Path) -> None:
     excluded_agent = _make_agent(is_excluded=True)
     ctx = make_context(tmp_path, (excluded_agent,))
 
-    MCPComponent().install(ctx)
+    component = MCPComponent()
+
+    component.apply(ctx, component.plan(ctx))
 
     excluded_agent.install_mcps.assert_not_called()
 
@@ -66,6 +68,8 @@ def test_mcp_install_processes_non_excluded_target(tmp_path: Path) -> None:
     normal_agent = _make_agent(is_excluded=False)
     ctx = make_context(tmp_path, (normal_agent,))
 
-    MCPComponent().install(ctx)
+    component = MCPComponent()
 
-    normal_agent.install_mcps.assert_called_once()
+    component.apply(ctx, component.plan(ctx))
+
+    normal_agent.install_mcps.assert_called_with(force=True, dry_run=False)
