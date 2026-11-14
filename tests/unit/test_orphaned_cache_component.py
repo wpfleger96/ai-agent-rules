@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import os
+import stat
+import sys
+
 from io import StringIO
 from pathlib import Path
 from typing import Any
@@ -24,11 +28,13 @@ class FakeTarget:
         needs_cache: bool = False,
         excluded: bool = False,
         links: tuple[tuple[Path, Path], ...] = (),
+        settings_link: Path | None = None,
     ):
         self.target_id = target_id
         self.needs_cache = needs_cache
         self.is_settings_file_excluded = excluded
         self.symlinks = list(links)
+        self.settings_symlink_target = settings_link
 
     def get_filtered_symlinks(self) -> list[tuple[Path, Path]]:
         return self.symlinks
@@ -242,3 +248,47 @@ def test_link_left_in_cache_after_repoint_keeps_cache_with_warning(
     assert result.counts == {"removed": 0}
     assert "Kept orphaned cache statusline" in capsys.readouterr().out
     assert link.exists()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_settings_link_keeps_cache_when_bundled_file_is_gone(
+    tmp_path: Path, mock_home: Path, dry_run: bool
+) -> None:
+    """Without a bundled settings file the link leaves symlinks but still counts."""
+    dirs = _make_cache_dirs(mock_home, "statusline")
+    link = _link_into(mock_home, dirs["statusline"])
+    ctx = _make_context(
+        tmp_path,
+        all_targets=(FakeTarget("statusline", settings_link=link),),
+        dry_run=dry_run,
+    )
+
+    result = _install(ctx)
+
+    assert "removed" not in result.counts
+    assert dirs["statusline"].exists()
+    assert link.exists()
+
+
+@pytest.mark.unit
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+@pytest.mark.skipif(
+    sys.platform != "win32" and os.geteuid() == 0, reason="root ignores modes"
+)
+def test_unlistable_cache_dir_shows_no_pending_removals(
+    tmp_path: Path, mock_home: Path
+) -> None:
+    from ai_rules.cli import _display_pending_changes
+
+    _make_cache_dirs(mock_home, "old-agent")
+    cache_root = mock_home / ".ai-agent-rules" / "cache"
+    # Traversable but not listable.
+    cache_root.chmod(stat.S_IWUSR | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    try:
+        shown = _display_pending_changes(_make_context(tmp_path))
+    finally:
+        cache_root.chmod(stat.S_IRWXU)
+
+    assert shown is False
+    assert (cache_root / "old-agent").is_dir()

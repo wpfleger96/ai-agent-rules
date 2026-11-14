@@ -6,6 +6,7 @@ import os
 import shutil
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ai_rules.cli.context import (
     CliContext,
@@ -16,12 +17,18 @@ from ai_rules.cli.context import (
 )
 from ai_rules.config import is_real_dir
 
+if TYPE_CHECKING:
+    from ai_rules.targets.base import ConfigTarget
+
 
 def _links_repointed_this_run(ctx: CliContext) -> set[Path]:
-    """Managed links Config Files re-points before this component applies.
+    """Managed links this install expects to re-point before cleanup applies.
 
-    Their current destinations stop mattering, which lets a dry-run, where no
-    link has moved yet, predict exactly what a real run deletes.
+    Their current destinations are ignored so a dry-run, where no link has
+    moved yet, reports what a real run deletes. The set is broader than what
+    Config Files re-points (it includes extension and skill links, copy-mode
+    targets, and links whose re-point fails); apply rechecks every link on disk
+    so a real run never deletes a cache a link still uses.
     """
     if ctx.component_filter is not None and "config" not in ctx.component_filter:
         return set()
@@ -32,13 +39,23 @@ def _links_repointed_this_run(ctx: CliContext) -> set[Path]:
     }
 
 
+def _managed_links(target: ConfigTarget) -> set[Path]:
+    links = {tgt.expanduser() for tgt, _ in target.symlinks}
+    # The settings link drops out of symlinks when its bundled file is gone, but
+    # an earlier install may still have pointed it into the cache.
+    if target.settings_symlink_target is not None:
+        links.add(target.settings_symlink_target.expanduser())
+    return links
+
+
 def _linked_dirs(ctx: CliContext, dirs: list[Path], ignore: set[Path]) -> set[Path]:
     """The dirs that a managed link, other than those in ignore, resolves into."""
+    if not dirs:
+        return set()
     real_dirs = {Path(os.path.realpath(d)): d for d in dirs}
     linked: set[Path] = set()
     for target in ctx.all_targets:
-        for tgt, _ in target.symlinks:
-            link = tgt.expanduser()
+        for link in _managed_links(target):
             if link in ignore or not link.is_symlink():
                 continue
             dest = Path(os.path.realpath(link))

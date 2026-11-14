@@ -115,9 +115,11 @@ def run_install_parallel(
         return acc.to_result()
 
     # Run the semantic phase in two ordered waves: components that create the
-    # settings symlinks first, then components flagged install_after_symlinks
-    # (MCPs), which write through those symlinks and must not race with their
-    # creation. Within each wave components still run in parallel.
+    # symlinks first, then components flagged install_after_symlinks, which
+    # depend on the links being in place (MCPs write through the settings
+    # symlinks; orphaned-cache cleanup deletes only caches no link points into
+    # once links are re-pointed). Within each wave components still run in
+    # parallel.
     semantic_list = list(semantic)
     primary = [c for c in semantic_list if not c.install_after_symlinks]
     deferred = [c for c in semantic_list if c.install_after_symlinks]

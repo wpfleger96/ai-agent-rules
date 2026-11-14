@@ -182,3 +182,24 @@ def test_undeletable_orphan_warns_and_install_still_links(env):
     assert "removed" not in _summary_line(out)
     assert locked.is_dir()
     assert (home / "AGENTS.md").is_symlink()
+
+
+@pytest.mark.e2e
+def test_statusline_link_keeps_cache_after_bundled_file_is_removed(env, tmp_path):
+    home, run, install, user_config = env
+    user_config.write_text(
+        "version: 1\nsettings_overrides:\n  statusline:\n    theme: b\n",
+        encoding="utf-8",
+    )
+    _ok(run([*install, *ONLY, "-y"]))
+    link = _statusline_link(home)
+    user_config.write_text("version: 1\n", encoding="utf-8")
+    (tmp_path / "rules" / "statusline" / "config.yaml").unlink()
+
+    dry_out = _ok(run([*install, *ONLY, "--dry-run"]))
+    real_out = _ok(run([*install, *ONLY, "-y"]))
+
+    assert "orphaned cache" not in dry_out
+    assert "orphaned cache" not in real_out
+    assert _cache(home, "statusline").is_dir()
+    assert link.exists()

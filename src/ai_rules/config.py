@@ -959,8 +959,12 @@ class Config:
         if not is_real_dir(cache_dir):
             return []
 
-        return sorted(
-            agent_dir.name
-            for agent_dir in cache_dir.iterdir()
-            if is_real_dir(agent_dir) and agent_dir.name not in effective
-        )
+        try:
+            return sorted(
+                agent_dir.name
+                for agent_dir in cache_dir.iterdir()
+                if is_real_dir(agent_dir) and agent_dir.name not in effective
+            )
+        except OSError:
+            # Cleanup is best-effort; an unlistable cache dir has no orphans.
+            return []
