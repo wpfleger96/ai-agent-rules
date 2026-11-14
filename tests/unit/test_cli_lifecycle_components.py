@@ -7,7 +7,9 @@ import pytest
 
 from rich.console import Console
 
+from ai_rules.agents.claude import ClaudeAgent
 from ai_rules.cli.components.completions import CompletionsComponent
+from ai_rules.cli.components.config import ConfigComponent
 from ai_rules.cli.components.plugins import ClaudePluginComponent
 from ai_rules.cli.components.settings import SettingsComponent
 from ai_rules.cli.context import CliContext, Component, ComponentPlan, ComponentResult
@@ -475,3 +477,60 @@ def test_excluded_cleanup_after_managed_folder_vanished(
     component.apply(ctx, component.plan(ctx))
 
     assert link.is_symlink() == (gone not in ("agent", "cache"))
+
+
+@pytest.mark.unit
+class TestConfigComponentSettingsLinkSource:
+    """Where install points the settings link while its cache is or isn't built."""
+
+    @pytest.fixture
+    def agent(self, test_repo: Path, mock_home: Path) -> ClaudeAgent:
+        config = Config(settings_overrides={"claude": {"model": "opus"}})
+        return ClaudeAgent(test_repo, config)
+
+    @pytest.fixture
+    def cache_file(self, mock_home: Path) -> Path:
+        return mock_home / ".ai-agent-rules" / "cache" / "claude" / "settings.json"
+
+    def _settings_source(self, ctx: CliContext, agent: ClaudeAgent) -> Path:
+        ops = dict(ConfigComponent().plan(ctx).symlink_ops)
+        return ops[agent.settings_symlink_target]
+
+    def test_dry_run_without_cache_plans_link_to_cache(
+        self, tmp_path: Path, mock_home: Path, agent: ClaudeAgent, cache_file: Path
+    ) -> None:
+        ctx = make_context(
+            tmp_path, config=agent.config, selected_targets=(agent,), dry_run=True
+        )
+        component = ConfigComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        assert self._settings_source(ctx, agent) == cache_file
+        assert result.counts["errors"] == 0
+        assert not (mock_home / ".ai-agent-rules").exists()
+        assert not (mock_home / ".claude" / "settings.json").is_symlink()
+
+    def test_dry_run_with_built_cache_plans_link_to_cache(
+        self, tmp_path: Path, agent: ClaudeAgent, cache_file: Path
+    ) -> None:
+        cache_file.parent.mkdir(parents=True)
+        cache_file.write_text("{}", encoding="utf-8")
+        ctx = make_context(
+            tmp_path, config=agent.config, selected_targets=(agent,), dry_run=True
+        )
+
+        assert self._settings_source(ctx, agent) == cache_file
+
+    def test_real_run_without_cache_links_bundled_file(
+        self, tmp_path: Path, mock_home: Path, agent: ClaudeAgent, test_repo: Path
+    ) -> None:
+        """A cache the settings step failed to build is never linked."""
+        ctx = make_context(tmp_path, config=agent.config, selected_targets=(agent,))
+        component = ConfigComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        link = mock_home / ".claude" / "settings.json"
+        assert result.counts["errors"] == 0
+        assert link.resolve() == (test_repo / "claude" / "settings.json").resolve()

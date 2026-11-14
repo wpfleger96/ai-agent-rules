@@ -111,7 +111,7 @@ class TestCreateSymlink:
         target = tmp_path / "AGENTS.md"
 
         result, _ = create_symlink(
-            target, source, force=True, dry_run=True, pending_source=source
+            target, source, force=True, dry_run=True, pending_sources={source}
         )
 
         assert result == SymlinkResult.CREATED
@@ -126,7 +126,7 @@ class TestCreateSymlink:
         target = tmp_path / "AGENTS.md"
 
         result, _ = create_symlink(
-            target, source, force=True, dry_run=True, pending_source=source
+            target, source, force=True, dry_run=True, pending_sources={source}
         )
 
         assert result == SymlinkResult.CREATED
@@ -140,7 +140,7 @@ class TestCreateSymlink:
         target.symlink_to(other)
 
         result, _ = create_symlink(
-            target, source, force=True, dry_run=True, pending_source=source
+            target, source, force=True, dry_run=True, pending_sources={source}
         )
 
         assert result == SymlinkResult.UPDATED
@@ -152,7 +152,7 @@ class TestCreateSymlink:
         target.write_text("mine")
 
         result, message = create_symlink(
-            target, source, force=True, dry_run=True, pending_source=source
+            target, source, force=True, dry_run=True, pending_sources={source}
         )
 
         assert result == SymlinkResult.CREATED
@@ -165,7 +165,7 @@ class TestCreateSymlink:
         target.symlink_to(source)
 
         result, _ = create_symlink(
-            target, source, force=True, dry_run=True, pending_source=source
+            target, source, force=True, dry_run=True, pending_sources={source}
         )
 
         assert result == SymlinkResult.ALREADY_CORRECT
@@ -176,7 +176,37 @@ class TestCreateSymlink:
         target = tmp_path / "AGENTS.md"
 
         result, _ = create_symlink(
-            target, source, force=True, dry_run=True, pending_source=pending
+            target, source, force=True, dry_run=True, pending_sources={pending}
+        )
+
+        assert result == SymlinkResult.ERROR
+
+    def test_dry_run_each_of_several_pending_sources_reports_create(self, tmp_path):
+        cache = tmp_path / "state" / "cache"
+        agents_md = cache / "shared" / "AGENTS.md"
+        settings = cache / "claude" / "settings.json"
+        pending = {agents_md, settings}
+
+        for source in (agents_md, settings):
+            target = tmp_path / source.name
+            result, _ = create_symlink(
+                target, source, force=True, dry_run=True, pending_sources=pending
+            )
+
+            assert result == SymlinkResult.CREATED
+            assert not target.is_symlink()
+
+    def test_dry_run_sibling_of_pending_sources_errors(self, tmp_path):
+        cache = tmp_path / "state" / "cache"
+        pending = {cache / "shared" / "AGENTS.md", cache / "claude" / "settings.json"}
+        source = cache / "codex" / "config.toml"
+
+        result, _ = create_symlink(
+            tmp_path / "config.toml",
+            source,
+            force=True,
+            dry_run=True,
+            pending_sources=pending,
         )
 
         assert result == SymlinkResult.ERROR
@@ -188,7 +218,7 @@ class TestCreateSymlink:
         target = tmp_path / "AGENTS.md"
 
         result, _ = create_symlink(
-            target, source, force=True, dry_run=True, pending_source=source
+            target, source, force=True, dry_run=True, pending_sources={source}
         )
 
         assert result == SymlinkResult.ERROR
@@ -198,7 +228,7 @@ class TestCreateSymlink:
         target = tmp_path / "AGENTS.md"
 
         result, _ = create_symlink(
-            target, source, force=True, dry_run=False, pending_source=source
+            target, source, force=True, dry_run=False, pending_sources={source}
         )
 
         assert result == SymlinkResult.ERROR
@@ -578,6 +608,30 @@ class TestCreateFileCopy:
 
         result, message = create_file_copy(target, source, force=False, dry_run=True)
         assert result == SymlinkResult.CREATED
+        assert not target.exists()
+
+    def test_dry_run_pending_source_over_file_reports_copy(self, tmp_path):
+        source = tmp_path / "state" / "cache" / "gemini" / "settings.json"
+        target = tmp_path / "settings.json"
+        target.write_text("mine")
+
+        result, _ = create_file_copy(
+            target, source, force=True, dry_run=True, pending_sources={source}
+        )
+
+        assert result == SymlinkResult.CREATED
+        assert target.read_text() == "mine"
+        assert not (tmp_path / "state").exists()
+
+    def test_real_run_missing_pending_source_errors(self, tmp_path):
+        source = tmp_path / "state" / "cache" / "gemini" / "settings.json"
+        target = tmp_path / "settings.json"
+
+        result, _ = create_file_copy(
+            target, source, force=True, dry_run=False, pending_sources={source}
+        )
+
+        assert result == SymlinkResult.ERROR
         assert not target.exists()
 
 
