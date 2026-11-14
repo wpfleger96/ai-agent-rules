@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [0.81.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.3...v0.81.4) (2026-11-14)
+
+
+### Bug Fixes
+
+* **claude:** replace Read(*) allow rule with bare Read ([#277](https://github.com/wpfleger96/ai-agent-rules/issues/277)) ([65e8468](https://github.com/wpfleger96/ai-agent-rules/commit/65e8468e9b85899a8d3aa0e63f7c9a2d6b8589a9))
+* **install:** report settings and AGENTS.md cache builds in summary ([#279](https://github.com/wpfleger96/ai-agent-rules/issues/279)) ([74749f3](https://github.com/wpfleger96/ai-agent-rules/commit/74749f328ff4fdbf8d501dbed1095058bddec998))
+
 ## [0.81.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.2...v0.81.3) (2026-11-12)
 
 
