@@ -34,48 +34,6 @@ def make_context(
 
 
 @pytest.mark.unit
-class TestAgentsMdComponentInstall:
-    """Test AgentsMdComponent install behavior."""
-
-    def test_install_with_agents_md_calls_build_on_shared_agent(
-        self, test_repo: Path, mock_home: Path
-    ) -> None:
-        config = Config(agents_md="## Extra content")
-        shared = SharedAgent(test_repo, config)
-        ctx = make_context(test_repo, config=config, selected_targets=(shared,))
-
-        result = AgentsMdComponent().install(ctx)
-
-        assert result.changed is True
-        assert result.counts.get("cache_updated") == 1
-        cache_path = config.get_merged_agents_md_path()
-        assert cache_path is not None
-        assert cache_path.exists()
-
-    def test_install_without_agents_md_is_noop(
-        self, test_repo: Path, mock_home: Path
-    ) -> None:
-        config = Config(agents_md="")
-        shared = SharedAgent(test_repo, config)
-        ctx = make_context(test_repo, config=config, selected_targets=(shared,))
-
-        result = AgentsMdComponent().install(ctx)
-
-        assert result.changed is False
-        assert result.counts == {}
-
-    def test_install_without_shared_agent_is_noop(
-        self, test_repo: Path, mock_home: Path
-    ) -> None:
-        config = Config(agents_md="## Extra content")
-        ctx = make_context(test_repo, config=config, selected_targets=())
-
-        result = AgentsMdComponent().install(ctx)
-
-        assert result.changed is False
-
-
-@pytest.mark.unit
 class TestAgentsMdComponentApply:
     """Test AgentsMdComponent plan/apply behavior."""
 
@@ -116,6 +74,30 @@ class TestAgentsMdComponentApply:
         cache_path = config.get_merged_agents_md_path()
         assert cache_path is not None
         assert cache_path.exists()
+
+    def test_apply_without_agents_md_is_noop(
+        self, test_repo: Path, mock_home: Path
+    ) -> None:
+        config = Config(agents_md="")
+        shared = SharedAgent(test_repo, config)
+        ctx = make_context(test_repo, config=config, selected_targets=(shared,))
+        component = AgentsMdComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        assert result.changed is False
+        assert result.counts == {}
+
+    def test_apply_without_shared_agent_is_noop(
+        self, test_repo: Path, mock_home: Path
+    ) -> None:
+        config = Config(agents_md="## Extra content")
+        ctx = make_context(test_repo, config=config, selected_targets=())
+        component = AgentsMdComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        assert result.changed is False
 
 
 @pytest.mark.unit

@@ -47,25 +47,6 @@ class CompletionsComponent(Component):
 
         return ComponentResult(changed=success)
 
-    def install(self, ctx: CliContext) -> ComponentResult:
-        if ctx.skip_completions:
-            return ComponentResult()
-
-        from ai_rules.completions import detect_shell, install_completion
-
-        shell = detect_shell()
-        if not shell:
-            return ComponentResult()
-
-        from ai_rules.cli.display import print_done
-
-        success, msg = install_completion(shell, dry_run=ctx.dry_run)
-        if success and not ctx.dry_run and "already installed" not in msg:
-            ctx.console.print()
-            print_done(msg)
-
-        return ComponentResult(changed=success)
-
     def status(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.cli.display import (
             ICON_ABSENT,
