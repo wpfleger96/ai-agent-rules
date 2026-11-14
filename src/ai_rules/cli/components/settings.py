@@ -23,10 +23,9 @@ class SettingsComponent(Component):
     def plan(self, ctx: CliContext) -> SettingsPlan:
         stale_targets = []
         for target in ctx.selected_targets:
-            base_path = target._base_settings_path
-            if not base_path.exists():
+            if target.settings_cache_path is None:
                 continue
-            if target.needs_cache and (ctx.rebuild_cache or target.is_cache_stale()):
+            if ctx.rebuild_cache or target.is_cache_stale():
                 stale_targets.append(target)
 
         excluded_symlinks_to_clean: list[Path] = []

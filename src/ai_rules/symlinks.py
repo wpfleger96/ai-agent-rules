@@ -4,6 +4,7 @@ import errno
 import os
 import shutil
 
+from collections.abc import Collection
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -133,18 +134,18 @@ class SymlinkResult(Enum):
 
 
 def _unbuilt_pending_source(
-    source_path: Path, pending_source: Path | None
+    source_path: Path, pending_sources: Collection[Path]
 ) -> Path | None:
-    """Physical path of ``source_path`` when it is ``pending_source`` and not built.
+    """Physical path of ``source_path`` when it is a pending source not yet built.
 
     Only a not-found lookup counts as unbuilt. Any other OSError (permissions,
     a loop, a file where a folder should be) would fail the real install too,
     so it is left for the caller's strict check to report.
     """
-    if pending_source is None:
+    if not pending_sources:
         return None
     source = physical_path(source_path.absolute())
-    if source != physical_path(pending_source.absolute()):
+    if source not in {physical_path(p.absolute()) for p in pending_sources}:
         return None
     try:
         os.stat(physical_path(source, strict=True))
@@ -161,7 +162,7 @@ def create_symlink(
     force: bool = False,
     dry_run: bool = False,
     *,
-    pending_source: Path | None = None,
+    pending_sources: Collection[Path] = (),
 ) -> tuple[SymlinkResult, str]:
     """Create a symlink with safety checks.
 
@@ -170,15 +171,15 @@ def create_symlink(
         source_path: What the symlink should point to (e.g., repo/config/AGENTS.md)
         force: Skip confirmations
         dry_run: Don't actually create symlinks
-        pending_source: A source an earlier install step builds. In dry-run,
-            a missing source equal to it is planned as if present, not an
-            error, since that step only reports what it would build.
+        pending_sources: Sources an earlier install step builds. In dry-run,
+            a missing source equal to one of them is planned as if present,
+            not an error, since that step only reports what it would build.
 
     Returns:
         Tuple of (result, message)
     """
     target = target_path.expanduser()
-    pending = _unbuilt_pending_source(source_path, pending_source) if dry_run else None
+    pending = _unbuilt_pending_source(source_path, pending_sources) if dry_run else None
     if pending is not None:
         source = pending
     else:
@@ -288,15 +289,19 @@ def create_file_copy(
     source_path: Path,
     force: bool = False,
     dry_run: bool = False,
+    *,
+    pending_sources: Collection[Path] = (),
 ) -> tuple[SymlinkResult, str]:
     """Copy a file instead of symlinking.
 
     Used for agents that destroy symlinks (e.g., Gemini CLI on Windows).
+    ``pending_sources`` is as for :func:`create_symlink`.
     """
     target = target_path.expanduser()
     source = source_path.absolute()
+    pending = dry_run and _unbuilt_pending_source(source, pending_sources) is not None
 
-    if not source.exists():
+    if not pending and not source.exists():
         return (SymlinkResult.ERROR, f"Source file does not exist: {source}")
 
     if target.exists() or target.is_symlink():

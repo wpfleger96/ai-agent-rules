@@ -66,6 +66,16 @@ def _manifest_link_sources(
     return [source]
 
 
+def install_built_caches(ctx: CliContext) -> set[Path]:
+    """Caches install builds before it makes links: merged AGENTS.md and settings.
+
+    They may not exist yet where nothing has built them (dry-run, validate).
+    """
+    caches = [ctx.config.get_merged_agents_md_path()]
+    caches += (target.settings_cache_path for target in ctx.selected_targets)
+    return {path for path in caches if path is not None}
+
+
 # status_code -> (severity, fixed annotation or None to use the check message)
 _STATUS_DISPLAY: dict[str, tuple[str, str | None]] = {
     "missing": ("error", "not installed"),
@@ -129,9 +139,17 @@ class ConfigComponent(Component):
         for agent in ctx.selected_targets:
             filtered_symlinks = agent.get_filtered_symlinks()
             excluded_count += len(agent.symlinks) - len(filtered_symlinks)
+            # Dry-run builds no settings cache, so the settings link would fall
+            # back to the bundled file; plan it at the cache a real run links.
+            settings_cache = agent.settings_cache_path if ctx.dry_run else None
 
             config_symlinks = [
-                (tgt, src)
+                (
+                    tgt,
+                    settings_cache
+                    if settings_cache and tgt == agent.settings_symlink_target
+                    else src,
+                )
                 for tgt, src in filtered_symlinks
                 if not _is_specialized_path(agent, tgt)
             ]
@@ -163,22 +181,26 @@ class ConfigComponent(Component):
         from ai_rules.symlinks import create_file_copy, create_symlink
 
         counts = {"created": 0, "updated": 0, "unchanged": 0, "skipped": 0, "errors": 0}
-        # The AGENTS.md cache build runs before this component, even under
-        # --only, but only reports in dry-run, so its file may not exist yet.
-        # Settings links need no such allowance: they fall back to the bundled
-        # file while their cache is missing.
-        agents_md_cache = ctx.config.get_merged_agents_md_path()
+        # The cache builds run before this component, even under --only, but
+        # only report in dry-run, so their files may not exist yet.
+        pending_caches = install_built_caches(ctx) if ctx.dry_run else set()
 
         for target, source in plan.symlink_ops:
             if target.expanduser() in plan.copy_targets:
-                result, message = create_file_copy(target, source, True, ctx.dry_run)
+                result, message = create_file_copy(
+                    target,
+                    source,
+                    True,
+                    ctx.dry_run,
+                    pending_sources=pending_caches,
+                )
             else:
                 result, message = create_symlink(
                     target,
                     source,
                     True,
                     ctx.dry_run,
-                    pending_source=agents_md_cache,
+                    pending_sources=pending_caches,
                 )
 
             counts[print_symlink_result(result, target, source, message)] += 1

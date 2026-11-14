@@ -10,10 +10,20 @@ class SourceFilesComponent(Component):
     component_id = "source-files"
 
     def validate(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.cli.display import print_dim, print_error, print_success
+        from ai_rules.cli.components.config import install_built_caches
+        from ai_rules.cli.display import (
+            dim,
+            print_dim,
+            print_error,
+            print_success,
+            print_unchanged,
+        )
         from ai_rules.cli.runner import get_console
+        from ai_rules.symlinks import physical_path
 
         console = get_console(ctx)
+        # Install builds these before linking, so a fresh machine lacks them.
+        unbuilt_ok = {physical_path(p.absolute()) for p in install_built_caches(ctx)}
         all_valid = True
         total_checked = 0
         total_issues = 0
@@ -26,6 +36,11 @@ class SourceFilesComponent(Component):
                 total_checked += 1
 
                 if not source.exists():
+                    if physical_path(source.absolute()) in unbuilt_ok:
+                        print_unchanged(
+                            f"{source.name} {dim('(built on install)')}", indent=2
+                        )
+                        continue
                     target_issues.append((source, "Source file does not exist"))
                     all_valid = False
                 elif not source.is_file() and not source.is_dir():
