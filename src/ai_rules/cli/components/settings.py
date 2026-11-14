@@ -85,21 +85,11 @@ class SettingsComponent(Component):
         for expanded in plan.excluded_symlinks_to_clean:
             expanded.unlink()
 
-        from ai_rules.cli.display import print_done
-
-        orphaned = ctx.config.cleanup_orphaned_cache(
-            {target.target_id for target in ctx.all_targets if target.needs_cache}
-        )
-        if orphaned:
-            print_done(
-                f"Cleaned up orphaned cache for: {', '.join(orphaned)}", indent=2
-            )
-
         return ComponentResult(
-            changed=bool(built or orphaned),
+            changed=bool(built or plan.excluded_symlinks_to_clean),
             counts={
                 "updated": built,
-                "removed": len(plan.excluded_symlinks_to_clean) + len(orphaned),
+                "removed": len(plan.excluded_symlinks_to_clean),
             },
         )
 

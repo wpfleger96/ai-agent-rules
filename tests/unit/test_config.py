@@ -1442,62 +1442,50 @@ class TestDeepMergeWithArrays:
         assert result["hooks"]["SubagentStop"] == [{"command": "new.py"}]
 
 
-class TestCacheCleanup:
-    """Tests for orphaned cache cleanup functionality."""
+class TestFindOrphanedCache:
+    """Tests for read-only orphaned cache detection."""
 
-    def test_cleanup_orphaned_cache(self, tmp_path, monkeypatch):
-        """Test that orphaned cache files are removed but needed ones are kept."""
-
+    @pytest.fixture
+    def home(self, tmp_path, monkeypatch):
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+        return home
 
+    def test_lists_unneeded_cache_without_removing(self, home):
         claude_cache = home / ".ai-agent-rules" / "cache" / "claude"
         claude_cache.mkdir(parents=True)
-        (claude_cache / "settings.json").write_text('{"active": true}')
-
         stale_cache = home / ".ai-agent-rules" / "cache" / "old_agent"
         stale_cache.mkdir(parents=True)
         (stale_cache / "config.json").write_text('{"stale": true}')
 
-        config = Config(settings_overrides={})
+        orphaned = Config().find_orphaned_cache(keep={"claude"})
 
-        removed = config.cleanup_orphaned_cache(agents_needing_cache={"claude"})
-        assert "old_agent" in removed
-        assert "claude" not in removed
+        assert orphaned == ["old_agent"]
         assert claude_cache.exists()
-        assert not stale_cache.exists()
+        assert stale_cache.exists()
 
-    def test_cleanup_preserves_cache_with_overrides(self, tmp_path, monkeypatch):
-        """Test that cache files with active overrides are preserved."""
+    def test_returns_empty_when_no_cache_dir(self, home):
+        assert Config().find_orphaned_cache(keep=set()) == []
 
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
-        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
-
-        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+    def test_skips_linked_dir_in_cache(self, home, tmp_path):
+        outside = tmp_path / "user"
+        outside.mkdir()
+        cache_dir = home / ".ai-agent-rules" / "cache"
         cache_dir.mkdir(parents=True)
-        (cache_dir / "settings.json").write_text('{"active": true}')
+        (cache_dir / "alias").symlink_to(outside, target_is_directory=True)
 
-        config = Config(settings_overrides={"claude": {"model": "test"}})
+        assert Config().find_orphaned_cache(keep=set()) == []
 
-        removed = config.cleanup_orphaned_cache(agents_needing_cache={"claude"})
-        assert removed == []
-        assert cache_dir.exists()
+    def test_linked_cache_root_yields_nothing(self, home, tmp_path):
+        elsewhere = tmp_path / "dotfiles"
+        (elsewhere / "Documents").mkdir(parents=True)
+        state_dir = home / ".ai-agent-rules"
+        state_dir.mkdir()
+        (state_dir / "cache").symlink_to(elsewhere, target_is_directory=True)
 
-    def test_cleanup_when_no_cache_dir(self, tmp_path, monkeypatch):
-        """Test cleanup when cache directory doesn't exist."""
-
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
-        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
-
-        config = Config(settings_overrides={})
-        removed = config.cleanup_orphaned_cache(agents_needing_cache=set())
-        assert removed == []
+        assert Config().find_orphaned_cache(keep=set()) == []
 
 
 @pytest.mark.unit
@@ -2033,7 +2021,7 @@ class TestAgentsMdConfig:
         assert result.name == "AGENTS.md"
         assert result.parent.name == "shared"
 
-    def test_cleanup_orphaned_cache_preserves_shared_when_agents_md_set(
+    def test_find_orphaned_cache_keeps_shared_when_agents_md_set(
         self, tmp_path, monkeypatch
     ):
         home = self._make_home(tmp_path, monkeypatch)
@@ -2048,11 +2036,9 @@ class TestAgentsMdConfig:
 
         config = Config(agents_md="# Rules")
         # "shared" is NOT in the provided set — but agents_md being set should protect it
-        removed = config.cleanup_orphaned_cache(agents_needing_cache=set())
-        assert "shared" not in removed
-        assert shared_dir.exists()
+        assert config.find_orphaned_cache(keep=set()) == []
 
-    def test_cleanup_orphaned_cache_removes_shared_when_agents_md_empty(
+    def test_find_orphaned_cache_lists_shared_when_agents_md_empty(
         self, tmp_path, monkeypatch
     ):
         home = self._make_home(tmp_path, monkeypatch)
@@ -2066,9 +2052,7 @@ class TestAgentsMdConfig:
         (shared_dir / "AGENTS.md").write_text("# Rules")
 
         config = Config(agents_md="")
-        removed = config.cleanup_orphaned_cache(agents_needing_cache=set())
-        assert "shared" in removed
-        assert not shared_dir.exists()
+        assert config.find_orphaned_cache(keep=set()) == ["shared"]
 
     def test_user_config_agents_md_appends_after_profile_content(
         self, tmp_path, monkeypatch

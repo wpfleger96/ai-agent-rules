@@ -177,37 +177,6 @@ class RebuildingCacheTarget(StaleCacheTarget):
 
 
 @pytest.mark.unit
-def test_cache_cleanup_uses_all_targets_not_selected_subset(
-    tmp_path: Path, mock_home: Path
-) -> None:
-    claude_cache = mock_home / ".ai-agent-rules" / "cache" / "claude"
-    codex_cache = mock_home / ".ai-agent-rules" / "cache" / "codex"
-    old_cache = mock_home / ".ai-agent-rules" / "cache" / "old-agent"
-    for cache_dir in (claude_cache, codex_cache, old_cache):
-        cache_dir.mkdir(parents=True)
-        (cache_dir / "settings.json").write_text("{}")
-    base_settings_path = tmp_path / "settings.json"
-    base_settings_path.write_text("{}")
-    stale_claude = RebuildingCacheTarget(
-        base_settings_path, claude_cache / "settings.json"
-    )
-    ctx = make_context(
-        tmp_path,
-        all_targets=(stale_claude, CacheTarget("codex")),
-        selected_targets=(stale_claude,),
-        yes=True,
-    )
-
-    result = run_install_parallel([SettingsComponent()], [], ctx)
-
-    assert result.ok is True
-    assert result.counts.get("removed") == 1
-    assert claude_cache.exists()
-    assert codex_cache.exists()
-    assert not old_cache.exists()
-
-
-@pytest.mark.unit
 def test_stale_settings_cache_apply_reports_rebuild_as_update(
     tmp_path: Path, mock_home: Path
 ) -> None:
@@ -318,7 +287,6 @@ def test_settings_component_removes_dangling_symlink_when_excluded(
         settings_cache_path = None
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: tmp_path / "cache")
-    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
 
     ctx = make_context(
         tmp_path,
@@ -363,7 +331,6 @@ def test_apply_cleans_excluded_cache_link_only(
         settings_cache_path = None
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: home / "cache")
-    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
     ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
     component = SettingsComponent()
 
@@ -414,7 +381,6 @@ def test_excluded_cleanup_trusts_only_resolvable_identity(
         settings_cache_path = None
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
-    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
     ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
     component = SettingsComponent()
 
@@ -473,7 +439,6 @@ def test_excluded_cleanup_after_managed_folder_vanished(
         settings_cache_path = None
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
-    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
     ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
     component = SettingsComponent()
 

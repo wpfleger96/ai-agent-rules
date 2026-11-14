@@ -175,9 +175,12 @@ def _display_pending_plugin_changes(config: Config) -> bool:
 
 def _display_pending_changes(ctx: CliContext) -> bool:
     """Display pending changes across all component types. Returns True if any changes found."""
+    from ai_rules.cli.components.orphaned_cache import display_pending_orphaned_cache
+
     has_symlink_changes = _display_pending_symlink_changes(list(ctx.selected_targets))
+    has_cache_changes = display_pending_orphaned_cache(ctx)
     has_plugin_changes = _display_pending_plugin_changes(ctx.config)
-    return has_symlink_changes or has_plugin_changes
+    return has_symlink_changes or has_cache_changes or has_plugin_changes
 
 
 def check_first_run(targets: list[ConfigTarget], force: bool) -> bool:

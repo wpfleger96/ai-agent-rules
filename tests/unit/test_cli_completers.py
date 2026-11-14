@@ -38,9 +38,11 @@ def test_only_completer_returns_component_ids(
     items = param.shell_complete(ctx, "")
 
     components = getattr(components_module, components_attr)
-    expected = [
-        c.component_id for c in components if c.filterable or not filterable_only
-    ]
+    expected = list(
+        dict.fromkeys(
+            c.component_id for c in components if c.filterable or not filterable_only
+        )
+    )
     assert [item.value for item in items] == expected
     assert expected, f"{components_attr} produced no completion candidates"
 
