@@ -50,7 +50,9 @@ def _statusline_link(home: Path) -> Path:
     return next(
         path
         for path in home.rglob("config.yaml")
-        if path.is_symlink() and "statusline" in str(path)
+        # Match the link's own dir: pytest names tmp dirs after the test, so the
+        # full path contains "statusline" for every link in the home.
+        if path.is_symlink() and path.parent.name == "claude-code-statusline"
     )
 
 
