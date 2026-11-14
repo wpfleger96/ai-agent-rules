@@ -253,6 +253,7 @@ class ClaudeExtensionsComponent(Component):
             for name in sorted(type_status.unmanaged.keys()):
                 if ext_type in all_orphaned and name in all_orphaned[ext_type]:
                     console.print(f"  {name:<20} [yellow]Orphaned[/yellow]")
+                    all_correct = False
                 else:
                     console.print(f"  {name:<20} {dim('Unmanaged')}")
 

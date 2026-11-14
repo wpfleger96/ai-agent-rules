@@ -1,8 +1,10 @@
 """Profile-owned skills: additive to shared skills and removed when no longer deployed."""
 
+import dataclasses
 import os
 import shutil
 
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +15,7 @@ from rich.console import Console
 
 from ai_rules.agents.shared import SharedAgent
 from ai_rules.cli.components.skills import SkillsComponent, _stale_skill_links
-from ai_rules.cli.context import CliContext
+from ai_rules.cli.context import CliContext, ComponentResult
 from ai_rules.cli.helpers import validate_profile_skills
 from ai_rules.config import Config
 from ai_rules.profiles import ProfileLoader
@@ -64,6 +66,24 @@ def _ctx(config_dir: Path, **config: Any) -> CliContext:
 def _install(ctx: CliContext) -> None:
     component = SkillsComponent()
     assert component.apply(ctx, component.plan(ctx)).ok
+
+
+def _install_captured(ctx: CliContext) -> tuple[ComponentResult, str]:
+    from ai_rules.cli.display import _console_override
+
+    component = SkillsComponent()
+    out = StringIO()
+    token = _console_override.set(Console(file=out, width=1000))
+    try:
+        result = component.apply(ctx, component.plan(ctx))
+    finally:
+        _console_override.reset(token)
+    return result, out.getvalue()
+
+
+def _stale(ctx: CliContext, user_dir: Path) -> list[Path]:
+    wanted = deployable_skills(ctx.config_dir, ctx.config.skills)
+    return _stale_skill_links(ctx, user_dir, wanted)
 
 
 def _links(user_dir: Path) -> set[str]:
@@ -132,6 +152,40 @@ class TestInstall:
         assert _links(user_dir) == {"shared-a"}
         assert "mine" not in _visible(config_dir, user_dir, [])
 
+    def test_removed_skill_link_reported(self, config_dir, user_dir):
+        _install(_ctx(config_dir, skills=["mine"]))
+
+        result, output = _install_captured(_ctx(config_dir))
+
+        assert not (user_dir / "mine").is_symlink()
+        assert result.changed
+        assert result.counts["removed"] == 1
+        assert f"Removed orphaned skill link: {user_dir / 'mine'}" in output
+
+    def test_dry_run_reports_skill_link_removal_without_removing(
+        self, config_dir, user_dir
+    ):
+        _install(_ctx(config_dir, skills=["mine"]))
+
+        result, output = _install_captured(
+            dataclasses.replace(_ctx(config_dir), dry_run=True)
+        )
+
+        assert (user_dir / "mine").is_symlink()
+        assert result.counts["removed"] == 1
+        assert f"Would remove orphaned skill link: {user_dir / 'mine'}" in output
+
+    def test_deployed_name_linked_to_disabled_skill_repointed(
+        self, config_dir, user_dir
+    ):
+        (user_dir / "shared-a").symlink_to(config_dir / "skills" / "shared-off")
+
+        _install(_ctx(config_dir))
+
+        assert (user_dir / "shared-a").resolve() == (
+            config_dir / "skills" / "shared-a"
+        ).resolve()
+
     def test_excluded_shared_skill_link_removed(self, config_dir, user_dir):
         _install(_ctx(config_dir))
         _install(_ctx(config_dir, exclude_symlinks=[str(user_dir / "shared-a")]))
@@ -163,17 +217,17 @@ class TestUserLinksPreserved:
     def test_unrelated_path_with_package_marker(self, config_dir, tmp_path, user_dir):
         own = _skill(tmp_path / "my-ai-rules-notes", "own")
         (user_dir / "own").symlink_to(own)
-        assert _stale_skill_links(_ctx(config_dir), user_dir) == []
+        assert _stale(_ctx(config_dir), user_dir) == []
         _install(_ctx(config_dir))
         assert (user_dir / "own").resolve() == own.resolve()
 
     def test_alias_to_shared_skill(self, config_dir, user_dir):
         (user_dir / "alias").symlink_to(config_dir / "skills" / "shared-a")
-        assert _stale_skill_links(_ctx(config_dir), user_dir) == []
+        assert _stale(_ctx(config_dir), user_dir) == []
         _install(_ctx(config_dir))
         assert (user_dir / "alias").is_symlink()
 
-    def test_old_install_shared_link_kept_like_main(
+    def test_old_install_link_to_retired_shared_skill_removed(
         self, tmp_path, config_dir, user_dir
     ):
         old = _skill(
@@ -181,7 +235,7 @@ class TestUserLinksPreserved:
         )
         (user_dir / "retired").symlink_to(old)
         _install(_ctx(config_dir))
-        assert (user_dir / "retired").is_symlink()
+        assert not (user_dir / "retired").is_symlink()
 
     def test_stale_bundled_install_path_still_removed(
         self, tmp_path, config_dir, user_dir
@@ -191,7 +245,96 @@ class TestUserLinksPreserved:
             "gone",
         )
         (user_dir / "gone").symlink_to(old)
-        assert _stale_skill_links(_ctx(config_dir), user_dir) == [user_dir / "gone"]
+        assert _stale(_ctx(config_dir), user_dir) == [user_dir / "gone"]
+
+
+def _other_checkout_skill(tmp_path: Path, name: str) -> Path:
+    """An enabled copy of a shared skill inside a different checkout of this repo."""
+    root = tmp_path / "other-checkout" / "src" / "ai_rules" / "config" / "skills"
+    return _skill(root, name)
+
+
+@pytest.mark.unit
+class TestOtherCheckoutLinks:
+    """Links into another checkout follow the current source, not the copy they point at."""
+
+    def test_skill_disabled_in_current_source_removed(
+        self, tmp_path, config_dir, user_dir
+    ):
+        (user_dir / "shared-off").symlink_to(
+            _other_checkout_skill(tmp_path, "shared-off")
+        )
+
+        _install(_ctx(config_dir))
+
+        assert not (user_dir / "shared-off").is_symlink()
+
+    def test_skill_missing_from_current_source_removed(
+        self, tmp_path, config_dir, user_dir
+    ):
+        (user_dir / "gone").symlink_to(_other_checkout_skill(tmp_path, "gone"))
+
+        _install(_ctx(config_dir))
+
+        assert not (user_dir / "gone").is_symlink()
+
+    def test_deployed_skill_repointed_to_current_source(
+        self, tmp_path, config_dir, user_dir
+    ):
+        (user_dir / "shared-a").symlink_to(_other_checkout_skill(tmp_path, "shared-a"))
+
+        _install(_ctx(config_dir))
+
+        assert (user_dir / "shared-a").resolve() == (
+            config_dir / "skills" / "shared-a"
+        ).resolve()
+
+    def test_deployed_skill_in_deleted_checkout_repointed_to_current_source(
+        self, tmp_path, config_dir, user_dir
+    ):
+        (user_dir / "shared-a").symlink_to(_other_checkout_skill(tmp_path, "shared-a"))
+        shutil.rmtree(tmp_path / "other-checkout")
+
+        _install(_ctx(config_dir))
+
+        assert (user_dir / "shared-a").resolve() == (
+            config_dir / "skills" / "shared-a"
+        ).resolve()
+
+    def test_deployed_skill_disabled_in_other_checkout_repointed_to_current_source(
+        self, tmp_path, config_dir, user_dir
+    ):
+        other = _other_checkout_skill(tmp_path, "shared-a")
+        (other / "SKILL.md").write_text(
+            "---\nname: shared-a\ndescription: d\ndisabled: true\n---\n"
+        )
+        (user_dir / "shared-a").symlink_to(other)
+
+        _install(_ctx(config_dir))
+
+        assert (user_dir / "shared-a").resolve() == (
+            config_dir / "skills" / "shared-a"
+        ).resolve()
+
+    def test_status_reports_disabled_skill_link_as_orphaned(
+        self, tmp_path, config_dir, user_dir
+    ):
+        from ai_rules.cli.display import _console_override
+
+        _install(_ctx(config_dir))
+        (user_dir / "shared-off").symlink_to(
+            _other_checkout_skill(tmp_path, "shared-off")
+        )
+        out = StringIO()
+        token = _console_override.set(Console(file=out, width=200))
+        try:
+            result = SkillsComponent().status(_ctx(config_dir))
+        finally:
+            _console_override.reset(token)
+
+        line = next(ln for ln in out.getvalue().splitlines() if "shared-off" in ln)
+        assert "Orphaned" in line
+        assert not result.ok
 
 
 @pytest.mark.unit
@@ -384,7 +527,7 @@ class TestSkillSourceAlias:
 
     def test_excluded_alias_is_cleaned(self, config_dir, user_dir, alias):
         ctx = _ctx(config_dir, exclude_symlinks=[str(alias)])
-        assert _stale_skill_links(ctx, user_dir) == [alias]
+        assert _stale(ctx, user_dir) == [alias]
 
 
 @pytest.fixture(params=["plain", "prefix"])
