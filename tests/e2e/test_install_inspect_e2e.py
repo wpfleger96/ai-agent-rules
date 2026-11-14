@@ -288,3 +288,40 @@ class TestDeprecatedSymlinkCleanup:
         repeat_out = strip_ansi(repeat.stdout + repeat.stderr)
         assert repeat.returncode == 0, repeat_out
         assert "Summary: No changes" in repeat_out
+
+
+@pytest.mark.e2e
+class TestAgentsMdOverrideDryRun:
+    def test_dry_run_without_state_dir_reports_pending_cache_link(self, tmp_path):
+        """Dry-run cannot build the AGENTS.md cache, so its link is still planned."""
+        from tests.e2e.helpers import make_cli_runner, make_home_env
+
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            'version: 1\nagents_md: "## Extra"\n', encoding="utf-8"
+        )
+        run = make_cli_runner(home, make_home_env(home, columns=1000))
+        config = build_config_dir(tmp_path / "rules")
+        args = ["install", "--skip-completions", "--agents", "shared"]
+        args += ["--only", CORE_COMPONENTS, "--config-dir", str(config)]
+        cache = Path("cache") / "shared" / "AGENTS.md"
+
+        dry_run = run([*args, "--dry-run"])
+
+        out = strip_ansi(dry_run.stdout + dry_run.stderr)
+        assert dry_run.returncode == 0, out
+        assert "Would build AGENTS.md cache" in out
+        assert f"~/AGENTS.md → {home / '.ai-agent-rules' / cache}" in out
+        assert "error" not in out.lower()
+        assert not (home / ".ai-agent-rules").exists()
+        assert not (home / "AGENTS.md").is_symlink()
+
+        real = run([*args, "-y"])
+
+        out = strip_ansi(real.stdout + real.stderr)
+        assert real.returncode == 0, out
+        assert (home / "AGENTS.md").resolve() == (
+            home / ".ai-agent-rules" / cache
+        ).resolve()
+        assert "## Extra" in (home / "AGENTS.md").read_text("utf-8")

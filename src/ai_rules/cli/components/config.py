@@ -160,15 +160,21 @@ class ConfigComponent(Component):
 
         from ai_rules.cli import cleanup_deprecated_symlinks
         from ai_rules.cli.display import print_symlink_result
+        from ai_rules.config import Config
         from ai_rules.symlinks import create_file_copy, create_symlink
 
         counts = {"created": 0, "updated": 0, "unchanged": 0, "skipped": 0, "errors": 0}
+        # The settings and AGENTS.md cache builds run before this component and
+        # only report in dry-run, so cache sources may not exist yet.
+        cache_dir = Config.get_cache_dir()
 
         for target, source in plan.symlink_ops:
             if target.expanduser() in plan.copy_targets:
                 result, message = create_file_copy(target, source, True, ctx.dry_run)
             else:
-                result, message = create_symlink(target, source, True, ctx.dry_run)
+                result, message = create_symlink(
+                    target, source, True, ctx.dry_run, pending_root=cache_dir
+                )
 
             counts[print_symlink_result(result, target, source, message)] += 1
 
