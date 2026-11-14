@@ -10,8 +10,7 @@ from pathlib import Path
 
 import yaml
 
-from ai_rules.symlinks import link_entry, physical_path, read_link
-from ai_rules.utils import is_managed_target
+from ai_rules.symlinks import link_entry, physical_path
 
 PROFILE_SKILLS_SUBDIR = Path("profiles") / "skills"
 
@@ -171,43 +170,6 @@ class SkillManager:
             if item.is_dir() and not self.is_skill_disabled(item):
                 result[item.name] = item
         return result
-
-    def get_orphaned_skills(self) -> dict[str, list[Path]]:
-        """Get skill symlinks that point to ai-rules but source no longer exists.
-
-        Returns:
-            dict mapping skill name -> list of orphaned symlink paths
-        """
-        orphaned: dict[str, list[Path]] = {}
-
-        for user_dir in self.user_skills_dirs:
-            if not user_dir.exists():
-                continue
-
-            for item in user_dir.glob("*"):
-                if not item.is_symlink() or not item.is_dir():
-                    continue
-
-                try:
-                    target = item.resolve()
-                    if (
-                        is_managed_target(target, self.config_dir)
-                        and not target.exists()
-                    ):
-                        if item.name not in orphaned:
-                            orphaned[item.name] = []
-                        orphaned[item.name].append(item)
-                except (OSError, RuntimeError):
-                    try:
-                        raw_target = Path(read_link(item))
-                        if is_managed_target(raw_target, self.config_dir):
-                            if item.name not in orphaned:
-                                orphaned[item.name] = []
-                            orphaned[item.name].append(item)
-                    except (OSError, RuntimeError):
-                        pass
-
-        return orphaned
 
     def _scan_installed_skills(self) -> dict[str, list[tuple[Path, Path | None, bool]]]:
         """Scan user directories for installed skills.

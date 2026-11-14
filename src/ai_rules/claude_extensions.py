@@ -100,7 +100,11 @@ class ClaudeExtensionManager:
         user_dir: Path,
         pattern: str,
     ) -> dict[str, Path]:
-        """Get symlinks that point to ai-rules but source no longer exists.
+        """Get ai-rules symlinks whose entry no longer exists in the current source.
+
+        Staleness is judged against ``config_dir``, not the link's target: a
+        link into an older install or another checkout is orphaned once its
+        entry is gone from the current source, even if the old target exists.
 
         Works for any symlink-based config type (commands, agents, skills, etc.)
 
@@ -124,7 +128,7 @@ class ClaudeExtensionManager:
                 continue
 
             source = self.config_dir / "claude" / user_dir.name / item.name
-            if links_to_source(item, source) and not item.exists():
+            if links_to_source(item, source) and not source.exists():
                 orphaned[item.stem] = item
 
         return orphaned

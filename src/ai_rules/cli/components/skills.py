@@ -68,13 +68,20 @@ def _stale_skill_links(ctx: CliContext, user_skills_dir: Path) -> list[Path]:
             continue
         if not any(is_managed_target(link_target, r) for r in roots):
             continue
-        from_shared = _deployed_from(existing, link_target, roots[0], _SHARED_PARENT)
-        from_profile = _deployed_from(existing, link_target, roots[1], _PROFILE_PARENT)
+        # Ownership follows the link's install shape, not the checkout it points into,
+        # so links into another checkout or an old install go once source drops the name.
+        owned = _deployed_from(
+            existing, link_target, roots[0], _SHARED_PARENT
+        ) or _deployed_from(existing, link_target, roots[1], _PROFILE_PARENT)
         if (
             not link_target.exists()
             or SkillManager.is_skill_disabled(link_target)
-            or ((from_shared or from_profile) and ctx.config.is_excluded(str(existing)))
-            or (from_profile and existing.name not in wanted)
+            or (
+                owned
+                and (
+                    existing.name not in wanted or ctx.config.is_excluded(str(existing))
+                )
+            )
         ):
             stale.append(existing)
     return stale
@@ -216,24 +223,15 @@ class SkillsComponent(Component):
             skill_status = (
                 target.get_skill_status() if isinstance(target, Agent) else None
             )
-            orphaned_skills = {}
-            if skill_status:
+            orphaned_skills: set[str] = set()
+            if skill_status and target.target_id == "shared":
                 from ai_rules.config import get_agent_skills_dirs
-                from ai_rules.skills import SkillManager
 
-                skill_manager = SkillManager(
-                    config_dir=ctx.config_dir,
-                    agent_id="" if target.target_id == "shared" else target.target_id,
-                    user_skills_dirs=(
-                        list(get_agent_skills_dirs().values())
-                        if target.target_id == "shared"
-                        else None
-                    ),
-                )
-                orphaned_skills_list = skill_manager.get_orphaned_skills()
-                for name, paths in orphaned_skills_list.items():
-                    if paths:
-                        orphaned_skills[name] = paths[0]
+                orphaned_skills = {
+                    link.name
+                    for d in get_agent_skills_dirs().values()
+                    for link in _stale_skill_links(ctx, d.expanduser())
+                }
 
             if not skill_status or not any(
                 [
@@ -282,6 +280,7 @@ class SkillsComponent(Component):
             for name in sorted(skill_status.unmanaged.keys()):
                 if name in orphaned_skills:
                     console.print(f"  {name:<20} [yellow]Orphaned[/yellow]")
+                    all_correct = False
                 else:
                     console.print(f"  {name:<20} {dim('Unmanaged')}")
 

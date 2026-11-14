@@ -173,7 +173,7 @@ class TestUserLinksPreserved:
         _install(_ctx(config_dir))
         assert (user_dir / "alias").is_symlink()
 
-    def test_old_install_shared_link_kept_like_main(
+    def test_old_install_link_to_retired_shared_skill_removed(
         self, tmp_path, config_dir, user_dir
     ):
         old = _skill(
@@ -181,7 +181,7 @@ class TestUserLinksPreserved:
         )
         (user_dir / "retired").symlink_to(old)
         _install(_ctx(config_dir))
-        assert (user_dir / "retired").is_symlink()
+        assert not (user_dir / "retired").is_symlink()
 
     def test_stale_bundled_install_path_still_removed(
         self, tmp_path, config_dir, user_dir
@@ -192,6 +192,69 @@ class TestUserLinksPreserved:
         )
         (user_dir / "gone").symlink_to(old)
         assert _stale_skill_links(_ctx(config_dir), user_dir) == [user_dir / "gone"]
+
+
+def _other_checkout_skill(tmp_path: Path, name: str) -> Path:
+    """An enabled copy of a shared skill inside a different checkout of this repo."""
+    root = tmp_path / "other-checkout" / "src" / "ai_rules" / "config" / "skills"
+    return _skill(root, name)
+
+
+@pytest.mark.unit
+class TestOtherCheckoutLinks:
+    """Links into another checkout follow the current source, not the copy they point at."""
+
+    def test_skill_disabled_in_current_source_removed(
+        self, tmp_path, config_dir, user_dir
+    ):
+        (user_dir / "shared-off").symlink_to(
+            _other_checkout_skill(tmp_path, "shared-off")
+        )
+
+        _install(_ctx(config_dir))
+
+        assert not (user_dir / "shared-off").is_symlink()
+
+    def test_skill_missing_from_current_source_removed(
+        self, tmp_path, config_dir, user_dir
+    ):
+        (user_dir / "gone").symlink_to(_other_checkout_skill(tmp_path, "gone"))
+
+        _install(_ctx(config_dir))
+
+        assert not (user_dir / "gone").is_symlink()
+
+    def test_deployed_skill_repointed_to_current_source(
+        self, tmp_path, config_dir, user_dir
+    ):
+        (user_dir / "shared-a").symlink_to(_other_checkout_skill(tmp_path, "shared-a"))
+
+        _install(_ctx(config_dir))
+
+        assert (user_dir / "shared-a").resolve() == (
+            config_dir / "skills" / "shared-a"
+        ).resolve()
+
+    def test_status_reports_disabled_skill_link_as_orphaned(
+        self, tmp_path, config_dir, user_dir
+    ):
+        from io import StringIO
+
+        from ai_rules.cli.display import _console_override
+
+        (user_dir / "shared-off").symlink_to(
+            _other_checkout_skill(tmp_path, "shared-off")
+        )
+        out = StringIO()
+        token = _console_override.set(Console(file=out, width=200))
+        try:
+            result = SkillsComponent().status(_ctx(config_dir))
+        finally:
+            _console_override.reset(token)
+
+        line = next(ln for ln in out.getvalue().splitlines() if "shared-off" in ln)
+        assert "Orphaned" in line
+        assert not result.ok
 
 
 @pytest.mark.unit
