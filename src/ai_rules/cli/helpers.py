@@ -173,8 +173,13 @@ def make_component_completer(
         import ai_rules.cli.components as components_module
 
         components = getattr(components_module, components_attr)
+        # Several components may share an id; complete each id once.
         ids = tuple(
-            c.component_id for c in components if c.filterable or not filterable_only
+            dict.fromkeys(
+                c.component_id
+                for c in components
+                if c.filterable or not filterable_only
+            )
         )
         return complete_components(ctx, param, incomplete, component_ids=ids)
 

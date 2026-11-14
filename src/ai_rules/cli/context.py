@@ -97,7 +97,11 @@ class ComponentPlan:
 class SettingsPlan(ComponentPlan):
     stale_targets: list[ConfigTarget] = field(default_factory=list)
     excluded_symlinks_to_clean: list[Path] = field(default_factory=list)
-    orphaned_caches: list[str] = field(default_factory=list)
+
+
+@dataclass
+class OrphanedCachePlan(ComponentPlan):
+    orphaned_dirs: list[Path] = field(default_factory=list)
 
 
 @dataclass

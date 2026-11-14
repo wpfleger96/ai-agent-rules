@@ -135,6 +135,11 @@ CONFIG_PARSE_ERRORS = (
 )
 
 
+def is_real_dir(path: Path) -> bool:
+    """Whether path is a directory itself, not a symlink or junction to one."""
+    return path.is_dir() and not (path.is_symlink() or path.is_junction())
+
+
 def load_config_file(path: Path, config_format: str) -> dict[str, Any]:
     """Load a config file based on format.
 
@@ -933,47 +938,29 @@ class Config:
         with open(user_config_path, "w", encoding="utf-8") as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=True)
 
-    def find_orphaned_cache(self, agents_needing_cache: set[str]) -> list[str]:
+    def find_orphaned_cache(self, keep: set[str]) -> list[str]:
         """List cache dirs for agents that no longer need them, without removing.
 
         Links inside the cache dir are never ai-rules caches, so they are skipped
-        rather than followed into whatever they point at.
+        rather than followed into whatever they point at. A linked cache root
+        yields nothing, since its entries live wherever the link points.
 
         Args:
-            agents_needing_cache: Set of agent IDs that need caches (overrides
-                or preserved_fields). Callers must compute this via Agent.needs_cache.
+            keep: Agent IDs whose caches must be kept.
 
         Returns:
             Sorted list of orphaned agent IDs
         """
-        effective = set(agents_needing_cache)
+        effective = set(keep)
         if self.agents_md:
             effective.add("shared")
 
         cache_dir = self.get_cache_dir()
-        if not cache_dir.exists():
+        if not is_real_dir(cache_dir):
             return []
 
         return sorted(
             agent_dir.name
             for agent_dir in cache_dir.iterdir()
-            if agent_dir.is_dir()
-            and not (agent_dir.is_symlink() or agent_dir.is_junction())
-            and agent_dir.name not in effective
+            if is_real_dir(agent_dir) and agent_dir.name not in effective
         )
-
-    def cleanup_orphaned_cache(self, agents_needing_cache: set[str]) -> list[str]:
-        """Remove cache files for agents that no longer need them.
-
-        Args:
-            agents_needing_cache: Set of agent IDs that need caches (overrides
-                or preserved_fields). Callers must compute this via Agent.needs_cache.
-
-        Returns:
-            List of agent IDs whose caches were removed
-        """
-        orphaned = self.find_orphaned_cache(agents_needing_cache)
-        cache_dir = self.get_cache_dir()
-        for agent_id in orphaned:
-            shutil.rmtree(cache_dir / agent_id)
-        return orphaned

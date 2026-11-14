@@ -136,10 +136,10 @@ def test_excluded_settings_symlink_in_dry_run_reports_removal_without_unlinking(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     cache = tmp_path / "cache"
-    (cache / "other").mkdir(parents=True)
-    (cache / "other" / "settings.json").write_text("{}")
+    (cache / "claude").mkdir(parents=True)
+    (cache / "claude" / "settings.json").write_text("{}")
     link = tmp_path / "settings.json"
-    link.symlink_to(cache / "other" / "settings.json")
+    link.symlink_to(cache / "claude" / "settings.json")
 
     class ExcludedTarget:
         target_id = "claude"
@@ -150,9 +150,7 @@ def test_excluded_settings_symlink_in_dry_run_reports_removal_without_unlinking(
         _base_settings_path = Path("/nonexistent/settings.json")
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
-    ctx = make_context(
-        tmp_path, all_targets=(ExcludedTarget(), CacheTarget("other")), dry_run=True
-    )
+    ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),), dry_run=True)
     component = SettingsComponent()
 
     result = component.apply(ctx, component.plan(ctx))
@@ -171,116 +169,6 @@ class RebuildingCacheTarget(StaleCacheTarget):
     def build_merged_settings(self, force_rebuild: bool = False) -> Path | None:
         self.cache_file.write_text("{}")
         return self.cache_file
-
-
-@pytest.mark.unit
-def test_cache_cleanup_uses_all_targets_not_selected_subset(
-    tmp_path: Path, mock_home: Path
-) -> None:
-    claude_cache = mock_home / ".ai-agent-rules" / "cache" / "claude"
-    codex_cache = mock_home / ".ai-agent-rules" / "cache" / "codex"
-    old_cache = mock_home / ".ai-agent-rules" / "cache" / "old-agent"
-    for cache_dir in (claude_cache, codex_cache, old_cache):
-        cache_dir.mkdir(parents=True)
-        (cache_dir / "settings.json").write_text("{}")
-    base_settings_path = tmp_path / "settings.json"
-    base_settings_path.write_text("{}")
-    stale_claude = RebuildingCacheTarget(
-        base_settings_path, claude_cache / "settings.json"
-    )
-    ctx = make_context(
-        tmp_path,
-        all_targets=(stale_claude, CacheTarget("codex")),
-        selected_targets=(stale_claude,),
-        yes=True,
-    )
-
-    result = run_install_parallel([SettingsComponent()], [], ctx)
-
-    assert result.ok is True
-    assert result.counts.get("removed") == 1
-    assert claude_cache.exists()
-    assert codex_cache.exists()
-    assert not old_cache.exists()
-
-
-def _make_cache_dirs(home: Path, *agent_ids: str) -> dict[str, Path]:
-    dirs = {}
-    for agent_id in agent_ids:
-        cache_dir = home / ".ai-agent-rules" / "cache" / agent_id
-        cache_dir.mkdir(parents=True)
-        (cache_dir / "settings.json").write_text("{}")
-        dirs[agent_id] = cache_dir
-    return dirs
-
-
-@pytest.mark.unit
-def test_orphan_only_install_removes_orphaned_cache_and_keeps_needed(
-    tmp_path: Path, mock_home: Path
-) -> None:
-    dirs = _make_cache_dirs(mock_home, "claude", "shared", "old-agent")
-    target = CacheTarget("claude")
-    ctx = make_context(
-        tmp_path,
-        config=Config(agents_md="# Rules"),
-        all_targets=(target,),
-        selected_targets=(target,),
-        yes=True,
-    )
-
-    result = run_install_parallel([SettingsComponent()], [], ctx)
-
-    assert result.ok is True
-    assert result.counts.get("removed") == 1
-    assert not dirs["old-agent"].exists()
-    assert dirs["claude"].exists()
-    assert dirs["shared"].exists()
-
-
-@pytest.mark.unit
-def test_orphan_only_install_dry_run_reports_without_removing(
-    tmp_path: Path, mock_home: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    dirs = _make_cache_dirs(mock_home, "claude", "shared", "old-agent")
-    target = CacheTarget("claude")
-    ctx = make_context(
-        tmp_path,
-        config=Config(agents_md="# Rules"),
-        all_targets=(target,),
-        selected_targets=(target,),
-        dry_run=True,
-        yes=True,
-    )
-
-    result = run_install_parallel([SettingsComponent()], [], ctx)
-
-    assert result.counts.get("removed") == 1
-    output = capsys.readouterr().out
-    assert "Would remove orphaned settings cache: old-agent" in output
-    assert "orphaned settings cache: claude" not in output
-    assert "orphaned settings cache: shared" not in output
-    assert all(cache_dir.exists() for cache_dir in dirs.values())
-
-
-@pytest.mark.unit
-def test_install_without_orphans_leaves_needed_caches_untouched(
-    tmp_path: Path, mock_home: Path
-) -> None:
-    dirs = _make_cache_dirs(mock_home, "claude", "shared")
-    target = CacheTarget("claude")
-    ctx = make_context(
-        tmp_path,
-        config=Config(agents_md="# Rules"),
-        all_targets=(target,),
-        selected_targets=(target,),
-        yes=True,
-    )
-
-    result = run_install_parallel([SettingsComponent()], [], ctx)
-
-    assert result.ok is True
-    assert "removed" not in result.counts
-    assert all(cache_dir.exists() for cache_dir in dirs.values())
 
 
 @pytest.mark.unit
@@ -394,7 +282,6 @@ def test_settings_component_removes_dangling_symlink_when_excluded(
         _base_settings_path = Path("/nonexistent/settings.yaml")
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: tmp_path / "cache")
-    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
 
     ctx = make_context(
         tmp_path,
@@ -439,7 +326,6 @@ def test_apply_cleans_excluded_cache_link_only(
         _base_settings_path = Path("/nonexistent/settings.json")
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: home / "cache")
-    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
     ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
     component = SettingsComponent()
 
@@ -490,7 +376,6 @@ def test_excluded_cleanup_trusts_only_resolvable_identity(
         _base_settings_path = Path("/nonexistent/settings.json")
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
-    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
     ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
     component = SettingsComponent()
 
@@ -549,7 +434,6 @@ def test_excluded_cleanup_after_managed_folder_vanished(
         _base_settings_path = Path("/nonexistent/settings.json")
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
-    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
     ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
     component = SettingsComponent()
 
