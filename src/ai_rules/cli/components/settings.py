@@ -104,56 +104,6 @@ class SettingsComponent(Component):
             },
         )
 
-    def install(self, ctx: CliContext) -> ComponentResult:
-        if ctx.dry_run:
-            return ComponentResult()
-
-        built = 0
-        for target in ctx.selected_targets:
-            base_path = target._base_settings_path
-            if not base_path.exists():
-                continue
-            try:
-                if target.build_merged_settings(force_rebuild=ctx.rebuild_cache):
-                    built += 1
-            except ValueError as exc:
-                from ai_rules.cli.display import print_error
-
-                print_error(f"Error building {target.name} config: {exc}")
-                return ComponentResult(ok=False, abort=True, counts={"errors": 1})
-
-        for target in ctx.all_targets:
-            if not target.is_settings_file_excluded:
-                continue
-            symlink_target = target.settings_symlink_target
-            if symlink_target is None:
-                continue
-            expanded = symlink_target.expanduser()
-            if expanded.is_symlink():
-                cache_dir = ctx.config.get_cache_dir()
-                if cache_dir:
-                    try:
-                        link_entry(expanded).relative_to(os.path.realpath(cache_dir))
-                    except (OSError, ValueError):
-                        continue
-                    expanded.unlink()
-
-        from ai_rules.cli.display import print_done
-
-        targets_needing_cache = {
-            target.target_id for target in ctx.all_targets if target.needs_cache
-        }
-        orphaned = ctx.config.cleanup_orphaned_cache(targets_needing_cache)
-        if orphaned:
-            print_done(
-                f"Cleaned up orphaned cache for: {', '.join(orphaned)}", indent=2
-            )
-
-        return ComponentResult(
-            changed=bool(built or orphaned),
-            counts={"cache_updated": built, "cache_removed": len(orphaned)},
-        )
-
     def status(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.cli.runner import get_console
 

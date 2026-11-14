@@ -58,47 +58,12 @@ class ComponentRunResult:
     results: tuple[tuple[str, ComponentResult], ...] = ()
 
 
-def _run_component(
-    component: Component, operation: LifecycleOperation, ctx: CliContext
-) -> ComponentResult:
-    if operation == "install":
-        return component.install(ctx)
-    if operation == "status":
-        return component.status(ctx)
-    if operation == "diff":
-        return component.diff(ctx)
-    if operation == "validate":
-        return component.validate(ctx)
-    return component.uninstall(ctx)
-
-
 def _should_skip(component: Component, ctx: CliContext) -> bool:
     return (
         ctx.component_filter is not None
         and component.filterable
         and component.component_id not in ctx.component_filter
     )
-
-
-def run_components(
-    components: Iterable[Component],
-    operation: LifecycleOperation,
-    ctx: CliContext,
-) -> ComponentRunResult:
-    acc = _RunAccumulator()
-
-    for component in components:
-        if _should_skip(component, ctx):
-            continue
-
-        result = _run_component(component, operation, ctx)
-        acc.fold(component, result)
-
-        if result.abort:
-            acc.aborted = True
-            break
-
-    return acc.to_result()
 
 
 def _confirm_install(ctx: CliContext) -> bool:
@@ -125,39 +90,6 @@ def _confirm_install(ctx: CliContext) -> bool:
             return False
 
     return True
-
-
-def run_install(
-    infrastructure: Iterable[Component],
-    semantic: Iterable[Component],
-    ctx: CliContext,
-) -> ComponentRunResult:
-    acc = _RunAccumulator()
-
-    for component in infrastructure:
-        result = component.install(ctx)
-        acc.fold(component, result)
-
-        if result.abort or not result.ok:
-            acc.aborted = True
-            return acc.to_result()
-
-    if not _confirm_install(ctx):
-        acc.aborted = True
-        return acc.to_result()
-
-    for component in semantic:
-        if _should_skip(component, ctx):
-            continue
-
-        result = component.install(ctx)
-        acc.fold(component, result)
-
-        if result.abort:
-            acc.aborted = True
-            break
-
-    return acc.to_result()
 
 
 def run_install_parallel(

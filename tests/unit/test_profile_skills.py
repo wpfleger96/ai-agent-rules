@@ -61,16 +61,9 @@ def _ctx(config_dir: Path, **config: Any) -> CliContext:
     )
 
 
-def _plan_apply(ctx: CliContext) -> None:
-    component = SkillsComponent()
-    component.apply(ctx, component.plan(ctx))
-
-
 def _install(ctx: CliContext) -> None:
-    assert SkillsComponent().install(ctx).ok
-
-
-WRITERS = pytest.mark.parametrize("write", [_plan_apply, _install])
+    component = SkillsComponent()
+    assert component.apply(ctx, component.plan(ctx)).ok
 
 
 def _links(user_dir: Path) -> set[str]:
@@ -116,13 +109,10 @@ class TestAdditive:
         )
         assert sorted(deployable_skills(config_dir)) == expected
 
-    @WRITERS
-    def test_default_and_personal_deploy_same_shared_set(
-        self, config_dir, user_dir, write
-    ):
-        write(_ctx(config_dir))
+    def test_default_and_personal_deploy_same_shared_set(self, config_dir, user_dir):
+        _install(_ctx(config_dir))
         assert _links(user_dir) == {"shared-a"}
-        write(_ctx(config_dir, skills=["mine"]))
+        _install(_ctx(config_dir, skills=["mine"]))
         assert _links(user_dir) == {"shared-a", "mine"}
         assert [
             s.name
@@ -133,34 +123,30 @@ class TestAdditive:
 
 
 @pytest.mark.unit
-class TestWriters:
-    @WRITERS
-    def test_switch_to_default_removes_profile_skill(self, config_dir, user_dir, write):
-        write(_ctx(config_dir, skills=["mine"]))
+class TestInstall:
+    def test_switch_to_default_removes_profile_skill(self, config_dir, user_dir):
+        _install(_ctx(config_dir, skills=["mine"]))
         assert (user_dir / "mine").is_symlink()
 
-        write(_ctx(config_dir))
+        _install(_ctx(config_dir))
         assert _links(user_dir) == {"shared-a"}
         assert "mine" not in _visible(config_dir, user_dir, [])
 
-    @WRITERS
-    def test_excluded_shared_skill_link_removed(self, config_dir, user_dir, write):
-        write(_ctx(config_dir))
-        write(_ctx(config_dir, exclude_symlinks=[str(user_dir / "shared-a")]))
+    def test_excluded_shared_skill_link_removed(self, config_dir, user_dir):
+        _install(_ctx(config_dir))
+        _install(_ctx(config_dir, exclude_symlinks=[str(user_dir / "shared-a")]))
         assert not (user_dir / "shared-a").exists()
 
-    @WRITERS
-    def test_disabled_profile_skill_never_deployed(self, config_dir, user_dir, write):
-        write(_ctx(config_dir, skills=["mine-off"]))
+    def test_disabled_profile_skill_never_deployed(self, config_dir, user_dir):
+        _install(_ctx(config_dir, skills=["mine-off"]))
         assert _links(user_dir) == {"shared-a"}
 
-    @WRITERS
-    def test_profile_only_config_dir(self, tmp_path, user_dir, write):
+    def test_profile_only_config_dir(self, tmp_path, user_dir):
         root = tmp_path / "profile-only"
         _skill(root / "profiles" / "skills", "mine")
-        write(_ctx(root, skills=["mine"]))
+        _install(_ctx(root, skills=["mine"]))
         assert _links(user_dir) == {"mine"}
-        write(_ctx(root))
+        _install(_ctx(root))
         assert _links(user_dir) == set()
 
     def test_uninstall_removes_profile_skill(self, config_dir, user_dir):

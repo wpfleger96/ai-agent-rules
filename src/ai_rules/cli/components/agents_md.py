@@ -53,21 +53,6 @@ class AgentsMdComponent(Component):
         shared.build_merged_agents_md(force_rebuild=ctx.rebuild_cache)
         return ComponentResult(changed=True, counts={"updated": 1})
 
-    def install(self, ctx: CliContext) -> ComponentResult:
-        if ctx.dry_run:
-            return ComponentResult()
-
-        from ai_rules.agents.shared import SharedAgent
-
-        shared = next(
-            (t for t in ctx.selected_targets if isinstance(t, SharedAgent)), None
-        )
-        if shared is None or not shared.needs_agents_md_cache:
-            return ComponentResult()
-
-        shared.build_merged_agents_md(force_rebuild=ctx.rebuild_cache)
-        return ComponentResult(changed=True, counts={"cache_updated": 1})
-
     def status(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.agents.shared import SharedAgent
 

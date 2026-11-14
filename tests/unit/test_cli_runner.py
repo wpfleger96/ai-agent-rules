@@ -12,41 +12,11 @@ from rich.console import Console
 
 from ai_rules.cli.context import CliContext, Component, ComponentPlan, ComponentResult
 from ai_rules.cli.runner import (
-    run_components,
     run_components_parallel,
-    run_install,
     run_install_parallel,
     run_parallel,
 )
 from ai_rules.config import Config
-
-
-class FakeComponent(Component):
-    component_id = "fake"
-    filterable = True
-
-    def __init__(self, label: str, result: ComponentResult):
-        self.label = label
-        self.result = result
-        self.calls = 0
-
-    def install(self, ctx: CliContext) -> ComponentResult:
-        self.calls += 1
-        return self.result
-
-
-class InfraComponent(Component):
-    component_id = "infra"
-    filterable = False
-
-    def __init__(self, label: str, result: ComponentResult):
-        self.label = label
-        self.result = result
-        self.calls = 0
-
-    def install(self, ctx: CliContext) -> ComponentResult:
-        self.calls += 1
-        return self.result
 
 
 def make_context(
@@ -65,134 +35,11 @@ def make_context(
     )
 
 
-@pytest.mark.unit
-def test_run_components_aggregates_counts(tmp_path: Path) -> None:
-    first = FakeComponent("first", ComponentResult(counts={"created": 1}))
-    second = FakeComponent(
-        "second", ComponentResult(counts={"created": 2, "errors": 1})
-    )
-
-    result = run_components([first, second], "install", make_context(tmp_path))
-
-    assert result.counts == {"created": 3, "errors": 1}
-
-
-@pytest.mark.unit
-def test_run_components_stops_after_abort(tmp_path: Path) -> None:
-    first = FakeComponent("first", ComponentResult(abort=True))
-    second = FakeComponent("second", ComponentResult())
-
-    result = run_components([first, second], "install", make_context(tmp_path))
-
-    assert result.aborted is True
-    assert first.calls == 1
-    assert second.calls == 0
-
-
-@pytest.mark.unit
-def test_run_components_reports_failure_if_any_component_fails(tmp_path: Path) -> None:
-    first = FakeComponent("first", ComponentResult())
-    second = FakeComponent("second", ComponentResult(ok=False))
-
-    result = run_components([first, second], "install", make_context(tmp_path))
-
-    assert result.ok is False
-
-
-@pytest.mark.unit
-def test_run_components_reports_changed_if_any_component_changes(
-    tmp_path: Path,
-) -> None:
-    first = FakeComponent("first", ComponentResult(changed=False))
-    second = FakeComponent("second", ComponentResult(changed=True))
-
-    result = run_components([first, second], "install", make_context(tmp_path))
-
-    assert result.changed is True
-
-
-@pytest.mark.unit
-def test_run_install_infrastructure_runs_before_semantic(tmp_path: Path) -> None:
-    infra = InfraComponent("infra", ComponentResult())
-    semantic = FakeComponent("semantic", ComponentResult())
-
-    result = run_install([infra], [semantic], make_context(tmp_path, yes=True))
-
-    assert infra.calls == 1
-    assert semantic.calls == 1
-    assert result.ok is True
-
-
-@pytest.mark.unit
-def test_run_install_aborts_if_infrastructure_fails_with_abort(tmp_path: Path) -> None:
-    infra = InfraComponent("infra", ComponentResult(ok=False, abort=True))
-    semantic = FakeComponent("semantic", ComponentResult())
-
-    result = run_install([infra], [semantic], make_context(tmp_path, yes=True))
-
-    assert result.aborted is True
-    assert semantic.calls == 0
-
-
-@pytest.mark.unit
-def test_run_install_aborts_if_infrastructure_not_ok(tmp_path: Path) -> None:
-    infra = InfraComponent("infra", ComponentResult(ok=False))
-    semantic = FakeComponent("semantic", ComponentResult())
-
-    result = run_install([infra], [semantic], make_context(tmp_path, yes=True))
-
-    assert result.aborted is True
-    assert result.ok is False
-    assert semantic.calls == 0
-
-
-@pytest.mark.unit
-def test_run_install_skips_confirmation_when_yes(tmp_path: Path) -> None:
-    infra = InfraComponent("infra", ComponentResult())
-    semantic = FakeComponent("semantic", ComponentResult())
-
-    # Confirm is only imported inside the branch guarded by `not ctx.yes and not
-    # ctx.dry_run`. With yes=True the block is never entered, so both phases run
-    # without any interactive prompt.
-    with patch("click.confirm") as mock_ask:
-        result = run_install([infra], [semantic], make_context(tmp_path, yes=True))
-
-    mock_ask.assert_not_called()
-    assert infra.calls == 1
-    assert semantic.calls == 1
-    assert result.ok is True
-
-
-@pytest.mark.unit
-def test_run_install_skips_confirmation_when_dry_run(tmp_path: Path) -> None:
-    infra = InfraComponent("infra", ComponentResult())
-    semantic = FakeComponent("semantic", ComponentResult())
-
-    with patch("click.confirm") as mock_ask:
-        result = run_install([infra], [semantic], make_context(tmp_path, dry_run=True))
-
-    mock_ask.assert_not_called()
-    assert infra.calls == 1
-    assert semantic.calls == 1
-    assert result.ok is True
-
-
-@pytest.mark.unit
-def test_run_install_aggregates_counts_across_phases(tmp_path: Path) -> None:
-    infra = InfraComponent("infra", ComponentResult(counts={"cache_updated": 1}))
-    semantic = FakeComponent("semantic", ComponentResult(counts={"created": 2}))
-
-    result = run_install([infra], [semantic], make_context(tmp_path, yes=True))
-
-    assert result.counts == {"cache_updated": 1, "created": 2}
-
-
 class _SubclassPlan(ComponentPlan):
-    """Subclass of ComponentPlan used by test fixtures.
+    """Plan type returned by the plan/apply fakes.
 
-    run_install_parallel skips apply for components whose plan() returns the
-    base ComponentPlan type exactly (used as error fallback). Tests that need
-    apply() to run must return a subclass.
+    run_install_parallel applies a component only when its plan has_changes
+    (or ctx.force is set); the fakes default to has_changes=True.
     """
 
 
@@ -346,6 +193,36 @@ def test_run_install_parallel_aborts_if_infrastructure_fails(tmp_path: Path) -> 
 
 
 @pytest.mark.unit
+def test_run_install_parallel_aborts_if_infrastructure_requests_abort(
+    tmp_path: Path,
+) -> None:
+    infra = PlanApplyInfraComponent("infra", apply_result=ComponentResult(abort=True))
+    semantic = PlanApplyComponent("semantic")
+
+    result = run_install_parallel([infra], [semantic], make_context(tmp_path, yes=True))
+
+    assert result.aborted is True
+    assert semantic.plan_calls == 0
+    assert semantic.apply_calls == 0
+
+
+@pytest.mark.unit
+def test_run_install_parallel_skips_confirmation_when_dry_run(tmp_path: Path) -> None:
+    infra = PlanApplyInfraComponent("infra")
+    semantic = PlanApplyComponent("semantic")
+
+    with patch("click.confirm") as mock_ask:
+        result = run_install_parallel(
+            [infra], [semantic], make_context(tmp_path, dry_run=True)
+        )
+
+    mock_ask.assert_not_called()
+    assert infra.apply_calls == 1
+    assert semantic.apply_calls == 1
+    assert result.ok is True
+
+
+@pytest.mark.unit
 def test_run_install_parallel_skips_confirmation_when_yes(tmp_path: Path) -> None:
     infra = PlanApplyInfraComponent("infra")
     semantic = PlanApplyComponent("semantic")
@@ -464,22 +341,6 @@ def test_run_components_parallel_respects_component_filter(tmp_path: Path) -> No
 
 
 @pytest.mark.unit
-def test_run_install_user_cancels_confirmation(tmp_path: Path) -> None:
-    infra = InfraComponent("infra", ComponentResult())
-    semantic = FakeComponent("semantic", ComponentResult())
-
-    with (
-        patch("ai_rules.cli.check_first_run", return_value=True),
-        patch("ai_rules.cli._display_pending_changes", return_value=True),
-        patch("click.confirm", side_effect=click.exceptions.Abort()),
-    ):
-        result = run_install([infra], [semantic], make_context(tmp_path))
-
-    assert result.aborted is True
-    assert semantic.calls == 0
-
-
-@pytest.mark.unit
 def test_run_install_parallel_user_cancels_confirmation(tmp_path: Path) -> None:
     infra = PlanApplyInfraComponent("infra")
     semantic = PlanApplyComponent("semantic")
@@ -543,6 +404,18 @@ def test_run_parallel_status_aggregates_ok(tmp_path: Path) -> None:
     result = run_parallel([first, second], "status", make_context(tmp_path))
 
     assert result.ok is False
+
+
+@pytest.mark.unit
+def test_run_parallel_status_reports_changed_if_any_component_changes(
+    tmp_path: Path,
+) -> None:
+    first = _StatusComponent("first", result=ComponentResult(changed=False))
+    second = _StatusComponent("second", result=ComponentResult(changed=True))
+
+    result = run_parallel([first, second], "status", make_context(tmp_path))
+
+    assert result.changed is True
 
 
 @pytest.mark.unit
