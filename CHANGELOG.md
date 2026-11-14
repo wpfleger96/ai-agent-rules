@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.81.5](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.4...v0.81.5) (2026-11-14)
+
+
+### Bug Fixes
+
+* **upgrade:** bypass pip HTTP cache in index version check ([#289](https://github.com/wpfleger96/ai-agent-rules/issues/289)) ([87daf7a](https://github.com/wpfleger96/ai-agent-rules/commit/87daf7aa7b43da02f5cc0d3f2662af0d3f3f9c63))
+
 ## [0.81.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.3...v0.81.4) (2026-11-14)
 
 
