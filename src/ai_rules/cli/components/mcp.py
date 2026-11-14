@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import click
-
 from ai_rules.agents.base import Agent
 from ai_rules.cli.context import (
     CliContext,
@@ -23,80 +21,6 @@ class MCPComponent(Component):
     # agents these are symlinks created by ConfigComponent). Defer to the second
     # semantic wave so the symlinks exist first and we never race on those paths.
     install_after_symlinks = True
-
-    def install(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.mcp import OperationResult
-
-        updated = 0
-        skipped = 0
-        errors = 0
-
-        for target in ctx.selected_targets:
-            if not isinstance(target, Agent):
-                continue
-            if target.is_settings_file_excluded:
-                continue
-            mgr = target.get_mcp_manager()
-            if mgr is None:
-                continue
-
-            result, message, conflicts = target.install_mcps(
-                force=ctx.yes, dry_run=ctx.dry_run
-            )
-
-            if conflicts and not ctx.yes:
-                ctx.console.print(
-                    f"\n[bold yellow]MCP Conflicts Detected ({target.name}):[/bold yellow]"
-                )
-                expected_mcps = mgr.load_managed_mcps(ctx.config_dir, ctx.config)
-                installed_mcps = mgr._read_installed()
-
-                for conflict_name in conflicts:
-                    expected = expected_mcps.get(conflict_name, {})
-                    installed = installed_mcps.get(conflict_name, {})
-                    if expected and installed:
-                        diff = mgr.format_diff(conflict_name, expected, installed)
-                        if diff:
-                            ctx.console.print(f"\n{diff}\n")
-
-                if not ctx.dry_run and not click.confirm(
-                    "Overwrite local changes?", default=False
-                ):
-                    from ai_rules.cli.display import print_warning
-
-                    print_warning("Skipped MCP installation")
-                    skipped += 1
-                else:
-                    result, message, _ = target.install_mcps(
-                        force=True, dry_run=ctx.dry_run
-                    )
-                    from ai_rules.cli.display import print_success
-
-                    print_success(f"{target.name}: {message}", indent=2)
-                    updated += 1
-            elif result == OperationResult.UPDATED:
-                from ai_rules.cli.display import print_success
-
-                print_success(f"{target.name}: {message}", indent=2)
-                updated += 1
-            elif result == OperationResult.ALREADY_INSTALLED:
-                from ai_rules.cli.display import print_skipped
-
-                print_skipped(f"{target.name}: {message}", indent=2)
-            elif result != OperationResult.NOT_FOUND:
-                from ai_rules.cli.display import print_warning
-
-                print_warning(f"{target.name}: {message}", indent=2)
-                errors += 1
-
-        return ComponentResult(
-            changed=updated > 0,
-            counts={
-                "mcp_updated": updated,
-                "mcp_skipped": skipped,
-                "mcp_errors": errors,
-            },
-        )
 
     def plan(self, ctx: CliContext) -> ComponentPlan:
         from ai_rules.mcp import OperationResult
@@ -152,8 +76,8 @@ class MCPComponent(Component):
             print_warning,
         )
 
-        # Targets with conflicts that can't be resolved without a prompt — skip them.
-        # The serial install() path handles prompt-based conflict resolution.
+        # Targets with local MCP edits are skipped rather than overwritten; -y
+        # force-applies them (plan() then puts them in install_ops instead).
         for target_name in plan.conflict_targets:
             print_warning(
                 f"{target_name}: MCP conflicts detected, skipping (use -y to force-apply)",

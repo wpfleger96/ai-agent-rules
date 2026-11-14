@@ -182,54 +182,6 @@ class ConfigComponent(Component):
             counts={**counts, "excluded": plan.excluded_count, "removed": removed},
         )
 
-    def install(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.cli import cleanup_deprecated_symlinks
-        from ai_rules.cli.display import print_dim, print_symlink_result
-        from ai_rules.symlinks import create_file_copy, create_symlink
-
-        counts = {"created": 0, "updated": 0, "unchanged": 0, "skipped": 0, "errors": 0}
-        excluded = 0
-        effective_force = ctx.yes or not ctx.dry_run
-        copy_targets = _get_copy_mode_targets(list(ctx.selected_targets))
-
-        for agent in ctx.selected_targets:
-            ctx.console.print(f"\n[bold]{agent.name}[/bold]")
-
-            filtered_symlinks = agent.get_filtered_symlinks()
-            user_excluded_count = len(agent.symlinks) - len(filtered_symlinks)
-
-            config_symlinks = [
-                (tgt, src)
-                for tgt, src in filtered_symlinks
-                if not _is_specialized_path(agent, tgt)
-            ]
-
-            if user_excluded_count > 0:
-                print_dim(f"({user_excluded_count} symlink(s) excluded)", indent=2)
-                excluded += user_excluded_count
-
-            for target, source in config_symlinks:
-                if target.expanduser() in copy_targets:
-                    result, message = create_file_copy(
-                        target, source, effective_force, ctx.dry_run
-                    )
-                else:
-                    result, message = create_symlink(
-                        target, source, effective_force, ctx.dry_run
-                    )
-
-                counts[print_symlink_result(result, target, source, message)] += 1
-
-        removed = cleanup_deprecated_symlinks(
-            list(ctx.selected_targets), ctx.config_dir, ctx.dry_run
-        )
-
-        return ComponentResult(
-            ok=counts["errors"] == 0,
-            changed=bool(counts["created"] or counts["updated"] or removed),
-            counts={**counts, "excluded": excluded, "removed": removed},
-        )
-
     def status(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.cli.display import dim, print_skipped
         from ai_rules.cli.runner import get_console

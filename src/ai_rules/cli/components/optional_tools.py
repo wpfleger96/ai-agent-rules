@@ -123,12 +123,6 @@ class OptionalToolsComponent(Component):
 
         return ComponentResult()
 
-    def install(self, ctx: CliContext) -> ComponentResult:
-        stale = self._compute_stale_tool_ids(ctx)
-        self._remove_stale_tools(stale, ctx)
-        self._install_active_tools(ctx)
-        return ComponentResult()
-
     def uninstall(self, ctx: CliContext) -> ComponentResult:
         from ai_rules.bootstrap.installer import ensure_tool_uninstalled
         from ai_rules.bootstrap.registry import ACTIVE_TOOLS, DEPRECATED_TOOLS

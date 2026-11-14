@@ -13,16 +13,13 @@ from ai_rules.agents.base import Agent
 from ai_rules.config import Config
 from ai_rules.targets.base import ConfigTarget
 
-LifecycleOperation = Literal[
-    "install", "status", "diff", "validate", "uninstall", "plan", "apply"
-]
+LifecycleOperation = Literal["status", "diff", "validate", "uninstall", "plan", "apply"]
 
 
 @dataclass(frozen=True)
 class ComponentResult:
     ok: bool = True
     changed: bool = False
-    abort: bool = False
     counts: dict[str, int] = field(default_factory=dict)
 
 
@@ -68,9 +65,6 @@ class Component(ABC):
     install_after_symlinks: bool = False
 
     component_id: ClassVar[str]
-
-    def install(self, ctx: CliContext) -> ComponentResult:
-        return ComponentResult()
 
     def status(self, ctx: CliContext) -> ComponentResult:
         return ComponentResult()
