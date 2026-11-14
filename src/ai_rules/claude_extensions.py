@@ -106,7 +106,7 @@ class ClaudeExtensionManager:
         link into an older install or another checkout is orphaned once its
         entry is gone from the current source, even if the old target exists.
 
-        Works for any symlink-based config type (commands, agents, skills, etc.)
+        Covers file-based Claude extension types (agents, commands, hooks).
 
         Args:
             user_dir: Directory containing user symlinks (e.g., ~/.claude/commands)

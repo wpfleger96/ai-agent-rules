@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from ai_rules.agents.base import Agent
@@ -14,14 +15,6 @@ from ai_rules.cli.context import (
 )
 from ai_rules.symlinks import link_entry
 from ai_rules.utils import is_managed_target, links_to_source
-
-
-def _enabled_skill_folders(ctx: CliContext) -> list[Path]:
-    """Skill directories the active profile deploys."""
-    from ai_rules.skills import deployable_skills
-
-    return list(deployable_skills(ctx.config_dir, ctx.config.skills).values())
-
 
 _SHARED_PARENT = ("ai_rules", "config", "skills")
 _PROFILE_PARENT = ("ai_rules", "config", "profiles", "skills")
@@ -50,15 +43,17 @@ def _deployed_from(
     )
 
 
-def _stale_skill_links(ctx: CliContext, user_skills_dir: Path) -> list[Path]:
-    """Managed skill links the active profile no longer deploys."""
-    from ai_rules.skills import SkillManager, deployable_skills
+def _stale_skill_links(
+    ctx: CliContext, user_skills_dir: Path, wanted: Mapping[str, Path]
+) -> list[Path]:
+    """Managed skill links install removes, given the ``wanted`` skills it deploys."""
+    from ai_rules.skills import SkillManager
 
     if not user_skills_dir.exists():
         return []
-    roots = _managed_skill_roots(ctx.config_dir)
-    wanted = deployable_skills(ctx.config_dir, ctx.config.skills)
-    stale = []
+    shared_root, profile_root = _managed_skill_roots(ctx.config_dir)
+    install_shapes = ((shared_root, _SHARED_PARENT), (profile_root, _PROFILE_PARENT))
+    stale_links = []
     for existing in user_skills_dir.iterdir():
         if not existing.is_symlink():
             continue
@@ -66,25 +61,24 @@ def _stale_skill_links(ctx: CliContext, user_skills_dir: Path) -> list[Path]:
             link_target = link_entry(existing)
         except OSError:
             continue
-        if not any(is_managed_target(link_target, r) for r in roots):
+        if not any(is_managed_target(link_target, root) for root, _ in install_shapes):
             continue
-        # Ownership follows the link's install shape, not the checkout it points into,
-        # so links into another checkout or an old install go once source drops the name.
-        owned = _deployed_from(
-            existing, link_target, roots[0], _SHARED_PARENT
-        ) or _deployed_from(existing, link_target, roots[1], _PROFILE_PARENT)
-        if (
-            not link_target.exists()
-            or SkillManager.is_skill_disabled(link_target)
-            or (
-                owned
-                and (
-                    existing.name not in wanted or ctx.config.is_excluded(str(existing))
-                )
-            )
-        ):
-            stale.append(existing)
-    return stale
+        # Ownership follows the link's install shape, not the checkout it points into.
+        # Owned links are judged by current source alone: one into another checkout or
+        # an old install goes once source drops the name and is re-pointed otherwise.
+        owned = any(
+            _deployed_from(existing, link_target, root, bundled)
+            for root, bundled in install_shapes
+        )
+        if owned:
+            excluded = ctx.config.is_excluded(str(existing))
+            stale = existing.name not in wanted or excluded
+        else:
+            missing = not link_target.exists()
+            stale = missing or SkillManager.is_skill_disabled(link_target)
+        if stale:
+            stale_links.append(existing)
+    return stale_links
 
 
 class SkillsComponent(Component):
@@ -103,7 +97,9 @@ class SkillsComponent(Component):
         return None
 
     def plan(self, ctx: CliContext) -> SkillsPlan:
-        skill_folders = _enabled_skill_folders(ctx)
+        from ai_rules.skills import deployable_skills
+
+        wanted = deployable_skills(ctx.config_dir, ctx.config.skills)
 
         symlink_ops: list[tuple[Path, Path]] = []
         cleanup_ops: list[Path] = []
@@ -124,13 +120,20 @@ class SkillsComponent(Component):
                     continue
                 seen_dirs.add(resolved_dir)
 
-                for skill_folder in skill_folders:
+                linked: set[Path] = set()
+                for skill_folder in wanted.values():
                     symlink_target = user_skills_dir / skill_folder.name
                     if ctx.config.is_excluded(str(symlink_target)):
                         continue
                     symlink_ops.append((symlink_target, skill_folder))
+                    linked.add(symlink_target)
 
-                cleanup_ops.extend(_stale_skill_links(ctx, user_skills_dir))
+                # A link install (re-)points must never also be removed.
+                cleanup_ops.extend(
+                    link
+                    for link in _stale_skill_links(ctx, user_skills_dir, wanted)
+                    if link not in linked
+                )
 
         has_changes = bool(symlink_ops or cleanup_ops)
         return SkillsPlan(
@@ -143,6 +146,7 @@ class SkillsComponent(Component):
         if not isinstance(plan, SkillsPlan):
             return ComponentResult()
 
+        from ai_rules.cli.display import print_success, print_would
         from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
 
         created = 0
@@ -163,14 +167,24 @@ class SkillsComponent(Component):
             else:
                 created += 1
 
-        if not ctx.dry_run:
-            for existing in plan.cleanup_ops:
-                remove_symlink(existing, force=True)
+        removed = 0
+        for existing in plan.cleanup_ops:
+            if ctx.dry_run:
+                print_would(f"Would remove orphaned skill link: {existing}", indent=2)
+                removed += 1
+            elif remove_symlink(existing, force=True)[0]:
+                print_success(f"Removed orphaned skill link: {existing}", indent=2)
+                removed += 1
 
         return ComponentResult(
             ok=errors == 0,
-            changed=created > 0,
-            counts={"created": created, "unchanged": unchanged, "errors": errors},
+            changed=bool(created or removed),
+            counts={
+                "created": created,
+                "unchanged": unchanged,
+                "removed": removed,
+                "errors": errors,
+            },
         )
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
@@ -226,11 +240,13 @@ class SkillsComponent(Component):
             orphaned_skills: set[str] = set()
             if skill_status and target.target_id == "shared":
                 from ai_rules.config import get_agent_skills_dirs
+                from ai_rules.skills import deployable_skills
 
+                wanted = deployable_skills(ctx.config_dir, ctx.config.skills)
                 orphaned_skills = {
                     link.name
                     for d in get_agent_skills_dirs().values()
-                    for link in _stale_skill_links(ctx, d.expanduser())
+                    for link in _stale_skill_links(ctx, d.expanduser(), wanted)
                 }
 
             if not skill_status or not any(

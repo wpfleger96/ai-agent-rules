@@ -24,6 +24,7 @@ from ai_rules.cli.components.extensions import ClaudeExtensionsComponent
 from ai_rules.cli.components.settings import SettingsComponent
 from ai_rules.cli.components.skills import SkillsComponent
 from ai_rules.cli.context import CliContext, Component
+from ai_rules.cli.display import _console_override
 from ai_rules.config import Config, get_managed_fields_path
 from ai_rules.targets.base import ConfigTarget
 from ai_rules.utils import links_to_source
@@ -297,6 +298,40 @@ class TestExtensionOrphanOwnership:
 
         assert not link.is_symlink()
         assert elsewhere.exists()
+
+    def test_status_reports_orphaned_link_as_difference(
+        self, tmp_path, config_dir, agents_dir
+    ):
+        (agents_dir / "managed.md").symlink_to(config_dir / "claude/agents/managed.md")
+        elsewhere = _other_checkout(tmp_path, "claude/agents/old.md")
+        elsewhere.parent.mkdir(parents=True)
+        elsewhere.write_text("# old\n")
+        (agents_dir / "old.md").symlink_to(elsewhere)
+        ctx = _context(config_dir, ClaudeAgent(config_dir, Config(exclude_symlinks=[])))
+        out = StringIO()
+        token = _console_override.set(Console(file=out, width=200))
+        try:
+            result = ClaudeExtensionsComponent().status(ctx)
+        finally:
+            _console_override.reset(token)
+
+        line = next(ln for ln in out.getvalue().splitlines() if "old" in ln)
+        assert "Orphaned" in line
+        assert not result.ok
+
+    def test_install_repoints_dangling_managed_link_instead_of_removing(
+        self, tmp_path, config_dir, agents_dir
+    ):
+        link = agents_dir / "managed.md"
+        link.symlink_to(_stale_package(tmp_path, "claude/agents/managed.md"))
+        component = ClaudeExtensionsComponent()
+        ctx = _context(config_dir, ClaudeAgent(config_dir, Config(exclude_symlinks=[])))
+
+        component.apply(ctx, component.plan(ctx))
+
+        assert link.is_symlink()
+        assert links_to_source(link, config_dir / "claude/agents/managed.md")
+        assert link.exists()
 
     def test_link_into_other_checkout_still_in_source_is_not_orphaned(
         self, tmp_path, config_dir, agents_dir
