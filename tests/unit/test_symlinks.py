@@ -106,6 +106,104 @@ class TestCreateSymlink:
         assert not target.exists()
         assert "does not exist" in message.lower()
 
+    def test_dry_run_pending_source_without_cache_dir_reports_create(self, tmp_path):
+        source = tmp_path / "state" / "cache" / "shared" / "AGENTS.md"
+        target = tmp_path / "AGENTS.md"
+
+        result, _ = create_symlink(
+            target, source, force=True, dry_run=True, pending_source=source
+        )
+
+        assert result == SymlinkResult.CREATED
+        assert not target.exists()
+        assert not (tmp_path / "state").exists()
+
+    def test_dry_run_pending_source_in_existing_cache_dir_reports_create(
+        self, tmp_path
+    ):
+        source = tmp_path / "state" / "cache" / "shared" / "AGENTS.md"
+        source.parent.mkdir(parents=True)
+        target = tmp_path / "AGENTS.md"
+
+        result, _ = create_symlink(
+            target, source, force=True, dry_run=True, pending_source=source
+        )
+
+        assert result == SymlinkResult.CREATED
+        assert not target.exists()
+
+    def test_dry_run_pending_source_over_other_link_reports_update(self, tmp_path):
+        source = tmp_path / "state" / "cache" / "shared" / "AGENTS.md"
+        other = tmp_path / "other.md"
+        other.write_text("other")
+        target = tmp_path / "AGENTS.md"
+        target.symlink_to(other)
+
+        result, _ = create_symlink(
+            target, source, force=True, dry_run=True, pending_source=source
+        )
+
+        assert result == SymlinkResult.UPDATED
+        assert target.resolve() == other.resolve()
+
+    def test_dry_run_pending_source_over_file_reports_backup(self, tmp_path):
+        source = tmp_path / "state" / "cache" / "shared" / "AGENTS.md"
+        target = tmp_path / "AGENTS.md"
+        target.write_text("mine")
+
+        result, message = create_symlink(
+            target, source, force=True, dry_run=True, pending_source=source
+        )
+
+        assert result == SymlinkResult.CREATED
+        assert "backup" in message.lower()
+        assert target.read_text() == "mine"
+
+    def test_dry_run_link_already_at_pending_source_is_correct(self, tmp_path):
+        source = tmp_path / "state" / "cache" / "shared" / "AGENTS.md"
+        target = tmp_path / "AGENTS.md"
+        target.symlink_to(source)
+
+        result, _ = create_symlink(
+            target, source, force=True, dry_run=True, pending_source=source
+        )
+
+        assert result == SymlinkResult.ALREADY_CORRECT
+
+    def test_dry_run_missing_source_other_than_pending_errors(self, tmp_path):
+        pending = tmp_path / "state" / "cache" / "shared" / "AGENTS.md"
+        source = tmp_path / "state" / "cache" / "claude" / "settings.json"
+        target = tmp_path / "AGENTS.md"
+
+        result, _ = create_symlink(
+            target, source, force=True, dry_run=True, pending_source=pending
+        )
+
+        assert result == SymlinkResult.ERROR
+
+    def test_dry_run_pending_source_blocked_by_file_errors(self, tmp_path):
+        source = tmp_path / "state" / "cache" / "shared" / "AGENTS.md"
+        source.parent.parent.mkdir(parents=True)
+        source.parent.write_text("a file where the shared folder should be")
+        target = tmp_path / "AGENTS.md"
+
+        result, _ = create_symlink(
+            target, source, force=True, dry_run=True, pending_source=source
+        )
+
+        assert result == SymlinkResult.ERROR
+
+    def test_real_run_missing_pending_source_errors(self, tmp_path):
+        source = tmp_path / "state" / "cache" / "shared" / "AGENTS.md"
+        target = tmp_path / "AGENTS.md"
+
+        result, _ = create_symlink(
+            target, source, force=True, dry_run=False, pending_source=source
+        )
+
+        assert result == SymlinkResult.ERROR
+        assert not target.is_symlink()
+
     def test_creates_parent_directories_for_target(self, tmp_path):
         source = tmp_path / "source.txt"
         source.write_text("test content")
