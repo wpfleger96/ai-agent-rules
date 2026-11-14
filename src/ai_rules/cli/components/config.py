@@ -66,21 +66,14 @@ def _manifest_link_sources(
     return [source]
 
 
-def _planned_settings_cache(target: ConfigTarget) -> Path | None:
-    """Settings cache the settings component ensures before links are made.
+def install_built_caches(ctx: CliContext) -> set[Path]:
+    """Caches install builds before it makes links: merged AGENTS.md and settings.
 
-    Mirrors ``SettingsComponent.plan``: a target that needs a cache and has a
-    bundled settings file gets one, so its settings link points there.
+    They may not exist yet where nothing has built them (dry-run, validate).
     """
-    if (
-        target.settings_symlink_target is None
-        or not target.needs_cache
-        or not target._base_settings_path.exists()
-    ):
-        return None
-    return target.config.get_merged_settings_path(
-        target.target_id, target.config_file_name, force=True
-    )
+    caches = [ctx.config.get_merged_agents_md_path()]
+    caches += (target.settings_cache_path for target in ctx.selected_targets)
+    return {path for path in caches if path is not None}
 
 
 # status_code -> (severity, fixed annotation or None to use the check message)
@@ -148,7 +141,7 @@ class ConfigComponent(Component):
             excluded_count += len(agent.symlinks) - len(filtered_symlinks)
             # Dry-run builds no settings cache, so the settings link would fall
             # back to the bundled file; plan it at the cache a real run links.
-            settings_cache = _planned_settings_cache(agent) if ctx.dry_run else None
+            settings_cache = agent.settings_cache_path if ctx.dry_run else None
 
             config_symlinks = [
                 (
@@ -188,14 +181,9 @@ class ConfigComponent(Component):
         from ai_rules.symlinks import create_file_copy, create_symlink
 
         counts = {"created": 0, "updated": 0, "unchanged": 0, "skipped": 0, "errors": 0}
-        # The AGENTS.md and settings cache builds run before this component,
-        # even under --only, but only report in dry-run, so their files may
-        # not exist yet.
-        pending_caches: set[Path] = set()
-        if ctx.dry_run:
-            planned = [ctx.config.get_merged_agents_md_path()]
-            planned += map(_planned_settings_cache, ctx.selected_targets)
-            pending_caches = {path for path in planned if path is not None}
+        # The cache builds run before this component, even under --only, but
+        # only report in dry-run, so their files may not exist yet.
+        pending_caches = install_built_caches(ctx) if ctx.dry_run else set()
 
         for target, source in plan.symlink_ops:
             if target.expanduser() in plan.copy_targets:

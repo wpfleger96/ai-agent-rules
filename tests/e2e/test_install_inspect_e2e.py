@@ -363,3 +363,25 @@ class TestSettingsOverrideDryRun:
         assert real.returncode == 0, out
         assert link.resolve() == cache.resolve()
         assert json.loads(link.read_text("utf-8"))["model"] == "opus"
+
+    def test_unparseable_bundled_settings_fails_install(self, tmp_path):
+        """Linking the bundled file would silently drop the user's override."""
+        from tests.e2e.helpers import make_cli_runner, make_home_env
+
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            "version: 1\nsettings_overrides:\n  claude:\n    model: opus\n",
+            encoding="utf-8",
+        )
+        run = make_cli_runner(home, make_home_env(home, columns=1000))
+        config = build_config_dir(tmp_path / "rules")
+        bundled = config / "claude" / "settings.json"
+        bundled.write_text("{not json", encoding="utf-8")
+
+        result = _install(run, config, "--agents", "claude")
+
+        out = strip_ansi(result.stdout + result.stderr)
+        assert result.returncode != 0, out
+        assert f"Error building Claude Code config: cannot parse {bundled}" in out
+        assert not (home / ".claude" / "settings.json").is_symlink()

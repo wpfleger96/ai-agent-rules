@@ -8,6 +8,7 @@ import pytest
 from rich.console import Console
 
 from ai_rules.agents.claude import ClaudeAgent
+from ai_rules.agents.gemini import GeminiAgent
 from ai_rules.cli.components.completions import CompletionsComponent
 from ai_rules.cli.components.config import ConfigComponent
 from ai_rules.cli.components.plugins import ClaudePluginComponent
@@ -15,6 +16,8 @@ from ai_rules.cli.components.settings import SettingsComponent
 from ai_rules.cli.context import CliContext, Component, ComponentPlan, ComponentResult
 from ai_rules.cli.runner import run_install_parallel
 from ai_rules.config import Config
+from ai_rules.targets.base import ConfigTarget
+from ai_rules.tools.statusline import StatuslineTool
 
 
 class CacheTarget:
@@ -23,7 +26,7 @@ class CacheTarget:
 
     def __init__(self, target_id: str):
         self.target_id = target_id
-        self._base_settings_path = Path("/nonexistent/settings.json")
+        self.settings_cache_path = None
 
 
 class FailingCacheTarget:
@@ -33,7 +36,7 @@ class FailingCacheTarget:
     is_settings_file_excluded = False
 
     def __init__(self, base_settings_path: Path):
-        self._base_settings_path = base_settings_path
+        self.settings_cache_path = base_settings_path.with_name("cache.json")
 
     def is_cache_stale(self) -> bool:
         return True
@@ -101,7 +104,7 @@ class StaleCacheTarget:
     is_settings_file_excluded = False
 
     def __init__(self, base_settings_path: Path):
-        self._base_settings_path = base_settings_path
+        self.settings_cache_path = base_settings_path.with_name("cache.json")
 
     def is_cache_stale(self) -> bool:
         return True
@@ -149,7 +152,7 @@ def test_excluded_settings_symlink_in_dry_run_reports_removal_without_unlinking(
         needs_cache = False
         is_settings_file_excluded = True
         settings_symlink_target = link
-        _base_settings_path = Path("/nonexistent/settings.json")
+        settings_cache_path = None
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
     ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),), dry_run=True)
@@ -240,7 +243,7 @@ def test_excluded_settings_symlink_apply_reports_unlink_as_removal(
         needs_cache = False
         is_settings_file_excluded = True
         settings_symlink_target = link
-        _base_settings_path = Path("/nonexistent/settings.json")
+        settings_cache_path = None
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
     ctx = make_context(tmp_path, all_targets=(ExcludedTarget(), CacheTarget("other")))
@@ -312,7 +315,7 @@ def test_settings_component_removes_dangling_symlink_when_excluded(
         needs_cache = False
         is_settings_file_excluded = True
         settings_symlink_target = settings_symlink
-        _base_settings_path = Path("/nonexistent/settings.yaml")
+        settings_cache_path = None
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: tmp_path / "cache")
     monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
@@ -357,7 +360,7 @@ def test_apply_cleans_excluded_cache_link_only(
         needs_cache = False
         is_settings_file_excluded = True
         settings_symlink_target = home / "settings.json"
-        _base_settings_path = Path("/nonexistent/settings.json")
+        settings_cache_path = None
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: home / "cache")
     monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
@@ -408,7 +411,7 @@ def test_excluded_cleanup_trusts_only_resolvable_identity(
         needs_cache = False
         is_settings_file_excluded = True
         settings_symlink_target = link
-        _base_settings_path = Path("/nonexistent/settings.json")
+        settings_cache_path = None
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
     monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
@@ -467,7 +470,7 @@ def test_excluded_cleanup_after_managed_folder_vanished(
         needs_cache = False
         is_settings_file_excluded = True
         settings_symlink_target = home / ".claude" / "settings.json"
-        _base_settings_path = Path("/nonexistent/settings.json")
+        settings_cache_path = None
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
     monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
@@ -492,9 +495,10 @@ class TestConfigComponentSettingsLinkSource:
     def cache_file(self, mock_home: Path) -> Path:
         return mock_home / ".ai-agent-rules" / "cache" / "claude" / "settings.json"
 
-    def _settings_source(self, ctx: CliContext, agent: ClaudeAgent) -> Path:
+    def _settings_source(self, ctx: CliContext, target: ConfigTarget) -> Path:
         ops = dict(ConfigComponent().plan(ctx).symlink_ops)
-        return ops[agent.settings_symlink_target]
+        assert target.settings_symlink_target is not None
+        return ops[target.settings_symlink_target]
 
     def test_dry_run_without_cache_plans_link_to_cache(
         self, tmp_path: Path, mock_home: Path, agent: ClaudeAgent, cache_file: Path
@@ -534,3 +538,48 @@ class TestConfigComponentSettingsLinkSource:
         link = mock_home / ".claude" / "settings.json"
         assert result.counts["errors"] == 0
         assert link.resolve() == (test_repo / "claude" / "settings.json").resolve()
+
+    @pytest.mark.parametrize("overrides", [{}, {"statusline": {"theme": "dark"}}])
+    def test_dry_run_plans_cache_only_for_target_needing_one(
+        self, tmp_path: Path, mock_home: Path, test_repo: Path, overrides: dict
+    ) -> None:
+        """Statusline has no preserved fields, so only an override gives it a cache."""
+        bundled = test_repo / "statusline" / "config.yaml"
+        bundled.parent.mkdir()
+        bundled.write_text("theme: light\n", encoding="utf-8")
+        tool = StatuslineTool(test_repo, Config(settings_overrides=overrides))
+        ctx = make_context(
+            tmp_path, config=tool.config, selected_targets=(tool,), dry_run=True
+        )
+        component = ConfigComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        cache = mock_home / ".ai-agent-rules" / "cache" / "statusline" / "config.yaml"
+        assert self._settings_source(ctx, tool) == (cache if overrides else bundled)
+        assert result.counts["errors"] == 0
+
+    def test_copy_mode_dry_run_without_cache_plans_copy_from_cache(
+        self,
+        tmp_path: Path,
+        mock_home: Path,
+        test_repo: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(
+            GeminiAgent,
+            "copy_mode_targets",
+            property(lambda self: {self.settings_symlink_target.expanduser()}),
+        )
+        agent = GeminiAgent(test_repo, Config())
+        ctx = make_context(
+            tmp_path, config=agent.config, selected_targets=(agent,), dry_run=True
+        )
+        component = ConfigComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        cache = mock_home / ".ai-agent-rules" / "cache" / "gemini" / "settings.json"
+        assert self._settings_source(ctx, agent) == cache
+        assert result.counts["errors"] == 0
+        assert not (mock_home / ".gemini" / "settings.json").exists()

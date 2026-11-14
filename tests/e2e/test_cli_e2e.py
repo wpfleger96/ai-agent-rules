@@ -22,6 +22,20 @@ class TestValidate:
         assert result.returncode == 0
         assert "All source files are valid!" in output
 
+    def test_validate_accepts_unbuilt_agents_md_cache(self, run_cli, e2e_home):
+        """A fresh machine with an agents_md override has no cache until install."""
+        home_dir, _env = e2e_home
+        (home_dir / ".ai-agent-rules-config.yaml").write_text(
+            "version: 1\nagents_md: |\n  ## Extra\n", encoding="utf-8"
+        )
+
+        result = run_cli(["validate", "--agents", "shared"])
+
+        output = strip_ansi(result.stdout + result.stderr)
+        assert result.returncode == 0, output
+        assert "AGENTS.md (built on install)" in output
+        assert not (home_dir / ".ai-agent-rules").exists()
+
 
 @pytest.mark.e2e
 class TestListAgents:

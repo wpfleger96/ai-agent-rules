@@ -627,11 +627,12 @@ class TestCreateFileCopy:
         source = tmp_path / "state" / "cache" / "gemini" / "settings.json"
         target = tmp_path / "settings.json"
 
-        result, _ = create_file_copy(
+        result, message = create_file_copy(
             target, source, force=True, dry_run=False, pending_sources={source}
         )
 
         assert result == SymlinkResult.ERROR
+        assert "Source file does not exist" in message
         assert not target.exists()
 
 
