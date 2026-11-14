@@ -132,11 +132,22 @@ class SymlinkResult(Enum):
     ERROR = "error"
 
 
+def _is_pending_source(source: Path, pending_root: Path | None) -> bool:
+    """Whether ``source`` is missing and resolves below ``pending_root``."""
+    if pending_root is None:
+        return False
+    resolved = Path(os.path.realpath(source.absolute()))
+    root = Path(os.path.realpath(pending_root.absolute()))
+    return not os.path.lexists(resolved) and resolved.is_relative_to(root)
+
+
 def create_symlink(
     target_path: Path,
     source_path: Path,
     force: bool = False,
     dry_run: bool = False,
+    *,
+    pending_root: Path | None = None,
 ) -> tuple[SymlinkResult, str]:
     """Create a symlink with safety checks.
 
@@ -145,21 +156,28 @@ def create_symlink(
         source_path: What the symlink should point to (e.g., repo/config/AGENTS.md)
         force: Skip confirmations
         dry_run: Don't actually create symlinks
+        pending_root: Folder an earlier install step fills. In dry-run, a
+            missing source below it is reported as a would-create instead of
+            an error, since that step only reports what it would build.
 
     Returns:
         Tuple of (result, message)
     """
     target = target_path.expanduser()
-    try:
-        source = physical_path(source_path.absolute(), strict=True)
-    except OSError as e:
-        return (SymlinkResult.ERROR, f"Source path is not reachable: {e}")
+    pending = dry_run and _is_pending_source(source_path, pending_root)
+    if pending:
+        source = Path(os.path.realpath(source_path.absolute()))
+    else:
+        try:
+            source = physical_path(source_path.absolute(), strict=True)
+        except OSError as e:
+            return (SymlinkResult.ERROR, f"Source path is not reachable: {e}")
 
-    if not source.exists():
-        return (
-            SymlinkResult.ERROR,
-            f"Source file does not exist: {source}",
-        )
+        if not source.exists():
+            return (
+                SymlinkResult.ERROR,
+                f"Source file does not exist: {source}",
+            )
 
     if target.exists() or target.is_symlink():
         if target.is_symlink():
@@ -167,7 +185,7 @@ def create_symlink(
                 current = link_entry(target)
             except OSError:
                 current = Path(read_link(target))
-            if current == source and target.exists():
+            if current == source and (target.exists() or pending):
                 return (SymlinkResult.ALREADY_CORRECT, "Already correct")
             elif dry_run:
                 return (SymlinkResult.UPDATED, f"Would update: {current} → {source}")
