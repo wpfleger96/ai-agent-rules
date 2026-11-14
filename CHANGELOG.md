@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [0.81.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.3...v0.81.4) (2026-11-14)
+
+
+### Bug Fixes
+
+* **claude:** replace Read(*) allow rule with bare Read ([#277](https://github.com/wpfleger96/ai-agent-rules/issues/277)) ([65e8468](https://github.com/wpfleger96/ai-agent-rules/commit/65e8468e9b85899a8d3aa0e63f7c9a2d6b8589a9))
+* **install:** handle unbuilt settings caches in dry-run and validate ([#286](https://github.com/wpfleger96/ai-agent-rules/issues/286)) ([c4026fd](https://github.com/wpfleger96/ai-agent-rules/commit/c4026fd0cc3eec7441fbcb0346d8d0a051e5763b))
+* **install:** judge stale skill and extension links by current source ([#288](https://github.com/wpfleger96/ai-agent-rules/issues/288)) ([2d59f8a](https://github.com/wpfleger96/ai-agent-rules/commit/2d59f8af22e781e14192e1120a66267d3104925b))
+* **install:** remove orphaned caches after links are re-pointed ([#287](https://github.com/wpfleger96/ai-agent-rules/issues/287)) ([e123f58](https://github.com/wpfleger96/ai-agent-rules/commit/e123f58e7f3c620c8fea0ffba926ee61c7504870))
+* **install:** report settings and AGENTS.md cache builds in summary ([#279](https://github.com/wpfleger96/ai-agent-rules/issues/279)) ([74749f3](https://github.com/wpfleger96/ai-agent-rules/commit/74749f328ff4fdbf8d501dbed1095058bddec998))
+* **install:** treat unbuilt AGENTS.md cache as pending in dry-run ([#282](https://github.com/wpfleger96/ai-agent-rules/issues/282)) ([5fbd7af](https://github.com/wpfleger96/ai-agent-rules/commit/5fbd7afe3aa85ae6bc5541d1410819b3443528fb)), closes [#280](https://github.com/wpfleger96/ai-agent-rules/issues/280)
+
+
+### Refactoring
+
+* **cli:** remove duplicate component install() path ([#283](https://github.com/wpfleger96/ai-agent-rules/issues/283)) ([e47ecbe](https://github.com/wpfleger96/ai-agent-rules/commit/e47ecbe70d5d1c58f07af9c2c91195b9360199f3)), closes [#281](https://github.com/wpfleger96/ai-agent-rules/issues/281)
+
 ## [0.81.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.2...v0.81.3) (2026-11-12)
 
 
