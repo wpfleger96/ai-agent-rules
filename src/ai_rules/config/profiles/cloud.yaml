@@ -1,0 +1,23 @@
+# Claude Code on the web: the host injects the claude-code-remote MCP server,
+# the Artifact tool and the user's connectors into every cloud session. Denying
+# them here recovers about 25k tokens of context. claude-code-remote registers
+# under one of three names depending on how the session was created, so all
+# three are denied. Dropbox is intentionally kept.
+name: cloud
+description: Claude Code on the web containers (trims host-injected tool context)
+extends: personal
+settings_overrides:
+  claude:
+    remoteControlAtStartup: false
+    enableArtifact: false
+    permissions:
+      deny:
+        - mcp__claude-code-remote
+        - mcp__Claude_Code_Remote
+        - mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a
+    deniedMcpServers:
+      - serverName: Monarch
+      - serverName: SNORE
+      - serverName: PubMed
+      - serverName: Google_Drive
+      - serverName: Claude_Docs

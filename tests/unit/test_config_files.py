@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from ai_rules.config import load_config_file
+from ai_rules.config import Config, load_config_file
 from ai_rules.profiles import ProfileLoader
 
 
@@ -153,7 +153,7 @@ class TestConfigFileStructuralInvariants:
 
 @pytest.mark.unit
 class TestProfileFileSyntax:
-    @pytest.mark.parametrize("profile_name", ["default", "work", "personal"])
+    @pytest.mark.parametrize("profile_name", ["default", "work", "personal", "cloud"])
     def test_bundled_profiles_load_without_error(self, profile_name):
         loader = ProfileLoader()
         profile = loader.load_profile(profile_name)
@@ -183,6 +183,52 @@ class TestProfileFileSyntax:
         codex = profile.settings_overrides["codex"]
         assert codex.get("service_tier") == "fast"
         assert codex.get("features", {}).get("fast_mode") is True
+
+
+@pytest.mark.unit
+class TestCloudProfile:
+    @pytest.fixture
+    def cloud_profile(self):
+        return ProfileLoader().load_profile("cloud")
+
+    def test_cloud_profile_inherits_personal_settings(self, cloud_profile):
+        personal = ProfileLoader().load_profile("personal")
+        claude = cloud_profile.settings_overrides["claude"]
+        assert claude["permissions"]["defaultMode"] == "auto"
+        assert set(personal.skills) <= set(cloud_profile.skills)
+        assert personal.agents_md
+        assert personal.agents_md in cloud_profile.agents_md
+
+    def test_cloud_profile_disables_remote_control_and_artifact(self, cloud_profile):
+        claude = cloud_profile.settings_overrides["claude"]
+        assert claude["remoteControlAtStartup"] is False
+        assert claude["enableArtifact"] is False
+
+    def test_cloud_profile_denies_all_claude_code_remote_names(self, cloud_profile):
+        deny = cloud_profile.settings_overrides["claude"]["permissions"]["deny"]
+        assert {
+            "mcp__claude-code-remote",
+            "mcp__Claude_Code_Remote",
+            "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a",
+        } <= set(deny)
+
+    def test_cloud_profile_denies_unused_connectors_but_keeps_dropbox(
+        self, cloud_profile
+    ):
+        denied = {
+            entry["serverName"]
+            for entry in cloud_profile.settings_overrides["claude"]["deniedMcpServers"]
+        }
+        assert denied == {"Monarch", "SNORE", "PubMed", "Google_Drive", "Claude_Docs"}
+
+    def test_cloud_profile_merge_preserves_base_allow_list(
+        self, cloud_profile, claude_config
+    ):
+        config = Config(settings_overrides=cloud_profile.settings_overrides)
+        merged = config.merge_settings("claude", claude_config)
+        assert merged["permissions"]["allow"] == claude_config["permissions"]["allow"]
+        assert merged["permissions"]["allow"]
+        assert "mcp__claude-code-remote" in merged["permissions"]["deny"]
 
 
 PROVENANCE_LINE = "This file is managed by ai-agent-rules. Do not edit manually."
