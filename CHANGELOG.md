@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.82.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.5...v0.82.0) (2026-11-16)
+
+
+### Features
+
+* **profiles:** add cloud profile for Claude Code on the web ([#291](https://github.com/wpfleger96/ai-agent-rules/issues/291)) ([e3d8cca](https://github.com/wpfleger96/ai-agent-rules/commit/e3d8cca95b816497d697215626422f6019baa0db))
+
 ## [0.81.5](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.4...v0.81.5) (2026-11-14)
 
 
