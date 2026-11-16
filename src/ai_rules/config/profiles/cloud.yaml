@@ -4,7 +4,7 @@
 # `ai-agent-rules override set claude.permissions.deny '[...]'`, not in this
 # shipped profile.
 name: cloud
-description: Claude Code on the web containers (trims host-injected tool context)
+description: Claude Code on the web containers (disables Artifact and Remote Control)
 extends: personal
 settings_overrides:
   claude:
