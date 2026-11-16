@@ -199,36 +199,16 @@ class TestCloudProfile:
         assert personal.agents_md
         assert personal.agents_md in cloud_profile.agents_md
 
-    def test_cloud_profile_disables_remote_control_and_artifact(self, cloud_profile):
-        claude = cloud_profile.settings_overrides["claude"]
-        assert claude["remoteControlAtStartup"] is False
-        assert claude["enableArtifact"] is False
-
-    def test_cloud_profile_denies_all_claude_code_remote_names(self, cloud_profile):
-        deny = cloud_profile.settings_overrides["claude"]["permissions"]["deny"]
-        assert {
-            "mcp__claude-code-remote",
-            "mcp__Claude_Code_Remote",
-            "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a",
-        } <= set(deny)
-
-    def test_cloud_profile_denies_unused_connectors_but_keeps_dropbox(
-        self, cloud_profile
-    ):
-        denied = {
-            entry["serverName"]
-            for entry in cloud_profile.settings_overrides["claude"]["deniedMcpServers"]
-        }
-        assert denied == {"Monarch", "SNORE", "PubMed", "Google_Drive", "Claude_Docs"}
-
-    def test_cloud_profile_merge_preserves_base_allow_list(
+    def test_cloud_profile_merge_disables_tools_and_keeps_base_permissions(
         self, cloud_profile, claude_config
     ):
         config = Config(settings_overrides=cloud_profile.settings_overrides)
         merged = config.merge_settings("claude", claude_config)
+        assert merged["enableArtifact"] is False
+        assert merged["remoteControlAtStartup"] is False
         assert merged["permissions"]["allow"] == claude_config["permissions"]["allow"]
         assert merged["permissions"]["allow"]
-        assert "mcp__claude-code-remote" in merged["permissions"]["deny"]
+        assert merged["permissions"]["deny"] == claude_config["permissions"]["deny"]
 
 
 PROVENANCE_LINE = "This file is managed by ai-agent-rules. Do not edit manually."
