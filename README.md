@@ -318,7 +318,7 @@ ai-agent-rules profile switch work             # Switch to a different profile
 ai-agent-rules install --profile work          # Install with a specific profile
 ```
 
-Three built-in profiles ship with the tool, with inheritance chain `default -> personal -> work`. `default` is generic and suitable for anyone. `personal` and `work` are the author's own presets (for example, `personal` enables `auto` permission mode) and are not generic recommendations. Profiles support these keys:
+Four built-in profiles ship with the tool, with inheritance chain `default -> personal -> work` and `default -> personal -> cloud`. `default` is generic and suitable for anyone. `personal`, `work` and `cloud` are the author's own presets (for example, `personal` enables `auto` permission mode) and are not generic recommendations. `cloud` disables the Artifact tool and Remote Control for Claude Code on the web, and is meant to run from the cloud environment's setup script via `uvx ai-agent-rules@latest setup -y --skip-completions --profile cloud`. Account-specific connector denials go in `~/.ai-agent-rules-config.yaml` via `ai-agent-rules override set`, not in the profile. Profiles support these keys:
 
 ```yaml
 # profiles/work.yaml
@@ -401,7 +401,7 @@ src/ai_rules/config/
 ├── codex/                 # -> ~/.codex/
 ├── gemini/                # -> ~/.gemini/
 ├── goose/                 # -> ~/.config/goose/
-├── profiles/              # Built-in profiles (default, personal, work)
+├── profiles/              # Built-in profiles (default, personal, work, cloud)
 │   └── fragments/         # Profile AGENTS.md fragment files (referenced via agents_md_file)
 └── skills/                # 10 shared skills -> multiple agent skill dirs
     └── */SKILL.md

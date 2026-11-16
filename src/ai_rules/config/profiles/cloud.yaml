@@ -1,0 +1,12 @@
+# Claude Code on the web. Disabling the Artifact tool saves about 7k tokens of
+# context per session, and Remote Control has no use inside a cloud container.
+# Per-account connector denials belong in ~/.ai-agent-rules-config.yaml via
+# `ai-agent-rules override set claude.permissions.deny '[...]'`, not in this
+# shipped profile.
+name: cloud
+description: Claude Code on the web containers (disables Artifact and Remote Control)
+extends: personal
+settings_overrides:
+  claude:
+    remoteControlAtStartup: false
+    enableArtifact: false
