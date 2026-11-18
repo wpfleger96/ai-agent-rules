@@ -3,7 +3,7 @@
   "disableClaudeAiConnectors": true,
   "autoMemoryEnabled": false,
   "idleCompaction": false,
-  "autoCompactWindow": 400000,
+  "autoCompactWindow": 350000,
   "cleanupPeriodDays": 99999,
   "respectGitignore": false,
   "env": {
