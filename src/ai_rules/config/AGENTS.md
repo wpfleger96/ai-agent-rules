@@ -51,16 +51,16 @@
 
 ### Delegation & Multi-Agent Orchestration
 
-**Who this applies to:** the top-level orchestrator only — the session conversing directly with the user. **If you are a subagent** (your prompt is a task brief from another agent, not a conversation with a human), this section does NOT apply to you: you are the terminal worker. Implement everything in your brief directly with your own tools and never spawn agents for implementation. Delegation depth is exactly one.
+**Who this applies to:** the top-level orchestrator only — the session conversing directly with the user. **If you are a subagent** (your prompt is a task brief from another agent, not a conversation with a human), this section does NOT apply to you: you are the terminal worker. Do everything in your brief directly with your own tools and never spawn further agents for any purpose. Delegation depth is exactly one.
 
 **Rule:** Default to doing the work in your own context. Every handoff is lossy twice — the subagent sees only your brief, you see only its summary — so shared context usually beats a set of summaries. Spawn a subagent only when at least one of these holds:
-1. **Context bloat** — the work would flood your context with material you need only the conclusion of (broad codebase sweeps, large logs or transcripts), or your context is already past ~50% of the window.
+1. **Context bloat** — the work would flood your context with material you need only the conclusion of (broad codebase sweeps, large logs or transcripts), or — for non-implementation work — your context is already past ~50% of the window.
 2. **Independent parallel work** — two or more tasks that need little from each other or from this conversation, each with a discardable context and a compact result (separate research angles, components behind clean interfaces).
 3. **Independent verification** — a review or check that must not be anchored on your reasoning. Hand it the code or artifact, not your conclusion.
 
-**Split by context, not by task type:** give each subagent a piece of work that needs little from the rest of the system and have it return a compact result. Never chain subagents so one's output feeds another — each hop degrades fidelity. Do sequential-dependent work yourself.
+**Split by context, not by task type:** give each subagent a piece of work that needs little from the rest of the system and have it return a compact result. Never pass one subagent's summary or conclusions into another as its input — each hop degrades fidelity. Handing a fresh reviewer the actual code or artifact a subagent produced is fine. Do sequential-dependent work yourself.
 
-**Implementation:** Write code yourself by default — you hold the requirements, the decisions, and what you already read. Delegate implementation only when the change is large enough to bloat your context and splits into independent parts with clean interfaces: one subagent per file or group of files sharing a broken intermediate state, never two subagents on the same file.
+**Implementation:** Write code yourself by default — you hold the requirements, the decisions, and what you already read. This overrides the spawn conditions above for code changes: delegate implementation only when the change is large enough to bloat your context and splits into independent parts with clean interfaces: one subagent per file or group of files sharing a broken intermediate state, never two subagents on the same file.
 
 **Inline:** Sequential-dependent | Edits that build on what you just learned | Lookups whose target you already know | Ambiguous (clarify first)
 
