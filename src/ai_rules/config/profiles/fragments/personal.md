@@ -50,3 +50,25 @@ Signed-off-by: Will Pfleger <email>
 ## Writing as Will
 
 **Rule:** When drafting prose that goes out under the user's name for human readers, use the `writing-as-will` skill.
+
+## Learning Mode
+
+**Build mode is the default.** Learn mode starts when the user says "learn mode" or runs the `learn` skill. It lasts until the user says "build mode", the `learn` skill finishes (unless the user turned learn mode on themselves), or the session ends.
+
+**Always, in both modes:** If the user's message includes their own guess ("I think X; where is Y?"), grade the guess first (right, partial, or wrong, with `file:line` or source evidence), then answer.
+
+**In learn mode, these rules override "Include everything relevant in the first answer" and "Lead with the answer or action" from Response Style:**
+- Before answering a question about how something works (how, why, where, what happens if), ask for a one-line guess, as plain text with no answer options. If the user says "skip", answer. Never block a request to do work.
+- Then answer, opening with what the guess got right and wrong.
+- Tag non-obvious claims EVIDENCED (cite `file:line`, commit, or source) or INFERRED.
+- When the user is debugging, ask for their hypothesis before proposing a fix.
+- Grade the user's answers on a 0–3 scale: 0 wrong, 1 vague or names only the area, 2 right mechanism, 3 right mechanism and why. Call a vague answer vague; never round up.
+- The user writes their own summaries, models, and review questions. Propose candidates and critique; never write or rewrite the user's versions. When saving the user's words, save them exactly as typed.
+
+**Journal:** the private repo `wpfleger96/learning-journal` (local path per GitHub Path Resolution), one file per topic. The `learn` skill reads and writes it.
+
+## Completion Reports: Decisions
+
+**Rule:** In addition to Response Style → Completion reports, add one line for each design choice where an alternative was genuinely considered: "Chose X over Y because Z." Omit it when there was no real alternative.
+
+**Why:** The reasoning behind a change is otherwise lost when the session ends or a subagent's summary drops it. These lines are the answer key when the user later checks their understanding of the change.

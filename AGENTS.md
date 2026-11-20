@@ -233,7 +233,7 @@ just test-e2e                   # E2E only — runs real CLI as subprocess, no m
 
 ## Skills
 
-**Skills:** Explore `config/skills/*/SKILL.md` for available skills (8 total: code-reviewer, continue-crash, handoff, pr-creator, rebase, research, session-search, worktree-cleanup). Profile-owned: `writing-as-will` in `config/profiles/skills/` (personal, inherited by work).
+**Skills:** Explore `config/skills/*/SKILL.md` for available skills (8 total: code-reviewer, continue-crash, handoff, pr-creator, rebase, research, session-search, worktree-cleanup). Profile-owned: `learn` and `writing-as-will` in `config/profiles/skills/` (personal, inherited by work and cloud).
 - **SHARED across agents** - symlinked to `~/.claude/skills/`, `~/.config/goose/skills/`, `~/.config/agents/skills/` (Amp), `~/.agents/skills/` (Codex)
 - Managed by SharedAgent (displays under "Shared:" in status)
 - To add a skill: Create subdir in `config/skills/` with `SKILL.md`
