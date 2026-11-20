@@ -2,7 +2,7 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: pr-creator
-version: 1.1.0
+version: 1.2.0
 description: Create a GitHub pull request (draft by default) with a concise description derived from the branch's commits and diff. Use when the user asks to open a PR or a pushed branch is ready for review; pass `open` for a non-draft PR.
 allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 model: sonnet
@@ -21,8 +21,6 @@ model: sonnet
 
 **Usage:** `/pr-creator` - Create draft PR (default) | `/pr-creator open` - Create regular PR
 
-Expert software engineer creating high-quality PR descriptions that facilitate efficient code review.
-
 ## Pre-flight Checks
 
 **Validate environment:**
@@ -32,17 +30,9 @@ Expert software engineer creating high-quality PR descriptions that facilitate e
 
 ## Stage 1: Analyze & Generate Draft
 
-### Step 1: Detect Mode & PR Type
+### Step 1: Detect Mode
 
-**Mode:** Check `$1` equals "open" → regular PR, else draft PR
-
-**Classify PR type** via `git log origin/{base}..HEAD --format="%s"`:
-- **Feature:** feat:, add, implement, create, new functionality
-- **Fix:** fix:, bug, resolve, patch
-- **Refactor:** refactor:, restructure, clean up
-- **Docs:** docs:, changes to *.md
-- **Test:** test:, test file changes
-- **Chore:** chore:, maintenance, deps, config
+Check `$1` equals "open" → regular PR, else draft PR.
 
 ### Step 2: Gather Information
 
@@ -58,16 +48,12 @@ gh issue list --limit 20  # Search for related open issues
 
 ### Step 3: Generate Draft Description
 
-See `references/templates.md` for optional examples. Key principles:
+Base the description on the actual diff, not only the commit messages. Verify that referenced issues exist, and derive URLs for external references from context. See `references/templates.md` for the optional shape, issue-reference keywords and an example.
 
+- The PR-description and markdown rules in AGENTS.md apply
 - Tone and shape: if the PR goes out under Will's name and `writing-as-will` is installed, follow it. Otherwise, write plain, factual prose scaled to the change
-- Specific technical terms, no marketing language; backtick-wrap code identifiers (env vars, functions, paths, endpoints)
-- Plain bullets (`-`), no bold/headers in body; no hard line wraps in prose paragraphs; no `&nbsp;` or non-breaking spaces — regular spaces only
-- Issue refs at end with proper keywords; all external references as clickable markdown links (see `references/templates.md`)
-- Never include a "Test Plan" or "Testing" section -- leave test planning to humans
-- Never append `Claude-Session:` links or agent attribution footers
-
-See `references/templates.md` for detailed structure and examples.
+- Specific technical terms, no marketing language
+- Plain bullets (`-`), no headers in the body, bold only for the optional review-section labels; issue refs at the end, after a blank line
 
 ### Step 4: Verify & Create
 
@@ -86,7 +72,7 @@ git push -u origin HEAD
 
 ### Create PR
 
-**Title** must use conventional commit format: `<type>(<optional-scope>): <imperative verb> <specific change>` (50-70 chars). Use the PR type detected in Step 1. Same accuracy rules as Commit Messages in AGENTS.md.
+**Title:** conventional commit format, per the PR Titles rule in AGENTS.md. Confirm the base branch is correct.
 
 **Create** (use HEREDOC for formatting):
 
@@ -108,16 +94,4 @@ EOF
 
 **Display PR URL** upon success.
 
-## Critical Requirements
-
-**Accuracy:** Inspect actual commits via git | Review code changes via diff | Don't rely solely on commit messages | Verify issue refs exist | Derive URLs for external references from context (never hardcode base URLs)
-
-**Structure:** Length scales with the change | Proper issue ref formatting
-
-**Branch Management:** Verify branch pushed before PR | Use `git push -u origin HEAD` if needed | Confirm base branch correct | Block PRs with PLAN files
-
-**Formatting:** Always use HEREDOC in `gh pr create --body` | Ensure proper line breaks/bullets | Blank line before issue refs
-
-**PR Maintenance:** This skill covers PR creation only. After pushing additional commits to an existing PR, follow the PR Maintenance rule in AGENTS.md: rewrite the description from scratch as a snapshot of what the branch changes vs. main.
-
-Goal: Create PR descriptions making code review efficient and thorough, providing reviewers all context to understand and evaluate changes quickly.
+This skill covers PR creation only. After pushing more commits to an existing PR, follow the PR Maintenance rule in AGENTS.md.

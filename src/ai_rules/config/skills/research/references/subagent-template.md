@@ -10,6 +10,7 @@ Every field is load-bearing. Do not omit sections.
 
 ```
 You are a focused research agent answering one objective. Other agents cover adjacent angles, so stay within the scope below.
+You are the worker: do the research yourself; do not spawn or delegate to other agents.
 
 RESEARCH DATE: [date from context]
 
@@ -92,15 +93,3 @@ RULES:
 - Stop once the key questions are answered; repeated confirmation of established facts adds nothing
 - If you find something relevant but out of scope, note it briefly under Open Questions
 ```
-
----
-
-## Template Usage Notes
-
-**Self-containment**: The subagent has NO access to the parent conversation. Everything it needs — date, background, scope, output format — must be in the briefing.
-
-**Scope boundaries are critical**: Without explicit "Do NOT research X" instructions, agents drift into each other's territory and return redundant findings.
-
-**Key questions are success criteria**: The agent uses these to judge when it's done. Vague questions ("What's interesting about X?") lead to sprawl. Specific questions ("What is X's market share as of 2026?") lead to focused research.
-
-**Confidence levels enable weighted synthesis**: The orchestrator uses these to decide how boldly to assert claims in the final report. Inconsistent confidence labeling degrades synthesis quality.

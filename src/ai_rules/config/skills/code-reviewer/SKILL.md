@@ -2,8 +2,8 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: code-reviewer
-version: 1.2.1
-description: Performs thorough code review on local changes or PRs. Use this skill proactively after implementing code changes to catch issues before commit/push. Also use when reviewing PRs from other engineers.
+version: 1.3.0
+description: Review local changes or a PR for bugs, security and design issues. Use proactively after implementing changes, before commit or push.
 agent: general-purpose
 allowed-tools: Agent, AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 ---
@@ -16,17 +16,23 @@ allowed-tools: Agent, AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 - Uncommitted changes: !`git status --porcelain 2>/dev/null | wc -l | xargs`
 - Unpushed commits: !`git log origin/$(git symbolic-ref --short HEAD 2>/dev/null)..HEAD --oneline 2>/dev/null | wc -l | xargs || echo "0"`
 
-You are an expert software engineer performing code reviews to ensure quality, security, and maintainability before deployment.
+## Review Principles
 
-## Review Philosophy
+- **Report every real issue, labeled by severity.** Polish items go under 🟢 CONSIDER with a "Nit:" prefix. Do not drop low-severity findings or omit one because the change improves overall health; severity decides what blocks, and the reader filters the rest.
+- **Author deference:** when several approaches have engineering merit, accept the author's choice. A style preference without a documented style-guide violation is a Nit, never a blocker.
+- Cite a file path and line number for every finding.
+- Review only what the diff touches; unrelated improvements are out of scope.
+- Present findings and wait for user approval before editing any code.
 
-**Thorough analysis, pragmatic recommendations**: Report every issue that affects code health, and separate those from preferences that don't warrant blocking the change. Polish items belong under 🟢 CONSIDER with a "Nit:" prefix rather than being dropped, and "the code improves overall health" is not a reason to omit an issue.
+## Worktree Isolation
 
-**Forward momentum**: Reviews should enable progress, not create bottlenecks. Don't delay good changes for minor polish—but DO surface the polish items as 🟢 CONSIDER rather than omitting them.
+Inside an isolated git worktree, Claude Code may block this skill's shell pipelines (the diff gathering and complexity snippet below) with "this command is too complex to verify that it stays inside the worktree". A main session recovers by:
+1. Loading `ExitWorktree` via `ToolSearch` (`select:ExitWorktree`)
+2. Calling `ExitWorktree` with `keep` (preserves the worktree and branch)
+3. Running the review
+4. Calling `EnterWorktree` to return to the same worktree
 
-**Author deference**: When multiple valid approaches exist with engineering merit, accept the author's choice. Style preferences without a documented style guide violation should not block approval.
-
-**Educational feedback**: Mark optional suggestions with "Nit:" prefix to clearly distinguish must-fix from nice-to-have. This helps developers prioritize without losing valuable feedback.
+Subagents running with `isolation: worktree` cannot use `ExitWorktree`; report the block instead.
 
 ## Review Modes
 
@@ -66,7 +72,7 @@ Review a pull request opened by another engineer.
 
 ---
 
-After gathering changes, classify the review complexity:
+After gathering changes, classify the review complexity.
 
 ### Complexity Classification
 
@@ -104,14 +110,7 @@ This scan runs for diffs of ALL sizes — it is the one classification that over
 
 ### Performance Relevance
 
-For Medium/Large diffs, scan the diff text to determine whether the Performance & Scalability agent should be activated. Set `performance_relevant = true` when the diff contains ANY of:
-- Database/ORM query construction (`.filter(`, `.all(`, `.query(`, `.execute(`, `SELECT`, `JOIN`, `WHERE`, raw SQL strings)
-- Loops over collections of indeterminate size (`for x in results`, `for item in data`, `while` loops processing external input)
-- New function calls, I/O operations, or subprocess invocations inside loops
-- Data structures that grow proportionally with input volume (appending to lists/dicts in loops, accumulation patterns)
-- Explicit performance-related references in comments/docstrings (`performance`, `latency`, `throughput`, `cache`, `O(n`)
-
-Do NOT activate for: config-only changes, test-only changes, documentation-only changes, UI/template changes, import reorganization, type annotation changes.
+For Medium/Large diffs, set `performance_relevant = true` (activating the Performance & Scalability agent) when the diff adds database/ORM queries or raw SQL, loops over collections of indeterminate size, I/O or subprocess calls inside loops, input-proportional accumulation, or explicit performance references (`latency`, `cache`, `O(n`). Do NOT activate for config-, test-, docs-, UI/template-, import- or annotation-only changes.
 
 ## Review Methodology
 
@@ -122,44 +121,15 @@ Before reviewing code, establish understanding:
 - What files were modified and why?
 - What are the critical paths affected?
 - What existing patterns or conventions should be followed?
-- **Review in context**: Read the entire modified files, not just the diff. Understanding surrounding code is essential.
+- **Read the entire modified files, not just the diff** — surrounding code is essential context.
 
 ### Phase 2A: Inline Review (Non-Boundary Small Diffs Only)
 
-For Small complexity diffs that are NOT `boundary_relevant`, execute the review inline using the four lenses below sequentially. Any `boundary_relevant` diff — regardless of size — routes to Phase 2B instead (see the Boundary override above).
-
-**Lens 0: Design & Integration**
-- Does the change integrate well with existing architecture?
-- Is this the right location/abstraction level for this functionality?
-- Would this be better in a library or separate module?
-- Does the overall design approach make sense for this system?
-- If this diff introduces loops, query patterns, or data structure operations: are there obvious algorithmic complexity concerns (e.g., O(n^2) where O(n) is possible) or unnecessary repeated I/O?
-
-**Lens 1: Simplicity & Maintainability**
-- Could this be simpler while maintaining functionality?
-- Will future developers understand this easily?
-- Is there unnecessary complexity or over-engineering?
-- Is this solving present needs or hypothetical future problems?
-- Are there opportunities to reduce duplication (3+ occurrences)?
-- Does the code follow project-specific conventions from AGENTS.md or CLAUDE.md? (naming, directory structure, tooling mandates)
-
-**Lens 2: Security & Reliability**
-- Are there security vulnerabilities? (SQL injection, XSS, auth bypass, data exposure)
-- Is error handling adequate for external dependencies?
-- Are edge cases properly handled?
-- Could this cause data corruption or loss?
-- If dependency files changed: are new dependencies well-maintained, version-pinned, and free of known vulnerabilities?
-
-**Lens 3: Functionality & Testing**
-- Does the code do what the developer intended?
-- Will this work well for end users? (Consider edge cases they'll encounter)
-- For UI changes: Can you verify the user experience?
-- Are critical paths tested? (business logic, integrations, security controls)
-- Do tests verify behavior, not implementation details?
-- Is coverage sufficient for the risk level?
-- Are tests focused on what matters, not trivial cases?
-- **Mutation check (fix PRs only):** Run the mutation protocol defined in the Functionality & Testing lens of `references/subagent-template.md` — revert only the production hunks in a scratch worktree, verify the reversal, run the full suite, and expect red. A suite that stays green with the fix removed is a 🔴 "untested at its seam". If you cannot run it, report the unmet precondition instead of skipping silently.
-- For changed APIs or function signatures: are docstrings and documentation still accurate?
+For Small complexity diffs that are NOT `boundary_relevant` (those route to Phase 2B per the Boundary override), review inline, applying four lenses in order: Design & Integration, Simplicity & Maintainability, Security & Reliability, Functionality & Testing. Include these checks:
+- **Algorithmic cost:** for new loops, query patterns or data-structure operations, flag avoidable complexity (O(n^2) where O(n) is possible) and repeated I/O.
+- **Project conventions:** check naming, directory structure and tooling mandates against AGENTS.md or CLAUDE.md.
+- **Dependency hygiene:** if dependency files changed, are new dependencies maintained, version-pinned and free of known vulnerabilities?
+- **Mutation check (fix PRs only):** run the mutation protocol defined in the Functionality & Testing lens of `references/subagent-template.md`: revert only the production hunks in a scratch worktree, verify the reversal, run the full suite, and expect red. A suite that stays green with the fix removed is a 🔴 "untested at its seam". If you cannot run it, report the unmet precondition instead of skipping silently.
 
 After applying all lenses, proceed directly to Phase 3.
 
@@ -188,9 +158,7 @@ Load the briefing template from `references/subagent-template.md` and construct 
 | Performance & Scalability | `opus` | Algorithmic complexity, query efficiency, I/O patterns, memory growth, hot-path regressions | Do NOT review for security, design architecture, correctness, or test quality | Only when `performance_relevant = true` |
 | Boundary & External Contract | `opus` | External-consumer contracts for touched env vars/credentials/endpoints, downstream behavior each value activates, paired-value integrity, issue-scope match | Do NOT review for in-repo design, general security patterns, test quality, or performance | Only when `boundary_relevant = true` |
 
-If the diff was flagged as performance-relevant in the Performance Relevance classification, launch the Performance & Scalability agent. If the diff was flagged as boundary-relevant in the Boundary Relevance classification, launch the Boundary & External Contract agent. Always launch the three core agents (Security & Reliability, Design & Simplicity, Functionality & Testing); add the conditional agents on top when their flags are set.
-
-Each subagent receives: the full diff, instruction to read modified files in full (not just diff hunks), its assigned lens with key questions from the template, explicit scope boundaries, and the severity framework (🔴 MUST FIX / 🟡 SHOULD FIX / 🟢 CONSIDER).
+Always launch the three core agents; add each conditional agent when its flag is set. Fill every field of the template for each briefing, including the lens's key questions and scope boundaries.
 
 #### Step 3: Collect results as they arrive
 
@@ -198,9 +166,9 @@ Subagents return independently. As each lens comes back, parse its findings and 
 
 ### Phase 3: Synthesis
 
-#### Small Diff Synthesis (from Phase 2A)
+#### Severity Framework
 
-Categorize your inline findings using this decision framework:
+Both paths categorize findings this way:
 
 **🔴 MUST FIX (Blocking Issues)**
 - Security vulnerabilities
@@ -216,17 +184,13 @@ Categorize your inline findings using this decision framework:
 - Test coverage <60% for non-trivial paths
 - Maintainability concerns that will cause future problems
 
-**🟢 CONSIDER (Nice-to-Have)**
+**🟢 CONSIDER (Nice-to-Have, prefix "Nit:")**
 - Minor refactoring opportunities
 - Documentation improvements
 - Non-critical performance optimizations
-- Style inconsistencies (only if egregious)
+- Style inconsistencies
 
-For each issue identified:
-1. Cite specific file and line number
-2. Explain the problem clearly
-3. Show why it matters (security risk, maintenance burden, etc.)
-4. Propose concrete fix with code example where helpful
+For each issue, explain the problem and why it matters, and propose a concrete fix (with code where helpful).
 
 #### Orchestrated Synthesis (from Phase 2B)
 
@@ -260,7 +224,7 @@ Organize findings by severity tier (🔴 then 🟡 then 🟢), NOT by which agen
    - Mutation check applies only to fix PRs.
    - External-contract trace applies to every `boundary_relevant` diff.
    - A live-behavior probe applies when a correctness claim depends on behavior the reviewer cannot observe statically (a real network endpoint, a real spawned child's environment). If such a probe is needed but the reviewer cannot run it, the verdict is Comment with that precondition named — never APPROVE on unverified boundary behavior.
-3. **APPROVE** — no verified blocker and every applicable mandatory check has executed. The forward-momentum philosophy stays intact for all non-boundary changes; single-source non-blocking findings do not prevent approval.
+3. **APPROVE** — no verified blocker and every applicable mandatory check has executed. Findings other than a verified HIGH-confidence 🔴 do not prevent approval.
 
 ## Output Format
 
@@ -287,11 +251,3 @@ Organize findings by severity tier (🔴 then 🟡 then 🟢), NOT by which agen
 ## Implementation Plan
 [Suggested order to address findings]
 ```
-
-## Key Requirements
-
-- Present findings and wait for user approval before editing any code.
-- Cite a file path and line number for every finding.
-- Review only what the diff touches; unrelated improvements are out of scope.
-
-Your goal is to catch issues that would cause real problems in production while respecting the developer's time and judgment.

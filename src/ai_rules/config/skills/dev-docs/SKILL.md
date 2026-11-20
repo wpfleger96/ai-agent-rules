@@ -2,7 +2,7 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: dev-docs
-version: 1.0.2
+version: 1.0.3
 description: Create or update a task-specific PLAN__<TASK>.md in the project root from the session's approved plan and implementation evidence. Use when starting multi-session work, after ExitPlanMode, or when asked to record or refresh progress; auto-detects create vs update.
 allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, TodoWrite, Write
 model: sonnet
@@ -32,23 +32,10 @@ Automatically creates task-specific PLAN files (`PLAN__<TASK>.md`) or updates ex
 
 ## File Location
 
-Write PLAN files to `{project_root}/PLAN__<TASK>.md`, where `{project_root}` is the "Project root" value from Context. A PLAN file is the single source of truth across sessions and worktrees, so it never goes in a worktree path, in `~/.claude/plans/` (Claude Code's internal storage, unrelated to this skill), or at the monorepo root when CWD is an app subdirectory.
-
-**How project root is resolved:**
-
-The project root combines `--git-common-dir` (main repo root, worktree-safe) with `--show-toplevel` (current working tree root) to compute the correct target:
-
-1. Find the relative path from CWD to the working tree root (`--show-toplevel`)
-2. Apply that relative path to the main repo root (`--git-common-dir`)
-
-This handles worktrees (CWD may be inside `<repo>/.worktrees/<name>/`) and monorepos (CWD may be a subdirectory like `<repo>/<app>/`) correctly — including both at once.
-
-| Situation | Main repo root | Worktree/CWD | Project root |
-|---|---|---|---|
-| Standard repo | `/repos/myapp` | `/repos/myapp` | `/repos/myapp` |
-| Worktree | `/repos/myapp` | `/repos/myapp/.worktrees/feat` | `/repos/myapp` |
-| Monorepo | `/repos/mono` | `/repos/mono/builderbot-slack` | `/repos/mono/builderbot-slack` |
-| Worktree + monorepo | `/repos/mono` | `/repos/mono/.worktrees/feat/builderbot-slack` | `/repos/mono/builderbot-slack` |
+Write PLAN files to `{project_root}/PLAN__<TASK>.md`, where `{project_root}` is the "Project root" value from Context (it maps a worktree CWD back to the main checkout and keeps a monorepo app subdirectory). A PLAN file is the single source of truth across sessions and worktrees, so never write it to:
+- a worktree path (e.g. `<repo>/.worktrees/<name>/`)
+- `~/.claude/plans/` (Claude Code's internal storage, unrelated to this skill)
+- the monorepo root when CWD is an app subdirectory
 
 ## Phase 1: Determine Mode
 
@@ -76,9 +63,10 @@ Use pre-executed context:
 3. Map tasks to evidence via file paths and keywords
 
 **Assign statuses:**
-- Strong evidence → [DONE]
-- Medium evidence → [IN PROGRESS]
-- Weak/no evidence → [TODO]
+- Strong evidence (multiple indicators: file written + tests + completion phrase or completed TodoWrite) → [DONE]
+- Medium evidence (single indicator, or some subtasks unfinished) → [IN PROGRESS]
+- Weak/no evidence (planned or discussed, no tool calls) → [TODO]
+- Cannot proceed → `[BLOCKED - <reason>]`; no longer relevant → `[CANCELLED - plan changed]`
 
 ### For Update Mode
 
@@ -89,7 +77,7 @@ Use pre-executed context:
 
 ## Phase 3: Write or Update File
 
-See `references/templates.md` for PLAN.md structure.
+See `references/templates.md` for the PLAN file structure. Nest tasks with 3-space indentation and name target file paths in task lines.
 
 ### Create Mode
 
@@ -148,26 +136,3 @@ PLAN files accumulate institutional knowledge. The design narrative — the WHY 
 **The test:** If removing content would force a future reader to re-discover a decision, re-research an external system, or lose understanding of the human intent behind the work — that content must stay.
 
 When restructuring (moving sections to a new PLAN file, consolidating, or splitting): keep all design narrative in the original location, add forward pointers for tracking, and duplicate design context into the new file for cold-start self-containment. Intentional overlap between files is correct.
-
-## Status Transitions & Evidence Strength
-
-**Evidence Strength:**
-- Strong: Multiple indicators → [DONE]
-- Medium: Single indicator → [IN PROGRESS]
-- Weak/None → [TODO]
-
-**Valid Status Labels:**
-- [TODO] → Not started
-- [IN PROGRESS] → Started not finished
-- [DONE] → Completed
-- [BLOCKED] → Cannot proceed (include reason)
-- [CANCELLED - plan changed] → No longer relevant
-
-## Requirements Recap
-
-- Every planned task appears with a status; evidence-free tasks are [TODO], never omitted
-- 3-space indentation, hierarchy preserved
-- Design narrative is never removed (see Content Preservation Rules)
-- The file passes the cold-start test: a new agent can resume from it alone
-
-See `references/templates.md` for detailed PLAN.md structure and examples.
