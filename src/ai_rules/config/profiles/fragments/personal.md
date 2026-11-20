@@ -11,8 +11,6 @@
 | `gh-infra` fork workflow | `gh-infra` | `~/Development/gh-infra` | Fork of `babarot/gh-infra`. `origin` = `wpfleger96/gh-infra`, `upstream` = `babarot/gh-infra`. See fork workflow section below. |
 | `enpass-cli` fork workflow | `enpass-cli` | `~/Development/enpass-cli` | Fork of `hazcod/enpass-cli`. `origin` = `wpfleger96/enpass-cli`, `upstream` = `hazcod/enpass-cli`. See fork workflow section below. |
 
----
-
 ### Fork Workflows
 
 **Rule:** When making changes to gh-infra or enpass-cli, always follow the fork workflow — never commit directly to `dev`.
@@ -32,19 +30,15 @@
 | Build | `go build -o gh-infra ./cmd/gh-infra/` | `make build` |
 | Trailers | None (maintainer identity) | Standard rules apply |
 
----
-
 ## GitHub Path Resolution
 
 **Path resolution:** `github.com/<org>/<repo_name>` → `~/Development/<repo_name>`
-
----
 
 ## Agent-Authored Commits
 
 **Rule:** Before every commit, run `git config user.name` and compare to "Will Pfleger". Only add trailers when they differ — i.e., the agent has its own git identity. If the user's name is already the committer, omit all trailers.
 
-**When trailers are needed** (agent identity ≠ user identity), include both:
+**When trailers are needed** (agent identity ≠ user identity), include both in the commit message (not PR descriptions):
 
 ```
 Co-authored-by: Will Pfleger <email>
@@ -52,10 +46,6 @@ Signed-off-by: Will Pfleger <email>
 ```
 
 **Discover email:** Run `git log --format="%aN <%aE>" | grep -i "will pfleger" | head -1` in the repo. Never hardcode.
-
-**Why:** `Co-authored-by` ensures proper GitHub attribution. `Signed-off-by` satisfies DCO checks requiring human sign-off on agent-authored commits. Applies to commit messages only — not PR descriptions.
-
----
 
 ## Writing as Will
 

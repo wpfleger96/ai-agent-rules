@@ -2,11 +2,10 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: worktree-cleanup
-version: 1.1.0
+version: 1.1.1
 description: >-
-  Clean up stale git worktrees to reclaim disk space. Detects merged branches,
-  deleted remotes, and abandoned worktrees. Rust-aware (reports target/ sizes
-  separately). Use for worktree cleanup or disk reclamation.
+  Clean up stale git worktrees (merged, remote-deleted, abandoned) to reclaim
+  disk space; reports Rust target/ sizes. Use for disk reclamation.
 allowed-tools: AskUserQuestion, Bash, Read
 model: sonnet
 ---
@@ -244,7 +243,7 @@ If `--dry-run` is set, output the report and stop: "Dry run complete. No worktre
 
 ## Phase 4: Cleanup
 
-Skip entirely if `--dry-run` or if there are no SAFE/LIKELY_SAFE/PRUNABLE/STALE worktrees.
+Skip entirely if `--dry-run` or if there are no SAFE/LIKELY_SAFE/PRUNABLE/STALE/CORRUPTED worktrees.
 
 ### Step 1: PRUNABLE worktrees
 
@@ -319,14 +318,9 @@ Remaining worktrees: N
 
 ## Rules
 
-1. **Never remove the main worktree** — skip it in all phases
-2. **Never auto-remove ACTIVE worktrees** — open PRs, unpushed commits, or uncommitted changes that reached check 5 (i.e., not overridden by a merged PR in check 4) block automatic removal
-3. **Never remove locked worktrees** — report them but do not offer removal
-4. **Always show the report before any removal** — the user must see the full picture first
-5. **Always confirm via AskUserQuestion** — no destructive actions without explicit user approval
-6. **Use `git worktree remove`, never `rm -rf`** — ensures git metadata is cleaned atomically
-7. **`--force` only for merged-PR dirty worktrees** — use `git worktree remove --force` only when a worktree is classified SAFE via check 4 (confirmed-merged GitHub PR) and has dirty state; never use `--force` for any other classification
-8. **Batch parallel Bash calls** where possible — run multiple `du`, `git status`, `git log` checks in a single Bash invocation to minimize round-trips
+- Never offer ACTIVE or LOCKED worktrees (or the main worktree) for removal; report them only.
+- Remove with `git worktree remove`, never `rm -rf`, so git metadata is cleaned atomically.
+- Batch independent checks (`du`, `git status`, `git log`) into one Bash invocation per worktree to minimize round-trips.
 
 ## Abort & Recovery
 
@@ -334,8 +328,3 @@ If the user cancels mid-cleanup or an unexpected error occurs:
 1. Run `git worktree prune -v` to clean any orphaned metadata
 2. Report: how many worktrees were successfully removed, which removals were skipped, and that the repo is in a consistent state
 3. The repo is always safe — `git worktree remove` (without `--force`) either completes atomically or fails without side effects
-
-## Examples
-
-- `/worktree-cleanup` — analyze and clean up worktrees in the current repo
-- `/worktree-cleanup --dry-run` — report worktree status and disk usage without removing anything

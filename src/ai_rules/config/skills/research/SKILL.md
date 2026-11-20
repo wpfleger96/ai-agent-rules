@@ -2,11 +2,10 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: research
-version: 1.0.1
+version: 1.0.3
 description: >-
-  Multi-agent research on any topic. Use when the user asks to research,
-  investigate, or deep-dive a question requiring multiple sources. Scales
-  from inline answers to 10 parallel research agents based on complexity.
+  Multi-agent research on a question needing multiple sources. Use when asked
+  to research, investigate or deep-dive; scales from inline answers to 10 agents.
 allowed-tools: Agent, AskUserQuestion, Bash, Read, WebFetch, WebSearch, Write
 model: fable
 ---
@@ -33,7 +32,7 @@ You coordinate and synthesize. You do NOT conduct primary research yourself (exc
 Determine the research question:
 - If `${ARGS}` contains a self-contained research question → use it directly
 - If `${ARGS}` is vague or references conversation context ("investigate this", "research the approach we discussed", "look into that") → derive the actual research question from the conversation history and state it explicitly before proceeding
-- If the intent is genuinely ambiguous even with conversation context → use AskUserQuestion to clarify scope, time frame, target audience, or desired depth
+- If the intent is genuinely ambiguous even with conversation context → use AskUserQuestion to clarify scope, time frame, target audience, or desired depth. Never stop to confirm the tier or agent count.
 
 **Classify the query into a complexity tier:**
 
@@ -44,7 +43,7 @@ Determine the research question:
 | Medium | Cross-domain synthesis, conflicting sources likely, rapidly evolving topic | 3-5 | Spawn parallel agents with distinct angles |
 | High | Multi-stakeholder analysis, contested empirical claims, deep competitive or policy analysis | 5-10 | Spawn parallel agents with distinct angles |
 
-**Cost guard**: When in doubt, choose the lower tier. Budget more tokens per agent rather than more agents — token volume explains 80% of research quality.
+**Cost guard**: When in doubt, choose the lower tier — once agents launch in parallel you cannot throttle them. Budget more tokens per agent rather than more agents — token volume explains 80% of research quality.
 
 After classification, proceed to:
 - **Simple** → Answer directly using web search, then stop.
@@ -74,14 +73,12 @@ Load the subagent briefing template from `references/subagent-template.md` in th
 
 For each agent in the manifest, construct a fully self-contained briefing using the template. The briefing must include everything the subagent needs — it has NO access to this conversation's context.
 
-**Launch all independent agents in a SINGLE response as parallel Agent tool calls.** This is critical — parallel execution cuts research time up to 90%.
+Launch all independent agents in a single response as parallel Agent tool calls, then keep working while they run: for Straightforward queries do your share of the direct research; otherwise prepare the synthesis scaffold from `references/report-format.md`. Synthesize once every agent has returned.
 
 Each Agent call:
 - `model`: `sonnet`
 - `description`: Short label (e.g., "Research technical architecture of X")
 - `prompt`: The fully constructed briefing
-
-After launching, wait for all agents to return their findings.
 
 ## Phase 4: Synthesis
 
@@ -106,23 +103,7 @@ Structure the final report per the format in `references/report-format.md`.
 - Topic slug: lowercase, hyphens, max ~40 chars derived from the research query
 - After writing, tell the user the file path so they can find the report
 
-## Key Requirements
-
-- **Never skip tier classification** — always classify before spawning agents
-- **Simple tier stays simple** — no Agent calls, no full report format, just a direct answer
-- **Only ask clarifying questions when genuinely ambiguous** — never stop to confirm complexity or agent count. If the user asked for it, execute it.
-- **Briefings are self-contained** — subagents have zero context from this conversation
-- **Never delegate the final report** — subagents return findings, but the orchestrator always writes the synthesis and report itself
-- **Synthesize, don't concatenate** — your job is connecting dots across findings, not pasting them together
-- **Epistemic honesty** — never paper over disagreements between sources or agents. If confidence is mixed, say so.
-- **Prefer the lower tier when uncertain** — once agents are launched in parallel, you cannot throttle mid-execution
-- **Simple tier outputs inline only** (no file). Standard+ tiers output inline AND write to a file for persistence, unless the `no-file` flag was set.
-
 ## Examples
 
-- `/research what is BLUF?` — Simple tier, direct inline answer
-- `/research state of WebAssembly adoption in 2026` — Standard, 2-3 agents (technical landscape, adoption data, limitations)
-- `/research compare React Server Components vs Astro Islands vs htmx` — Medium, 3-5 agents (one per technology + cross-cutting comparison)
-- `/research comprehensive analysis of LLM agent architectures for production use` — High, 5-8 agents with distinct angles
-- `/research no-file state of WebAssembly adoption in 2026` — Standard tier, inline output only (no file written)
-- `/research no-file compare React Server Components vs Astro Islands vs htmx` — Medium tier, inline output only (no file written)
+- `/research state of WebAssembly adoption in 2026` — Standard, 2-3 agents (technical landscape, adoption data, limitations), report written to a file
+- `/research no-file compare React Server Components vs Astro Islands vs htmx` — Medium, 3-5 agents, report inline only

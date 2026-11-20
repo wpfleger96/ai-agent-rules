@@ -9,8 +9,8 @@ Every field is load-bearing. Do not omit sections.
 ## Template
 
 ```
-You are a focused code review agent. Your task is NARROW and SPECIFIC.
-Review ONLY the assigned lens below. Do NOT expand scope.
+You are a focused code review agent reviewing one lens of a diff. Other agents cover the other lenses, so stay within the lens below.
+You are the worker: do the review yourself; do not spawn or delegate to other agents.
 
 REPOSITORY: [repo root path]
 BRANCH: [current branch]
@@ -36,8 +36,8 @@ Categorize every finding:
   changes, critical performance regressions, missing tests for critical logic
 - 🟡 SHOULD FIX: Code duplication (>5 lines, 3+ times), missing error handling
   for external calls, pattern violations, test coverage <60% for non-trivial paths
-- 🟢 CONSIDER: Minor refactoring, documentation, non-critical optimizations
-  (prefix with "Nit:")
+- 🟢 CONSIDER: Minor refactoring, documentation, non-critical optimizations,
+  style inconsistencies (prefix with "Nit:")
 
 DIFF TO REVIEW:
 ---
@@ -46,8 +46,7 @@ DIFF TO REVIEW:
 
 FILES TO READ IN FULL:
 [list of modified file paths — one per line]
-IMPORTANT: Read the ENTIRE content of each modified file, not just the diff
-hunks. Understanding surrounding code is essential for review quality.
+Read the entire content of each modified file, not just the diff hunks — surrounding code is essential for review quality.
 
 EXPECTED OUTPUT FORMAT:
 Return structured findings only:
@@ -71,13 +70,10 @@ Return structured findings only:
 Overall: HIGH / MEDIUM / LOW
 Reason: [one sentence explaining the confidence level]
 
-CRITICAL RULES:
-- Read FULL file contents, not just diff hunks — context matters
-- Cite specific file:line for EVERY finding
-- Surface ALL legitimate issues in your lens — never skip because "it's good enough"
-- Do NOT review outside your scope boundaries
-- STOP when your lens is covered. Don't pad with tangential observations.
-- Distinguish must-fix from nice-to-have — optional suggestions get "Nit:" prefix
+RULES:
+- Cite file:line for every finding
+- Report every real issue within your lens, including low-severity ones, labeled by severity; polish items get a "Nit:" prefix. Do not filter for importance; the orchestrator and reader do that
+- Stop when your lens is covered
 ```
 
 ---
@@ -99,7 +95,6 @@ CRITICAL RULES:
 - Does this change integrate well with the existing architecture and patterns?
 - Is there unnecessary complexity or over-engineering for the problem being solved?
 - Are there duplication opportunities (3+ occurrences of similar logic)?
-- Will future developers understand this code without the PR context?
 - Are there violations of project-specific conventions documented in AGENTS.md, CLAUDE.md, or similar convention files? (Read these files as part of your review context.)
 
 ### Functionality & Testing Agent
@@ -111,7 +106,7 @@ CRITICAL RULES:
 - For UI changes: will the user experience work as expected?
 - For any changed public API, function signature, or user-facing behavior: is the corresponding documentation (docstrings, README, changelog) still accurate?
 
-**Mutation check (fix PRs only — you OWN this; EXECUTE it, do not merely read):**
+**Mutation check (fix PRs only — you own this step):**
 This is the authoritative mutation protocol; every other reference in the skill points here. When the PR is a bug fix, prove the tests observe the fix at its seam:
 1. In a scratch git worktree checked out at the PR head, revert ONLY the production (non-test) hunks. When a production hunk and a test hunk share a file — or a single hunk mixes both — keep the added tests and revert only the production lines, so the mutated tree retains the new tests but drops the fix.
 2. Before running, `git diff` the mutated tree against the PR head and confirm it contains exactly that intended production reversal and nothing else.

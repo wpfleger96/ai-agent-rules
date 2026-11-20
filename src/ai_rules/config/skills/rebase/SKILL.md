@@ -2,7 +2,7 @@
 # This file is managed by ai-agent-rules. Do not edit manually.
 # https://github.com/wpfleger96/ai-agent-rules
 name: rebase
-version: 1.1.1
+version: 1.1.2
 description: Rebase a branch onto main (or a target) with squash-first strategy, semantic merge verification, and safe force-push.
 allowed-tools: Agent, Bash, Edit, Glob, Grep, Read, Write
 model: opus
@@ -26,14 +26,14 @@ Use project tooling (Justfile/Makefile) first. Fall back to these only when no p
 |---|---|---|---|---|---|
 | Rust | `cargo build --workspace` | `cargo clippy --workspace --all-targets -- -D warnings` | `cargo fmt --all` | `cargo test --workspace` | `cargo update` |
 | Node | `npm run build` | `npm run lint` | `npm run format` or `npx prettier --write .` | `npm test` | `npm install` |
-| Python | `uv build` or `python -m build` | `ruff check .` | `ruff format .` | `pytest` | `uv lock` |
+| Python | `uv build` | `uv run ruff check .` | `uv run ruff format .` | `uv run pytest` | `uv lock` |
 | Go | `go build ./...` | `golangci-lint run` | `gofmt -w .` | `go test ./...` | `go mod tidy` |
 
 **Shell variables** (`TARGET`, `MERGE_BASE`) do not persist across Bash tool calls. Re-derive from Context when needed.
 
 # Rebase Skill
 
-Expert git operator performing safe, semantically-correct rebases. The #1 failure mode in rebases is not merge conflicts — it is **silent semantic breakage after a "clean" auto-merge**. Your primary job is to prevent that.
+The #1 failure mode in rebases is not merge conflicts — it is **silent semantic breakage after a "clean" auto-merge**. Your primary job is to prevent that.
 
 ## Phase 0: Pre-flight Validation
 
@@ -54,7 +54,7 @@ For PR URLs, this extracts the PR's base branch (the branch it merges into). To 
 Set `TARGET` to the resolved target ref. Run `git fetch origin` to ensure it's current.
 
 **Pre-flight checks:**
-1. `git status --porcelain` — if non-empty, ask user: stash (`git stash push -m "rebase-skill: pre-rebase stash"`) or abort
+1. `git status --porcelain` — if non-empty, ask user: stash (`git stash push -u -m "rebase-skill: pre-rebase stash"`, then record its SHA with `git stash list --format='%H %gs' | grep -m1 "rebase-skill: pre-rebase stash"`) or abort. The stash stack is shared across worktrees and sessions, so never use a bare `git stash pop`
 2. `ls .git/rebase-merge .git/rebase-apply 2>/dev/null` — if either exists, run `git rebase --abort` automatically, report it, and continue
 3. `git config rerere.enabled` — if true, note it internally and continue (rerere may silently auto-apply prior conflict resolutions; verify Phase 3 output carefully)
 
@@ -144,7 +144,7 @@ If another conflict round occurs, repeat. If rebase aborts unexpectedly: `git re
 
 ## Phase 4: Semantic Verification
 
-**A clean rebase is NOT a correct rebase.** This is the critical differentiator.
+**A clean rebase is NOT a correct rebase.**
 
 ### 4a. Identify all branch files
 
@@ -203,7 +203,7 @@ Run build using project tooling or Ecosystem Defaults. This catches compile erro
 
 ### 6b. Tests
 
-Run via project tooling, fall back to ecosystem default (`cargo test`, `npm test`, `pytest`, `go test ./...`).
+Run via project tooling, fall back to ecosystem default (`cargo test`, `npm test`, `uv run pytest`, `go test ./...`).
 
 Build, tests, and lint are independent and can be launched as parallel Bash calls for speed.
 
@@ -219,19 +219,10 @@ Fix all lint errors.
 
 ### 6d. Summary & push
 
-Run `git push --force-with-lease origin HEAD`. Never `--force`. If lease fails, report it in the summary and stop — do NOT retry with `--force`. Present completion summary: branch, target, files changed, verification results (build/lint/tests/semantic checks/regenerated files), push result.
+Push only after build, lint and tests pass (pre-existing failures noted). Run `git push --force-with-lease origin HEAD`. Never `--force`, which can clobber others' pushes. If lease fails, report it in the summary and stop — do NOT retry with `--force`. Present completion summary: branch, target, files changed, verification results (build/lint/tests/semantic checks/regenerated files), push result.
 
-If stash was created in Phase 0: `git stash pop` to restore working changes.
-
-## Rules (Never Violate)
-
-1. **Squash before rebase** when branch has >1 commit. No exceptions.
-2. **Never manually merge generated files.** Accept TARGET, regenerate.
-3. **Always use project tooling** (just/make) over bare commands. Feature flags matter.
-4. **Run semantic verification** before declaring success. Clean rebase != correct rebase.
-5. **Build must pass** before committing. Never push broken code.
-6. **`--force-with-lease`**, never `--force`. Prevents clobbering others' pushes.
+If stash was created in Phase 0: `git stash apply <sha>` to restore working changes, then drop that entry (find its current `stash@{n}` by the message first).
 
 ## Abort & Cleanup
 
-On abort: `git rebase --abort` if in progress, `git stash pop` the named stash if created in Phase 0, report phase reached and repo state.
+On abort: `git rebase --abort` if in progress, restore the Phase 0 stash by SHA as above, report phase reached and repo state.
