@@ -32,7 +32,7 @@ class TestSkillList:
         result = runner.invoke(main, ["skill", "list"])
 
         assert result.exit_code == 0
-        assert "crossfire" in result.output
+        assert "session-search" in result.output
         assert "disabled" in result.output
 
     def test_version_column_displayed(self, runner):

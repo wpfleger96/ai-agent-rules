@@ -29,7 +29,6 @@ PERSONAL_MARKERS: list[str] = [
 # Files (relative to config/) that legitimately contain the given marker.
 MARKER_EXEMPTIONS: dict[str, set[str]] = {
     "gemini_cli.key": {
-        "skills/crossfire/SKILL.md",
         "skills/code-reviewer/SKILL.md",
     },
 }
