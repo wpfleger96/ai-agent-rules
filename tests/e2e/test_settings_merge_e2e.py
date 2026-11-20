@@ -185,3 +185,41 @@ class TestSettingsMergePreservation:
         extensions = final.get("extensions", {})
         assert "user-ext" in extensions, "user extension must survive the rebuild"
         assert "airules-ext2" in extensions, "new ai-rules extension should be applied"
+
+
+@pytest.mark.e2e
+def test_stale_settings_cache_dry_run_and_install_report_update(
+    isolated_home, tmp_path
+):
+    from tests.e2e.helpers import strip_ansi
+
+    home, env = isolated_home
+    config = build_config_dir(tmp_path / "rules")
+    run = make_cli_runner(home, env)
+    setup = ["install", "-y", "--skip-completions", *ONLY, "--config-dir", str(config)]
+    assert run(setup).returncode == 0
+    source = config / "claude" / "settings.json"
+    source.write_text(json.dumps({"theme": "changed"}), encoding="utf-8")
+    settings_path = home / ".claude" / "settings.json"
+    before = settings_path.read_text("utf-8")
+    install = ["install", "--agents", "claude", "--only", "settings"]
+    config_args = ["--config-dir", str(config)]
+
+    dry_run = run([*install, "--dry-run", *config_args])
+
+    out = strip_ansi(dry_run.stdout + dry_run.stderr)
+    assert dry_run.returncode == 0, out
+    assert "Would build settings cache: Claude Code" in out
+    assert _summary_line(out) == "Summary: Would update 1"
+    assert settings_path.read_text("utf-8") == before
+
+    real = run([*install, "-y", *config_args])
+
+    out = strip_ansi(real.stdout + real.stderr)
+    assert real.returncode == 0, out
+    assert _summary_line(out) == "Summary: updated 1"
+    assert json.loads(settings_path.read_text("utf-8"))["theme"] == "changed"
+
+
+def _summary_line(output: str) -> str:
+    return next(line for line in output.splitlines() if line.startswith("Summary:"))

@@ -7,12 +7,17 @@ import pytest
 
 from rich.console import Console
 
+from ai_rules.agents.claude import ClaudeAgent
+from ai_rules.agents.gemini import GeminiAgent
 from ai_rules.cli.components.completions import CompletionsComponent
+from ai_rules.cli.components.config import ConfigComponent
 from ai_rules.cli.components.plugins import ClaudePluginComponent
 from ai_rules.cli.components.settings import SettingsComponent
-from ai_rules.cli.context import CliContext, Component, ComponentResult
-from ai_rules.cli.runner import run_components
+from ai_rules.cli.context import CliContext, Component, ComponentPlan, ComponentResult
+from ai_rules.cli.runner import run_install_parallel
 from ai_rules.config import Config
+from ai_rules.targets.base import ConfigTarget
+from ai_rules.tools.statusline import StatuslineTool
 
 
 class CacheTarget:
@@ -21,7 +26,7 @@ class CacheTarget:
 
     def __init__(self, target_id: str):
         self.target_id = target_id
-        self._base_settings_path = Path("/nonexistent/settings.json")
+        self.settings_cache_path = None
 
 
 class FailingCacheTarget:
@@ -31,7 +36,10 @@ class FailingCacheTarget:
     is_settings_file_excluded = False
 
     def __init__(self, base_settings_path: Path):
-        self._base_settings_path = base_settings_path
+        self.settings_cache_path = base_settings_path.with_name("cache.json")
+
+    def is_cache_stale(self) -> bool:
+        return True
 
     def build_merged_settings(self, force_rebuild: bool = False) -> Path | None:
         raise ValueError("invalid override")
@@ -50,12 +58,20 @@ class UnavailablePluginManager:
         raise AssertionError("plugin sync should not run without claude CLI")
 
 
-class FailIfRunComponent(Component):
-    label = "Must Not Run"
-    component_id = "fail-if-run"
+class RecordingComponent(Component):
+    label = "Recording"
+    component_id = "recording"
 
-    def install(self, ctx: CliContext) -> ComponentResult:
-        raise AssertionError("install pipeline should stop after cache build failure")
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def plan(self, ctx: CliContext) -> ComponentPlan:
+        self.calls += 1
+        return ComponentPlan(has_changes=True)
+
+    def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        self.calls += 1
+        return ComponentResult()
 
 
 def make_context(
@@ -65,41 +81,147 @@ def make_context(
     all_targets: tuple[Any, ...] = (),
     selected_targets: tuple[Any, ...] = (),
     skip_completions: bool = False,
+    dry_run: bool = False,
+    yes: bool = False,
 ) -> CliContext:
     return CliContext(
         console=Console(file=StringIO()),
         config_dir=tmp_path,
         config=config or Config(),
         profile_name=None,
+        dry_run=dry_run,
         all_targets=all_targets,
         selected_targets=selected_targets,
         skip_completions=skip_completions,
+        yes=yes,
     )
+
+
+class StaleCacheTarget:
+    target_id = "claude"
+    name = "Claude Code"
+    needs_cache = True
+    is_settings_file_excluded = False
+
+    def __init__(self, base_settings_path: Path):
+        self.settings_cache_path = base_settings_path.with_name("cache.json")
+
+    def is_cache_stale(self) -> bool:
+        return True
+
+    def build_merged_settings(self, force_rebuild: bool = False) -> Path | None:
+        raise AssertionError("dry run must not rebuild the cache")
 
 
 @pytest.mark.unit
-def test_cache_cleanup_uses_all_targets_not_selected_subset(
+def test_stale_settings_cache_in_dry_run_reports_update_without_writing(
+    tmp_path: Path, mock_home: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base_settings_path = tmp_path / "settings.json"
+    base_settings_path.write_text("{}")
+    cache_file = mock_home / ".ai-agent-rules" / "cache" / "claude" / "settings.json"
+    cache_file.parent.mkdir(parents=True)
+    cache_file.write_text('{"stale": true}')
+    target = StaleCacheTarget(base_settings_path)
+    ctx = make_context(
+        tmp_path, all_targets=(target,), selected_targets=(target,), dry_run=True
+    )
+    component = SettingsComponent()
+
+    result = component.apply(ctx, component.plan(ctx))
+
+    assert result.changed is True
+    assert result.counts == {"updated": 1, "removed": 0}
+    assert "Would build settings cache: Claude Code" in capsys.readouterr().out
+    assert cache_file.read_text() == '{"stale": true}'
+
+
+@pytest.mark.unit
+def test_excluded_settings_symlink_in_dry_run_reports_removal_without_unlinking(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    cache = tmp_path / "cache"
+    (cache / "claude").mkdir(parents=True)
+    (cache / "claude" / "settings.json").write_text("{}")
+    link = tmp_path / "settings.json"
+    link.symlink_to(cache / "claude" / "settings.json")
+
+    class ExcludedTarget:
+        target_id = "claude"
+        name = "Claude Code"
+        needs_cache = False
+        is_settings_file_excluded = True
+        settings_symlink_target = link
+        settings_cache_path = None
+
+    monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
+    ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),), dry_run=True)
+    component = SettingsComponent()
+
+    result = component.apply(ctx, component.plan(ctx))
+
+    assert result.counts == {"updated": 0, "removed": 1}
+    output = "".join(capsys.readouterr().out.split())
+    assert f"Wouldremovesettingssymlink:{link}" in output
+    assert link.is_symlink()
+
+
+class RebuildingCacheTarget(StaleCacheTarget):
+    def __init__(self, base_settings_path: Path, cache_file: Path):
+        super().__init__(base_settings_path)
+        self.cache_file = cache_file
+
+    def build_merged_settings(self, force_rebuild: bool = False) -> Path | None:
+        self.cache_file.write_text("{}")
+        return self.cache_file
+
+
+@pytest.mark.unit
+def test_stale_settings_cache_apply_reports_rebuild_as_update(
     tmp_path: Path, mock_home: Path
 ) -> None:
-    claude_cache = mock_home / ".ai-agent-rules" / "cache" / "claude"
-    codex_cache = mock_home / ".ai-agent-rules" / "cache" / "codex"
-    old_cache = mock_home / ".ai-agent-rules" / "cache" / "old-agent"
-    for cache_dir in (claude_cache, codex_cache, old_cache):
-        cache_dir.mkdir(parents=True)
-        (cache_dir / "settings.json").write_text("{}")
+    base_settings_path = tmp_path / "settings.json"
+    base_settings_path.write_text("{}")
+    cache_file = mock_home / ".ai-agent-rules" / "cache" / "claude" / "settings.json"
+    cache_file.parent.mkdir(parents=True)
+    cache_file.write_text('{"stale": true}')
+    target = RebuildingCacheTarget(base_settings_path, cache_file)
+    ctx = make_context(tmp_path, all_targets=(target,), selected_targets=(target,))
+    component = SettingsComponent()
 
-    ctx = make_context(
-        tmp_path,
-        all_targets=(CacheTarget("claude"), CacheTarget("codex")),
-        selected_targets=(CacheTarget("claude"),),
-    )
+    result = component.apply(ctx, component.plan(ctx))
 
-    result = SettingsComponent().install(ctx)
+    assert result.changed is True
+    assert result.counts == {"updated": 1, "removed": 0}
+    assert cache_file.read_text() == "{}"
 
-    assert result.counts.get("cache_removed") == 1
-    assert claude_cache.exists()
-    assert codex_cache.exists()
-    assert not old_cache.exists()
+
+@pytest.mark.unit
+def test_excluded_settings_symlink_apply_reports_unlink_as_removal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = tmp_path / "cache"
+    (cache / "other").mkdir(parents=True)
+    (cache / "other" / "settings.json").write_text("{}")
+    link = tmp_path / "settings.json"
+    link.symlink_to(cache / "other" / "settings.json")
+
+    class ExcludedTarget:
+        target_id = "claude"
+        name = "Claude Code"
+        needs_cache = False
+        is_settings_file_excluded = True
+        settings_symlink_target = link
+        settings_cache_path = None
+
+    monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
+    ctx = make_context(tmp_path, all_targets=(ExcludedTarget(), CacheTarget("other")))
+    component = SettingsComponent()
+
+    result = component.apply(ctx, component.plan(ctx))
+
+    assert result.counts == {"updated": 0, "removed": 1}
+    assert not link.is_symlink()
 
 
 @pytest.mark.unit
@@ -111,17 +233,16 @@ def test_settings_cache_failure_aborts_install_components(tmp_path: Path) -> Non
         tmp_path,
         all_targets=(failing_target,),
         selected_targets=(failing_target,),
+        yes=True,
     )
+    downstream = RecordingComponent()
 
-    result = run_components(
-        (SettingsComponent(), FailIfRunComponent()),
-        "install",
-        ctx,
-    )
+    result = run_install_parallel([SettingsComponent()], [downstream], ctx)
 
     assert result.ok is False
     assert result.aborted is True
     assert result.counts == {"errors": 1}
+    assert downstream.calls == 0
 
 
 @pytest.mark.unit
@@ -133,9 +254,10 @@ def test_completions_component_honors_skip_completions(
 
     monkeypatch.setattr("ai_rules.completions.detect_shell", fail_detect_shell)
 
-    result = CompletionsComponent().install(
-        make_context(tmp_path, skip_completions=True)
-    )
+    ctx = make_context(tmp_path, skip_completions=True)
+    component = CompletionsComponent()
+
+    result = component.apply(ctx, component.plan(ctx))
 
     assert result.changed is False
 
@@ -162,20 +284,59 @@ def test_settings_component_removes_dangling_symlink_when_excluded(
         needs_cache = False
         is_settings_file_excluded = True
         settings_symlink_target = settings_symlink
-        _base_settings_path = Path("/nonexistent/settings.yaml")
+        settings_cache_path = None
 
     monkeypatch.setattr(Config, "get_cache_dir", lambda self: tmp_path / "cache")
-    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
 
     ctx = make_context(
         tmp_path,
         all_targets=(ExcludedTarget(),),
         selected_targets=(ExcludedTarget(),),
     )
-    SettingsComponent().install(ctx)
+    component = SettingsComponent()
+    component.apply(ctx, component.plan(ctx))
 
     assert not settings_symlink.exists()
     assert not settings_symlink.is_symlink()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("layout", ["plain", "prefix", "alias_dotdot"])
+@pytest.mark.parametrize("into_cache", [True, False])
+def test_apply_cleans_excluded_cache_link_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, layout: str, into_cache: bool
+) -> None:
+    physical = tmp_path / "physical" / "home"
+    physical.mkdir(parents=True)
+    home = physical
+    if layout == "prefix":
+        (tmp_path / "var").symlink_to(tmp_path / "physical")
+        home = tmp_path / "var" / "home"
+    elif layout == "alias_dotdot":
+        (tmp_path / "physical" / "deep").mkdir()
+        (tmp_path / "alias").symlink_to(tmp_path / "physical" / "deep")
+        home = tmp_path / "alias" / ".." / "home"
+    dest_dir = physical / "cache" if into_cache else tmp_path / "dotfiles"
+    dest_dir.mkdir()
+    (dest_dir / "settings.json").write_text("{}")
+    link = physical / "settings.json"
+    link.symlink_to(dest_dir / "settings.json")
+
+    class ExcludedTarget:
+        target_id = "claude"
+        name = "Claude"
+        needs_cache = False
+        is_settings_file_excluded = True
+        settings_symlink_target = home / "settings.json"
+        settings_cache_path = None
+
+    monkeypatch.setattr(Config, "get_cache_dir", lambda self: home / "cache")
+    ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
+    component = SettingsComponent()
+
+    component.apply(ctx, component.plan(ctx))
+
+    assert link.is_symlink() != into_cache
 
 
 @pytest.mark.unit
@@ -185,13 +346,205 @@ def test_claude_plugin_component_treats_missing_claude_cli_as_nonfatal(
     monkeypatch.setattr("ai_rules.plugins.PluginManager", UnavailablePluginManager)
     config = Config(plugins=[{"name": "example", "marketplace": "local"}])
 
-    result = ClaudePluginComponent().install(
-        make_context(
-            tmp_path,
-            config=config,
-            selected_targets=(Target("claude"),),
-        )
-    )
+    ctx = make_context(tmp_path, config=config, selected_targets=(Target("claude"),))
+    component = ClaudePluginComponent()
+
+    result = component.apply(ctx, component.plan(ctx))
 
     assert result.ok is True
     assert result.changed is False
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("entry", ["loop", "missing", "dangling"])
+def test_excluded_cleanup_trusts_only_resolvable_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, entry: str
+) -> None:
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    if entry == "loop":
+        (tmp_path / "obstacle").symlink_to(tmp_path / "obstacle")
+    if entry != "dangling":
+        (cache / "settings.json").write_text("{}")
+        dest = tmp_path / "obstacle" / ".." / "cache" / "settings.json"
+    else:
+        dest = cache / "settings.json"
+    link = tmp_path / "settings.json"
+    link.symlink_to(dest)
+
+    class ExcludedTarget:
+        target_id = "claude"
+        name = "Claude"
+        needs_cache = False
+        is_settings_file_excluded = True
+        settings_symlink_target = link
+        settings_cache_path = None
+
+    monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
+    ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
+    component = SettingsComponent()
+
+    component.apply(ctx, component.plan(ctx))
+
+    assert link.is_symlink() == (entry != "dangling")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("layout", ["plain", "prefix"])
+@pytest.mark.parametrize(
+    "gone", ["agent", "cache", "user", "loop", "hidden", "hidden_loop", "hidden_abs"]
+)
+def test_excluded_cleanup_after_managed_folder_vanished(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    layout: str,
+    gone: str,
+) -> None:
+    physical = tmp_path / "physical"
+    home = physical
+    if layout == "prefix":
+        (tmp_path / "var").symlink_to(physical)
+        home = tmp_path / "var"
+    (physical / ".claude").mkdir(parents=True)
+    cache = home / ".ai-agent-rules" / "cache"
+    (physical / ".ai-agent-rules" / "cache").mkdir(parents=True)
+    link = physical / ".claude" / "settings.json"
+    if gone.startswith("hidden"):
+        agent = physical / ".ai-agent-rules" / "cache" / "claude"
+        agent.mkdir()
+        (agent / "settings.json").write_text("{}")
+        (physical / "loop").symlink_to(physical / "loop")
+        hop = "loop/../" if gone == "hidden_loop" else ""
+        (physical / "dotfiles").symlink_to(f"missing/../{hop}.ai-agent-rules/cache")
+        dest = physical / "dotfiles" / "claude" / "settings.json"
+        link.symlink_to(
+            dest if gone == "hidden_abs" else "../dotfiles/claude/settings.json"
+        )
+    elif gone == "user":
+        link.symlink_to("../dotfiles/claude/settings.json")
+    else:
+        link.symlink_to("../.ai-agent-rules/cache/claude/settings.json")
+        if gone == "cache":
+            (physical / ".ai-agent-rules" / "cache").rmdir()
+        elif gone == "loop":
+            agent = physical / ".ai-agent-rules" / "cache" / "claude"
+            agent.symlink_to(agent)
+
+    class ExcludedTarget:
+        target_id = "claude"
+        name = "Claude"
+        needs_cache = False
+        is_settings_file_excluded = True
+        settings_symlink_target = home / ".claude" / "settings.json"
+        settings_cache_path = None
+
+    monkeypatch.setattr(Config, "get_cache_dir", lambda self: cache)
+    ctx = make_context(tmp_path, all_targets=(ExcludedTarget(),))
+    component = SettingsComponent()
+
+    component.apply(ctx, component.plan(ctx))
+
+    assert link.is_symlink() == (gone not in ("agent", "cache"))
+
+
+@pytest.mark.unit
+class TestConfigComponentSettingsLinkSource:
+    """Where install points the settings link while its cache is or isn't built."""
+
+    @pytest.fixture
+    def agent(self, test_repo: Path, mock_home: Path) -> ClaudeAgent:
+        config = Config(settings_overrides={"claude": {"model": "opus"}})
+        return ClaudeAgent(test_repo, config)
+
+    @pytest.fixture
+    def cache_file(self, mock_home: Path) -> Path:
+        return mock_home / ".ai-agent-rules" / "cache" / "claude" / "settings.json"
+
+    def _settings_source(self, ctx: CliContext, target: ConfigTarget) -> Path:
+        ops = dict(ConfigComponent().plan(ctx).symlink_ops)
+        assert target.settings_symlink_target is not None
+        return ops[target.settings_symlink_target]
+
+    def test_dry_run_without_cache_plans_link_to_cache(
+        self, tmp_path: Path, mock_home: Path, agent: ClaudeAgent, cache_file: Path
+    ) -> None:
+        ctx = make_context(
+            tmp_path, config=agent.config, selected_targets=(agent,), dry_run=True
+        )
+        component = ConfigComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        assert self._settings_source(ctx, agent) == cache_file
+        assert result.counts["errors"] == 0
+        assert not (mock_home / ".ai-agent-rules").exists()
+        assert not (mock_home / ".claude" / "settings.json").is_symlink()
+
+    def test_dry_run_with_built_cache_plans_link_to_cache(
+        self, tmp_path: Path, agent: ClaudeAgent, cache_file: Path
+    ) -> None:
+        cache_file.parent.mkdir(parents=True)
+        cache_file.write_text("{}", encoding="utf-8")
+        ctx = make_context(
+            tmp_path, config=agent.config, selected_targets=(agent,), dry_run=True
+        )
+
+        assert self._settings_source(ctx, agent) == cache_file
+
+    def test_real_run_without_cache_links_bundled_file(
+        self, tmp_path: Path, mock_home: Path, agent: ClaudeAgent, test_repo: Path
+    ) -> None:
+        """A cache the settings step failed to build is never linked."""
+        ctx = make_context(tmp_path, config=agent.config, selected_targets=(agent,))
+        component = ConfigComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        link = mock_home / ".claude" / "settings.json"
+        assert result.counts["errors"] == 0
+        assert link.resolve() == (test_repo / "claude" / "settings.json").resolve()
+
+    @pytest.mark.parametrize("overrides", [{}, {"statusline": {"theme": "dark"}}])
+    def test_dry_run_plans_cache_only_for_target_needing_one(
+        self, tmp_path: Path, mock_home: Path, test_repo: Path, overrides: dict
+    ) -> None:
+        """Statusline has no preserved fields, so only an override gives it a cache."""
+        bundled = test_repo / "statusline" / "config.yaml"
+        bundled.parent.mkdir()
+        bundled.write_text("theme: light\n", encoding="utf-8")
+        tool = StatuslineTool(test_repo, Config(settings_overrides=overrides))
+        ctx = make_context(
+            tmp_path, config=tool.config, selected_targets=(tool,), dry_run=True
+        )
+        component = ConfigComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        cache = mock_home / ".ai-agent-rules" / "cache" / "statusline" / "config.yaml"
+        assert self._settings_source(ctx, tool) == (cache if overrides else bundled)
+        assert result.counts["errors"] == 0
+
+    def test_copy_mode_dry_run_without_cache_plans_copy_from_cache(
+        self,
+        tmp_path: Path,
+        mock_home: Path,
+        test_repo: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(
+            GeminiAgent,
+            "copy_mode_targets",
+            property(lambda self: {self.settings_symlink_target.expanduser()}),
+        )
+        agent = GeminiAgent(test_repo, Config())
+        ctx = make_context(
+            tmp_path, config=agent.config, selected_targets=(agent,), dry_run=True
+        )
+        component = ConfigComponent()
+
+        result = component.apply(ctx, component.plan(ctx))
+
+        cache = mock_home / ".ai-agent-rules" / "cache" / "gemini" / "settings.json"
+        assert self._settings_source(ctx, agent) == cache
+        assert result.counts["errors"] == 0
+        assert not (mock_home / ".gemini" / "settings.json").exists()

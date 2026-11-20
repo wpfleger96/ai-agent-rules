@@ -101,8 +101,7 @@ src/ai_rules/
     │   ├── agents-md/, code-reviewer/, continue-crash/, crossfire/, dev-docs/
     │   ├── doc-writer/, handoff/, pr-creator/, rebase/, research/
     │   ├── session-search/, test-writer/, worktree-cleanup/
-    ├── profiles/       # Built-in profiles (default.yaml, personal.yaml, work.yaml); fragments/ for agents_md_file content
-    └── buzz/           # Multi-agent Buzz coordinator prompts
+    └── profiles/       # Built-in profiles (default.yaml, personal.yaml, work.yaml); fragments/ for agents_md_file content
 tests/
 ├── fixtures/           # Test fixture files
 ├── unit/               # No filesystem side effects
@@ -235,10 +234,11 @@ just test-e2e                   # E2E only — runs real CLI as subprocess, no m
 
 ## Skills
 
-**Skills:** Explore `config/skills/*/SKILL.md` for available skills (13 total: agents-md, code-reviewer, continue-crash, crossfire, dev-docs, doc-writer, handoff, pr-creator, rebase, research, session-search, test-writer, worktree-cleanup).
+**Skills:** Explore `config/skills/*/SKILL.md` for available skills (13 total: agents-md, code-reviewer, continue-crash, crossfire, dev-docs, doc-writer, handoff, pr-creator, rebase, research, session-search, test-writer, worktree-cleanup). Profile-owned: `writing-as-will` in `config/profiles/skills/` (personal, inherited by work).
 - **SHARED across agents** - symlinked to `~/.claude/skills/`, `~/.config/goose/skills/`, `~/.config/agents/skills/` (Amp), `~/.agents/skills/` (Codex)
 - Managed by SharedAgent (displays under "Shared:" in status)
 - To add a skill: Create subdir in `config/skills/` with `SKILL.md`
+- **Profile-owned skills** (optional, additive): put the skill in `config/profiles/skills/<name>/` and list it under `skills:` in the owning profile YAML. The list is unioned through `extends`, so child profiles inherit it. It deploys only on profiles that list it, is hidden from `skill list`/`skill show` elsewhere, and install removes its link after switching to a profile without it. Names must not collide with a shared skill. Shared `config/skills/*` still deploy on every profile
 - **Skill versioning**: Each SKILL.md has a `version` field in its frontmatter. Bump it when changing a skill's behavior — patch (1.0.x) for tweaks/fixes, minor (1.x.0) for new capabilities, major (x.0.0) for breaking prompt changes
   - **Ship checklist (do NOT skip):** any PR that changes a skill's behavior MUST bump that skill's `version` in the SAME PR. Verify the bump is present before marking the PR ready for review — a behavior change with an unchanged version is an incomplete PR.
 

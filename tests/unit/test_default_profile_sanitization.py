@@ -37,7 +37,6 @@ MARKER_EXEMPTIONS: dict[str, set[str]] = {
 # Files (relative to config/) exempt from the sweep entirely: author metadata
 # and personal reference material that the CLI never deploys to users.
 EXEMPT_FILES: set[str] = {
-    "buzz/.plugin/plugin.json",
     "chat_agent_hints.md",
 }
 

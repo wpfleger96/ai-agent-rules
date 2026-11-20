@@ -25,7 +25,6 @@ def test_target_registry_returns_unique_targets_in_lifecycle_order(
         "goose",
         "shared",
         "statusline",
-        "buzz",
     ]
     assert len(target_ids) == len(set(target_ids))
     assert len(TARGET_CLASSES) == len(target_ids)

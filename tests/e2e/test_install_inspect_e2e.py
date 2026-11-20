@@ -11,6 +11,7 @@ refactor of the symlink/merge pipeline preserves real on-disk behavior.
 from __future__ import annotations
 
 import json
+import sys
 
 from pathlib import Path
 
@@ -219,3 +220,168 @@ class TestAgentSelection:
         assert (home / "AGENTS.md").is_symlink()  # shared always included
         assert not (home / ".codex" / "AGENTS.md").exists()
         assert not (home / ".gemini" / "GEMINI.md").exists()
+
+
+def _legacy_pack_links(home: Path) -> list[Path]:
+    """The stale persona-pack links SharedAgent tombstones, for the host OS."""
+    if is_windows():
+        app_data = home / "AppData" / "Roaming"
+    elif sys.platform == "darwin":
+        app_data = home / "Library" / "Application Support"
+    else:
+        app_data = home / ".local" / "share"
+    return [
+        app_data / bundle / "agents" / "teams" / "com.wpfleger.sietch-tabr"
+        for bundle in (
+            "xyz.block.buzz.app",
+            "xyz.block.buzz.app.dev",
+            "xyz.block.sprout.app",
+            "xyz.block.sprout.app.dev",
+        )
+    ]
+
+
+@pytest.mark.e2e
+@pytest.mark.skipif(is_windows(), reason="symlink creation needs privileges")
+class TestDeprecatedSymlinkCleanup:
+    def test_cleanup_only_install_removes_stale_links(
+        self, isolated_home, toy_config, tmp_path
+    ):
+        """Cleanup runs even when no ordinary config symlinks remain to plan."""
+        from tests.e2e.helpers import make_cli_runner
+
+        home, env = isolated_home
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            "version: 1\nexclude_symlinks:\n  - ~/AGENTS.md\n", encoding="utf-8"
+        )
+        links = _legacy_pack_links(home)
+        for link in links:
+            link.parent.mkdir(parents=True)
+            link.symlink_to(tmp_path / "gone", target_is_directory=True)
+        run = make_cli_runner(home, env)
+        args = [
+            "install",
+            "-y",
+            "--skip-completions",
+            "--only",
+            "config",
+            "--agents",
+            "shared",
+            "--config-dir",
+            str(toy_config),
+        ]
+
+        dry = run([*args, "--dry-run"])
+        dry_out = strip_ansi(dry.stdout + dry.stderr)
+        assert dry.returncode == 0, dry_out
+        assert all(link.is_symlink() for link in links)
+        assert "Summary: Would remove 4" in dry_out
+
+        real = run(args)
+        real_out = strip_ansi(real.stdout + real.stderr)
+        assert real.returncode == 0, real_out
+        assert not any(link.is_symlink() for link in links)
+        assert "removed 4" in real_out
+        assert "No changes" not in real_out
+
+        repeat = run(args)
+        repeat_out = strip_ansi(repeat.stdout + repeat.stderr)
+        assert repeat.returncode == 0, repeat_out
+        assert "Summary: No changes" in repeat_out
+
+
+@pytest.mark.e2e
+class TestAgentsMdOverrideDryRun:
+    def test_dry_run_without_state_dir_reports_pending_cache_link(self, tmp_path):
+        """Dry-run cannot build the AGENTS.md cache, so its link is still planned."""
+        from tests.e2e.helpers import make_cli_runner, make_home_env
+
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            'version: 1\nagents_md: "## Extra"\n', encoding="utf-8"
+        )
+        run = make_cli_runner(home, make_home_env(home, columns=1000))
+        config = build_config_dir(tmp_path / "rules")
+        args = ["install", "--skip-completions", "--agents", "shared"]
+        args += ["--only", CORE_COMPONENTS, "--config-dir", str(config)]
+        cache = Path("cache") / "shared" / "AGENTS.md"
+
+        dry_run = run([*args, "--dry-run"])
+
+        out = strip_ansi(dry_run.stdout + dry_run.stderr)
+        assert dry_run.returncode == 0, out
+        assert "Would build AGENTS.md cache" in out
+        expected = f"{Path('~', 'AGENTS.md')} → {home / '.ai-agent-rules' / cache}"
+        assert expected in out
+        assert "error(s)" not in out
+        assert not (home / ".ai-agent-rules").exists()
+        assert not (home / "AGENTS.md").is_symlink()
+
+        real = run([*args, "-y"])
+
+        out = strip_ansi(real.stdout + real.stderr)
+        assert real.returncode == 0, out
+        assert (home / "AGENTS.md").resolve() == (
+            home / ".ai-agent-rules" / cache
+        ).resolve()
+        assert "## Extra" in (home / "AGENTS.md").read_text("utf-8")
+
+
+@pytest.mark.e2e
+class TestSettingsOverrideDryRun:
+    def test_dry_run_without_state_dir_reports_pending_cache_link(self, tmp_path):
+        """Dry-run cannot build the settings cache, so its link is still planned."""
+        from tests.e2e.helpers import make_cli_runner, make_home_env
+
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            "version: 1\nsettings_overrides:\n  claude:\n    model: opus\n",
+            encoding="utf-8",
+        )
+        run = make_cli_runner(home, make_home_env(home, columns=1000))
+        config = build_config_dir(tmp_path / "rules")
+        args = ["install", "--skip-completions", "--agents", "claude"]
+        args += ["--only", CORE_COMPONENTS, "--config-dir", str(config)]
+        cache = home / ".ai-agent-rules" / "cache" / "claude" / "settings.json"
+        link = home / ".claude" / "settings.json"
+
+        dry_run = run([*args, "--dry-run"])
+
+        out = strip_ansi(dry_run.stdout + dry_run.stderr)
+        assert dry_run.returncode == 0, out
+        assert "Would build settings cache" in out
+        assert f"{Path('~', '.claude', 'settings.json')} → {cache}" in out
+        assert "error(s)" not in out
+        assert not (home / ".ai-agent-rules").exists()
+        assert not link.is_symlink()
+
+        real = run([*args, "-y"])
+
+        out = strip_ansi(real.stdout + real.stderr)
+        assert real.returncode == 0, out
+        assert link.resolve() == cache.resolve()
+        assert json.loads(link.read_text("utf-8"))["model"] == "opus"
+
+    def test_unparseable_bundled_settings_fails_install(self, tmp_path):
+        """Linking the bundled file would silently drop the user's override."""
+        from tests.e2e.helpers import make_cli_runner, make_home_env
+
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            "version: 1\nsettings_overrides:\n  claude:\n    model: opus\n",
+            encoding="utf-8",
+        )
+        run = make_cli_runner(home, make_home_env(home, columns=1000))
+        config = build_config_dir(tmp_path / "rules")
+        bundled = config / "claude" / "settings.json"
+        bundled.write_text("{not json", encoding="utf-8")
+
+        result = _install(run, config, "--agents", "claude")
+
+        out = strip_ansi(result.stdout + result.stderr)
+        assert result.returncode != 0, out
+        assert f"Error building Claude Code config: cannot parse {bundled}" in out
+        assert not (home / ".claude" / "settings.json").is_symlink()

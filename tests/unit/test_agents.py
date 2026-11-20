@@ -8,8 +8,10 @@ from ai_rules.agents.codex import CodexAgent
 from ai_rules.agents.gemini import GeminiAgent
 from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent
+from ai_rules.cli.components.config import _is_specialized_path
 from ai_rules.config import Config
 from ai_rules.platform import Platform
+from ai_rules.tools.statusline import StatuslineTool
 
 
 @pytest.mark.unit
@@ -288,6 +290,32 @@ class TestSharedAgent:
 
         assert agent.is_agents_md_cache_stale() is False
 
+    @pytest.mark.parametrize(
+        ("platform", "base"),
+        [
+            (Platform.MACOS, Path("Library") / "Application Support"),
+            (Platform.LINUX, Path(".local") / "share"),
+            (Platform.WINDOWS, Path("AppData") / "Roaming"),
+        ],
+    )
+    def test_deprecated_symlinks_cover_legacy_persona_pack(
+        self, test_repo, mock_home, monkeypatch, platform, base
+    ):
+        monkeypatch.setattr("ai_rules.platform.detect_platform", lambda: platform)
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+        monkeypatch.delenv("APPDATA", raising=False)
+        agent = SharedAgent(test_repo, Config())
+
+        assert agent.get_deprecated_symlinks() == [
+            mock_home / base / bundle / "agents" / "teams" / "com.wpfleger.sietch-tabr"
+            for bundle in (
+                "xyz.block.buzz.app",
+                "xyz.block.buzz.app.dev",
+                "xyz.block.sprout.app",
+                "xyz.block.sprout.app.dev",
+            )
+        ]
+
 
 @pytest.mark.unit
 @pytest.mark.agents
@@ -330,3 +358,21 @@ class TestGooseAgentWindowsConfigDir:
         target_str = str(agent.settings_symlink_target)
         assert "Block" in target_str
         assert "goose" in target_str
+
+
+@pytest.mark.unit
+class TestIsSpecializedPath:
+    def test_returns_false_for_tool(self, tmp_path):
+        tool = StatuslineTool(tmp_path, Config())
+
+        assert _is_specialized_path(tool, tmp_path / "agents" / "something.md") is False
+
+    def test_returns_true_for_agent_with_agents_path(self, tmp_path):
+        agent = ClaudeAgent(tmp_path, Config())
+
+        assert _is_specialized_path(agent, Path("~/.claude/agents/foo.md")) is True
+
+    def test_returns_false_for_agent_without_agents_path(self, tmp_path):
+        agent = ClaudeAgent(tmp_path, Config())
+
+        assert _is_specialized_path(agent, Path("~/.claude/settings.json")) is False

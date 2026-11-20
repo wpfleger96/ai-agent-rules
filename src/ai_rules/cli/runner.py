@@ -58,47 +58,12 @@ class ComponentRunResult:
     results: tuple[tuple[str, ComponentResult], ...] = ()
 
 
-def _run_component(
-    component: Component, operation: LifecycleOperation, ctx: CliContext
-) -> ComponentResult:
-    if operation == "install":
-        return component.install(ctx)
-    if operation == "status":
-        return component.status(ctx)
-    if operation == "diff":
-        return component.diff(ctx)
-    if operation == "validate":
-        return component.validate(ctx)
-    return component.uninstall(ctx)
-
-
 def _should_skip(component: Component, ctx: CliContext) -> bool:
     return (
         ctx.component_filter is not None
         and component.filterable
         and component.component_id not in ctx.component_filter
     )
-
-
-def run_components(
-    components: Iterable[Component],
-    operation: LifecycleOperation,
-    ctx: CliContext,
-) -> ComponentRunResult:
-    acc = _RunAccumulator()
-
-    for component in components:
-        if _should_skip(component, ctx):
-            continue
-
-        result = _run_component(component, operation, ctx)
-        acc.fold(component, result)
-
-        if result.abort:
-            acc.aborted = True
-            break
-
-    return acc.to_result()
 
 
 def _confirm_install(ctx: CliContext) -> bool:
@@ -127,39 +92,6 @@ def _confirm_install(ctx: CliContext) -> bool:
     return True
 
 
-def run_install(
-    infrastructure: Iterable[Component],
-    semantic: Iterable[Component],
-    ctx: CliContext,
-) -> ComponentRunResult:
-    acc = _RunAccumulator()
-
-    for component in infrastructure:
-        result = component.install(ctx)
-        acc.fold(component, result)
-
-        if result.abort or not result.ok:
-            acc.aborted = True
-            return acc.to_result()
-
-    if not _confirm_install(ctx):
-        acc.aborted = True
-        return acc.to_result()
-
-    for component in semantic:
-        if _should_skip(component, ctx):
-            continue
-
-        result = component.install(ctx)
-        acc.fold(component, result)
-
-        if result.abort:
-            acc.aborted = True
-            break
-
-    return acc.to_result()
-
-
 def run_install_parallel(
     infrastructure: Iterable[Component],
     semantic: Iterable[Component],
@@ -174,7 +106,7 @@ def run_install_parallel(
         else:
             result = ComponentResult()
         acc.fold(component, result)
-        if result.abort or not result.ok:
+        if not result.ok:
             acc.aborted = True
             return acc.to_result()
 
@@ -183,9 +115,11 @@ def run_install_parallel(
         return acc.to_result()
 
     # Run the semantic phase in two ordered waves: components that create the
-    # settings symlinks first, then components flagged install_after_symlinks
-    # (MCPs), which write through those symlinks and must not race with their
-    # creation. Within each wave components still run in parallel.
+    # symlinks first, then components flagged install_after_symlinks, which
+    # depend on the links being in place (MCPs write through the settings
+    # symlinks; orphaned-cache cleanup deletes only caches no link points into
+    # once links are re-pointed). Within each wave components still run in
+    # parallel.
     semantic_list = list(semantic)
     primary = [c for c in semantic_list if not c.install_after_symlinks]
     deferred = [c for c in semantic_list if c.install_after_symlinks]
@@ -227,13 +161,37 @@ def run_parallel(
     ctx: CliContext,
 ) -> ComponentRunResult:
     acc = _RunAccumulator()
-    comp_list = list(components)
+    _fold_parallel(list(components), method, ctx, acc)
+    return acc.to_result()
+
+
+def run_uninstall_parallel(
+    waves: Iterable[Iterable[Component]], ctx: CliContext
+) -> ComponentRunResult:
+    """Run uninstall one wave at a time; components within a wave run in parallel."""
+    acc = _RunAccumulator()
+    for wave in map(list, waves):
+        try:
+            _fold_parallel(wave, "uninstall", ctx, acc)
+        except Exception:
+            # Already printed; a wave that fails whole must not block the next.
+            for comp in wave:
+                if not _should_skip(comp, ctx):
+                    acc.fold(comp, ComponentResult(ok=False, counts={"errors": 1}))
+    return acc.to_result()
+
+
+def _fold_parallel(
+    comp_list: list[Component],
+    method: LifecycleOperation,
+    ctx: CliContext,
+    acc: _RunAccumulator,
+) -> None:
     results = run_components_parallel(comp_list, method, ctx)
     for comp in comp_list:
         if _should_skip(comp, ctx):
             continue
         acc.fold(comp, results.get(comp, ComponentResult()))
-    return acc.to_result()
 
 
 def get_console(ctx: CliContext) -> RichConsole:

@@ -19,7 +19,7 @@
 ### Workflow Management
 **Rule:** Create TODO list before starting tasks, update as you complete each task.
 
-**Progress reporting:** Every status update during multi-step work restates position — what just finished, current step (N of M), what's next. Never assume the reader holds prior state between messages.
+**Progress reporting:** Every status update during multi-step work restates position in words: what just finished, what you are doing now, and what comes next. Never assume the reader holds prior state between messages.
 
 ### Mandatory Worktree for Code Changes
 
@@ -51,18 +51,24 @@
 
 ### Delegation & Multi-Agent Orchestration
 
-**Who this applies to:** the top-level orchestrator only — the session conversing directly with the user. **If you are a subagent** (your prompt is a task brief from another agent, not a conversation with a human), this section does NOT apply to you: you are the terminal worker. Implement everything in your brief directly with your own tools and never spawn agents for implementation. Delegation depth is exactly one.
+**Who this applies to:** the top-level orchestrator only — the session conversing directly with the user. **If you are a subagent** (your prompt is a task brief from another agent, not a conversation with a human), this section does NOT apply to you: you are the terminal worker. Do everything in your brief directly with your own tools and never spawn further agents for any purpose. Delegation depth is exactly one.
 
-**Rule:** Delegate implementation to parallel subagents when the work splits by file or concern — one subagent per file or group of files sharing a broken intermediate state — and keep working while they run. Write small, single-file, or sequentially dependent changes inline. Clarify ambiguous work before delegating it.
+**Rule:** Default to doing the work in your own context. Every handoff is lossy twice — the subagent sees only your brief, you see only its summary — so shared context usually beats a set of summaries. Spawn a subagent only when at least one of these holds:
+1. **Context bloat** — the work would flood your context with material you need only the conclusion of (broad codebase sweeps, large logs or transcripts), or — for non-implementation work — your context is already past ~50% of the window.
+2. **Independent parallel work** — two or more tasks that need little from each other or from this conversation, each with a discardable context and a compact result (separate research angles, components behind clean interfaces).
+3. **Independent verification** — a review or check that must not be anchored on your reasoning. Hand it the code or artifact, not your conclusion.
 
-**Delegate:** Multi-file implementation | Non-implementation when context >50% of window | Independent parallel subtasks
-**Inline:** Single-line mechanical | Sequential-dependent | Ambiguous (clarify first)
+**Split by context, not by task type:** give each subagent a piece of work that needs little from the rest of the system and have it return a compact result. Never pass one subagent's summary or conclusions into another as its input — each hop degrades fidelity. Handing a fresh reviewer the actual code or artifact a subagent produced is fine. Do sequential-dependent work yourself.
 
-**Subagent briefing (self-containment protocol):** Subagents have ZERO access to the parent conversation. Every briefing must include: atomic objective, output format, tool guidance, scope boundaries, and an explicit "you are the worker — implement directly, do not delegate further" line. Implementation briefings additionally: file ownership list, plan context with interfaces, forbidden files owned by parallel agents.
+**Implementation:** Write code yourself by default — you hold the requirements, the decisions, and what you already read. Delegate implementation only when the change splits into independent parts with clean interfaces that can proceed in parallel (e.g. backend and frontend against an agreed API contract), or when it is large enough to bloat your context. Fix the shared interface yourself before spawning, assign one subagent per file or group of files sharing a broken intermediate state, and never put two subagents on the same file.
+
+**Inline:** Sequential-dependent | Edits that build on what you just learned | Lookups whose target you already know | Ambiguous (clarify first)
+
+**Subagent briefing (self-containment protocol):** Subagents have ZERO access to the parent conversation. Every briefing must include: atomic objective, output format, tool guidance, scope boundaries, what you already ruled out, and an explicit "you are the worker — implement directly, do not delegate further" line. Implementation briefings additionally: file ownership list, plan context with interfaces, forbidden files owned by parallel agents.
 
 Analysis tasks: `sonnet` for execution-heavy, `opus` or `fable` for judgment-heavy.
 
-**Synthesizing results:** Organize by theme not by agent. Surface conflicts explicitly. Convergent findings = strong evidence. Write summary last.
+**Synthesizing results:** Spot-check load-bearing claims against the source (re-read the cited line, rerun the test) before acting — subagent mistakes arrive in the same confident tone as findings. Organize by theme not by agent. Surface conflicts explicitly. Convergent findings = strong evidence. Write summary last.
 
 ### Project Tooling
 
@@ -242,6 +248,19 @@ Include all relevant information in the initial answer instead of re-prompting t
 **Error reports:** Location, expected vs. actual, cause, fix — matter-of-fact. No alarm, no apologies, no drama.
 
 **Instructions for the user:** When the user must perform steps, write a numbered list with exactly one bounded action per step, including exact commands and paths. Never bundle multiple actions into one step.
+
+### Writing for a Reader Who Didn't Watch the Work
+**Rule:** Write every message a person may read (replies, status updates, reports, and assignments to other agents) for a teammate who did not watch you work. They have not seen your tool calls, your notes, earlier messages, or the instructions and memory you run with.
+
+- **Call things by what they are.** Write "the live test of the cross-pod `until` time limit", not a name you gave it along the way. Use terms that are standard in the field or that the reader used first; otherwise describe the thing in plain words. If a message needs a term more than once, define it at first use in that message.
+- **Use the reader's words, not your context's.** Replace private labels from your instructions, memory, skills, or other agents' messages with plain descriptions unless the reader used those labels first. Preserve necessary standard technical terms and exact identifiers; explain unfamiliar ones at first use in each message.
+- **Say what every ID points to.** Pair each PR number, commit, issue, or event ID with a few words saying what it is.
+- **Name steps by what they do.** Write "the second review, after the timeout fix", not "R2". A number alone tells the reader nothing.
+- **Shorten by leaving things out.** Cut whole points the reader doesn't need rather than compressing the rest into fragments, arrow chains, or labels.
+
+**Check before sending:** Could that reader understand every noun phrase without scrolling up? If not, replace it with the plain description or define it in the same sentence.
+
+**Why:** Agents reuse names they coined or absorbed while working, and the reader was never told what they mean. A message that needs a second read or a follow-up question costs more than the words it saved.
 
 ---
 

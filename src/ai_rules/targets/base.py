@@ -196,6 +196,20 @@ class ConfigTarget(ABC):
         """Path to the base settings file in the config directory."""
         return self.config_dir / self.target_id / self.config_file_name
 
+    @property
+    def settings_cache_path(self) -> Path | None:
+        """Settings cache the install's settings step guarantees before links.
+
+        Set when the target needs a cache and has a bundled settings file: by
+        the time config links are made, that cache is fresh or about to be
+        built, so the settings link points there. None otherwise.
+        """
+        if not self.needs_cache or not self._base_settings_path.exists():
+            return None
+        return self.config.get_merged_settings_path(
+            self.target_id, self.config_file_name, force=True
+        )
+
     def build_merged_settings(
         self,
         force_rebuild: bool = False,
@@ -208,6 +222,10 @@ class ConfigTarget(ABC):
 
         Returns:
             Path to merged settings file, or None if no overrides exist
+
+        Raises:
+            ValueError: The bundled settings file cannot be parsed, so linking
+                it would silently drop the user's overrides.
         """
         if not self.needs_cache:
             return None
@@ -226,7 +244,7 @@ class ConfigTarget(ABC):
             self._base_settings_path, config_format
         )
         if base_settings is None:
-            return None
+            raise ValueError(f"cannot parse {self._base_settings_path}")
 
         if cache_path:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -475,3 +493,18 @@ class ConfigTarget(ABC):
             These will be removed during install if they point to our config files.
         """
         return []
+
+    def get_deprecated_symlink_candidates(self) -> list[Path]:
+        """Every deprecated location, unfiltered, for strict uninstall.
+
+        Targets whose ``get_deprecated_symlinks`` prefilters by target return
+        all known locations here so ``links_to_source`` alone decides.
+        """
+        return self.get_deprecated_symlinks()
+
+    def get_deprecated_symlink_source(self) -> Path | None:
+        """Bundled entry ai-rules used to link at the deprecated locations.
+
+        Uninstall removes a deprecated symlink only while it still points here.
+        """
+        return None

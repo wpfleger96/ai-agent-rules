@@ -38,6 +38,44 @@ def _get_copy_mode_targets(agents: list[ConfigTarget]) -> set[Path]:
     return result
 
 
+def _manifest_link_sources(
+    target: ConfigTarget, dest: Path, source: Path
+) -> list[Path]:
+    """Sources ai-rules may have linked a manifest destination to.
+
+    A settings file and the shared ``~/AGENTS.md`` switch between the bundled
+    file and a merged copy in the cache as overrides come and go, and the
+    settings component may delete that cache while uninstall runs, so both
+    forms are accepted there. Every other destination has exactly one source.
+    """
+    from ai_rules.config import Config
+
+    dest = dest.expanduser()
+    settings_dest = getattr(target, "settings_symlink_target", None)
+    if settings_dest is not None and dest == settings_dest.expanduser():
+        name = target.config_file_name
+        return [
+            target.config_dir / target.target_id / name,
+            Config.get_cache_dir() / target.target_id / name,
+        ]
+    if target.target_id == "shared" and dest == Path("~/AGENTS.md").expanduser():
+        return [
+            target.config_dir / "AGENTS.md",
+            Config.get_cache_dir() / "shared" / "AGENTS.md",
+        ]
+    return [source]
+
+
+def install_built_caches(ctx: CliContext) -> set[Path]:
+    """Caches install builds before it makes links: merged AGENTS.md and settings.
+
+    They may not exist yet where nothing has built them (dry-run, validate).
+    """
+    caches = [ctx.config.get_merged_agents_md_path()]
+    caches += (target.settings_cache_path for target in ctx.selected_targets)
+    return {path for path in caches if path is not None}
+
+
 # status_code -> (severity, fixed annotation or None to use the check message)
 _STATUS_DISPLAY: dict[str, tuple[str, str | None]] = {
     "missing": ("error", "not installed"),
@@ -101,9 +139,17 @@ class ConfigComponent(Component):
         for agent in ctx.selected_targets:
             filtered_symlinks = agent.get_filtered_symlinks()
             excluded_count += len(agent.symlinks) - len(filtered_symlinks)
+            # Dry-run builds no settings cache, so the settings link would fall
+            # back to the bundled file; plan it at the cache a real run links.
+            settings_cache = agent.settings_cache_path if ctx.dry_run else None
 
             config_symlinks = [
-                (tgt, src)
+                (
+                    tgt,
+                    settings_cache
+                    if settings_cache and tgt == agent.settings_symlink_target
+                    else src,
+                )
                 for tgt, src in filtered_symlinks
                 if not _is_specialized_path(agent, tgt)
             ]
@@ -111,8 +157,16 @@ class ConfigComponent(Component):
 
         copy_targets = _get_copy_mode_targets(list(ctx.selected_targets))
 
+        # Mirrors cleanup_deprecated_symlinks' predicate so cleanup-only work
+        # still reaches apply(); dangling links count.
+        has_deprecated = any(
+            path.expanduser().is_symlink()
+            for agent in ctx.selected_targets
+            for path in agent.get_deprecated_symlinks()
+        )
+
         return ConfigPlan(
-            has_changes=bool(symlink_ops),
+            has_changes=bool(symlink_ops) or has_deprecated,
             symlink_ops=symlink_ops,
             excluded_count=excluded_count,
             copy_targets=copy_targets,
@@ -127,71 +181,38 @@ class ConfigComponent(Component):
         from ai_rules.symlinks import create_file_copy, create_symlink
 
         counts = {"created": 0, "updated": 0, "unchanged": 0, "skipped": 0, "errors": 0}
+        # The cache builds run before this component, even under --only, but
+        # only report in dry-run, so their files may not exist yet.
+        pending_caches = install_built_caches(ctx) if ctx.dry_run else set()
 
         for target, source in plan.symlink_ops:
             if target.expanduser() in plan.copy_targets:
-                result, message = create_file_copy(target, source, True, ctx.dry_run)
+                result, message = create_file_copy(
+                    target,
+                    source,
+                    True,
+                    ctx.dry_run,
+                    pending_sources=pending_caches,
+                )
             else:
-                result, message = create_symlink(target, source, True, ctx.dry_run)
+                result, message = create_symlink(
+                    target,
+                    source,
+                    True,
+                    ctx.dry_run,
+                    pending_sources=pending_caches,
+                )
 
             counts[print_symlink_result(result, target, source, message)] += 1
 
-        cleanup_deprecated_symlinks(
+        removed = cleanup_deprecated_symlinks(
             list(ctx.selected_targets), ctx.config_dir, ctx.dry_run
         )
 
         return ComponentResult(
             ok=counts["errors"] == 0,
-            changed=bool(counts["created"] or counts["updated"]),
-            counts={**counts, "excluded": plan.excluded_count},
-        )
-
-    def install(self, ctx: CliContext) -> ComponentResult:
-        from ai_rules.cli import cleanup_deprecated_symlinks
-        from ai_rules.cli.display import print_dim, print_symlink_result
-        from ai_rules.symlinks import create_file_copy, create_symlink
-
-        counts = {"created": 0, "updated": 0, "unchanged": 0, "skipped": 0, "errors": 0}
-        excluded = 0
-        effective_force = ctx.yes or not ctx.dry_run
-        copy_targets = _get_copy_mode_targets(list(ctx.selected_targets))
-
-        for agent in ctx.selected_targets:
-            ctx.console.print(f"\n[bold]{agent.name}[/bold]")
-
-            filtered_symlinks = agent.get_filtered_symlinks()
-            user_excluded_count = len(agent.symlinks) - len(filtered_symlinks)
-
-            config_symlinks = [
-                (tgt, src)
-                for tgt, src in filtered_symlinks
-                if not _is_specialized_path(agent, tgt)
-            ]
-
-            if user_excluded_count > 0:
-                print_dim(f"({user_excluded_count} symlink(s) excluded)", indent=2)
-                excluded += user_excluded_count
-
-            for target, source in config_symlinks:
-                if target.expanduser() in copy_targets:
-                    result, message = create_file_copy(
-                        target, source, effective_force, ctx.dry_run
-                    )
-                else:
-                    result, message = create_symlink(
-                        target, source, effective_force, ctx.dry_run
-                    )
-
-                counts[print_symlink_result(result, target, source, message)] += 1
-
-        cleanup_deprecated_symlinks(
-            list(ctx.selected_targets), ctx.config_dir, ctx.dry_run
-        )
-
-        return ComponentResult(
-            ok=counts["errors"] == 0,
-            changed=bool(counts["created"] or counts["updated"]),
-            counts={**counts, "excluded": excluded},
+            changed=bool(counts["created"] or counts["updated"] or removed),
+            counts={**counts, "excluded": plan.excluded_count, "removed": removed},
         )
 
     def status(self, ctx: CliContext) -> ComponentResult:
@@ -362,6 +383,7 @@ class ConfigComponent(Component):
         )
         from ai_rules.cli.runner import get_console
         from ai_rules.symlinks import remove_file_copy, remove_symlink
+        from ai_rules.utils import links_to_source
 
         console = get_console(ctx)
         total_removed = 0
@@ -371,11 +393,16 @@ class ConfigComponent(Component):
         for target in ctx.selected_targets:
             console.print(f"\n[bold]{target.name}[/bold]")
 
-            for tgt, _source in target.get_filtered_symlinks():
+            for tgt, source in target.get_filtered_symlinks():
                 if _is_specialized_path(target, tgt):
                     continue
                 if tgt.expanduser() in copy_targets:
                     success, message = remove_file_copy(tgt, ctx.yes)
+                elif tgt.expanduser().is_symlink() and not any(
+                    links_to_source(tgt, src)
+                    for src in _manifest_link_sources(target, tgt, source)
+                ):
+                    success, message = False, "not managed by ai-rules"
                 else:
                     success, message = remove_symlink(tgt, ctx.yes)
 
@@ -389,7 +416,7 @@ class ConfigComponent(Component):
                     total_skipped += 1
 
         cleanup_deprecated_symlinks(
-            list(ctx.selected_targets), ctx.config_dir, ctx.dry_run
+            list(ctx.selected_targets), ctx.config_dir, ctx.dry_run, owned_only=True
         )
 
         return ComponentResult(

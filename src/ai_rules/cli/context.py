@@ -13,16 +13,13 @@ from ai_rules.agents.base import Agent
 from ai_rules.config import Config
 from ai_rules.targets.base import ConfigTarget
 
-LifecycleOperation = Literal[
-    "install", "status", "diff", "validate", "uninstall", "plan", "apply"
-]
+LifecycleOperation = Literal["status", "diff", "validate", "uninstall", "plan", "apply"]
 
 
 @dataclass(frozen=True)
 class ComponentResult:
     ok: bool = True
     changed: bool = False
-    abort: bool = False
     counts: dict[str, int] = field(default_factory=dict)
 
 
@@ -61,16 +58,14 @@ class Component(ABC):
     label: str
     filterable: bool = True
 
-    # Components that write through the per-agent settings symlinks (e.g. MCPs)
-    # must run AFTER ConfigComponent materializes those symlinks. When True, the
-    # install runner defers this component to a second semantic wave so it never
-    # races with symlink creation.
+    # Components that must run AFTER ConfigComponent materializes or re-points
+    # the symlinks: MCPs write through the per-agent settings symlinks, and
+    # orphaned-cache cleanup must not delete a cache a link still points into.
+    # When True, the install runner defers this component to a second semantic
+    # wave so it never races with symlink creation.
     install_after_symlinks: bool = False
 
     component_id: ClassVar[str]
-
-    def install(self, ctx: CliContext) -> ComponentResult:
-        return ComponentResult()
 
     def status(self, ctx: CliContext) -> ComponentResult:
         return ComponentResult()
@@ -103,6 +98,11 @@ class ComponentPlan:
 class SettingsPlan(ComponentPlan):
     stale_targets: list[ConfigTarget] = field(default_factory=list)
     excluded_symlinks_to_clean: list[Path] = field(default_factory=list)
+
+
+@dataclass
+class OrphanedCachePlan(ComponentPlan):
+    orphaned_dirs: list[Path] = field(default_factory=list)
 
 
 @dataclass

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ai_rules.utils import is_managed_target
+from ai_rules.utils import is_managed_target, links_to_source
 
 
 @dataclass
@@ -100,9 +100,13 @@ class ClaudeExtensionManager:
         user_dir: Path,
         pattern: str,
     ) -> dict[str, Path]:
-        """Get symlinks that point to ai-rules but source no longer exists.
+        """Get ai-rules symlinks whose entry no longer exists in the current source.
 
-        Works for any symlink-based config type (commands, agents, skills, etc.)
+        Staleness is judged against ``config_dir``, not the link's target: a
+        link into an older install or another checkout is orphaned once its
+        entry is gone from the current source, even if the old target exists.
+
+        Covers file-based Claude extension types (agents, commands, hooks).
 
         Args:
             user_dir: Directory containing user symlinks (e.g., ~/.claude/commands)
@@ -123,17 +127,8 @@ class ClaudeExtensionManager:
             if item.is_dir():
                 continue
 
-            try:
-                target = item.resolve()
-            except (OSError, RuntimeError):
-                try:
-                    target = item.readlink()
-                    if not target.is_absolute():
-                        target = item.parent / target
-                except (OSError, RuntimeError):
-                    continue
-
-            if is_managed_target(target, self.config_dir) and not target.exists():
+            source = self.config_dir / "claude" / user_dir.name / item.name
+            if links_to_source(item, source) and not source.exists():
                 orphaned[item.stem] = item
 
         return orphaned

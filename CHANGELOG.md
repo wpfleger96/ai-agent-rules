@@ -1,5 +1,173 @@
 # CHANGELOG
 
+## [0.82.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.5...v0.82.0) (2026-11-16)
+
+
+### Features
+
+* **profiles:** add cloud profile for Claude Code on the web ([#291](https://github.com/wpfleger96/ai-agent-rules/issues/291)) ([e3d8cca](https://github.com/wpfleger96/ai-agent-rules/commit/e3d8cca95b816497d697215626422f6019baa0db))
+
+## [0.81.5](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.4...v0.81.5) (2026-11-14)
+
+
+### Bug Fixes
+
+* **upgrade:** bypass pip HTTP cache in index version check ([#289](https://github.com/wpfleger96/ai-agent-rules/issues/289)) ([87daf7a](https://github.com/wpfleger96/ai-agent-rules/commit/87daf7aa7b43da02f5cc0d3f2662af0d3f3f9c63))
+
+## [0.81.4](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.3...v0.81.4) (2026-11-14)
+
+
+### Bug Fixes
+
+* **claude:** replace Read(*) allow rule with bare Read ([#277](https://github.com/wpfleger96/ai-agent-rules/issues/277)) ([65e8468](https://github.com/wpfleger96/ai-agent-rules/commit/65e8468e9b85899a8d3aa0e63f7c9a2d6b8589a9))
+* **install:** handle unbuilt settings caches in dry-run and validate ([#286](https://github.com/wpfleger96/ai-agent-rules/issues/286)) ([c4026fd](https://github.com/wpfleger96/ai-agent-rules/commit/c4026fd0cc3eec7441fbcb0346d8d0a051e5763b))
+* **install:** judge stale skill and extension links by current source ([#288](https://github.com/wpfleger96/ai-agent-rules/issues/288)) ([2d59f8a](https://github.com/wpfleger96/ai-agent-rules/commit/2d59f8af22e781e14192e1120a66267d3104925b))
+* **install:** remove orphaned caches after links are re-pointed ([#287](https://github.com/wpfleger96/ai-agent-rules/issues/287)) ([e123f58](https://github.com/wpfleger96/ai-agent-rules/commit/e123f58e7f3c620c8fea0ffba926ee61c7504870))
+* **install:** report settings and AGENTS.md cache builds in summary ([#279](https://github.com/wpfleger96/ai-agent-rules/issues/279)) ([74749f3](https://github.com/wpfleger96/ai-agent-rules/commit/74749f328ff4fdbf8d501dbed1095058bddec998))
+* **install:** treat unbuilt AGENTS.md cache as pending in dry-run ([#282](https://github.com/wpfleger96/ai-agent-rules/issues/282)) ([5fbd7af](https://github.com/wpfleger96/ai-agent-rules/commit/5fbd7afe3aa85ae6bc5541d1410819b3443528fb)), closes [#280](https://github.com/wpfleger96/ai-agent-rules/issues/280)
+
+
+### Refactoring
+
+* **cli:** remove duplicate component install() path ([#283](https://github.com/wpfleger96/ai-agent-rules/issues/283)) ([e47ecbe](https://github.com/wpfleger96/ai-agent-rules/commit/e47ecbe70d5d1c58f07af9c2c91195b9360199f3)), closes [#281](https://github.com/wpfleger96/ai-agent-rules/issues/281)
+
+## [0.81.3](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.2...v0.81.3) (2026-11-12)
+
+
+### Chores
+
+* **claude:** bump default Fable model to claude-fable-5-2 ([#276](https://github.com/wpfleger96/ai-agent-rules/issues/276)) ([0985d54](https://github.com/wpfleger96/ai-agent-rules/commit/0985d54ec0197dc612343f31ab96f508cb31ad9d))
+* sync issue templates ([6655a9b](https://github.com/wpfleger96/ai-agent-rules/commit/6655a9bdd213ebc65b3fb914549fd856bf1395da))
+
+
+### Continuous Integration
+
+* sync shared files ([3bc54d1](https://github.com/wpfleger96/ai-agent-rules/commit/3bc54d1ff78ccbd26bd99f40491b3226ed700058))
+
+## [0.81.2](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.1...v0.81.2) (2026-11-01)
+
+
+### Chores
+
+* **claude:** disable idle compaction in managed settings ([#274](https://github.com/wpfleger96/ai-agent-rules/issues/274)) ([199837d](https://github.com/wpfleger96/ai-agent-rules/commit/199837d3b62726b0fe73c30b0ad5510a4c170b98))
+* **deps:** Lock file maintenance ([#273](https://github.com/wpfleger96/ai-agent-rules/issues/273)) ([cef02a2](https://github.com/wpfleger96/ai-agent-rules/commit/cef02a2efb0ffbf26c6ef9dd25efa865ecd27fce))
+* **deps:** Update astral-sh/setup-uv action to v10.3.2 ([#268](https://github.com/wpfleger96/ai-agent-rules/issues/268)) ([4210560](https://github.com/wpfleger96/ai-agent-rules/commit/421056016ddaac2014d798818630c6b938b911b1))
+
+
+### Continuous Integration
+
+* sync CI workflow ([ac0e0aa](https://github.com/wpfleger96/ai-agent-rules/commit/ac0e0aa3a735afed4dd633df676896b1a4f9d85f))
+* sync CI workflow ([9f8974a](https://github.com/wpfleger96/ai-agent-rules/commit/9f8974a89c923ff290dc7a50f1c35f4dbbee6682))
+* sync CI workflow ([02249eb](https://github.com/wpfleger96/ai-agent-rules/commit/02249eb393c129d46fa9ce13731bc7e2b9fc734e))
+* sync publish workflow ([c6c754d](https://github.com/wpfleger96/ai-agent-rules/commit/c6c754de8441e8d2d8f4f36036542488ea12abc5))
+* sync publish workflow ([d5da9a3](https://github.com/wpfleger96/ai-agent-rules/commit/d5da9a3e64b7e18e89add65ae097321ae9b88b9e))
+* sync release workflow ([a56545a](https://github.com/wpfleger96/ai-agent-rules/commit/a56545a031574b681502d726b490d4762be1c3d9))
+* sync release workflow ([0333fed](https://github.com/wpfleger96/ai-agent-rules/commit/0333fedaf88496830eaaf971e879ac471f2f0fd0))
+
+## [0.81.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.0...v0.81.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* **upgrade:** report failed update checks and authenticate GitHub calls ([#271](https://github.com/wpfleger96/ai-agent-rules/issues/271)) ([db3667c](https://github.com/wpfleger96/ai-agent-rules/commit/db3667c482e94ca69dce38422127a7e66f0bdb2b))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#265](https://github.com/wpfleger96/ai-agent-rules/issues/265)) ([647506e](https://github.com/wpfleger96/ai-agent-rules/commit/647506ee9eae7676918ac3df455423c8ccdd6615))
+* **deps:** Lock file maintenance ([#267](https://github.com/wpfleger96/ai-agent-rules/issues/267)) ([578e095](https://github.com/wpfleger96/ai-agent-rules/commit/578e0955c8a041f42256aa2eff4c70bf20ad8d34))
+* **deps:** Lock file maintenance ([#269](https://github.com/wpfleger96/ai-agent-rules/issues/269)) ([1c5df89](https://github.com/wpfleger96/ai-agent-rules/commit/1c5df89b6c2a4cc51125e262083db6c91015cb1b))
+* **deps:** Lock file maintenance ([#270](https://github.com/wpfleger96/ai-agent-rules/issues/270)) ([238567b](https://github.com/wpfleger96/ai-agent-rules/commit/238567b3ba39d6dc35e623996e7da9854c812172))
+* sync Justfile ([09902ba](https://github.com/wpfleger96/ai-agent-rules/commit/09902bab0114fcec298f2d5e58db2b313a14e467))
+
+
+### Continuous Integration
+
+* sync CI workflow ([a728769](https://github.com/wpfleger96/ai-agent-rules/commit/a72876933206b6ebed2c20d81da24fea04336f9b))
+* sync publish workflow ([f51e7aa](https://github.com/wpfleger96/ai-agent-rules/commit/f51e7aaec45c8763b7acf373af49f92dd57164a1))
+* sync release workflow ([9236e79](https://github.com/wpfleger96/ai-agent-rules/commit/9236e7979aaed8e1f0c903bc3547c35f54a361e1))
+
+## [0.81.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.80.0...v0.81.0) (2026-10-08)
+
+
+### Features
+
+* **claude:** default sonnet and haiku models to 5.5 ([#263](https://github.com/wpfleger96/ai-agent-rules/issues/263)) ([c74efa3](https://github.com/wpfleger96/ai-agent-rules/commit/c74efa3336c2751fed0c49750252358e51b17b35))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#259](https://github.com/wpfleger96/ai-agent-rules/issues/259)) ([7458af1](https://github.com/wpfleger96/ai-agent-rules/commit/7458af1646bc7ca761692cd760a86731962b4bba))
+* **deps:** Lock file maintenance ([#261](https://github.com/wpfleger96/ai-agent-rules/issues/261)) ([34b3a2c](https://github.com/wpfleger96/ai-agent-rules/commit/34b3a2cf59460bd1546f02b0a55ff7c6452da1bf))
+* **deps:** Lock file maintenance ([#262](https://github.com/wpfleger96/ai-agent-rules/issues/262)) ([1224e5f](https://github.com/wpfleger96/ai-agent-rules/commit/1224e5fde84744407d3f26cd46f32aab1b25d134))
+* **deps:** Lock file maintenance ([#264](https://github.com/wpfleger96/ai-agent-rules/issues/264)) ([bfc9ab2](https://github.com/wpfleger96/ai-agent-rules/commit/bfc9ab2f796df2dd156a63f4989409d894ea5c9d))
+* **deps:** Update astral-sh/setup-uv action to v10.2.0 ([#258](https://github.com/wpfleger96/ai-agent-rules/issues/258)) ([00a6112](https://github.com/wpfleger96/ai-agent-rules/commit/00a61120662393866b970c79253018c6214f1432))
+
+
+### Continuous Integration
+
+* sync CI workflow ([e4c3c27](https://github.com/wpfleger96/ai-agent-rules/commit/e4c3c2758a417e88a5778970e068e366720f978c))
+* sync publish workflow ([53a3bc2](https://github.com/wpfleger96/ai-agent-rules/commit/53a3bc288d9be22de89bf4407c23c34d1899f985))
+* sync release workflow ([36f4cea](https://github.com/wpfleger96/ai-agent-rules/commit/36f4cea9407645a59931dbe5be68e0aa3a04f0ff))
+
+## [0.80.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.79.0...v0.80.0) (2026-09-30)
+
+
+### Features
+
+* **config:** add rule for writing to readers who didn't watch the work ([#257](https://github.com/wpfleger96/ai-agent-rules/issues/257)) ([c325fca](https://github.com/wpfleger96/ai-agent-rules/commit/c325fca20dc34bd67c5364b75a8c04301e05c1f6))
+
+
+### Bug Fixes
+
+* **uninstall:** run cleanup in ordered writer, link, and cache waves ([#255](https://github.com/wpfleger96/ai-agent-rules/issues/255)) ([456e0d2](https://github.com/wpfleger96/ai-agent-rules/commit/456e0d2e6ddf4e268d1a896064dda1ddf1e57c64))
+
+## [0.79.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.78.0...v0.79.0) (2026-09-29)
+
+
+### Features
+
+* **profiles:** add profile-owned skills ([#251](https://github.com/wpfleger96/ai-agent-rules/issues/251)) ([8229776](https://github.com/wpfleger96/ai-agent-rules/commit/8229776bc25a82fdd80ff2b47a49b46b0de5db0c))
+* **skills:** add writing-as-will voice skill ([#250](https://github.com/wpfleger96/ai-agent-rules/issues/250)) ([8dc0b41](https://github.com/wpfleger96/ai-agent-rules/commit/8dc0b4105c07789fcddfd15d9d0c90097989d417))
+
+
+### Bug Fixes
+
+* **buzz:** remove dead persona-pack target and clean up stale symlinks ([#247](https://github.com/wpfleger96/ai-agent-rules/issues/247)) ([8b0d983](https://github.com/wpfleger96/ai-agent-rules/commit/8b0d9832a7e173067edc2ae145acabc678713f72))
+* **install:** write through user symlinks and link from physical paths ([#254](https://github.com/wpfleger96/ai-agent-rules/issues/254)) ([a83ebfa](https://github.com/wpfleger96/ai-agent-rules/commit/a83ebfa6cc50c77a08180f07c01636a056129f47))
+* **uninstall:** remove only links that point at ai-rules sources ([#252](https://github.com/wpfleger96/ai-agent-rules/issues/252)) ([a92cdd8](https://github.com/wpfleger96/ai-agent-rules/commit/a92cdd8ef8a7941d4628a419bdd6d1f134f3acbd))
+
+
+### Chores
+
+* **buzz:** add Sietch Tabr team snapshot backup ([#248](https://github.com/wpfleger96/ai-agent-rules/issues/248)) ([db34ae4](https://github.com/wpfleger96/ai-agent-rules/commit/db34ae4ea3fdcbd965465842a4d83ef3fff6a46a))
+* **buzz:** embed Paul's avatar in Sietch Tabr backup ([#249](https://github.com/wpfleger96/ai-agent-rules/issues/249)) ([77eceb2](https://github.com/wpfleger96/ai-agent-rules/commit/77eceb2bfbdd94c64e319e984899d8212bdae036))
+
+## [0.78.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.77.0...v0.78.0) (2026-09-27)
+
+
+### Features
+
+* **claude:** default to opus instead of opusplan ([#246](https://github.com/wpfleger96/ai-agent-rules/issues/246)) ([6256a25](https://github.com/wpfleger96/ai-agent-rules/commit/6256a25c1543a389f08a15cbf1200505a5da620c))
+
+
+### Chores
+
+* **deps:** Update astral-sh/setup-uv action to v10.1.0 ([#244](https://github.com/wpfleger96/ai-agent-rules/issues/244)) ([06b9330](https://github.com/wpfleger96/ai-agent-rules/commit/06b9330b9c33c8f8b874dc1de77432b8b3227f9c))
+
+## [0.77.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.9...v0.77.0) (2026-09-23)
+
+
+### Features
+
+* **claude:** default to Opus 5.5 and auto permission mode ([#243](https://github.com/wpfleger96/ai-agent-rules/issues/243)) ([9ae358f](https://github.com/wpfleger96/ai-agent-rules/commit/9ae358f463e7bc337e4e80bac14996b9cd7a36da))
+
+
+### Chores
+
+* **deps:** Lock file maintenance ([#239](https://github.com/wpfleger96/ai-agent-rules/issues/239)) ([b418711](https://github.com/wpfleger96/ai-agent-rules/commit/b4187117a409737b11211ecebd68c90eb4924832))
+* **deps:** Lock file maintenance ([#242](https://github.com/wpfleger96/ai-agent-rules/issues/242)) ([ac7a742](https://github.com/wpfleger96/ai-agent-rules/commit/ac7a7425129b6c5732cd8884e6290d81535ed92e))
+
 ## [0.76.9](https://github.com/wpfleger96/ai-agent-rules/compare/v0.76.8...v0.76.9) (2026-09-04)
 
 

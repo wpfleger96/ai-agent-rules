@@ -218,6 +218,8 @@ def profile_switch(ctx: click.Context, name: str) -> None:
     except ProfileNotFoundError as e:
         print_error(str(e))
         sys.exit(1)
+    # Before the conflict prompt saves user config, so a rejected switch changes nothing.
+    cli_facade.validate_profile_skills(cli_facade.get_config_dir(), profile_obj.skills)
 
     user_config = Config.load_user_config()
     profile_conflicts = _detect_profile_override_conflicts(profile_obj, user_config)

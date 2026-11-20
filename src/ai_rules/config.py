@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import re
 import shutil
 import sys
@@ -134,6 +135,11 @@ CONFIG_PARSE_ERRORS = (
 )
 
 
+def is_real_dir(path: Path) -> bool:
+    """Whether path is a directory itself, not a symlink or junction to one."""
+    return path.is_dir() and not (path.is_symlink() or path.is_junction())
+
+
 def load_config_file(path: Path, config_format: str) -> dict[str, Any]:
     """Load a config file based on format.
 
@@ -194,15 +200,26 @@ def _validate_for_format(
 def write_file_atomic(
     path: Path, write_fn: Callable[[Any], None], binary: bool = False
 ) -> None:
-    """Write a file atomically via tempfile + rename."""
-    fd, temp_path = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    """Write a file atomically via tempfile + rename.
+
+    Symlinks are written through: the file they point at is replaced and the
+    link itself is kept. A dangling link's target is created when its folder
+    exists.
+    """
+    from ai_rules.symlinks import write_target
+
+    try:
+        real = write_target(path)
+    except OSError as e:
+        raise OSError(f"Cannot write {path}: {e}") from e
+    fd, temp_path = tempfile.mkstemp(dir=real.parent, prefix=f".{real.name}.")
     try:
         mode = "wb" if binary else "w"
         with open(fd, mode, encoding=None if binary else "utf-8") as f:
             write_fn(f)
-        if path.exists():
-            shutil.copymode(path, temp_path)
-        shutil.move(temp_path, path)
+        if real.exists():
+            shutil.copymode(real, temp_path)
+        os.replace(temp_path, real)
     except Exception:
         Path(temp_path).unlink(missing_ok=True)
         raise
@@ -599,6 +616,7 @@ class Config:
         marketplaces: list[dict[str, str]] | None = None,
         managed_tools: dict[str, Any] | None = None,
         agents_md: str = "",
+        skills: list[str] | None = None,
     ):
         self.exclude_symlinks = set(exclude_symlinks or [])
         self.settings_overrides = settings_overrides or {}
@@ -608,6 +626,7 @@ class Config:
         self.marketplaces = marketplaces or []
         self.managed_tools = managed_tools or {}
         self.agents_md = agents_md
+        self.skills = skills or []
 
     def get_plugin_configs(self) -> list[PluginConfig]:
         """Convert plugin dicts to PluginConfig objects."""
@@ -678,6 +697,7 @@ class Config:
             "marketplaces": copy.deepcopy(profile_data.marketplaces),
             "managed_tools": copy.deepcopy(profile_data.managed_tools),
             "agents_md": profile_data.agents_md,
+            "skills": list(profile_data.skills),
         }
 
         user_config_path = get_user_config_path()
@@ -918,30 +938,33 @@ class Config:
         with open(user_config_path, "w", encoding="utf-8") as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=True)
 
-    def cleanup_orphaned_cache(self, agents_needing_cache: set[str]) -> list[str]:
-        """Remove cache files for agents that no longer need them.
+    def find_orphaned_cache(self, keep: set[str]) -> list[str]:
+        """List cache dirs for agents that no longer need them, without removing.
+
+        Links inside the cache dir are never ai-rules caches, so they are skipped
+        rather than followed into whatever they point at. A linked cache root
+        yields nothing, since its entries live wherever the link points.
 
         Args:
-            agents_needing_cache: Set of agent IDs that need caches (overrides
-                or preserved_fields). Callers must compute this via Agent.needs_cache.
+            keep: Agent IDs whose caches must be kept.
 
         Returns:
-            List of agent IDs whose caches were removed
+            Sorted list of orphaned agent IDs
         """
-        effective = set(agents_needing_cache)
+        effective = set(keep)
         if self.agents_md:
             effective.add("shared")
 
-        removed: list[str] = []
         cache_dir = self.get_cache_dir()
-        if not cache_dir.exists():
-            return removed
+        if not is_real_dir(cache_dir):
+            return []
 
-        for agent_dir in cache_dir.iterdir():
-            if agent_dir.is_dir():
-                agent_id = agent_dir.name
-                if agent_id not in effective:
-                    shutil.rmtree(agent_dir)
-                    removed.append(agent_id)
-
-        return removed
+        try:
+            return sorted(
+                agent_dir.name
+                for agent_dir in cache_dir.iterdir()
+                if is_real_dir(agent_dir) and agent_dir.name not in effective
+            )
+        except OSError:
+            # Cleanup is best-effort; an unlistable cache dir has no orphans.
+            return []

@@ -76,6 +76,7 @@ def make_cli_runner(home_dir: Path, env_overrides: dict[str, str]) -> CliRunner:
         args: list[str],
         extra_env: dict[str, str] | None = None,
         timeout: int = 60,
+        input: str | None = None,
     ) -> CliResult:
         base_env = {**os.environ, **env_overrides}
         existing = base_env.get("PYTHONPATH", "")
@@ -94,6 +95,7 @@ def make_cli_runner(home_dir: Path, env_overrides: dict[str, str]) -> CliRunner:
             cwd=REPO_ROOT,
             env=base_env,
             timeout=timeout,
+            input=input,
         )
 
     return _run

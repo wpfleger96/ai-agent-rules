@@ -173,8 +173,13 @@ def make_component_completer(
         import ai_rules.cli.components as components_module
 
         components = getattr(components_module, components_attr)
+        # Several components may share an id; complete each id once.
         ids = tuple(
-            c.component_id for c in components if c.filterable or not filterable_only
+            dict.fromkeys(
+                c.component_id
+                for c in components
+                if c.filterable or not filterable_only
+            )
         )
         return complete_components(ctx, param, incomplete, component_ids=ids)
 
@@ -204,6 +209,17 @@ def only_option(
     )
 
 
+def validate_profile_skills(config_dir: Path, skills: list[str]) -> None:
+    """Fail before any change if the active profile's skills don't resolve in config_dir."""
+    from ai_rules.profiles import ProfileError
+    from ai_rules.skills import profile_skill_dirs
+
+    try:
+        profile_skill_dirs(config_dir, skills)
+    except ProfileError as e:
+        raise click.ClickException(str(e)) from e
+
+
 def build_cli_context(
     components: tuple[Component, ...],
     agents: str | None,
@@ -230,6 +246,7 @@ def build_cli_context(
         config_dir = cli_facade.get_config_dir()
     if config is None:
         config = ConfigClass.load()
+    validate_profile_skills(config_dir, config.skills)
     all_targets = cli_facade.get_targets(config_dir, config)
     selected_targets = cli_facade.select_targets(all_targets, agents)
     parsed_filter = cli_facade.select_components(components, component_filter)
@@ -273,13 +290,14 @@ def format_summary(
     excluded: int = 0,
     errors: int = 0,
     unchanged: int = 0,
+    removed: int = 0,
 ) -> None:
     """Format and print operation summary."""
     from ai_rules.cli.display import console, print_error
 
     console.print()
 
-    has_actions = created or updated or skipped or errors
+    has_actions = created or updated or removed or skipped or errors
     if not has_actions and unchanged > 0:
         console.print(f"[bold]Summary:[/bold] All up to date ({unchanged} unchanged)")
     elif dry_run:
@@ -288,6 +306,8 @@ def format_summary(
             parts.append(f"create {created}")
         if updated:
             parts.append(f"update {updated}")
+        if removed:
+            parts.append(f"remove {removed}")
         if skipped:
             parts.append(f"skip {skipped}")
         if unchanged:
@@ -303,6 +323,8 @@ def format_summary(
             parts.append(f"Created {created}")
         if updated:
             parts.append(f"updated {updated}")
+        if removed:
+            parts.append(f"removed {removed}")
         if skipped:
             parts.append(f"skipped {skipped}")
         if unchanged:
