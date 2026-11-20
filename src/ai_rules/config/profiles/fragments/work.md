@@ -2,53 +2,22 @@
 
 On the work laptop, personal repos live under `~/Development/Personal/<repo>` — not `~/Development/<repo>` as on personal machines. This overrides the path-resolution rule and the Personal Infrastructure table paths.
 
----
-
 ## AWS CLI
 
 **Rule:** `--profile <account>-<env>--<role> --region us-west-2`
-**Format:** `--profile data-lake-staging--admin` (✅) not `--profile staging-admin` (❌)
+**Format:** use `--profile data-lake-staging--admin`, not `--profile staging-admin`.
 **Regex:** `^[a-z-]+-(dev|staging|production)--[a-z-]+$`
 
----
+## Work Laptop: Package Registries in Personal Repos
 
-## Work Laptop: uv Package Resolution in Personal Repos
+The corporate WARP VPN routes PyPI and npm traffic through Artifactory, which breaks personal repos (`~/Development/Personal/*`): `uv sync`/`uv lock` fail with metadata errors (e.g., "Metadata field Name not found") because Artifactory can't process Metadata-Version 2.4+ wheels, and direct access to `registry.npmjs.org` is blocked by Cloudflare Gateway's Dependency Confusion policy (go/dependencyconfusionnpm), so the machine-level `~/.npmrc` points npm at Artifactory.
 
-When working in `~/Development/Personal/*` repos, `uv sync` or `uv lock` may fail with
-metadata errors (e.g., "Metadata field Name not found") because the corporate WARP VPN
-intercepts traffic to `pypi.org` and routes it through Artifactory, which can't process
-modern Python wheel metadata (Metadata-Version 2.4+).
-
-The cause is the VPN interception, not the package metadata and not the local uv cache, so the whole fix is a VPN toggle: don't clear caches, reinstall packages, or debug metadata. Disconnect, run the uv command, reconnect:
+The cause is the VPN, so the whole fix is a VPN toggle around network-touching `uv`/`npm`/`pnpm` commands (sync, lock, install, add, import, update). Don't clear caches, reinstall, or debug metadata. Reconnect immediately after, since WARP must stay up for work resources:
 
 ```bash
 warp-cli disconnect
-uv sync  # or uv lock, uv pip install, etc.
+uv sync  # or uv lock, pnpm install, npm install, pnpm add, etc.
 warp-cli connect
 ```
 
-Always reconnect immediately after — WARP is the corporate VPN and must stay active for
-work network resources. This only affects personal repos; work repos use Artifactory
-intentionally.
-
-## Work Laptop: npm Registry Access in Personal Repos
-
-The same WARP interception applies to npm: direct access to `registry.npmjs.org` is
-hard-blocked by Cloudflare Gateway (Dependency Confusion policy — see
-go/dependencyconfusionnpm), and the machine-level `~/.npmrc` routes npm traffic through
-Artifactory instead. Personal repos must never resolve or lock against Artifactory.
-
-Same fix as uv — toggle the VPN around network-touching npm/pnpm commands (install,
-import, add, update) and reconnect immediately after:
-
-```bash
-warp-cli disconnect
-pnpm install  # or npm install, pnpm import, pnpm add, etc.
-warp-cli connect
-```
-
-Additionally, personal JS repos should commit a project-level `.npmrc` containing
-`registry=https://registry.npmjs.org/` so the machine-level Artifactory registry can
-never leak in (a no-op in CI, where npmjs is the default). pnpm lockfiles are
-registry-agnostic, but npm's `package-lock.json` embeds resolved URLs — never commit
-one generated against Artifactory.
+Work repos use Artifactory intentionally. Personal JS repos commit a project `.npmrc` with `registry=https://registry.npmjs.org/` so Artifactory can't leak in (a no-op in CI). pnpm lockfiles are registry-agnostic, but `package-lock.json` embeds resolved URLs: never commit one generated against Artifactory.

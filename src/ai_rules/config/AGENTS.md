@@ -2,77 +2,31 @@
      https://github.com/wpfleger96/ai-agent-rules -->
 # LLM Behavioral Rules
 
-## Quick Reference Checklist
+## Progress Reporting
+Every status update during multi-step work restates, in words, what just finished, what you are doing now, and what comes next; the reader may not hold prior state.
 
-**Before completing tasks:**
-☐ Worktree for code changes | ☐ Create TODO list (multi-step) | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ Test behavior not implementation | ☐ Keep simple (9/10 minimalism/elegance/correctness) | ☐ Ask only when readings materially diverge | ☐ GitHub: git pull, then explore locally | ☐ Cross-reference stacked/related PRs | ☐ 3 failed fixes → stop, question assumptions
+## Worktree for Code Changes
+Before changing any file, create and work in a git worktree so concurrent agents don't collide; never edit the repo root on the default branch. This applies to any task that edits, creates, or deletes files (code, config, docs), not to read-only work (research, planning, review without edits).
 
----
+- Claude Code uses the `EnterWorktree` tool; other agents run `git worktree add .worktrees/<name> -b <branch>` from the repo root and `cd` in.
+- Branch: `<username>/<descriptive-slug>`, e.g. `alice/git-worktree-enforcement`. Folder: the branch name with `/`, `\`, `:` replaced by `-`.
+- If worktree isolation blocks a skill's shell commands, `ExitWorktree` with `keep`, run it, then `EnterWorktree` back (load `ExitWorktree` via `ToolSearch` first).
 
-## Core Principles
-
-### Security-First Code Generation
-**Rule:** For code handling external input, auth, or sensitive data:
-**Stage 1:** Implement functional requirements
-**Stage 2:** Security checklist: Input validation | SQL injection prevention (parameterized queries) | XSS blocking (output encoding) | Auth/authz checks | Rate limiting | Sanitized errors | No secrets | Audit logging
-
-### Workflow Management
-**Rule:** Create TODO list before starting tasks, update as you complete each task.
-
-**Progress reporting:** Every status update during multi-step work restates position in words: what just finished, what you are doing now, and what comes next. Never assume the reader holds prior state between messages.
-
-### Mandatory Worktree for Code Changes
-
-**Rule:** Always create and work inside a git worktree before making any file changes. Never edit files directly in the repo root on the default branch.
-
-**Applies:** Any task that edits, creates, or deletes files — features, bug fixes, refactors, config changes, documentation edits.
-
-**Does NOT apply:** Read-only sessions — research, exploration, planning, code review without edits.
-
-**Setup (before touching any file):**
-
-| Agent | Method |
-|-------|--------|
-| Claude Code | Use `EnterWorktree` tool (creates worktree and switches session directory) |
-| Other agents | `git worktree add .worktrees/<worktree-name> -b <branch-name>` from repo root, then `cd` into it |
-
-**Branch naming:** `<username>/<descriptive-slug>` — e.g., `alice/git-worktree-enforcement`.
-
-**Worktree folder naming:** Derive from branch name — replace `/`, `\`, `:` with `-`.
-
-**Why:** Concurrent agents need isolated workspaces to avoid conflicting edits.
-
-**Worktree isolation errors:** Worktree-isolated sessions block Bash commands that can't be statically verified to stay inside the worktree. Skills and tools that spawn complex shell pipelines (e.g., `code-reviewer`) will fail with "this command is too complex to verify that it stays inside the worktree." Recovery (main sessions only — subagents with `isolation: worktree` cannot use `ExitWorktree`):
-
-1. `ToolSearch` → `select:ExitWorktree` (deferred tool — schema must be loaded first)
-2. `ExitWorktree` with `keep` (preserves worktree and branch on disk)
-3. Run the blocked skill/tool (now outside isolation)
-4. `EnterWorktree` to re-enter the same worktree and resume work
-
-### Delegation & Multi-Agent Orchestration
+## Delegation & Multi-Agent Orchestration
 
 **Who this applies to:** the top-level orchestrator only — the session conversing directly with the user. **If you are a subagent** (your prompt is a task brief from another agent, not a conversation with a human), this section does NOT apply to you: you are the terminal worker. Do everything in your brief directly with your own tools and never spawn further agents for any purpose. Delegation depth is exactly one.
 
-**Rule:** Default to doing the work in your own context. Every handoff is lossy twice — the subagent sees only your brief, you see only its summary — so shared context usually beats a set of summaries. Spawn a subagent only when at least one of these holds:
-1. **Context bloat** — the work would flood your context with material you need only the conclusion of (broad codebase sweeps, large logs or transcripts), or — for non-implementation work — your context is already past ~50% of the window.
-2. **Independent parallel work** — two or more tasks that need little from each other or from this conversation, each with a discardable context and a compact result (separate research angles, components behind clean interfaces).
-3. **Independent verification** — a review or check that must not be anchored on your reasoning. Hand it the code or artifact, not your conclusion.
+Default to working in your own context: every handoff loses information twice (the subagent sees only your brief; you see only its summary). Spawn only for (a) work that would flood your context when you need only the conclusion (or, for non-implementation work, when your context is already past ~50% of the window), (b) independent parallel tasks with compact results, or (c) verification that must not be anchored on your reasoning (hand over the artifact, not your conclusion). Don't feed one subagent's summary to another as input.
 
-**Split by context, not by task type:** give each subagent a piece of work that needs little from the rest of the system and have it return a compact result. Never pass one subagent's summary or conclusions into another as its input — each hop degrades fidelity. Handing a fresh reviewer the actual code or artifact a subagent produced is fine. Do sequential-dependent work yourself.
+Implementation is yours by default. Delegate it only when it splits into independent parts behind a fixed interface you set first; then one subagent per file group, never two on the same file.
 
-**Implementation:** Write code yourself by default — you hold the requirements, the decisions, and what you already read. Delegate implementation only when the change splits into independent parts with clean interfaces that can proceed in parallel (e.g. backend and frontend against an agreed API contract), or when it is large enough to bloat your context. Fix the shared interface yourself before spawning, assign one subagent per file or group of files sharing a broken intermediate state, and never put two subagents on the same file.
+Briefings must be self-contained: objective, output format, scope boundaries, what you already ruled out, file ownership for implementation, and an explicit "you are the worker — implement directly, do not delegate further" line. For analysis, use `sonnet` for execution-heavy work and `opus` or `fable` for judgment-heavy work.
 
-**Inline:** Sequential-dependent | Edits that build on what you just learned | Lookups whose target you already know | Ambiguous (clarify first)
+When synthesizing, spot-check load-bearing claims against the source before acting (subagent mistakes sound as confident as findings), organize by theme, not by agent, and surface conflicts between findings explicitly.
 
-**Subagent briefing (self-containment protocol):** Subagents have ZERO access to the parent conversation. Every briefing must include: atomic objective, output format, tool guidance, scope boundaries, what you already ruled out, and an explicit "you are the worker — implement directly, do not delegate further" line. Implementation briefings additionally: file ownership list, plan context with interfaces, forbidden files owned by parallel agents.
+## Project Tooling
 
-Analysis tasks: `sonnet` for execution-heavy, `opus` or `fable` for judgment-heavy.
-
-**Synthesizing results:** Spot-check load-bearing claims against the source (re-read the cited line, rerun the test) before acting — subagent mistakes arrive in the same confident tone as findings. Organize by theme not by agent. Surface conflicts explicitly. Convergent findings = strong evidence. Write summary last.
-
-### Project Tooling
-
-Before running any build, test, or lint command, use the project's own runner if one exists, because direct tool invocation bypasses project configuration (flags, environment, feature gates). Check in this order and use the first match:
+For build, test, and lint commands, use the project's own runner, because direct tool invocation bypasses project configuration. Use the first match:
 
 1. `Justfile` → `just <task>` (e.g., `just test`, `just format`, `just lint`)
 2. `Makefile` → `make <task>`
@@ -80,16 +34,15 @@ Before running any build, test, or lint command, use the project's own runner if
 4. `pyproject.toml` → `uv run <tool>`, not the bare tool
 5. `Cargo.toml` → `cargo <command>`
 
-### Software Engineering Standards
+## Code Conventions
 
-**Clear Naming:** `get_user_by_email(email: str)` not `func1(x)`
-**Error Handling:** At boundaries only, specific exceptions
-**Input Validation:** Validate ALL user input and external API responses at system boundaries
-**Edits:** When the end result is the same, edit a file surgically rather than rewriting it whole.
+- Handle errors at boundaries only, with specific exceptions; validate user input and external API responses there.
+- Test behavior, not implementation. Name tests `test_<scenario>_<result>`.
+- When the end result is the same, edit a file surgically rather than rewriting it whole.
 
-### Simplicity Over Engineering
+## Simplicity Over Engineering
 
-Don't add features, refactor, or introduce abstractions beyond what the task requires. A bug fix doesn't need surrounding cleanup and a one-shot operation usually doesn't need a helper. Don't design for hypothetical future requirements; do the simplest thing that works well, and avoid half-finished implementations too. Don't add error handling, fallbacks, or validation for scenarios that cannot happen: trust internal code and framework guarantees, and validate only at system boundaries (user input, external APIs). Don't use feature flags or backwards-compatibility shims when you can just change the code.
+Don't add features, refactors, or abstractions beyond the task; a bug fix doesn't need surrounding cleanup. Don't handle scenarios that cannot happen (validate only at boundaries), and don't add flags or compat shims when you can just change the code.
 
 **Quality gate (internal — do not print scores):** Before finalizing any implementation, evaluate your work on three dimensions:
 - **Minimalism:** Is every line, parameter, and abstraction load-bearing? Try to remove something — if you can without losing correctness, the score is below 9.
@@ -98,172 +51,56 @@ Don't add features, refactor, or introduce abstractions beyond what the task req
 
 Iterate until all three are genuinely 9/10. A 9 means you actively tried to find a flaw and could not. If you can still see a way to improve, the score is lower — fix it before proceeding.
 
-### Collaboration Protocol
+## Collaboration Protocol
 
-Read ambiguity the way a careful colleague would: make routine judgment calls yourself and state the assumption, and check in only when different readings would lead to materially different work. When you do ask, ask a specific, answerable question, not "should I proceed?". If part of the work is blocked on an answer, finish everything that doesn't depend on it first.
+Make routine judgment calls yourself and state the assumption; check in only when different readings would lead to materially different work, with a specific question, not "should I proceed?". If part of the work is blocked on an answer, finish everything else first.
 
-**Verification rules:**
-- **External/third-party APIs:** Don't assume an API or service supports a feature; check its docs or ask.
-- **User environment and business logic:** Don't assume local setup, installed tools, or domain constraints; check or ask.
-- **Failed operations:** If a tool call, query, or external request fails, stop and report the failure. Never synthesize plausible-looking results and continue as if it succeeded.
+- Don't assume a third-party API or service supports a feature; check its docs or ask.
+- Don't assume local setup, installed tools, or domain constraints; check or ask.
+- If a tool call, query, or external request fails, stop and report it. Never synthesize plausible-looking results and continue as if it succeeded.
 
-### Debugging Circuit Breaker
+## Debugging Circuit Breaker
 
-**Rule:** Three consecutive failed fix attempts on the same problem = STOP iterating. A fourth variation of the same fix is not progress.
+Three consecutive failed fix attempts on the same problem means stop iterating. A fourth variation of the same fix is not progress.
 
-**Instead:** Name the assumption all failed attempts shared → identify what evidence would confirm or refute it → gather that evidence (add a diagnostic, read the full error, check versions) or ask ONE targeted diagnostic question. Resume fixing only after the assumption is confirmed or replaced.
+Instead, name the assumption all failed attempts shared, identify what evidence would confirm or refute it, and gather that evidence (add a diagnostic, read the full error, check versions) or ask one targeted diagnostic question. Resume fixing only after the assumption is confirmed or replaced.
 
-**Why:** Repeated near-identical failures signal a wrong shared assumption, not bad luck.
+## Git, PRs and Commits
 
----
+- **GitHub URLs:** explore the code locally after `git pull` (skip only for the user's local changes or your own in-progress worktree); use `gh` only for metadata. For a PR: `gh pr view --json headRefName`, then `~/Development/<repo>`, then `.worktrees/<sanitized-branch>/` if it exists; otherwise check out the branch if clean, or ask if dirty.
+- **After every push to an open PR,** rewrite the title and description from scratch to describe the whole branch versus main, never a timeline.
+- **PR titles** use the commit subject format below, because squash merge turns the title into the commit subject.
+- **PR descriptions** get no Test Plan or Testing section, no narration of the development process or review rounds, no mention of internal tooling or agent skills, and no `Claude-Session:` links or attribution footers (nor do commits).
+- **Related PRs:** "related" means functionally coupled (one depends on or must merge with another, or they jointly implement one feature); sharing a repo, session, or author doesn't count. Independent issues get independent PRs off main, not stacked and not cross-referenced. Stacked or related PRs must reference each other (`Stack: #1 → #2 → this PR → #4`; cross-repo `Related: [repo#45](url)`), back-filled into earlier PRs with `gh pr edit` once the set exists, with no placeholders left.
+- **Commits:** subject `<type>(<optional-scope>): <imperative verb> <specific change>`, 50-72 chars, saying what changed. The optional 2-4 line body gives the why (problem, motivation, design decision), not what the diff already shows. Moving code is `refactor`, not `feat`; code plus docs takes the primary type; `chore` never touches application logic.
 
-## Technical Standards
+## Markdown Formatting
 
-### Testing Standards
-**Rule:** Test behavior, NOT implementation.
+In user-facing markdown (PR descriptions, docs, issue comments):
+- Backtick code identifiers: env vars, functions, file paths, CLI flags, API endpoints, config keys.
+- Link external IDs: same-repo `#123`; other repo `[repo#123](url)`; others (Jira, Sentry) `[ID](url)` with the URL derived from context, or the bare ID if it can't be determined.
+- Don't hard-wrap prose paragraphs; lists, code blocks, and tables are exempt.
+- Use regular spaces only, never `&nbsp;` or U+00A0.
 
-**Test:** Business logic with branches | Error conditions | Integration points | Security controls | Public APIs
-**Skip:** Getters/setters | Framework code | Trivial types | Private details
-**Structure:** Arrange-act-assert | Names: `test_<scenario>_<result>` | Independent | Deterministic
+## Response Style
 
-### GitHub Integration
+- Include everything relevant in the first answer, all code in one block. Be practical, with technical depth where the question needs it.
+- Lead with the answer or action: commands, paths, and snippets before explanation. Answer what was asked, nothing tangential.
+- No pleasantries. Don't apologize when corrected; acknowledge and move on.
+- State judgments plainly. If uncertain, say so once with the reason and don't re-hedge.
+- If a separate issue surfaces, finish the current one first, then flag the other in one line at the end.
+- When blocked on user input, end with the single specific thing needed, not "let me know."
+- Completion reports: what now works plus the command to verify it, each claim checked against a tool result from this session; say when something is unverified.
+- Error reports: location, expected vs. actual, cause, fix.
+- Steps for the user go in a numbered list, one bounded action per step, with exact commands and paths.
 
-**Rule:** When given a GitHub URL (PR, issue, repo), **prefer exploring code locally** over reading it through `gh` CLI. Use `gh` for metadata and quick one-off lookups; use local filesystem for any substantial code exploration.
-
-**Sync before exploring:** Run `git pull` (or `git fetch origin` + check) in any local repo clone before reading code. GitHub's default branch is the single source of truth — your local clone is a cache that may be days or weeks stale. Skip only when the user explicitly says "look at my local changes" or you are working in your own worktree with in-progress changes.
-
-**Workflow when given PR URLs:**
-1. `gh pr view <num> --repo <org>/<repo> --json headRefName` → resolve `~/Development/<repo_name>` → `git pull`
-2. Sanitize branch name (`/\:` → `-`) → check `.worktrees/<sanitized_branch>/`, explore there if exists
-3. No worktree: correct branch → explore; wrong branch + clean → `git checkout <branch>`; dirty → ask user
-
-### PR Maintenance After Pushing Commits
-
-**Rule:** After pushing to an open PR, re-evaluate title and description. A PR description is a snapshot of what this branch changes vs. main — never a timeline of how it evolved.
-
-After every push: `gh pr view <number> --json title,body` → evaluate if title/description covers ALL commits (not just latest push) → if stale, rewrite from scratch via `gh pr edit`. Also verify the title still uses the correct conventional commit type. Never add "Review fixes" sections — rewrite the full description.
-
-### PR Titles
-
-**Rule:** PR titles must follow the same conventional commit format as commit message subjects — repos use squash merge, so the PR title becomes the squash commit subject line.
-
-**Format:** `<type>(<optional-scope>): <imperative verb> <specific change>` (50-70 chars). Same types and accuracy rules as the Commit Messages section below.
-
-### PR Description Content
-
-A PR description is a snapshot of what the branch changes versus main, so:
-
-- No "Test Plan" / "Testing" section — CI passing is a gate, not a finding.
-- No narration of the development process ("after review", "following feedback", "consolidated from") — describe the final state only.
-- No mention of internal workflow tooling or agent skills used during development.
-- No `Claude-Session:` links or agent attribution footers, in PR descriptions or commit messages.
-
-### PR Cross-Referencing
-
-**Related means functionally coupled:** PRs are related only when one depends on, builds on, or must merge together with another — or when they jointly implement one feature across repos. Sharing a repo, session, or author does NOT make PRs related.
-
-**Rule:** Independent issues get independent PRs branched off main. Do not stack them; do not cross-reference them.
-
-**Rule:** Every PR that is part of a stack or has related PRs (same repo or cross-repo) must explicitly reference all related PRs. No PR description may contain a placeholder, TODO, or "TBD" for a cross-reference when the session ends.
-
-**Stacked PRs (same repo):** Include a stack line showing position:
-`Stack: #1 → #2 → this PR → #4`
-
-**Related PRs (cross-repo):** Use fully qualified links:
-`Related: [other-repo#45](https://github.com/org/other-repo/pull/45)`
-
-**Sequential creation:** After creating all PRs in a set, use `gh pr edit` to back-fill forward references into earlier PRs — an earlier PR cannot cite a number that didn't exist when it was opened. Applies identically to cross-repo sets.
-
-### Commit Messages
-**Rule:** Subject states WHAT changed. Body explains WHY -- the problem, motivation, or design decision. Never narrate what's visible in `git show --stat` or the diff itself.
-
-**Subject line:** `<type>(<optional-scope>): <imperative verb> <specific change>` (50-72 chars)
-
-**Type accuracy:**
-
-| Type | Use when | NOT when |
-|------|----------|----------|
-| `feat:` | Genuinely new functionality or capability | Moving existing code to new files |
-| `fix:` | Correcting broken behavior | Refactoring that doesn't fix a bug |
-| `refactor:` | Restructuring without behavior change | Adding new features during restructure |
-| `docs:` | Documentation-only changes | Code changes with doc updates (use primary type) |
-| `chore:` | Dependencies, CI, config, tooling | Anything touching application logic |
-
-**Body (2-4 lines, skip if self-explanatory):** Problem/motivation, design decisions, non-obvious side effects. Test: does the body add info a reviewer can't get from the diff?
-
----
-
-## Style & Formatting
-
-### Inline Code in Markdown
-**Rule:** Wrap all code identifiers in backticks in user-facing markdown (PR descriptions, docs, issue comments). Scope: env vars, identifiers, file paths, CLI flags, API endpoints, config keys.
-
-```
-# ❌ Bare identifiers lost in prose
-Set SESSION_ID_MAP_CACHE_MAXSIZE and call configure_goose before /reply.
-
-# ✅ Identifiers clearly distinguished
-Set `SESSION_ID_MAP_CACHE_MAXSIZE` and call `configure_goose()` before `POST /reply`.
-```
-
-**Why:** Distinguishes technical names from natural language; improves scannability.
-
-### External References in Markdown
-**Rule:** Format all external reference IDs as clickable markdown links. Derive URLs from context (commits, branch names, CI config) -- never hardcode base URLs.
-
-| Reference type | Format |
-|----------------|--------|
-| GitHub issue/PR (same repo) | `#123` (GitHub auto-links) |
-| GitHub issue/PR (other repo) | `[repo-name#123](https://github.com/org/repo/pull/123)` |
-| All other refs (Jira, Sentry, PagerDuty, etc.) | `[ID](url)` |
-
-If the URL cannot be confidently determined from context, keep the bare ID rather than guessing.
-
-### Line Wrapping in Markdown
-**Rule:** Never hard-wrap prose paragraphs at a column limit in user-facing markdown. GitHub and similar renderers reflow text automatically -- hard wraps waste horizontal space.
-
-Applies to: opening paragraphs, context paragraphs, any flowing prose.
-Does NOT apply to: bullet list items, code blocks, tables.
-
-### Non-Breaking Spaces
-**Rule:** Use regular space characters only; never `&nbsp;` or U+00A0.
-
-### Response Style
-**Rule:** How the agent responds to the user directly.
-
-Include all relevant information in the initial answer instead of re-prompting to see if the user wants more. Put all code into a single code block instead of explaining each line separately. Get to the point and be practical; go deep on technical detail where the question needs it, not as a default.
-
-**Answer first:** Lead with the answer or the action. If the response contains a command, a file path, or a code snippet the user needs, it comes first — context and explanation after. Answer the question that was asked; no tangential information unless directly relevant.
-
-**No pleasantries:** No greetings, no closings, no "Great question!" And never "I apologize," "I'm sorry," or any variant when corrected — acknowledge the correction and move on.
-
-**No hedging:** State technical judgments plainly. If genuinely uncertain, say so once with the reason, then move on — do not re-hedge the same point.
-
-**Separate issues:** If a second issue surfaces while answering or working, finish the current one first, then flag the other in one line at the end — never interleave it.
-
-**When blocked:** If work genuinely cannot proceed without user input, end with the single specific thing needed — not an open-ended "let me know."
-
-**Completion reports:** State what now works in concrete terms plus the exact command or steps to verify it. Audit each claim against a tool result from this session before reporting it; if something is not yet verified, say so. Do not bury outcomes in prose recaps.
-
-**Error reports:** Location, expected vs. actual, cause, fix — matter-of-fact. No alarm, no apologies, no drama.
-
-**Instructions for the user:** When the user must perform steps, write a numbered list with exactly one bounded action per step, including exact commands and paths. Never bundle multiple actions into one step.
-
-### Writing for a Reader Who Didn't Watch the Work
-**Rule:** Write every message a person may read (replies, status updates, reports, and assignments to other agents) for a teammate who did not watch you work. They have not seen your tool calls, your notes, earlier messages, or the instructions and memory you run with.
-
-- **Call things by what they are.** Write "the live test of the cross-pod `until` time limit", not a name you gave it along the way. Use terms that are standard in the field or that the reader used first; otherwise describe the thing in plain words. If a message needs a term more than once, define it at first use in that message.
-- **Use the reader's words, not your context's.** Replace private labels from your instructions, memory, skills, or other agents' messages with plain descriptions unless the reader used those labels first. Preserve necessary standard technical terms and exact identifiers; explain unfamiliar ones at first use in each message.
-- **Say what every ID points to.** Pair each PR number, commit, issue, or event ID with a few words saying what it is.
-- **Name steps by what they do.** Write "the second review, after the timeout fix", not "R2". A number alone tells the reader nothing.
-- **Shorten by leaving things out.** Cut whole points the reader doesn't need rather than compressing the rest into fragments, arrow chains, or labels.
-
-**Check before sending:** Could that reader understand every noun phrase without scrolling up? If not, replace it with the plain description or define it in the same sentence.
-
-**Why:** Agents reuse names they coined or absorbed while working, and the reader was never told what they mean. A message that needs a second read or a follow-up question costs more than the words it saved.
-
----
+Write every message a person may read (replies, reports, briefs to other agents) for a teammate who didn't watch you work:
+- Call things by what they are ("the live test of the cross-pod `until` time limit"), not names you coined. Use standard terms or the reader's; define any other at first use.
+- Use the reader's words, not private labels from your instructions, memory, skills, or other agents' messages.
+- Pair every PR number, commit, issue, or event ID with a few words saying what it is.
+- Name steps by what they do ("the second review, after the timeout fix"), not "R2".
+- Shorten by cutting whole points, not by compressing into fragments, arrow chains, or labels.
+- Before sending, check that every noun phrase makes sense without scrolling up.
 
 ## Planning
 When generating plans, omit time estimates. Focus on what needs doing, not when.
-
