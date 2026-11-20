@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [0.83.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.82.0...v0.83.0) (2026-11-20)
+
+
+### Features
+
+* **claude:** set auto-compact window to 350K tokens ([#293](https://github.com/wpfleger96/ai-agent-rules/issues/293)) ([8a58668](https://github.com/wpfleger96/ai-agent-rules/commit/8a586680d24ed01e3f3620dc179840667158eb24))
+* **profiles:** add learn skill and learning mode to personal profile ([#294](https://github.com/wpfleger96/ai-agent-rules/issues/294)) ([ccb7036](https://github.com/wpfleger96/ai-agent-rules/commit/ccb70360aba73bf81925489d0699a618f68b056d))
+
+
+### Documentation
+
+* **agents-md:** default to single-loop work, gate subagents on need ([#295](https://github.com/wpfleger96/ai-agent-rules/issues/295)) ([9cebcd9](https://github.com/wpfleger96/ai-agent-rules/commit/9cebcd93072e0e71f67ded7f6a9e8272ae422933))
+
+
+### Refactoring
+
+* **config:** trim and de-prescribe AGENTS.md, chat hints, and skills ([#241](https://github.com/wpfleger96/ai-agent-rules/issues/241)) ([77478f1](https://github.com/wpfleger96/ai-agent-rules/commit/77478f10fff74b92fc9d9d88f9b590b0e0ffc55b))
+
 ## [0.82.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.81.5...v0.82.0) (2026-11-16)
 
 
