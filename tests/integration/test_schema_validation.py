@@ -16,6 +16,8 @@ KNOWN_CLAUDE_SCHEMA_MISSING_KEYS: frozenset[str] = frozenset(
         "autoUpdates",
         # Documented in https://code.claude.com/docs/en/settings-reference#idlecompaction
         "idleCompaction",
+        # Read by the Claude Code CLI (also written by /autocompact); absent from schemastore
+        "autoCompactWindow",
     }
 )
 
