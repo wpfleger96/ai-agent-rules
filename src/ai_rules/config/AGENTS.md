@@ -60,7 +60,7 @@
 
 **Split by context, not by task type:** give each subagent a piece of work that needs little from the rest of the system and have it return a compact result. Never pass one subagent's summary or conclusions into another as its input — each hop degrades fidelity. Handing a fresh reviewer the actual code or artifact a subagent produced is fine. Do sequential-dependent work yourself.
 
-**Implementation:** Write code yourself by default — you hold the requirements, the decisions, and what you already read. This overrides the spawn conditions above for code changes: delegate implementation only when the change is large enough to bloat your context and splits into independent parts with clean interfaces: one subagent per file or group of files sharing a broken intermediate state, never two subagents on the same file.
+**Implementation:** Write code yourself by default — you hold the requirements, the decisions, and what you already read. Delegate implementation only when the change splits into independent parts with clean interfaces that can proceed in parallel (e.g. backend and frontend against an agreed API contract), or when it is large enough to bloat your context. Fix the shared interface yourself before spawning, assign one subagent per file or group of files sharing a broken intermediate state, and never put two subagents on the same file.
 
 **Inline:** Sequential-dependent | Edits that build on what you just learned | Lookups whose target you already know | Ambiguous (clarify first)
 
