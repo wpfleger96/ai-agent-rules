@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.83.1](https://github.com/wpfleger96/ai-agent-rules/compare/v0.83.0...v0.83.1) (2026-11-24)
+
+
+### Chores
+
+* **buzz:** refresh Sietch Tabr backup as per-agent snapshots ([#299](https://github.com/wpfleger96/ai-agent-rules/issues/299)) ([f0b214b](https://github.com/wpfleger96/ai-agent-rules/commit/f0b214bae5f4ba01b365026c9de658c5c163c308))
+
+
+### Continuous Integration
+
+* sync shared files ([912e95a](https://github.com/wpfleger96/ai-agent-rules/commit/912e95acc47e108616063e39229e16c134874254))
+
 ## [0.83.0](https://github.com/wpfleger96/ai-agent-rules/compare/v0.82.0...v0.83.0) (2026-11-20)
 
 
